@@ -6,14 +6,18 @@
 <title>Prepline: prep list sorter</title>
 <script>
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
- * mode 'test': no network calls, only the TEST- keys below unlock Pro, a TEST MODE badge shows,
- *              Buy buttons show a notice instead of opening checkout.
- * mode 'live': keys are checked with Lemon Squeezy's public License API. Before switching, replace
- *              every TODO below with the real store/product/variant ids and checkout URLs.
+ * mode 'test':    no network calls, only the TEST- keys below unlock Pro, a TEST MODE badge shows,
+ *                 Buy buttons show a notice instead of opening checkout.
+ * mode 'ls-test': CURRENT. Lemon Squeezy TEST-MODE store (autoprod-dev, store 485739; ids below are
+ *                 test-mode ids, see monetise/LS_TEST_IDS.md). Buy opens the real test checkout
+ *                 (test card, nothing charged); its keys are checked with the License API like
+ *                 live. TEST- keys still work offline. TEST MODE badge stays visible.
+ * mode 'live':    keys are checked with Lemon Squeezy's public License API. Before switching, replace
+ *                 the ids and checkout URLs with the LIVE-mode ones (test-mode keys are refused).
  * Activation limit (3 devices per key) is set on the Lemon Squeezy product, not here.
  */
 var LICENSE_CONFIG = {
-  mode: 'test',                                  // 'test' | 'live'
+  mode: 'ls-test',                               // 'test' | 'ls-test' | 'live'
   edition: 'web',                                // 'web' | 'offline-pro' (set by build_offline.py --edition pro)
   storeName: 'Autoprod',
   appName: 'Prepline',
@@ -25,24 +29,24 @@ var LICENSE_CONFIG = {
   maxActivations: 3,                             // informational: enforce via the LS product's activation limit
   apiBase: 'https://api.lemonsqueezy.com/v1/licenses',
   lemonSqueezy: {
-    storeId: 'TODO_STORE_ID',
-    productIds: ['TODO_PREPLINE_PRO_PRODUCT_ID'],  // add more ids if monthly/yearly/lifetime are separate products
-    variants: {                                    // variant id -> plan id
-      'TODO_VARIANT_ID_MONTHLY': 'monthly',
-      'TODO_VARIANT_ID_YEARLY': 'yearly',
-      'TODO_VARIANT_ID_LIFETIME': 'lifetime'
+    storeId: '485739',                             // autoprod-dev.lemonsqueezy.com (TEST MODE)
+    productIds: ['1395962', '1395968'],            // Prepline Pro (monthly+yearly), Prepline Pro Lifetime
+    variants: {                                    // variant id -> plan id (any other variant is refused)
+      '2179964': 'monthly',                        // A$7/mo
+      '2179971': 'yearly',                         // A$59/yr
+      '2179974': 'lifetime'                        // A$79 once (A$49 with LAUNCH50)
     }
   },
   checkout: {
-    monthly:  'https://autoprod.lemonsqueezy.com/buy/TODO-prepline-monthly',
-    yearly:   'https://autoprod.lemonsqueezy.com/buy/TODO-prepline-yearly',
-    lifetime: 'https://autoprod.lemonsqueezy.com/buy/TODO-prepline-lifetime'
+    monthly:  'https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e?enabled=2179964',
+    yearly:   'https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c?enabled=2179971',
+    lifetime: 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314?checkout%5Bdiscount_code%5D=LAUNCH50'
   },
   offlineDownloadUrl: 'TODO-offline-download-url', // e.g. Lemon Squeezy "My Orders" page / product file
   plans: [
     { id: 'monthly',  label: 'Monthly',  short: 'monthly',  price: 'A$7',  per: 'per month, cancel any time' },
     { id: 'yearly',   label: 'Yearly',   short: 'yearly',   price: 'A$59', per: 'per year (about 30% off monthly)', best: true, tag: 'BEST VALUE' },
-    { id: 'lifetime', label: 'Lifetime', short: 'lifetime', price: 'A$49', per: 'one-off payment', note: 'Launch deal: first 50 buyers only', tag: 'LAUNCH DEAL' }
+    { id: 'lifetime', label: 'Lifetime', short: 'lifetime', price: 'A$79', per: 'one-off payment', note: 'A$49 with code LAUNCH50 (first 50 buyers)', tag: 'LAUNCH DEAL' }
   ],
   upgrade: {
     title: 'Upgrade to Prepline Pro',
@@ -57,7 +61,7 @@ var LICENSE_CONFIG = {
     gstNote: 'GST handled at checkout',
     refund: '14-day no-questions refund.'
   },
-  testKeys: {                                    // TEST MODE ONLY. Ignored in live mode.
+  testKeys: {                                    // 'test' and 'ls-test' modes only. Ignored in live mode.
     'TEST-PRO-MONTHLY':  { plan: 'monthly' },
     'TEST-PRO-YEARLY':   { plan: 'yearly' },
     'TEST-PRO-LIFETIME': { plan: 'lifetime' },
@@ -74,15 +78,21 @@ var LICENSE_CONFIG = {
  * after its own LICENSE_CONFIG object (see monetise/shared/sync_licence.py).
  *
  * Modes
- *   test : no network at all. Only the documented TEST-* keys in LICENSE_CONFIG.testKeys work.
- *          A "TEST MODE" badge is always visible and Buy buttons show a notice instead of
- *          opening checkout.
- *   live : Lemon Squeezy public License API (no API key; CORS allows browsers):
+ *   test    : no network at all. Only the documented TEST-* keys in LICENSE_CONFIG.testKeys work.
+ *             A "TEST MODE" badge is always visible and Buy buttons show a notice instead of
+ *             opening checkout.
+ *   ls-test : Lemon Squeezy TEST-MODE store. Buy buttons open the real test-mode checkouts
+ *             (test card, nothing charged); keys from those checkouts are checked with the
+ *             License API exactly like live. The offline TEST-* keys also still work (no network).
+ *             The "TEST MODE" badge stays visible.
+ *   live    : Lemon Squeezy public License API (no API key; CORS allows browsers):
  *          POST https://api.lemonsqueezy.com/v1/licenses/activate   license_key, instance_name
  *          POST https://api.lemonsqueezy.com/v1/licenses/validate   license_key, instance_id
  *          POST https://api.lemonsqueezy.com/v1/licenses/deactivate license_key, instance_id
  *          Body: application/x-www-form-urlencoded, header Accept: application/json.
- *          The response meta.store_id / meta.product_id must match LICENSE_CONFIG.
+ *          The response meta.store_id / meta.product_id / meta.variant_id must match
+ *          LICENSE_CONFIG (variant id -> plan via lemonSqueezy.variants). In live mode keys
+ *          whose license_key.test_mode is true are refused; TEST-* keys are ignored.
  *          The 3-device limit is the "activation limit" set on the Lemon Squeezy product;
  *          this code just reports LS's "activation limit reached" error.
  * Only the licence key (and the instance id / a generic device label) is ever sent. Files,
@@ -101,6 +111,9 @@ var LICENSE_CONFIG = {
   var status = 'free';    // 'free' | 'pro' | 'grace' | 'lapsed'
   var api = {};
   api._now = function () { return Date.now(); };
+  function offlineTestKeys() { return C.mode !== 'live'; }          // TEST-* keys: test + ls-test only
+  function isLocal() { return C.mode === 'test' || !!(S && S.testKey); } // no network for this licence
+  api.isTestMode = function () { return C.mode !== 'live'; };
 
   function el(tag, attrs, html) {
     var e = document.createElement(tag);
@@ -118,7 +131,7 @@ var LICENSE_CONFIG = {
   function save() { try { if (S) localStorage.setItem(C.storageKey, JSON.stringify(S)); else localStorage.removeItem(C.storageKey); } catch (e) {} }
   function computeStatus() {
     if (!S) return 'free';
-    if (C.mode === 'test') return 'pro';
+    if (isLocal()) return 'pro';
     var age = api._now() - (S.lastValidatedAt || 0);
     if (age <= (C.revalidateDays || 7) * DAY) return 'pro';
     if (age <= ((C.revalidateDays || 7) + (C.offlineGraceDays || 14)) * DAY) return 'grace';
@@ -147,25 +160,34 @@ var LICENSE_CONFIG = {
     }, function () { throw new Error('network'); });   // offline / DNS / blocked
   }
   function configured() {
-    var ids = (C.lemonSqueezy && C.lemonSqueezy.productIds) || [];
-    return ids.length && ids.every(function (x) { return !/TODO/i.test(String(x)); }) && !/TODO/i.test(String(C.lemonSqueezy.storeId || ''));
+    var ls = C.lemonSqueezy || {}, ids = ls.productIds || [], vs = Object.keys(ls.variants || {});
+    var todo = function (x) { return /TODO/i.test(String(x)); };
+    return !!ids.length && !ids.some(todo) && !vs.some(todo) && !todo(ls.storeId || 'TODO');
+  }
+  // Plan for a variant id. With a variants map configured, an unknown variant is refused (null);
+  // with no map at all every variant of the listed products counts as plain 'pro'.
+  function planFromVariant(meta) {
+    var v = (C.lemonSqueezy && C.lemonSqueezy.variants) || {};
+    if (!Object.keys(v).length) return 'pro';
+    return v[String(meta && meta.variant_id)] || null;
   }
   function productMatches(meta) {
     if (!meta) return false;
     var ls = C.lemonSqueezy || {};
     if (String(meta.store_id) !== String(ls.storeId)) return false;
-    return (ls.productIds || []).map(String).indexOf(String(meta.product_id)) >= 0;
+    if ((ls.productIds || []).map(String).indexOf(String(meta.product_id)) < 0) return false;
+    return !!planFromVariant(meta);
   }
-  function planFromVariant(meta) { var v = (C.lemonSqueezy && C.lemonSqueezy.variants) || {}; return v[String(meta && meta.variant_id)] || 'pro'; }
+  api._planFromVariant = planFromVariant; api._productMatches = productMatches;   // exposed for tests
 
   api.activate = function (rawKey) {
     var key = String(rawKey || '').trim();
     if (!key) return Promise.resolve({ ok: false, error: 'Paste your licence key first.' });
-    if (C.mode === 'test') {
-      var t = (C.testKeys || {})[key.toUpperCase()];
+    var t = offlineTestKeys() ? (C.testKeys || {})[key.toUpperCase()] : null;
+    if (C.mode === 'test' || t) {
       if (!t) return Promise.resolve({ ok: false, error: 'That licence key isn\u2019t valid. (Test mode: use one of the documented TEST- keys.)' });
       if (t.reject) return Promise.resolve({ ok: false, error: t.reject });
-      S = { mode: 'test', key: key.toUpperCase(), instanceId: 'test-' + Math.random().toString(36).slice(2, 10), plan: t.plan,
+      S = { mode: C.mode, testKey: true, key: key.toUpperCase(), instanceId: 'test-' + Math.random().toString(36).slice(2, 10), plan: t.plan,
             productName: C.productName, activatedAt: api._now(), lastValidatedAt: api._now(), lastAttemptAt: api._now() };
       save(); emit();
       return Promise.resolve({ ok: true });
@@ -173,12 +195,15 @@ var LICENSE_CONFIG = {
     if (!configured()) return Promise.resolve({ ok: false, error: 'The store isn\u2019t set up yet (LICENSE_CONFIG still has TODO ids).' });
     return lsPost('activate', { license_key: key, instance_name: deviceLabel() }).then(function (j) {
       if (!j.activated) return { ok: false, error: j.error || 'That licence key couldn\u2019t be activated.' };
-      if (!productMatches(j.meta)) {
-        // Wrong product: give the activation straight back so it doesn't use up a device slot.
+      var testKeyInLive = C.mode === 'live' && j.license_key && j.license_key.test_mode === true;
+      if (!productMatches(j.meta) || testKeyInLive) {
+        // Wrong product/plan (or a test-mode key in the live app): give the activation straight back
+        // so it doesn't use up a device slot.
         lsPost('deactivate', { license_key: key, instance_id: j.instance && j.instance.id }).catch(function () {});
-        return { ok: false, error: 'That key is for a different product, not ' + C.productName + '.' };
+        return { ok: false, error: !productMatches(j.meta) ? 'That key is for a different product, not ' + C.productName + '.'
+          : 'That is a test-mode key from the Lemon Squeezy test store; it doesn\u2019t work in the live app.' };
       }
-      S = { mode: 'live', key: key, instanceId: j.instance.id, plan: planFromVariant(j.meta), productName: j.meta.product_name,
+      S = { mode: C.mode, key: key, instanceId: j.instance.id, plan: planFromVariant(j.meta), productName: j.meta.product_name,
             activatedAt: api._now(), lastValidatedAt: api._now(), lastAttemptAt: api._now(), expiresAt: j.license_key && j.license_key.expires_at };
       save(); emit();
       return { ok: true };
@@ -188,7 +213,7 @@ var LICENSE_CONFIG = {
   api.revalidate = function (force) {
     if (!S) return Promise.resolve(status);
     var now = api._now();
-    if (C.mode === 'test') {
+    if (isLocal()) {
       if (force || now - S.lastValidatedAt >= (C.revalidateDays || 7) * DAY) { S.lastValidatedAt = now; S.lastAttemptAt = now; save(); }
       emit(); return Promise.resolve(status);
     }
@@ -210,7 +235,7 @@ var LICENSE_CONFIG = {
 
   api.deactivate = function () {
     if (!S) return Promise.resolve({ ok: true });
-    if (C.mode === 'test') { S = null; save(); emit(); return Promise.resolve({ ok: true }); }
+    if (isLocal()) { S = null; save(); emit(); return Promise.resolve({ ok: true }); }
     var cur = S;
     return lsPost('deactivate', { license_key: cur.key, instance_id: cur.instanceId }).then(function (j) {
       if (j.deactivated || /not found/i.test(j.error || '')) { S = null; save(); emit(); return { ok: true }; }
@@ -266,7 +291,7 @@ var LICENSE_CONFIG = {
   };
   function paintBadge() {
     if (!badge) return;
-    badge.hidden = C.mode !== 'test';
+    badge.hidden = C.mode === 'live';
     var pl = planLabel(S && S.plan);
     badge.innerHTML = 'TEST MODE<small>' + (api.isPro() ? esc(C.productName) + (pl === C.productName ? '' : ' (' + esc(pl) + ')') : 'free') + '</small>';
   }
@@ -275,8 +300,9 @@ var LICENSE_CONFIG = {
 
   function renderLicence(msg, cls) {
     var h;
-    var testHint = C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: no payments, no network calls. Keys that work here: ' +
-      Object.keys(C.testKeys || {}).filter(function (k) { return !C.testKeys[k].reject; }).map(function (k) { return '<code>' + esc(k) + '</code>'; }).join(', ') + '.</div>' : '';
+    var tk = Object.keys(C.testKeys || {}).filter(function (k) { return !C.testKeys[k].reject; }).map(function (k) { return '<code>' + esc(k) + '</code>'; }).join(', ');
+    var testHint = C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: no payments, no network calls. Keys that work here: ' + tk + '.</div>'
+      : C.mode === 'ls-test' ? '<div class="pl-test"><b>TEST MODE</b>: Lemon Squeezy test store, no real payments. Keys from a test checkout are checked with Lemon Squeezy; offline test keys also work: ' + tk + '.</div>' : '';
     if (S) {
       var st = status === 'grace' ? 'Active (offline grace: will re-check with ' + esc(C.storeName) + ' when you\u2019re online)' : status === 'lapsed' ? 'Paused: couldn\u2019t re-check the licence for a while. Go online and press Re-check.' : 'Active';
       h = '<h3>' + esc(C.productName) + ' is on</h3>' +
@@ -294,7 +320,7 @@ var LICENSE_CONFIG = {
         '<input class="pl-input" id="plKey" autocomplete="off" spellcheck="false" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX">' +
         '<button class="pl-btn" type="submit" id="plActivate">Activate</button></form>' +
         '<div class="pl-msg ' + (cls || '') + '" id="plLicMsg">' + esc(msg || '') + '</div>' + testHint +
-        '<p class="pl-soft" style="margin-top:12px">Only the key is sent to ' + (C.mode === 'test' ? 'nobody (test mode)' : 'Lemon Squeezy, our payment provider, to check it') + '. Your files never leave this browser.</p>' +
+        '<p class="pl-soft" style="margin-top:12px">Only the key is sent to ' + ((C.mode === 'test' || (S && S.testKey)) ? 'nobody (test mode)' : 'Lemon Squeezy, our payment provider, to check it') + '. Your files never leave this browser.</p>' +
         '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="buy">Don\u2019t have a key? See Pro</button><button class="pl-btn alt" type="button" data-pl="close">Close</button></div>';
     }
     licDlg.querySelector('.pl-in').innerHTML = h;
@@ -316,7 +342,8 @@ var LICENSE_CONFIG = {
       '<div class="pl-plans">' + plans + '</div>' +
       '<p class="pl-soft">Prices in AUD' + (u.gstNote ? ', ' + esc(u.gstNote) : '') + '. Secure checkout by Lemon Squeezy (merchant of record). ' + esc(u.refund || '') + '</p>' +
       '<div class="pl-msg" id="plUpMsg"></div>' +
-      (C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy buttons don\u2019t open checkout and nothing is charged.</div>' : '') +
+      (C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy buttons don\u2019t open checkout and nothing is charged.</div>'
+        : C.mode === 'ls-test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy opens a Lemon Squeezy <b>test</b> checkout. Nothing is charged (use test card 4242 4242 4242 4242).</div>' : '') +
       '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="enterkey">Already bought? Enter licence key</button><button class="pl-btn alt" type="button" data-pl="close">Not now</button></div>';
     upDlg.querySelector('.pl-in').innerHTML = h;
   }
@@ -362,7 +389,7 @@ var LICENSE_CONFIG = {
   api.init = function () {
     if (api._inited) return; api._inited = true;
     var st = el('style', { id: 'pl-licence-css' }); st.textContent = css; document.head.appendChild(st);
-    badge = el('button', { class: 'pl-badge', type: 'button', id: 'plTestBadge', title: 'Test mode: no real payments. Click to enter a test licence key.' });
+    badge = el('button', { class: 'pl-badge', type: 'button', id: 'plTestBadge', title: 'Test mode: no real payments. Click to enter a licence key.' });
     badge.addEventListener('click', function () { api.openLicenceDialog(); });
     document.body.appendChild(badge);
     licDlg = el('dialog', { class: 'pl-dlg', id: 'plLicenceDialog', 'aria-label': 'Licence key' }, '<div class="pl-in"></div>');
