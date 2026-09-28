@@ -170,6 +170,7 @@
   #preplistTab .status{font-size:12.5px; color:var(--ink-soft); margin-top:10px; min-height:16px;}
   #preplistTab .status.err{color:var(--prot); font-weight:600;}
   #preplistTab .status.ok{color:var(--veg1); font-weight:600;}
+  #preplistTab .status.warn{color:var(--sauce2); font-weight:700;}
 
   #preplistTab .summary{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:22px;}
   #preplistTab .sumcard {
@@ -1649,6 +1650,7 @@ async function pdfExtractPageItems(page){
       x0: it.transform[4],
       top: viewport.height - it.transform[5],
       size: Math.abs(it.transform[0]) || Math.abs(it.transform[3]) || 8,
+      width: Math.abs(it.width) || 0,
     });
   }
   return items;
@@ -1685,6 +1687,37 @@ function pdfGroupByTop(items, tol){
   lines.sort((a,b)=>a.top-b.top);
   return lines;
 }
+// pdf.js sometimes merges the quantity and the ingredient name into ONE text item when
+// they sit close together (e.g. "2.5 Kilograms Chicken thigh" starting in the quantity
+// column). Columns are assigned by where an item STARTS, so without this the whole string
+// became the quantity and the name was left empty. These split such an item back into its
+// quantity part and name part — also the reverse order ("Chicken thigh 2.5 Kilograms").
+const PDF_QTY_UNIT_RE_SRC = '(?:kilograms?|kgs?|grams?|gms?|g|litres?|liters?|l|millilitres?|milliliters?|ml|each|ea|bunch(?:es)?|punnets?|trays?|pcs?|pieces?|portions?|packs?|packets?|bags?|boxes|box|bottles?|cans?|tins?|dozen|heads?|cloves?|sprigs?|sheets?|slices?|cups?|tbsp|tsp)';
+const PDF_QTY_PART_SRC = '\\d[\\d.,]*\\s*\\*?' + PDF_QTY_UNIT_RE_SRC + '\\.?';
+const PDF_QTY_SEQ_SRC = PDF_QTY_PART_SRC + '(?:\\s*\\+?\\s*' + PDF_QTY_PART_SRC + ')*';
+const PDF_LEADING_QTY_RE = new RegExp('^(' + PDF_QTY_SEQ_SRC + ')(?:\\s+|(?=[^\\w\\s]))(.*\\S)$', 'i');
+const PDF_TRAILING_QTY_RE = new RegExp('^(.*?[A-Za-z].*?)\\s+(' + PDF_QTY_SEQ_SRC + ')$', 'i');
+function pdfSplitQtyName(t){
+  let m = t.match(PDF_LEADING_QTY_RE);
+  if (m && /[A-Za-z]/.test(m[2])) return {qty:m[1].trim(), name:m[2].trim()};
+  m = t.match(PDF_TRAILING_QTY_RE);
+  if (m && !/^\d/.test(m[1].trim())) return {name:m[1].trim(), qty:m[2].trim()};
+  return null;
+}
+// Fallback for a merged item whose unit isn't in the list above: if the item's own width
+// carries it across the quantity/name column boundary, estimate (proportionally, per
+// character) where the boundary falls in the string and split at the nearest space.
+function pdfSplitByWidth(w, t, boundaryX){
+  if (!w.width || !/^\d/.test(t) || w.x0 + w.width <= boundaryX + 2) return null;
+  const cut = Math.round(t.length * (boundaryX - w.x0) / w.width);
+  let best = -1;
+  for (let i=0; i<t.length; i++){
+    if (t[i]===' ' && i>0 && (best<0 || Math.abs(i-cut) < Math.abs(best-cut))) best = i;
+  }
+  if (best<0) return null;
+  const qty = t.slice(0,best).trim(), name = t.slice(best+1).trim();
+  return (qty && name && /[A-Za-z]/.test(name)) ? {qty, name} : null;
+}
 function pdfExtractIngredientRows(items){
   const ingLabel = items.find(w=>pdfSquash(w.str)==='ingredients:');
   if (!ingLabel) return [];
@@ -1704,6 +1737,22 @@ function pdfExtractIngredientRows(items){
       else if (w.x0<300){ qty.push(t); }
       else { name.push(t); }
     }
+    // One column came out empty — check for a quantity and a name merged into one item.
+    if (!name.length && qty.length){
+      for (const w of line.items){
+        const t = w.str.trim();
+        if (!t || w.x0>=300 || t==='+') continue;
+        const sp = pdfSplitQtyName(t) || pdfSplitByWidth(w, t, 300);
+        if (sp){ qty.splice(qty.indexOf(t), 1, sp.qty); name.push(sp.name); break; }
+      }
+    } else if (!qty.length && name.length){
+      for (const w of line.items){
+        const t = w.str.trim();
+        if (!t || w.x0<300 || w.x0>=430) continue;
+        const sp = pdfSplitQtyName(t);
+        if (sp){ name.splice(name.indexOf(t), 1, sp.name); qty.push(sp.qty); break; }
+      }
+    }
     if (qty.length||name.length||cost.length) parsedLines.push({qty,name,cost});
   }
   const rows = [];
@@ -1717,7 +1766,8 @@ function pdfExtractIngredientRows(items){
     const qtyStr = r.map(pl=>pl.qty.join(' ')).join(' ').trim().replace(/\s+/g,' ');
     const nameStr = r.map(pl=>pl.name.join(' ')).join(' ').trim().replace(/\s+/g,' ');
     const cost = r.map(pl=>pl.cost[0]).find(Boolean) || null;
-    return {qtyRaw:qtyStr, name:nameStr, cost};
+    const raw = [qtyStr, nameStr, cost].filter(Boolean).join(' ');
+    return {qtyRaw:qtyStr, name:nameStr, cost, raw};
   });
 }
 function pdfParseQtyString(qtyStr){
@@ -1819,7 +1869,10 @@ function pdfParseAllPages(pagesItems){
 // list is what caused the confusion this was built to avoid. Every quantity on the front
 // page is therefore already a "cooked"/finished weight (the sub-recipe's own output, or a
 // ready-to-use purchased ingredient) rather than a raw input — see the on-page disclaimer.
+// A row with no usable name can't be listed — but it's never dropped silently: it's
+// recorded on dish.skipped and reported in the status message.
 function pdfExplodeDish(dish){
+  dish.skipped = dish.main.ingredients.filter(i=>!i.name).map(i=>i.raw || i.qtyRaw || '(blank row)');
   return dish.main.ingredients.filter(i=>i.name).map(ing=>({
     name: ing.name, qtyRaw: ing.qtyRaw, parsedQty: ing.parsedQty, note: null,
   }));
@@ -1849,10 +1902,11 @@ function pdfQtyToDisplay(parsedQty){
 // the dish's own BAT/batch date) drives the same day-scheduling as the xlsx pipeline.
 function addPdfRows(dish, tasks, eventDay){
   let lastCat = null, lastCore = null;
+  const skipped = [];
   for (const t of tasks){
     const cleanName = t.name.replace(/\s+/g,' ').trim();
     let cat = categorize(cleanName, dish);
-    if (cat === null) continue;
+    if (cat === null){ skipped.push(cleanName); continue; }
     // categorize() couldn't confidently place this one — it's not being silently
     // guessed: it's flagged (the same orange "check" tag the xlsx pipeline uses) so
     // whoever's reading the printed list knows to double-check that one themselves,
@@ -1874,6 +1928,7 @@ function addPdfRows(dish, tasks, eventDay){
       flagged, day, stageNum, pdfFixedTotal: disp.value,
     });
   }
+  return skipped;
 }
 // The pdf.js library now loads as an ES module (see <head>), which fetches and executes
 // asynchronously — unlike a classic script tag, there's no guarantee window.pdfjsLib is
@@ -1898,6 +1953,7 @@ async function handlePdfFiles(fileList){
   ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {};
   let totalTasks = 0;
   const dishNames = [];
+  const skippedRows = [];   // raw text of every PDF row that couldn't be listed
   const usedDishTitles = new Set(); // disambiguates the SAME dish uploaded twice at different
                                      // scales/dates (e.g. two production-tool exports for the
                                      // same recipe on different days) — each run is a distinct
@@ -1915,6 +1971,7 @@ async function handlePdfFiles(fileList){
       const {dishes} = pdfParseAllPages(pagesItems);
       dishes.forEach(d=>{
         const tasks = pdfExplodeDish(d);
+        (d.skipped||[]).forEach(raw=>skippedRows.push(raw));
         if (!tasks.length) return;
         let dishTitle = d.main.title;
         if (usedDishTitles.has(dishTitle)){
@@ -1925,7 +1982,7 @@ async function handlePdfFiles(fileList){
         const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
         if (eventDay) eventDayOverride[dishTitle] = eventDay;
         if (d.main.batDate) eventDateByDish[dishTitle] = d.main.batDate;
-        addPdfRows(dishTitle, tasks, eventDay);
+        addPdfRows(dishTitle, tasks, eventDay).forEach(raw=>skippedRows.push(raw));
         totalTasks += tasks.length;
         dishNames.push(cleanDishName(dishTitle));
         // The Yield line's *Each figure is this batch's actual covers/pax count (confirmed
@@ -1938,20 +1995,24 @@ async function handlePdfFiles(fileList){
       });
     }
     document.getElementById('fileTag').textContent = fileList.length===1 ? fileList[0].name : fileList.length+' production tool PDFs';
+    const skipTxt = s=>(s.length>80 ? s.slice(0,77)+'…' : s);
+    const skipWarn = skippedRows.length
+      ? '⚠ '+skippedRows.length+' row'+(skippedRows.length>1?'s':'')+' skipped: check the PDF — '+skippedRows.slice(0,5).map(s=>'"'+skipTxt(s)+'"').join(', ')+(skippedRows.length>5?' and '+(skippedRows.length-5)+' more':'')+'. '
+      : '';
     if (totalTasks===0){
       ({ROWS, paxByDish, eventDayOverride, eventDateByDish} = prevPdf);
-      setStatus('Could not find any ingredient rows in that PDF. PDF import reads production tool exports (a page per recipe with an "Ingredients:" table); for other layouts, upload the spreadsheet version or use the paste box. Your previous list has been kept.', 'err');
+      setStatus(skipWarn+'Could not find any ingredient rows in that PDF. PDF import reads production tool exports (a page per recipe with an "Ingredients:" table); for other layouts, upload the spreadsheet version or use the paste box. Your previous list has been kept.', 'err');
       return;
     }
     const noteMsg = ' Raw ingredient weights only, with each sub-recipe\'s cooked yield noted alongside it — check the task text on each row.';
     if (toolMode==='onetime'){
       sourceInfo = {name: fileList.length===1?fileList[0].name:(fileList.length+' production tool PDFs'), loadedAt: new Date()};
-      setStatus('Sorted '+totalTasks+' raw ingredients from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+noteMsg, 'ok');
+      setStatus(skipWarn+'Sorted '+totalTasks+' raw ingredients from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+noteMsg, skipWarn?'warn':'ok');
       renderApp();
       return;
     }
     const added = commitRowsToDatabase();
-    setStatus('Added '+added+' dish(es) to your recipe database from PDF ('+totalTasks+' tasks): '+dishNames.join(', ')+'.'+noteMsg, 'ok');
+    setStatus(skipWarn+'Added '+added+' dish(es) to your recipe database from PDF ('+totalTasks+' tasks): '+dishNames.join(', ')+'.'+noteMsg, skipWarn?'warn':'ok');
     appMode = 'weekly';
     renderApp();
   } catch(err){
