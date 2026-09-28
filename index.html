@@ -2246,6 +2246,10 @@ function staffingLineHtml(dish){
 
 function fmtDateTime(d){
   if (!d) return '';
+  // A restored autosave (localStorage JSON) holds this as a string, not a Date: without this,
+  // reopening the page after a sort crashed the results render ("toLocaleDateString is not a function").
+  if (!(d instanceof Date)) d = new Date(d);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) +
     ' at ' + d.toLocaleTimeString('en-AU', {hour:'numeric', minute:'2-digit'});
 }
