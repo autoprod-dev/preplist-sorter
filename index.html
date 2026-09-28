@@ -1,0 +1,3109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preplist Sorter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script type="module">
+  // Pinned to pdf.js 5.6.205 — do not switch to a floating "latest" tag,
+  // older builds parse PDF layout differently and will break extraction.
+  import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.worker.min.mjs';
+  window.pdfjsLib = pdfjsLib;
+</script>
+<style>
+
+  /* ---- shell: tab shell for Preplist Sorter ---- */
+  html, body { margin:0; padding:0; background:#EDEAE2; font-family:'Inter', sans-serif; }
+  .shell-masthead{
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+    padding:16px 24px; background:#1C1E1B; color:#fff;
+  }
+  .shell-masthead h1{font-family:'Fraunces',sans-serif; font-size:19px; margin:0; letter-spacing:-0.01em;}
+  .shell-masthead h1::before{content:'🍳 ';}
+  .shell-tabs{display:flex; gap:6px;}
+  .shell-tab-btn{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:13px; padding:9px 18px;
+    border-radius:9px; border:1px solid rgba(255,255,255,0.25); background:transparent; color:#fff;
+    cursor:pointer; transition:.14s; box-shadow:none;
+  }
+  .shell-tab-btn:hover{background:rgba(255,255,255,0.12); transform:none;}
+  .shell-tab-btn.active{background:#8A6A3D; border-color:#8A6A3D;}
+  .tabpanel{display:none;}
+  .tabpanel.active{display:block;}
+
+  
+
+  :root{
+    --paper:#EDEAE2;
+    --paper2:#F5F3EC;
+    --ink:#1C1E1B;
+    --ink-soft:#5C5F58;
+    --line:#D6D2C4;
+    --accent:#8A6A3D;
+    --accent-dark:#6B4F28;
+    --accent-bg:#F1E6D2;
+    --veg1:#3F7A4B;
+    --veg1-bg:#E4F0E1;
+    --veg2:#6B8E4E;
+    --veg2-bg:#EAF0DC;
+    --prot:#B5442E;
+    --prot-bg:#F5E3DC;
+    --sauce1:#B5860F;
+    --sauce1-bg:#F5EAD0;
+    --sauce2:#C97A2E;
+    --sauce2-bg:#F6E6D2;
+    --garn:#7A4FA0;
+    --garn-bg:#EDE3F5;
+    --big1:#2F4858;
+    --big1-bg:#DEE6EA;
+    --big2:#4A7A9C;
+    --big2-bg:#DCEAF2;
+    --box:#8A5A34;
+    --box-bg:#EFE1D2;
+    --review:#8A8578;
+    --review-bg:#EBE8DF;
+    --day1:#2F6F6B;
+    --day1-bg:#DCEEEC;
+    --day2:#6B4FA0;
+    --day2-bg:#E7E0F2;
+    --day3:#B5442E;
+    --day3-bg:#F5E3DC;
+    --day4:#6B5B95;
+    --day4-bg:#E8E3F0;
+    --shadow-sm:0 1px 2px rgba(28,30,27,0.05);
+    --shadow-md:0 4px 14px rgba(28,30,27,0.07);
+    --shadow-lg:0 10px 28px rgba(28,30,27,0.10);
+    --radius:7px;
+  }
+  #preplistTab *{box-sizing:border-box;}
+  #preplistTab {
+    margin:0;
+    background:
+      radial-gradient(1200px 500px at 8% -10%, rgba(138,106,61,0.06), transparent 60%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #preplistTab ::selection{background:var(--accent-bg); color:var(--accent-dark);}
+  #preplistTab .wrap{max-width:1180px;margin:0 auto;padding:32px 20px 90px;}
+  #preplistTab h1, #preplistTab h2, #preplistTab h3{font-family:'Fraunces',sans-serif;margin:0;}
+  #preplistTab .masthead {
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding:0 0 18px; margin-bottom:26px;
+    flex-wrap:wrap; gap:12px;
+    position:relative;
+  }
+  #preplistTab .masthead::after {
+    content:''; position:absolute; left:0; right:0; bottom:0; height:3px;
+    background:linear-gradient(90deg, var(--accent) 0%, var(--accent) 38%, var(--line) 38%, var(--line) 100%);
+    border-radius:3px;
+  }
+  #preplistTab .masthead h1{font-size:28px; letter-spacing:-0.02em;}
+  #preplistTab .masthead h1::before{content:'🔪 '; filter:grayscale(0.15);}
+  #preplistTab .masthead .sub{font-size:13.5px; color:var(--ink-soft); margin-top:5px;}
+  #preplistTab .masthead .tag {
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);
+    border:1px solid var(--line); padding:5px 12px; border-radius:20px; white-space:nowrap;
+    background:#fff; box-shadow:var(--shadow-sm);
+  }
+
+  #preplistTab .panel {
+    background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 24px; margin-bottom:22px;
+    box-shadow:var(--shadow-sm);
+    transition:box-shadow .15s;
+  }
+  #preplistTab .panel h2{font-size:16px; margin-bottom:14px; letter-spacing:-.01em;}
+  #preplistTab .row{display:flex; gap:18px; flex-wrap:wrap;}
+  #preplistTab .field{flex:1 1 220px;}
+  #preplistTab .field label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:6px; font-weight:600;}
+  #preplistTab .field input[type=date], #preplistTab .field input[type=text] {
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:13px; background:#fff;
+    transition:border-color .12s, box-shadow .12s;
+  }
+  #preplistTab .field input[type=date]:focus, #preplistTab .field input[type=text]:focus {
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-bg);
+  }
+  #preplistTab .lead-dates{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin-top:10px; display:flex; gap:18px; flex-wrap:wrap;}
+  #preplistTab .lead-dates span b{color:var(--ink);}
+
+  #preplistTab .dropzone {
+    border:2px dashed var(--line); border-radius:var(--radius); padding:30px; text-align:center;
+    cursor:pointer; transition:.15s; background:#fff;
+  }
+  #preplistTab .dropzone:hover{border-color:var(--accent); background:var(--accent-bg);}
+  #preplistTab .dropzone.drag{border-color:var(--veg1); background:var(--veg1-bg);}
+  #preplistTab .dropzone .big{font-size:14.5px; font-weight:700;}
+  #preplistTab .dropzone .small{font-size:12px; color:var(--ink-soft); margin-top:5px;}
+  #preplistTab input[type=file]{display:none;}
+
+  #preplistTab textarea {
+    width:100%; min-height:110px; border:1px solid var(--line); border-radius:8px;
+    padding:11px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; resize:vertical;
+    background:#fff; transition:border-color .12s, box-shadow .12s;
+  }
+  #preplistTab textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-bg);}
+  #preplistTab .or-divider{display:flex; align-items:center; gap:10px; margin:18px 0; color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:600;}
+  #preplistTab .or-divider::before, #preplistTab .or-divider::after{content:''; flex:1; height:1px; background:var(--line);}
+
+  #preplistTab button {
+    font-family:'Inter',sans-serif; font-weight:700; font-size:13px;
+    border:1px solid var(--accent-dark); background:var(--accent); color:#fff;
+    padding:10px 18px; border-radius:9px; cursor:pointer; transition:.14s;
+    box-shadow:0 2px 0 var(--accent-dark);
+  }
+  #preplistTab button.secondary{background:#fff; color:var(--ink); border-color:var(--line); box-shadow:var(--shadow-sm);}
+  #preplistTab button.ghost{background:transparent; color:var(--ink-soft); border-color:transparent; font-weight:600; box-shadow:none;}
+  #preplistTab button:hover{transform:translateY(-1px); filter:brightness(1.04);}
+  #preplistTab button.secondary:hover{border-color:var(--accent); color:var(--accent-dark);}
+  #preplistTab button.ghost:hover{background:rgba(33,31,28,0.05); color:var(--ink);}
+  #preplistTab button:active{transform:translateY(1px); box-shadow:none;}
+  #preplistTab button:disabled{opacity:.4; cursor:not-allowed; transform:none; box-shadow:none;}
+
+  #preplistTab .status{font-size:12.5px; color:var(--ink-soft); margin-top:10px; min-height:16px;}
+  #preplistTab .status.err{color:var(--prot); font-weight:600;}
+  #preplistTab .status.ok{color:var(--veg1); font-weight:600;}
+
+  #preplistTab .summary{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:22px;}
+  #preplistTab .sumcard {
+    flex:1 1 160px; border-radius:var(--radius); padding:18px 20px; border:1px solid var(--line);
+    cursor:pointer; transition:.16s; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;
+  }
+  #preplistTab .sumcard::before{content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:currentColor; opacity:.55;}
+  #preplistTab .sumcard:hover{transform:translateY(-2px); box-shadow:var(--shadow-md);}
+  #preplistTab .sumcard.active{outline:2px solid var(--ink); outline-offset:-2px; box-shadow:var(--shadow-md);}
+  #preplistTab .sumcard .n{font-family:'Fraunces',sans-serif; font-size:30px; font-weight:700; line-height:1;}
+  #preplistTab .sumcard .lbl{font-size:12px; margin-top:7px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
+  #preplistTab .sumcard .lead{font-size:11px; margin-top:10px; color:var(--ink-soft);}
+  .sumcard.veg1{background:var(--veg1-bg);} .sumcard.veg1 .n,.sumcard.veg1 .lbl{color:var(--veg1);}
+  .sumcard.veg2{background:var(--veg2-bg);} .sumcard.veg2 .n,.sumcard.veg2 .lbl{color:var(--veg2);}
+  .sumcard.prot{background:var(--prot-bg);} .sumcard.prot .n,.sumcard.prot .lbl{color:var(--prot);}
+  .sumcard.sauce1{background:var(--sauce1-bg);} .sumcard.sauce1 .n,.sumcard.sauce1 .lbl{color:var(--sauce1);}
+  .sumcard.sauce2{background:var(--sauce2-bg);} .sumcard.sauce2 .n,.sumcard.sauce2 .lbl{color:var(--sauce2);}
+  .sumcard.garn{background:var(--garn-bg);} .sumcard.garn .n,.sumcard.garn .lbl{color:var(--garn);}
+  .sumcard.big1{background:var(--big1-bg);} .sumcard.big1 .n,.sumcard.big1 .lbl{color:var(--big1);}
+  .sumcard.big2{background:var(--big2-bg);} .sumcard.big2 .n,.sumcard.big2 .lbl{color:var(--big2);}
+  .sumcard.box{background:var(--box-bg);} .sumcard.box .n,.sumcard.box .lbl{color:var(--box);}
+  .sumcard.review{background:var(--review-bg);} .sumcard.review .n,.sumcard.review .lbl{color:var(--review);}
+  .sumcard.day1{background:var(--day1-bg);} .sumcard.day1 .n,.sumcard.day1 .lbl{color:var(--day1);}
+  .sumcard.day2{background:var(--day2-bg);} .sumcard.day2 .n,.sumcard.day2 .lbl{color:var(--day2);}
+  .sumcard.day3{background:var(--day3-bg);} .sumcard.day3 .n,.sumcard.day3 .lbl{color:var(--day3);}
+  .sumcard.day4{background:var(--day4-bg);} .sumcard.day4 .n,.sumcard.day4 .lbl{color:var(--day4);}
+
+  #preplistTab .section-head {
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+    padding:16px 20px; border-radius:var(--radius) var(--radius) 0 0; flex-wrap:wrap;
+    border:1px solid var(--line); border-bottom:none; background:var(--paper2);
+  }
+  #preplistTab .section-head h3{font-size:17px; letter-spacing:-0.01em;}
+  #preplistTab .section-head .meta{font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  #preplistTab .section-head select, #preplistTab .section-head .leader-input {
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; padding:8px 10px;
+    border:1px solid var(--line); border-radius:7px; background:#fff; transition:.12s;
+  }
+  #preplistTab .section-head select:hover, #preplistTab .section-head .leader-input:hover{border-color:var(--accent);}
+
+  #preplistTab .section-actions{display:flex; gap:8px; align-items:center;}
+
+  #preplistTab table{width:100%; border-collapse:collapse; background:#fff;}
+  #preplistTab thead th {
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-soft); padding:10px 14px; border-bottom:2px solid var(--line);
+    background:var(--paper2); position:sticky; top:0; font-weight:700;
+  }
+  #preplistTab tbody td{padding:11px 14px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:top;}
+  /* row banding now handled per job-group via .job-band-0/1 (see below) */
+  #preplistTab tbody tr:hover{background:var(--accent-bg);}
+  #preplistTab .dish{font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-weight:700;}
+  #preplistTab .task{font-weight:500;}
+  #preplistTab .qty{font-family:'IBM Plex Mono',monospace; white-space:nowrap; font-size:12.5px;}
+  #preplistTab .flagtag {
+    display:inline-block; font-size:9.5px; text-transform:uppercase; letter-spacing:.04em;
+    background:var(--review-bg); color:var(--review); padding:2px 7px; border-radius:20px; margin-left:6px; font-weight:700;
+  }
+  #preplistTab tr.job-band-0{background:#fff;}
+  #preplistTab tr.job-band-1{background:#F5F1E6;}
+  #preplistTab tr.job-band-0:hover, #preplistTab tr.job-band-1:hover{background:var(--accent-bg) !important;}
+  #preplistTab tr.job-start td{border-top:2px solid var(--ink);}
+  #preplistTab td.continuation-task{color:var(--ink-soft); font-style:italic; padding-left:24px;}
+  #preplistTab .contnote{color:var(--ink-soft); font-size:11.5px; font-style:italic;}
+  #preplistTab select.rowsel {
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:6px 8px;
+    border:1px solid var(--line); border-radius:6px; background:#fff; transition:.12s;
+  }
+  #preplistTab select.rowsel:hover{border-color:var(--accent);}
+  #preplistTab select.rowsel:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-bg);}
+  #preplistTab .section-table-wrap {
+    border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius) var(--radius); overflow:auto;
+    max-height:520px; margin-bottom:30px; box-shadow:var(--shadow-sm);
+  }
+
+  #preplistTab .empty{padding:70px 20px; text-align:center; color:var(--ink-soft);}
+  #preplistTab .empty .big{font-family:'Fraunces',sans-serif; font-size:19px; color:var(--ink); margin-bottom:7px;}
+
+  #preplistTab .viewtoggle {
+    display:inline-flex; gap:2px; margin-bottom:22px; background:var(--line);
+    padding:4px; border-radius:11px; box-shadow:inset 0 1px 2px rgba(28,30,27,0.07);
+  }
+  #preplistTab .viewtoggle button{padding:9px 18px; border-radius:8px; border:none; box-shadow:none;}
+  #preplistTab .viewtoggle button:not(.secondary){box-shadow:var(--shadow-sm);}
+  #preplistTab .viewtoggle button.secondary{background:transparent; color:var(--ink-soft);}
+  #preplistTab .viewtoggle button.secondary:hover{background:rgba(28,30,27,0.07); opacity:1; transform:none;}
+
+  #preplistTab .dish-block{margin-bottom:32px;}
+  #preplistTab .dish-head {
+    display:flex; justify-content:space-between; align-items:center; gap:14px;
+    padding:16px 20px; border-radius:var(--radius) var(--radius) 0 0; flex-wrap:wrap;
+    background:var(--paper2); border:1px solid var(--line); border-bottom:none;
+  }
+  #preplistTab .dish-head h3{font-size:17px; letter-spacing:-0.01em;}
+  #preplistTab .dish-head .meta{font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  #preplistTab .total-cell b {
+    font-size:13.5px; background:var(--accent-bg); color:var(--accent-dark); padding:3px 9px; border-radius:6px; display:inline-block;
+  }
+  #preplistTab .needpax{color:var(--prot); font-size:11.5px; font-style:italic;}
+  #preplistTab .findsimilar-btn {
+    display:inline-block; margin-left:6px; font-family:'IBM Plex Mono',monospace; font-size:10px;
+    color:var(--ink-soft); background:transparent; border:1px solid var(--line); border-radius:20px;
+    padding:1px 8px; cursor:pointer; vertical-align:middle;
+  }
+  #preplistTab .findsimilar-btn:hover{color:var(--accent-dark); border-color:var(--accent); background:var(--accent-bg);}
+  #preplistTab th.sortable-th{cursor:pointer; user-select:none;}
+  #preplistTab th.sortable-th:hover{color:var(--accent-dark); background:var(--accent-bg);}
+  #preplistTab .sortarrow{font-size:9px; color:var(--ink-soft);}
+  #preplistTab .sortarrow-off{opacity:.35;}
+  #preplistTab .staffing-line {
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--accent-dark); margin-top:7px;
+    background:var(--accent-bg); display:inline-block; padding:4px 10px; border-radius:20px; font-weight:700;
+  }
+  #preplistTab select.section-veg1{color:var(--veg1);}
+  #preplistTab select.section-veg2{color:var(--veg2);}
+  #preplistTab select.section-prot{color:var(--prot);}
+  #preplistTab select.section-sauce1{color:var(--sauce1);}
+  #preplistTab select.section-sauce2{color:var(--sauce2);}
+  #preplistTab select.section-garn{color:var(--garn);}
+  #preplistTab select.section-big1{color:var(--big1);}
+  #preplistTab select.section-big2{color:var(--big2);}
+  #preplistTab select.section-box{color:var(--box);}
+
+  #preplistTab footer{margin-top:44px; font-size:11.5px; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:16px; line-height:1.6;}
+
+  @media print{
+    body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    .no-print{display:none !important;}
+    .wrap{max-width:100%; padding:0;}
+    .section-table-wrap{max-height:none; overflow:visible; border:none;}
+    table{page-break-inside:auto;}
+    tr{page-break-inside:avoid;}
+    .print-only{display:block !important;}
+    .print-only .dish{font-size:6.5px;}
+    .print-only .pf-section, .print-only .pf-day{font-size:10.4px;}
+    .print-only tbody td{border-bottom:1.5px solid #999;}
+  }
+  .print-only{display:none;}
+  .print-head{margin-bottom:16px;}
+  .print-head h2{font-size:20px;}
+  .print-head .meta{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin-top:4px;}
+  .pax-topbar{
+    display:block; width:100%; box-sizing:border-box;
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:18px;
+    border:3px solid var(--ink); border-radius:8px; padding:10px 16px; margin-bottom:16px;
+    letter-spacing:.03em; background:var(--paper2); text-align:center;
+  }
+  .pax-topbar b{font-size:22px;}
+  .pdf-cooked-banner{
+    display:block; width:100%; box-sizing:border-box;
+    font-weight:700; color:#B00000; border:2px solid #B00000; border-radius:8px;
+    padding:8px 14px; margin-bottom:14px; font-size:13px; text-align:center;
+    background:#FBEAEA;
+  }
+  .pax-ref{
+    border:3px solid var(--ink); border-radius:8px; padding:12px 16px; margin-bottom:16px;
+    display:block; width:100%; box-sizing:border-box; background:var(--paper2);
+  }
+  .pax-ref-title{
+    font-family:'Fraunces',sans-serif; font-weight:700; font-size:13px;
+    text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;
+  }
+  .pax-ref-table{width:100%; border-collapse:collapse; column-count:2; column-gap:24px;}
+  .pax-ref-table td{
+    font-family:'IBM Plex Mono',monospace; font-size:13.5px; padding:4px 10px 4px 0; border:none;
+  }
+  .pax-ref-table td:last-child{font-weight:700; text-align:right; padding-right:0;}
+
+
+  :root{
+    --paper:#EDEAE2;
+    --paper2:#F5F3EC;
+    --ink:#1C1E1B;
+    --ink-soft:#5C5F58;
+    --line:#D6D2C4;
+    --accent:#8A6A3D;
+    --accent-dark:#6B4F28;
+    --accent-bg:#F1E6D2;
+    --ok:#3F7A4B;
+    --ok-bg:#E4F0E1;
+    --warn:#B5860F;
+    --warn-bg:#F5EAD0;
+    --off:#8A8578;
+    --off-bg:#EBE8DF;
+    --leave:#7A4FA0;
+    --leave-bg:#EDE3F5;
+    --over:#B5442E;
+    --over-bg:#F5E3DC;
+    --larder:#3F7A4B;
+    --larder-bg:#E4F0E1;
+    --sauce:#B5730F;
+    --sauce-bg:#FBEDD3;
+    --plated:#2C6A9C;
+    --plated-bg:#DCEAF4;
+    --shadow-sm:0 1px 2px rgba(28,30,27,0.05);
+    --shadow-md:0 4px 14px rgba(28,30,27,0.07);
+    --radius:7px;
+  }
+
+  .print-only{display:none;}
+  @media print{
+    body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    .no-print{display:none !important;}
+    .wrap{max-width:100%; padding:0;}
+    .print-only{display:block !important;}
+    tr{page-break-inside:avoid;}
+  }
+  .print-head{margin-bottom:16px; text-align:center;}
+  .print-head h2{font-size:22px;}
+  .print-head .meta{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-soft); margin-top:6px;}
+  .print-sec{margin-bottom:22px;}
+  .print-sec h3{font-size:15px; border-bottom:2px solid var(--ink); padding-bottom:4px; margin-bottom:8px;}
+
+</style>
+</head>
+<body>
+
+<div class="shell-masthead no-print">
+  <h1>Preplist Sorter</h1>
+  <div class="shell-tabs">
+    <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
+    <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
+  </div>
+</div>
+
+<div id="preplistTab" class="tabpanel active">
+
+<div class="wrap">
+
+  <div class="masthead no-print">
+    <div>
+      <h1>Preplist Sorter</h1>
+      <div class="sub" id="mastheadSub">Sort a preplist once, or build a recipe database you reuse every week — your choice below.</div>
+    </div>
+    <div class="tag" id="fileTag">no file loaded</div>
+  </div>
+
+  <div class="viewtoggle no-print" id="toolModeToggle" style="margin-bottom:20px;"></div>
+
+  <div class="panel no-print" id="dbPanel">
+    <div class="row no-print" style="justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;" id="dbPanelTitle">Load a preplist</h2>
+      <span id="backToWeeklyLink" style="display:none;"><button class="ghost" onclick="appMode='weekly'; renderApp();" type="button">← Back to this week's setup</button></span>
+    </div>
+    <div class="dropzone" id="dropzone">
+      <div class="big">Drop an .xlsx preplist, or one or more production tool PDFs, here — or click to browse</div>
+      <div class="small" id="dropzoneHint">Every tab in a workbook is read as one dish. A production tool PDF is read for its raw ingredients — sub-recipes (batter, sauces, purees etc.) are automatically exploded into their own raw ingredients, each tagged with the sub-recipe's cooked yield.</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.pdf" multiple>
+    </div>
+    <div class="or-divider">or paste rows</div>
+    <textarea id="pasteBox" placeholder="Paste rows copied from Excel — one task per line, columns separated by tabs:&#10;Dish name&#9;Task&#9;Qty per person&#9;Unit&#10;&#10;(Dish name column is optional — leave it out and everything pastes under &quot;Pasted list&quot;.)"></textarea>
+    <div class="row" style="margin-top:10px; align-items:center;">
+      <button id="parsePasteBtn">Sort pasted rows</button>
+      <button class="ghost" id="clearBtn" type="button">Clear this form</button>
+      <div class="status" id="statusMsg" style="flex:1 1 auto;"></div>
+    </div>
+    <div class="row no-print" id="dbManageRow" style="margin-top:16px; display:none; align-items:center; border-top:1px solid var(--line); padding-top:14px;">
+      <div class="meta" id="dbCountMeta" style="font-size:12px; color:var(--ink-soft); flex:1 1 auto;"></div>
+      <button class="secondary" onclick="exportDatabase()" type="button">Export database (backup)</button>
+      <button class="ghost" onclick="document.getElementById('dbImportInput').click()" type="button">Import backup</button>
+      <input type="file" id="dbImportInput" accept=".json" style="display:none;">
+      <button class="ghost" onclick="clearDatabase()" type="button" style="color:var(--prot);">Clear database</button>
+    </div>
+  </div>
+
+  <div class="panel no-print" id="weeklyPanel" style="display:none;">
+    <div class="row no-print" style="justify-content:space-between; align-items:center; margin-bottom:4px;">
+      <h2 style="margin:0;">This week's preplist</h2>
+      <button class="ghost" onclick="appMode='database'; renderApp();" type="button">+ Add more dishes / manage database</button>
+    </div>
+    <div class="small" style="font-size:12px;color:var(--ink-soft); margin:6px 0 14px;">
+      Tick the dishes running this week, enter each one's pax and event date, then Generate. Everything else —
+      totals, sections, prep-day scheduling, staffing — is calculated automatically, same as always.
+    </div>
+    <div id="weeklyDishList"></div>
+    <div class="row" style="margin-top:14px; align-items:center;">
+      <button id="generateWeeklyBtn" onclick="generateWeekly()" type="button">Generate this week's preplist</button>
+      <div class="status" id="weeklyStatusMsg" style="flex:1 1 auto;"></div>
+    </div>
+  </div>
+
+  <div class="panel no-print" id="paxPanelWrap" style="display:none;">
+    <h2>2 · Pax per dish</h2>
+    <div class="row" style="align-items:flex-end; margin-bottom:14px;">
+      <div class="field" style="flex:0 0 160px;">
+        <label>Set every dish to</label>
+        <input type="text" inputmode="numeric" id="bulkPax" placeholder="e.g. 350">
+      </div>
+      <div class="field" style="flex:0 0 auto;">
+        <button class="secondary" id="bulkPaxBtn" type="button">Apply to all</button>
+      </div>
+      <div class="field" style="flex:2 1 260px;">
+        <div class="small" style="font-size:12px;color:var(--ink-soft);">Detected from the workbook where possible — check each one, dietary/reduced-count dishes are often a different number.</div>
+      </div>
+    </div>
+    <div id="paxList" class="row"></div>
+  </div>
+
+  <div class="panel no-print" id="staffingPanelWrap" style="display:none;">
+    <div class="row no-print" style="justify-content:space-between; align-items:center; margin-bottom:2px;">
+      <h2 style="margin:0;">3 · Chef-hours settings</h2>
+      <button class="ghost" id="toggleStaffingBtn" type="button">Show / hide</button>
+    </div>
+    <div id="staffingSettingsBody" style="display:none; margin-top:12px;">
+      <div class="small" style="font-size:12px;color:var(--ink-soft); margin-bottom:12px;">
+        The workbook has quantities, not durations, so "chefs needed" is only ever an estimate. This version
+        scales time with batch size (not just task count), weights cooking tasks heavier than wash/trim, and
+        adds a safety buffer — all retweakable below. Enter chefs actually rostered per day (in the "By prep
+        day" view) to see the real gap, not just a raw headcount.
+      </div>
+
+      <div class="row" style="margin-bottom:14px; align-items:flex-end;">
+        <div class="field" style="flex:0 0 140px;">
+          <label>Shift length (hours)</label>
+          <input type="text" inputmode="numeric" id="shiftHoursInput" value="7">
+        </div>
+        <div class="field" style="flex:0 0 160px;">
+          <label>Safety buffer (%)</label>
+          <input type="text" inputmode="numeric" id="bufferPercentInput" value="15">
+          <div class="small" style="font-size:11px;color:var(--ink-soft);">breaks, cleaning, slippage</div>
+        </div>
+        <div class="field" style="flex:1 1 260px;">
+          <label>Team pace preset</label>
+          <div class="row" style="gap:6px;">
+            <button class="ghost" type="button" onclick="applyStaffingPreset('fast')">Fast / experienced</button>
+            <button class="ghost" type="button" onclick="applyStaffingPreset('standard')">Standard</button>
+            <button class="ghost" type="button" onclick="applyStaffingPreset('trainee')">Trainee-heavy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:6px; align-items:flex-end;">
+        <div class="field" style="flex:0 0 220px;">
+          <label><input type="checkbox" id="qtyScalingToggle" checked style="width:auto; margin-right:6px;">Scale time with batch size</label>
+        </div>
+        <div class="field" style="flex:0 0 170px;">
+          <label>First kg free (per task)</label>
+          <input type="text" inputmode="numeric" id="qtyBaselineInput" value="2">
+        </div>
+        <div class="field" style="flex:0 0 200px;">
+          <label>Extra minutes / kg beyond that</label>
+          <input type="text" inputmode="numeric" id="qtyRateInput" value="1.2">
+        </div>
+        <div class="field" style="flex:1 1 200px;">
+          <div class="small" style="font-size:11px;color:var(--ink-soft);">Weight (g/kg) and volume (ml/L) tasks scale; piece/portion-count tasks stay on the fixed time below.</div>
+        </div>
+      </div>
+
+      <div class="small" style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin:14px 0 6px;">Fixed minutes per task, by section (before batch scaling)</div>
+      <div class="row" id="minutesPerSectionRow" style="margin-bottom:14px;"></div>
+
+      <div class="small" style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin:14px 0 6px;">Weight multiplier by prep stage</div>
+      <div class="row" id="stageMultiplierRow"></div>
+    </div>
+  </div>
+
+  <div id="resultsArea"></div>
+
+  <footer class="no-print">
+    Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
+    saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
+    every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
+    reopen this file — no re-uploading week to week, just tick dishes, enter pax and a date, and Generate. That
+    database is stored via this browser's local storage, tied to this device/browser: export a backup
+    occasionally (button above, in Recipe database mode) in case you switch computers, switch browsers, or
+    clear browsing data.
+    Sorting is keyword-based and won't be perfect — use the section dropdown on any row to move it.
+    Prep stage is auto-assigned on a 4-day lead time (Day 1 collect/trim/wash/count, Day 2 cook/steam/roast,
+    Day 3 portion/tray up/box off, Day 4 box-off continuation/production tools) based on each task's wording,
+    then mapped onto real weekdays — in Recipe database mode, working backward from the event date you enter
+    each week (a Saturday event runs Wed/Thu/Fri/Sat prep); in One-time sort mode, from a weekday named in the
+    dish's tab (e.g. "Mains Beef Fillet Saturday") or set manually per dish. The "By prep day" view groups every
+    dish's tasks by that real weekday across the whole week. Team leader names, section moves, pax counts, and
+    day assignments are saved automatically to this browser as you work, so a refresh or an accidental close won't
+    lose them — this week's pax/date selections in Recipe database mode are the one exception and reset each week
+    by design. Export or print if you want a copy outside this browser.
+  </footer>
+</div>
+
+</div>
+
+<div id="helpTab" class="tabpanel">
+<style>
+  #helpTab{background:#EDEAE2; min-height:calc(100vh - 64px);}
+  #helpTab .wrap{max-width:820px; margin:0 auto; padding:36px 20px 90px;}
+  #helpTab h1{font-family:'Fraunces',serif; font-size:26px; color:#1C1E1B; margin:0 0 6px; letter-spacing:-0.01em;}
+  #helpTab .lede{font-family:'Inter',sans-serif; font-size:14px; color:#5C5F58; margin:0 0 32px; line-height:1.5;}
+  #helpTab .help-step{
+    display:flex; gap:16px; padding:20px 0; border-top:1px solid #D6D2C4;
+  }
+  #helpTab .help-step:last-child{border-bottom:1px solid #D6D2C4;}
+  #helpTab .help-num{
+    font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; color:#8A6A3D;
+    flex:0 0 28px; padding-top:2px;
+  }
+  #helpTab .help-body h3{font-family:'Inter',sans-serif; font-weight:700; font-size:15px; color:#1C1E1B; margin:0 0 6px;}
+  #helpTab .help-body p{font-family:'Inter',sans-serif; font-size:13.5px; color:#3a3c38; line-height:1.6; margin:0 0 6px;}
+  #helpTab .help-body p.note{color:#5C5F58; font-size:12.5px; font-style:italic;}
+  #helpTab .help-section-title{
+    font-family:'Fraunces',serif; font-size:18px; color:#1C1E1B; margin:36px 0 4px;
+  }
+  #helpTab .help-section-title:first-of-type{margin-top:8px;}
+</style>
+<div class="wrap">
+  <h1>Getting started</h1>
+  <p class="lede">A quick walkthrough of the whole workflow, from raw files to a printed pack for the kitchen. Each step below matches a button or screen in the tool — work through them top to bottom the first few times, then use this page as a reference.</p>
+
+  <div class="help-section-title">Preplist tab</div>
+
+  <div class="help-step">
+    <div class="help-num">01</div>
+    <div class="help-body">
+      <h3>Load a preplist</h3>
+      <p>Drop an .xlsx preplist, or one or more production tool PDFs, into the dropzone. Every tab in a workbook is read as one dish; a PDF is read for its raw ingredients, with sub-recipes automatically broken out.</p>
+      <p class="note">Choose "recipe database" mode if you want to build a reusable library you'll draw on every week, or "one-time sort" for a single preplist you won't reuse. Either way, your work saves automatically to this browser as you go.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">02</div>
+    <div class="help-body">
+      <h3>Review the sorted categories</h3>
+      <p>The tool splits every task into Vegetables, Proteins, Sauces/Purees/Gels, Garnishes, Big Jobs, and Box off — assign a team leader to each and switch to the "By prep day" view to see tasks grouped by real weekday.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">03</div>
+    <div class="help-body">
+      <h3>Print or export</h3>
+      <p>Section moves and team leader names save automatically to this browser as you go — a refresh or accidental close won't lose them. Print or export when you're ready for a copy outside the browser.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+
+
+function switchShellTab(name){
+  document.getElementById('preplistTab').classList.toggle('active', name==='preplist');
+  document.getElementById('helpTab').classList.toggle('active', name==='help');
+  document.getElementById('shellTabBtnPreplist').classList.toggle('active', name==='preplist');
+  document.getElementById('shellTabBtnHelp').classList.toggle('active', name==='help');
+}
+
+
+const BASE_CATEGORIES = ['Vegetables','Proteins','Sauce, Purees and Gels','Garnishes, Herbs, Powders, Oils Etc.','Big Jobs','Box off/ Trolley organising team'];
+const SECTIONS = BASE_CATEGORIES;
+const SECTION_KEY = {
+  'Vegetables':'veg1','Proteins':'prot',
+  'Sauce, Purees and Gels':'sauce1',
+  'Garnishes, Herbs, Powders, Oils Etc.':'garn',
+  'Big Jobs':'big1',
+  'Box off/ Trolley organising team':'box'
+};
+
+const WORDBOUND_KW = new Set(['ragu','oil','roe','pea','crate']);
+const BOX_OFF_KW = ['breadcrate','logistics team','portioning pre event','sanitise all items','vacuumbag whatever',
+  'dolleys for transport','dolley','trolley','box off','crate','wrap and label','dispatch','load out',
+  'send to event','pack for event','packing list','coolroom transport'];
+const BIG_JOB_PHRASES = ['pave','terrine','scallop','hasselback','hassleback','rosti','gaufrette',
+  'croquette','roulade','mosaic','brik','moussaka','mousakka','mandu','dumpling',
+  'pithivier','boudin','agnolotti','ravioli','polenta','cigar','pangrattato',
+  'overnight','beef cheek','short rib','lamb shoulder','pork shoulder','pork belly','mash','tempura batter'];
+const GARNISH_KW = ['oil','crumb','soil','microherb','micro herb','micro basil','micro','cress','edible flower',
+  'finger lime','fingerlime','salmon roe','roe','vinegar pearl','caviar','cavier','powder','dust','pearls',
+  'preserved lemon','preserve lemon','chives','thyme','parsley','gremolata','bronze fennel','nasturtium',
+  'sultana','sorrel','caper','pine nut','pickled','radicchio','radiccio','herbs','herb','viola','amaranth',
+  'shiso','tendril','flower','pea shoot','snow pea leaf','wasabi','zest','sprout'];
+const SAUCE_KW = ['jus','puree','sauce','glaze','dressing','gel','emulsion','reduction','veloute','ketchup',
+  'romesco','ragu','ragout','compote','fondue','labneh','yoghurt','yogurt','ghanoush','miso','dashi','feta',
+  'fetta','parmesan','ricotta','grana padano','cheese','butter','stock','cream','vincotto','agrodolce',
+  'infused milk','mirepoix','cashew nut','salsa','mayo','mayonnaise','aioli','relish','chutney','pesto',
+  'coulis','custard','curd','ganache','marinade','brine','roux'];
+const PROTEIN_KW = ['chicken','beef','lamb','pork','duck','salmon','barramundi','bara','prawn','fish','fillet',
+  'breast','rump','cutlet','wing','veal','venison','quail','turkey','rabbit','goat','kangaroo','crab',
+  'lobster','oyster','squid','calamari','octopus','mussel','clam','pipi','yabby','scampi','crayfish',
+  'abalone','tuna','trout','snapper','kingfish','mackerel','sardine','anchovy','bacon','ham hock',
+  'ham off the bone','sausage','chorizo','mince','sirloin','ribeye','rib eye','brisket','shank','loin',
+  'tenderloin','schnitzel','prosciutto','pancetta','speck','goose','tofu','seafood','shellfish','cheek',
+  'hock','trotter','osso buco','t-bone','tbone','porterhouse','scotch fillet','skirt steak','flank steak',
+  'pastrami','salami','offal','liver','kidney','sweetbread','tripe'];
+const VEGETABLE_KW = ['carrot','asparagus','leek','broccolini','broccoli','spinach','kale','warrigal','chard','zucchini',
+  'courgette','cougrette','fennel','cabb','onion','radish','eggplant','aubergine','pea','peas','samphire',
+  'karkalla','seablite','sea blite','sea succulent','tomato','cucumber','tenderil','tendril','calvo nero',
+  'saltbush','shimeji','pencil leek','kingbrown','king brown','potato','poatato','avocado','mushroom',
+  'capsicum','beetroot','beet','pumpkin','squash','sweetcorn','celeriac','celery','garlic',
+  'eschallot','shallot','parsnip','swede','turnip','witlof','endive','lettuce','rocket','watercress',
+  'silverbeet','bok choy','choy sum','daikon','okra','artichoke'];
+const SHEET_BIG_JOB_OVERRIDE = ['mosaic','roulade','roulard'];
+
+// encodeURIComponent leaves ' ! ( ) * untouched, and an apostrophe would break the quoted
+// JavaScript inside inline onclick/onchange handlers ("Chef's Pie"). This encodes them too.
+function encName(str){
+  return encodeURIComponent(str).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
+function norm(s){ return (s||'').toString().replace(/\s+/g,' ').trim().toLowerCase(); }
+function isNote(t){
+  return t.length > 250; // genuinely oversized instruction blocks only — logistics-style
+                          // one-liners now route to "Box off/Trolley" instead of being dropped
+}
+function kwHit(t, list){
+  for (const kwRaw of list){
+    const kw = kwRaw.trim();
+    if (!kw) continue;
+    if (WORDBOUND_KW.has(kw)){
+      const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\b');
+      if (re.test(t)) return true;
+    } else if (t.includes(kw)) return true;
+  }
+  return false;
+}
+function categorize(itemText, sheetTitle){
+  const t = norm(itemText), st = norm(sheetTitle);
+  if (isNote(t)) return null;
+  if (kwHit(t, BOX_OFF_KW)) return 'Box off/ Trolley organising team';
+  if ((st.includes('hasselback') || st.includes('hassleback') || st.includes('twice cooked')) && t.includes('potat')) return 'Big Jobs';
+  if (kwHit(t, BIG_JOB_PHRASES)) return 'Big Jobs';
+  // Eggplant "eye fillet"/"eye fillets" is the vegetarian dish's centrepiece, not a meat
+  // cut — check this before PROTEIN_KW, since "fillet" would otherwise wrongly win.
+  if (t.includes('eggplant') || t.includes('aubergine')) return 'Vegetables';
+  if (kwHit(t, GARNISH_KW)) return 'Garnishes, Herbs, Powders, Oils Etc.';
+  if (kwHit(t, SAUCE_KW)) return 'Sauce, Purees and Gels';
+  if (kwHit(t, PROTEIN_KW)) return SHEET_BIG_JOB_OVERRIDE.some(k=>st.includes(k)) ? 'Big Jobs' : 'Proteins';
+  if (kwHit(t, VEGETABLE_KW)) return 'Vegetables';
+  return 'REVIEW';
+}
+
+// ---------- state ----------
+let ROWS = []; // {dish, task, qty, unit, section, baseCategory, flagged, day, stageNum}
+let leaderBySection = {};
+SECTIONS.forEach(s=>{ leaderBySection[s] = ''; });
+let activeFilter = 'all';
+let paxByDish = {}; // dish name -> number (pax count for that dish)
+let viewMode = 'dish'; // 'dish' | 'section' | 'priority'
+
+// ---------- persistent recipe database ----------
+// Upload once to build this; from then on the tool opens straight into the weekly
+// setup screen, no file needed. Stored in this browser via localStorage — export a
+// backup occasionally, since clearing browser data would wipe it.
+const DB_STORAGE_KEY = 'preplistDishDatabase_v1';
+let dishDatabase = {};      // { dishTitle: { items: [{task,qty,unit,section,baseCategory,flagged,stageNum}] } }
+let weeklySelection = {};   // { dishTitle: {include, pax, date} } — this week's picks, not persisted
+let appMode = 'database';   // 'database' (upload/manage) | 'weekly' (pick dishes + generate)
+let toolMode = 'onetime';   // 'onetime' (classic — upload, sort, done, nothing saved) | 'database' (persistent, weekly reuse)
+let dbStorageOk = true;     // false if localStorage isn't available at all in this browser
+
+// Accepts anything (old backups, other tools' JSON, hand-edited files) and keeps only
+// entries the rest of the app can safely use; returns {db, kept, skipped}.
+function sanitizeDatabase(raw){
+  const db = {}; let kept = 0, skipped = 0;
+  const isObj = v => v && typeof v==='object' && !Array.isArray(v);
+  if (!isObj(raw)) return {db, kept, skipped: raw==null ? 0 : 1};
+  Object.keys(raw).forEach(dish=>{
+    if (dish==='__proto__' || dish==='constructor' || dish==='prototype') { skipped++; return; }
+    const entry = raw[dish];
+    if (!isObj(entry) || !Array.isArray(entry.items)) { skipped++; return; }
+    const items = [];
+    entry.items.forEach(it=>{
+      if (!isObj(it) || typeof it.task!=='string' || !it.task.trim()) return;
+      const known = SECTIONS.includes(it.section);
+      const section = known ? it.section : 'Vegetables';
+      const clean = {task: it.task, qty: it.qty==null ? '' : it.qty, unit: it.unit==null ? '' : it.unit,
+        section, baseCategory: SECTIONS.includes(it.baseCategory) ? it.baseCategory : section,
+        flagged: known ? !!it.flagged : true, stageNum: Number.isFinite(it.stageNum) ? it.stageNum : 1};
+      if (Number.isFinite(it.pdfFixedTotal)) clean.pdfFixedTotal = it.pdfFixedTotal;
+      items.push(clean);
+    });
+    if (!items.length) { skipped++; return; }
+    db[dish] = {items}; kept++;
+  });
+  return {db, kept, skipped};
+}
+function loadDatabase(){
+  try{
+    const raw = localStorage.getItem(DB_STORAGE_KEY);
+    dishDatabase = raw ? sanitizeDatabase(JSON.parse(raw)).db : {};
+  } catch(e){ dishDatabase = {}; dbStorageOk = false; }
+}
+function saveDatabase(){
+  try{
+    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(dishDatabase));
+    return true;
+  } catch(e){ dbStorageOk = false; return false; }
+}
+
+// ---------- one-time sort session auto-save ----------
+// Backs up the current preplist working state (not just the recipe database) so a
+// crashed tab or accidental reload doesn't lose an in-progress sort. Debounced so it
+// doesn't write to localStorage on every keystroke.
+const ONETIME_STORAGE_KEY = 'preplistOnetimeSession_v1';
+let onetimeSaveTimer = null;
+function saveOnetimeSession(){
+  if(!ROWS || ROWS.length === 0) return; // nothing real to back up yet — don't clobber a prior save
+  try{
+    const snapshot = {ROWS, leaderBySection, paxByDish, activeFilter, viewMode,
+      eventDayOverride, eventDateByDish, rosteredChefs, sourceInfo};
+    localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify(snapshot));
+  }catch(e){ /* storage full/unavailable — silently skip, nothing else in the app changes */ }
+}
+function scheduleOnetimeSave(){
+  clearTimeout(onetimeSaveTimer);
+  onetimeSaveTimer = setTimeout(saveOnetimeSession, 400);
+}
+function loadOnetimeSession(){
+  try{
+    const raw = localStorage.getItem(ONETIME_STORAGE_KEY);
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    const isObj = v => v && typeof v==='object' && !Array.isArray(v);
+    const rowOk = r => r && typeof r==='object' && typeof r.dish==='string' && typeof r.task==='string'
+      && typeof r.section==='string' && SECTIONS.includes(r.section);
+    if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
+      ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
+        section:r.section, baseCategory:r.baseCategory||r.section, flagged:!!r.flagged, day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1}));
+      leaderBySection = isObj(s.leaderBySection) ? s.leaderBySection : {};
+      SECTIONS.forEach(x=>{ if(typeof leaderBySection[x]!=='string') leaderBySection[x]=''; });
+      paxByDish = isObj(s.paxByDish) ? s.paxByDish : {};
+      activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
+      viewMode = ['dish','section','priority'].includes(s.viewMode) ? s.viewMode : 'dish';
+      eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
+      eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
+      rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
+      sourceInfo = isObj(s.sourceInfo) ? s.sourceInfo : sourceInfo;
+    }
+  }catch(e){ /* corrupted or unavailable — start fresh rather than crash */ }
+}
+function clearOnetimeSession(){
+  try{ localStorage.removeItem(ONETIME_STORAGE_KEY); }catch(e){}
+}
+// Snapshots whatever was just parsed into ROWS into the persistent database (per-pax
+// figures and stage only — no pax count or day, since those are entered fresh weekly),
+// then clears ROWS since the live view is driven by the weekly generator, not a raw upload.
+function commitRowsToDatabase(){
+  const dishes = [];
+  ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
+  dishes.forEach(dish=>{
+    const items = ROWS.filter(r=>r.dish===dish).map(r=>({
+      task:r.task, qty:r.qty, unit:r.unit, section:r.section,
+      baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
+      pdfFixedTotal:r.pdfFixedTotal
+    }));
+    dishDatabase[dish] = {items};
+    if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
+  });
+  saveDatabase();
+  ROWS = [];
+  return dishes.length;
+}
+function removeDishFromDatabase(encodedDish){
+  const dish = decodeURIComponent(encodedDish);
+  delete dishDatabase[dish];
+  delete weeklySelection[dish];
+  saveDatabase();
+  renderApp();
+}
+function clearDatabase(){
+  if (!confirm('Remove every dish from the saved recipe database? This cannot be undone (export a backup first if unsure).')) return;
+  dishDatabase = {}; weeklySelection = {};
+  saveDatabase();
+  appMode = 'database';
+  renderApp();
+}
+function exportDatabase(){
+  const blob = new Blob([JSON.stringify(dishDatabase, null, 1)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'preplist-recipe-database.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importDatabaseFile(file){
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const {db:incoming, kept, skipped} = sanitizeDatabase(JSON.parse(ev.target.result));
+      if (!kept){ setStatus('That file has no usable dishes in it — is it a database export from this tool?', 'err'); return; }
+      Object.keys(incoming).forEach(dish=>{
+        dishDatabase[dish] = incoming[dish];
+        if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
+      });
+      saveDatabase();
+      setStatus('Imported '+kept+' dish(es) into your recipe database.'+(skipped?' Skipped '+skipped+' entr'+(skipped===1?'y':'ies')+' that could not be read.':''), 'ok');
+      appMode = 'weekly';
+      renderApp();
+    } catch(e){
+      setStatus('Could not read that backup file — is it a database export from this tool?', 'err');
+    }
+  };
+  reader.readAsText(file);
+}
+// Builds this week's live ROWS from the database + whatever pax/date was entered per
+// dish, then hands off to the exact same rendering the tool always uses.
+function setWeeklyStatus(msg, cls){
+  const el = document.getElementById('weeklyStatusMsg');
+  if (el){ el.textContent = msg; el.className = 'status' + (cls ? ' '+cls : ''); }
+}
+function generateWeekly(){
+  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {};
+  let includedCount = 0;
+  Object.keys(dishDatabase).forEach(dish=>{
+    const sel = weeklySelection[dish];
+    if (!sel || !sel.include) return;
+    includedCount++;
+    if (sel.date){
+      const jsDay = new Date(sel.date+'T00:00:00').getDay(); // 0=Sun..6=Sat
+      eventDayOverride[dish] = WEEKDAYS[(jsDay+6)%7]; // convert to Monday-first
+      // sel.date is an ISO yyyy-mm-dd (from a date input) — reformat to the same
+      // dd/mm/yyyy the production-tool PDFs use, so the reference line reads consistently
+      // regardless of which source the dish came from.
+      const [yy,mm,dd] = sel.date.split('-');
+      eventDateByDish[dish] = `${dd}/${mm}/${yy}`;
+    }
+    if (sel.pax) paxByDish[dish] = parseFloat(sel.pax);
+    const eventDay = getEventDay(dish);
+    dishDatabase[dish].items.forEach(it=>{
+      const day = eventDay ? calendarDayForPrepNum(eventDay, it.stageNum) : '';
+      ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
+        baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum,
+        pdfFixedTotal:it.pdfFixedTotal});
+    });
+  });
+  if (includedCount===0){ setWeeklyStatus('Tick at least one dish to generate this week\'s preplist.', 'err'); return; }
+  sourceInfo = {name: 'Recipe database — '+includedCount+' dish(es) selected this week', loadedAt: new Date()};
+  viewMode = 'dish';
+  setWeeklyStatus('Generated this week\'s preplist for '+includedCount+' dish(es).', 'ok');
+  renderApp();
+}
+
+function setWeeklyPax(encodedDish, val){
+  const dish = decodeURIComponent(encodedDish);
+  if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
+  weeklySelection[dish].pax = val;
+}
+function setWeeklyDate(encodedDish, val){
+  const dish = decodeURIComponent(encodedDish);
+  if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
+  weeklySelection[dish].date = val;
+}
+function toggleWeeklyInclude(encodedDish, checked){
+  const dish = decodeURIComponent(encodedDish);
+  if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
+  weeklySelection[dish].include = checked;
+}
+function renderWeeklyPanel(){
+  const list = document.getElementById('weeklyDishList');
+  const dishes = Object.keys(dishDatabase).sort((a,b)=>cleanDishName(a).localeCompare(cleanDishName(b)));
+  if (dishes.length===0){
+    list.innerHTML = '<div class="empty"><div class="big">No dishes in your database yet</div>Add some from "Manage database" above.</div>';
+    return;
+  }
+  list.innerHTML = `<div class="section-table-wrap">
+    <table><thead><tr>
+      <th style="width:6%"></th>
+      <th style="width:34%">Dish</th>
+      <th style="width:20%">Pax</th>
+      <th style="width:24%">Event date</th>
+      <th style="width:16%"></th>
+    </tr></thead><tbody>
+    ${dishes.map(dish=>{
+      const sel = weeklySelection[dish] || {include:true, pax:'', date:''};
+      const enc = encName(dish);
+      const taskCount = dishDatabase[dish].items.length;
+      return `<tr>
+        <td><input type="checkbox" ${sel.include?'checked':''} onchange="toggleWeeklyInclude('${enc}', this.checked)"></td>
+        <td class="task">${escapeHtml(cleanDishName(dish))}<div class="dish" style="margin-top:2px;">${taskCount} tasks saved</div></td>
+        <td><input type="text" inputmode="numeric" class="leader-input" style="width:90px;" placeholder="pax" value="${escapeHtml(String(sel.pax||''))}" onchange="setWeeklyPax('${enc}', this.value)"></td>
+        <td><input type="date" class="leader-input" value="${sel.date||''}" onchange="setWeeklyDate('${enc}', this.value)"></td>
+        <td><button class="ghost" onclick="removeDishFromDatabase('${enc}')" type="button" style="color:var(--prot);">Remove</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>
+  </div>`;
+}
+function setToolMode(m){
+  toolMode = m;
+  renderApp();
+}
+function renderModeToggle(){
+  const hasDb = Object.keys(dishDatabase).length > 0;
+  const toggle = document.getElementById('toolModeToggle');
+  toggle.innerHTML = `
+    <button class="${toolMode==='onetime'?'':'secondary'}" onclick="setToolMode('onetime')" type="button">One-time sort</button>
+    <button class="${toolMode==='database'?'':'secondary'}" onclick="setToolMode('database')" type="button">Recipe database${hasDb?' ('+Object.keys(dishDatabase).length+' dishes saved)':''}</button>
+  `;
+  const sub = document.getElementById('mastheadSub');
+  sub.textContent = toolMode==='onetime'
+    ? 'One-time sort: upload a workbook and it sorts immediately — nothing is saved for next time.'
+    : 'Recipe database: upload once, then every week just pick dishes, enter pax and a date, and hit Generate — no re-uploading.';
+  const dbTitle = document.getElementById('dbPanelTitle');
+  const hint = document.getElementById('dropzoneHint');
+  const parseBtn = document.getElementById('parsePasteBtn');
+  if (toolMode==='onetime'){
+    dbTitle.textContent = 'Load a preplist';
+    hint.textContent = 'Every tab in the workbook is read as one dish — nothing is skipped. Nothing is saved after you close this tab.';
+    parseBtn.textContent = 'Sort pasted rows';
+  } else {
+    dbTitle.textContent = hasDb ? 'Manage recipe database' : 'Build your recipe database';
+    hint.textContent = 'Every tab in the workbook is read as one dish. Uploading adds these dishes to your saved database — do this once per dish, or again any time you want to add more.';
+    parseBtn.textContent = 'Add to database';
+  }
+}
+function renderApp(){
+  scheduleOnetimeSave();
+  const hasDb = Object.keys(dishDatabase).length > 0;
+  renderModeToggle();
+  const dbPanel = document.getElementById('dbPanel');
+  const weeklyPanel = document.getElementById('weeklyPanel');
+  const dbManageRow = document.getElementById('dbManageRow');
+  const backLink = document.getElementById('backToWeeklyLink');
+
+  if (toolMode==='onetime'){
+    dbPanel.style.display = 'block';
+    weeklyPanel.style.display = 'none';
+    dbManageRow.style.display = 'none';
+    backLink.style.display = 'none';
+  } else {
+    dbManageRow.style.display = hasDb ? 'flex' : 'none';
+    if (hasDb){
+      const dishCount = Object.keys(dishDatabase).length;
+      const taskCount = Object.values(dishDatabase).reduce((s,d)=>s+d.items.length,0);
+      document.getElementById('dbCountMeta').textContent = dishCount+' dishes saved ('+taskCount+' tasks) in your recipe database.';
+    }
+    if (appMode==='weekly' && hasDb){
+      dbPanel.style.display = 'none';
+      weeklyPanel.style.display = 'block';
+      renderWeeklyPanel();
+    } else {
+      dbPanel.style.display = 'block';
+      weeklyPanel.style.display = 'none';
+      backLink.style.display = hasDb ? 'inline' : 'none';
+    }
+  }
+  render();
+}
+
+// ---------- column sorting (per view, applies to every table within that view) ----------
+let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}};
+function setSort(view, col){
+  const s = sortState[view];
+  if (s.col===col){ s.dir = s.dir==='asc' ? 'desc' : 'asc'; }
+  else { s.col = col; s.dir = 'asc'; }
+  render();
+}
+// Explicit setter (col and/or dir chosen directly from a dropdown, not by re-clicking a
+// header) — used by the "Before printing" order control so a chef can pick a column and
+// a direction in one go, for whichever print layout (per dish / per section / per day)
+// they're about to run.
+function setSortExplicit(view, col, dir){
+  sortState[view] = {col: col || null, dir: dir || 'asc'};
+  renderApp();
+}
+function sortArrow(view, col){
+  const s = sortState[view];
+  if (s.col!==col) return '<span class="sortarrow sortarrow-off">↕</span>';
+  return s.dir==='asc' ? '<span class="sortarrow">▲</span>' : '<span class="sortarrow">▼</span>';
+}
+function sortableTh(view, col, label, style){
+  return `<th ${style?`style="${style}"`:''} class="sortable-th" onclick="setSort('${view}','${col}')">${label} ${sortArrow(view,col)}</th>`;
+}
+// Sorts a copy of rows by the given column; returns the original array unchanged if no
+// sort is active for this view (so the default job-clustered order is kept).
+function applySort(rows, view){
+  const s = sortState[view];
+  if (!s.col) return rows;
+  const mult = s.dir==='asc' ? 1 : -1;
+  return [...rows].sort((a,b)=>{
+    let va, vb;
+    switch(s.col){
+      case 'dish': va=cleanDishName(a.dish).toLowerCase(); vb=cleanDishName(b.dish).toLowerCase(); break;
+      case 'task': va=a.task.toLowerCase(); vb=b.task.toLowerCase(); break;
+      case 'total': { const ta=computeTotal(a), tb=computeTotal(b); va=ta===null?-Infinity:ta; vb=tb===null?-Infinity:tb; break; }
+      case 'section': va=a.section.toLowerCase(); vb=b.section.toLowerCase(); break;
+      case 'lead': va=(leaderBySection[a.section]||'').toLowerCase(); vb=(leaderBySection[b.section]||'').toLowerCase(); break;
+      case 'day': va=a.day?WEEKDAYS.indexOf(a.day):99; vb=b.day?WEEKDAYS.indexOf(b.day):99; break;
+      default: return 0;
+    }
+    if (va<vb) return -1*mult;
+    if (va>vb) return 1*mult;
+    return 0;
+  });
+}
+// Which columns make sense to order by in each view — kept separate per view since
+// e.g. "Section" is meaningless to sort by inside the By-section print (every row in
+// that print run is already the same section).
+function sortColumnOptions(view){
+  if (view==='dish') return [['task','Task'],['total','Total to make'],['section','Section'],['day','Prep day']];
+  if (view==='section') return [['dish','Dish name'],['task','Task'],['total','Total needed'],['day','Prep day']];
+  return [['dish','Dish name'],['task','Task'],['total','Total needed'],['section','Section'],['lead','Team lead']];
+}
+function printOrderControlHtml(){
+  const view = viewMode;
+  const opts = sortColumnOptions(view);
+  const s = sortState[view];
+  return `<div class="no-print" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 18px; padding:12px 16px; background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);">
+    <b style="font-size:12.5px;">Before printing — order by:</b>
+    <select onchange="setSortExplicit('${view}', this.value, sortState['${view}'].dir)">
+      <option value="">Default order</option>
+      ${opts.map(([col,label])=>`<option value="${col}" ${s.col===col?'selected':''}>${escapeHtml(label)}</option>`).join('')}
+    </select>
+    <select onchange="setSortExplicit('${view}', sortState['${view}'].col, this.value)" ${!s.col?'disabled':''}>
+      <option value="asc" ${s.dir==='asc'?'selected':''}>Ascending (A→Z, day 1→7)</option>
+      <option value="desc" ${s.dir==='desc'?'selected':''}>Descending (Z→A, day 7→1)</option>
+    </select>
+  </div>`;
+}
+let sourceInfo = {name: null, loadedAt: null};
+
+// ---------- chef-hours estimate (v2) ----------
+// The workbook has quantities, not durations, so "chefs needed" can only ever be an
+// estimate. v2 improves on a flat per-task guess in three ways: (1) time scales with
+// batch size, not just task count, (2) a cook-stage task is weighted heavier than a
+// wash/trim task even in the same section, (3) a safety buffer covers breaks, cleaning,
+// and the inevitable slippage a flat estimate can't see. All of it is retweakable, and
+// you can enter chefs already rostered per day to see the actual gap, not just a raw number.
+let SHIFT_MINUTES = 420; // 7-hour shift — trainee-heavy-adjusted base (see below)
+let MINUTES_PER_TASK = {   // fixed setup/handling time per task, before batch-size scaling.
+  // These are the trainee-heavy team's numbers (standard-team base × 1.4), now used as
+  // the default baseline for every fresh session rather than something you have to
+  // re-select each time — a faster/experienced team is still one click away below.
+  'Vegetables': 8.4,
+  'Proteins': 12.6,
+  'Sauce, Purees and Gels': 16.8,
+  'Garnishes, Herbs, Powders, Oils Etc.': 7,
+  'Big Jobs': 28,
+  'Box off/ Trolley organising team': 11.2,
+};
+let QTY_SCALING_ON = true;
+let QTY_BASELINE_KG = 2;      // first N kg-equivalent are already covered by the fixed time above
+let QTY_RATE_MIN_PER_KG = 1.2; // extra minutes per kg-equivalent beyond the baseline
+let STAGE_MULTIPLIER = {1:5, 2:5, 3:5, 4:1}; // Day1 wash/trim, Day2 cook, Day3 portion, Day4 box-off
+let BUFFER_PERCENT = 15; // safety margin: breaks, cleaning, real-world slippage
+let rosteredChefs = {}; // {Monday: '3', ...} — what you actually have on, entered per day
+
+const STAFFING_PRESETS = {
+  fast:     {label:'Fast / experienced team', mult:0.75},
+  standard: {label:'Standard team',           mult:1.0},
+  trainee:  {label:'Trainee-heavy team',      mult:1.4},
+};
+function applyStaffingPreset(key){
+  const preset = STAFFING_PRESETS[key];
+  if (!preset) return;
+  BASE_CATEGORIES.forEach(cat=>{
+    const base = {'Vegetables':6,'Proteins':9,'Sauce, Purees and Gels':12,
+      'Garnishes, Herbs, Powders, Oils Etc.':5,'Big Jobs':20,'Box off/ Trolley organising team':8}[cat];
+    MINUTES_PER_TASK[cat] = Math.round(base * preset.mult * 10)/10;
+  });
+  render();
+}
+
+// Converts a row's total quantity to a rough kg-equivalent so weight/volume batches
+// scale sensibly (piece/portion counts and unrecognised units don't scale — they stay
+// on the flat fixed-time estimate only).
+function qtyToKgEquivalent(row){
+  const total = computeTotal(row);
+  if (total===null) return null;
+  const u = (row.unit||'').toLowerCase().trim();
+  if (u==='kg' || u==='kilo' || u==='kilos') return total;
+  if (u==='g' || u==='gram' || u==='grams') return total/1000;
+  if (u==='l' || u==='lt' || u==='litre' || u==='litres' || u==='liter' || u==='liters') return total;
+  if (u==='ml') return total/1000;
+  return null; // pc/ea/portion/unrecognised — not scaled
+}
+function estimateMinutes(row){
+  const fixed = MINUTES_PER_TASK[row.baseCategory] !== undefined ? MINUTES_PER_TASK[row.baseCategory] : 10;
+  let minutes = fixed;
+  if (QTY_SCALING_ON){
+    const kg = qtyToKgEquivalent(row);
+    if (kg!==null && kg > QTY_BASELINE_KG){
+      minutes += (kg - QTY_BASELINE_KG) * QTY_RATE_MIN_PER_KG;
+    }
+  }
+  const mult = STAGE_MULTIPLIER[row.stageNum] !== undefined ? STAGE_MULTIPLIER[row.stageNum] : 1;
+  minutes *= mult;
+  minutes *= (1 + BUFFER_PERCENT/100);
+  return minutes;
+}
+function chefsNeededForMinutes(totalMinutes){
+  if (!totalMinutes) return 0;
+  return Math.ceil(totalMinutes / SHIFT_MINUTES);
+}
+function fmtHours(mins){
+  const h = mins/60;
+  return (Number.isInteger(h) ? h : h.toFixed(1)) + 'h';
+}
+// Gap vs what's actually rostered for a day — the actionable bit. Returns null if
+// nothing's been entered for that day yet (so the UI can tell "no data" from "0 short").
+function staffingGap(day, neededChefs){
+  const have = rosteredChefs[day];
+  if (have===undefined || have==='' || have===null) return null;
+  const haveNum = parseFloat(have);
+  if (isNaN(haveNum)) return null;
+  return haveNum - neededChefs; // negative = short, positive = spare
+}
+function setRosteredChefs(day, val){
+  rosteredChefs[day] = val;
+  render();
+}
+
+// Internal 4-stage prep-difficulty classification (collect/wash → cook → portion/tray up →
+// box-off/tools). Not shown in the UI directly — it's just how the tool decides which
+// actual weekday (Monday–Sunday) each task lands on, based on the dish's event day.
+const STAGE_NAMES = ['Collect/Trim/Wash','Cook/Steam/Roast','Portion/Tray up/Box off','Box off cont./Tools'];
+
+// ---------- event-day → calendar prep-day mapping ----------
+// Each dish tab is named with its event weekday (e.g. "Mains Beef Fillet Saturday").
+// With a 4-day prep lead: Stage 1 = event day − 3, Stage 2 = event day − 2,
+// Stage 3 = event day − 1, Stage 4 = the event day itself (final box-off/continuation).
+const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+let eventDayOverride = {}; // dish -> weekday name (manual correction/assignment)
+let eventDateByDish = {}; // dish -> actual calendar date string "dd/mm/yyyy", where known
+                          // (a PDF's own batch date, or a manually entered weekly date) —
+                          // separate from eventDayOverride's weekday name, since a printed
+                          // reference line should show both, not just one.
+
+// Full weekday names are checked first, then their short forms — each accepted alias
+// is a whole recognizable word (wed, thu, sat...), never a single bare letter, since a
+// one-letter match risks colliding with something in a dish or event name that has
+// nothing to do with a weekday.
+const WEEKDAY_ALIASES = {
+  Monday: ['monday','mon'],
+  Tuesday: ['tuesday','tues','tue'],
+  Wednesday: ['wednesday','wed'],
+  Thursday: ['thursday','thurs','thur','thu'],
+  Friday: ['friday','fri'],
+  Saturday: ['saturday','sat'],
+  Sunday: ['sunday','sun'],
+};
+function detectEventDayFromName(name){
+  const t = norm(name);
+  for (const w of WEEKDAYS){
+    for (const alias of WEEKDAY_ALIASES[w]){
+      if (new RegExp('\\b'+alias+'\\b','i').test(t)) return w;
+    }
+  }
+  return null;
+}
+function getEventDay(dish){
+  if (eventDayOverride[dish]) return eventDayOverride[dish];
+  return detectEventDayFromName(dish);
+}
+function getEventDateStr(dish){
+  return eventDateByDish[dish] || null;
+}
+function calendarDayForPrepNum(eventDay, prepNum){
+  const idx = WEEKDAYS.indexOf(eventDay);
+  if (idx<0 || !prepNum) return null;
+  const offset = 4 - prepNum; // Stage1->-3, Stage2->-2, Stage3->-1, Stage4->0
+  return WEEKDAYS[(idx - offset + 7) % 7];
+}
+// Setting/changing a dish's event day automatically recalculates the actual weekday
+// for every one of its tasks from their stage — this is the "automate 4-day prep day
+// based on the tab's scheduled day" part. Any day you've hand-picked on a row gets
+// recalculated too, since changing the event date should shift the whole plan.
+function setEventDay(encodedDish, val){
+  const dish = decodeURIComponent(encodedDish);
+  if (val) eventDayOverride[dish] = val; else delete eventDayOverride[dish];
+  const eventDay = getEventDay(dish);
+  ROWS.forEach(r=>{
+    if (r.dish===dish && r.stageNum) r.day = eventDay ? calendarDayForPrepNum(eventDay, r.stageNum) : '';
+  });
+  render();
+}
+function eventDaySelect(encodedDish, current){
+  return `<select class="rowsel leader-input" onchange="setEventDay('${encodedDish}', this.value)">
+    <option value="" ${!current?'selected':''}>— set event day —</option>
+    ${WEEKDAYS.map(w=>`<option value="${w}" ${current===w?'selected':''}>${w}</option>`).join('')}
+  </select>`;
+}
+
+// ---- 4-day lead time auto-assignment ----
+// Day 1: collecting, trimming, washing, counting, topping up orders
+// Day 2: cooking — steaming, blanching, chargrilling, roasting and similar
+// Day 3: portioning, tray up, organising, box off, trolley cards
+// Day 4: box-off continuation, filling production tools/cambros
+const DAY1_KW = ['collect','trim','wash','count','top up order','topup order','top-up order','order top up','order',
+  'peel','devein','de-vein','unpack','receive delivery','receiving','stocktake','par level','tally','defrost',
+  'thaw','pat dry','squeeze','drain'];
+const DAY2_KW = ['cook','steam','blanch','chargrill','char-grill','char grill','roast','grill','sear','saute','sauté',
+  'braise','sous vide','deep fry','smoke','poach','simmer','reduce','bake','ferment','infuse','char','griddle',
+  'pan-fry','panfry','confit','render','caramelise','caramelize','toast','dehydrate','vac cook','melt','glaze'];
+const DAY3_KW = ['portion','tray up','trolley card','trolley','organise','organize','box off','plate up',
+  'divide into','allocate','arrange on tray','set up tray','label and store','wrap individually','crumb'];
+const DAY4_KW = ['continuation','production tool','fill up cambro','fill cambro','restock','top up trolley',
+  'replenish','fill up','pack extra','spare stock','buffer stock','contingency'];
+const DAY_WORDBOUND = new Set(['order','count']);
+
+// Fallback default per base category when no day-keyword is found in the task text —
+// reflects the general shape of each station's work (from the prep-flow guide).
+const CATEGORY_DAY_DEFAULT = {
+  'Vegetables':'Day 1',
+  'Proteins':'Day 1',
+  'Sauce, Purees and Gels':'Day 2',
+  'Garnishes, Herbs, Powders, Oils Etc.':'Day 3',
+  'Big Jobs':'Day 1',
+  'Box off/ Trolley organising team':'Day 3',
+};
+
+function dayKwHit(t, list){
+  for (const kwRaw of list){
+    const kw = kwRaw.trim();
+    if (!kw) continue;
+    if (DAY_WORDBOUND.has(kw)){
+      const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\b');
+      if (re.test(t)) return true;
+    } else if (t.includes(kw)) return true;
+  }
+  return false;
+}
+function paveDayOverride(t){
+  if (t.includes('water slicer') || t.includes('water cutter') || t.includes('ring cutter')) return 2;
+  const hasCookSignal = /\bcook\b|\bpress\b|\bdeg\b|\bmoisture\b|\bhour\b/.test(t);
+  if (hasCookSignal || t.includes('slice') || t.includes('assemble')) return 1;
+  if (t.includes('portion')) return 2;
+  if (t.includes('tray up')) return 2;
+  return null;
+}
+// All proteins that get seared: collect/count/tray up/brine/marinate/decant = Stage 1,
+// sear/chargrill/grill (+its tray up) = Stage 2 — every protein, not just beef fillet.
+function proteinSearOverride(t, baseCategory){
+  const isProteinTask = baseCategory === 'Proteins' || t.includes('beef') || t.includes('chicken') ||
+    t.includes('lamb') || t.includes('duck') || t.includes('pork') || t.includes('salmon') ||
+    t.includes('barramundi') || t.includes('bara') || t.includes('prawn') || t.includes('fish');
+  if (!isProteinTask) return null;
+  if (t.includes('sear') || t.includes('chargrill') || t.includes('char-grill') || t.includes('char grill') ||
+      t.includes('grill') || t.includes('pan-fry') || t.includes('panfry')) return 2;
+  if (t.includes('count') || t.includes('tray') || t.includes('brine') || t.includes('marinate') || t.includes('decant')) return 1;
+  return null;
+}
+// Croquettes: collect/make/mix/freeze = Stage 1, portion/cut/crumb/tray up = Stage 2.
+function croquetteOverride(t){
+  if (!t.includes('croquette')) return null;
+  // strip quantity phrasing like "2 portions"/"per portion" so it isn't mistaken for
+  // the portioning action itself
+  const tClean = t.replace(/\d+\s*portions?\b/g, '').replace(/\bper\s+portions?\b/g, '');
+  if (tClean.includes('portion') || t.includes('tray up') || t.includes('cut') || t.includes('crumb') || t.includes('halfmoon')) return 2;
+  if (t.includes('make') || t.includes('mix') || t.includes('freeze') || t.includes('collect')) return 1;
+  return null;
+}
+// Sous vide onions: cut = Stage 1, sear/sous vide/bag = Stage 2, tray up = Stage 3.
+function onionOverride(t){
+  if (!t.includes('onion')) return null;
+  if (t.includes('tray up') || t.includes('tray')) return 3;
+  if (t.includes('cut')) return 1;
+  if (t.includes('sear') || t.includes('sous vide') || t.includes('sou vide') || t.includes('bag')) return 2;
+  return null;
+}
+// Ravioli: blanch/tray up = Stage 2, everything else ravioli-specific (collect, prepare trays) = Stage 1.
+function ravioliOverride(t){
+  if (!t.includes('ravioli')) return null;
+  if (t.includes('blanch') || t.includes('tray up')) return 2;
+  return 1;
+}
+// Classifies a task into a 1-4 prep-difficulty stage (see STAGE_NAMES). This never
+// touches the UI directly — addRows converts it into an actual weekday right away.
+function classifyPrepStage(taskText, baseCategory, contextStage){
+  const t = norm(taskText);
+
+  if (/\bmash\b/.test(t)) return 1; // non-negotiable
+  if (t.includes('pave') || t.includes('terrine')){
+    const d = paveDayOverride(t);
+    if (d) return d; // non-negotiable
+  }
+  { const d = proteinSearOverride(t, baseCategory); if (d) return d; }
+  { const d = croquetteOverride(t); if (d) return d; }
+  { const d = onionOverride(t); if (d) return d; }
+  { const d = ravioliOverride(t); if (d) return d; }
+
+  // "25g per portion" is a quantity descriptor, not a portioning action — strip it
+  // before checking Stage 3's "portion" keyword so it doesn't outrank a real cook verb.
+  const t3 = t.replace(/\bper\s+portions?\b/g, '');
+  if (dayKwHit(t, DAY4_KW)) return 4;
+  if (dayKwHit(t3, DAY3_KW)) return 3;
+  if (dayKwHit(t, DAY2_KW)) return 2;
+  if (dayKwHit(t, DAY1_KW)) return 1;
+  if (contextStage) return contextStage;
+  const fallback = CATEGORY_DAY_DEFAULT[baseCategory];
+  if (fallback==='Day 1') return 1;
+  if (fallback==='Day 2') return 2;
+  if (fallback==='Day 3') return 3;
+  if (fallback==='Day 4') return 4;
+  return 1;
+}
+
+function daySelect(globalIdx, currentVal){
+  return `<select class="rowsel" onchange="setDay(${globalIdx}, this.value)">
+    <option value="" ${!currentVal?'selected':''}>— set day —</option>
+    ${WEEKDAYS.map(w=>`<option value="${w}" ${currentVal===w?'selected':''}>${w}</option>`).join('')}
+  </select>`;
+}
+// Manually picking a weekday on a row is a deliberate override — it sticks even if the
+// event day changes later, unless the person picks a fresh weekday again.
+function setDay(idx, val){ ROWS[idx].day = val; render(); }
+
+function parseQty(q){
+  if (q===undefined || q===null || q==='') return NaN;
+  const n = parseFloat(String(q).replace(/,/g,''));
+  return n;
+}
+function computeTotal(r){
+  // PDF production-tool rows carry an already-scaled batch total — never a per-pax
+  // figure — so pax (whatever it's set to) never multiplies these.
+  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null) return r.pdfFixedTotal;
+  const pax = paxByDish[r.dish];
+  const q = parseQty(r.qty);
+  if (!pax || isNaN(q)) return null;
+  const t = q * pax;
+  return Math.round(t*100)/100;
+}
+function fmtNum(n){
+  if (n===null || n===undefined) return '—';
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
+}
+
+function addRows(dish, items){
+  let lastCat = null;
+  let lastStage = null;
+  let lastCore = null;
+  const eventDay = getEventDay(dish);
+  for (const it of items){
+    if (!it || it.item===undefined || it.item===null) continue;
+    it.item = String(it.item);
+    if (!it.item.trim()) continue;
+    let cat = categorize(it.item, dish);
+    if (cat === null) continue;
+    let flagged = false;
+    if (cat === 'REVIEW'){
+      if (lastCat && lastCat !== 'REVIEW'){ cat = lastCat; flagged = true; }
+      else { cat = 'Vegetables'; flagged = true; }
+    }
+    lastCat = cat;
+    const taskText = it.item.replace(/\s+/g,' ').trim();
+    const core = coreIngredient(taskText);
+    // same job as the row before it (flagged continuation line, or same core ingredient)?
+    const sameJob = flagged || (lastCore && core && core===lastCore);
+    const stageNum = classifyPrepStage(taskText, cat, sameJob ? lastStage : null);
+    lastStage = stageNum;
+    lastCore = core || lastCore;
+    const day = eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '';
+    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum});
+  }
+}
+
+function setStatus(msg, cls){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg; el.className = 'status' + (cls ? ' '+cls : '');
+}
+
+// ---------- xlsx parsing ----------
+function isBlankCell(v){ return v===undefined || v===null || (typeof v==='string' && v.trim()===''); }
+
+// Finds every distinct "dish block" in a sheet. Handles two layouts:
+//  (a) classic — a literal "Item" header cell, with per-person/unit/total in the next columns
+//  (b) anchor-only — no "Item" text at all, just a "PAX" label cell, with the item column
+//      sitting at (or near) that same column — seen when several dishes are laid out
+//      side-by-side (sharing the same rows!) or stacked on one shared "master" sheet
+// Each returns {title, items:[{item,qty,unit}], pax}. Cells already claimed by a found
+// block are skipped so the same rows/columns aren't read into two different blocks —
+// but scanning continues across the REST of the row/sheet, since two blocks can share
+// a row (e.g. two "PAX" cells side by side in the same row for two different dishes).
+// Header wording other kitchens use for the same columns.
+const ITEM_HEADERS = new Set(['item','items','ingredient','ingredients','product','products','prep item','prep items','component','components','description']);
+const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight']);
+const UNIT_HEADERS = new Set(['unit','units','uom','unit of measure','measure']);
+function extractAllBlocks(aoa){
+  const nRows = aoa.length;
+  const claimedRects = []; // {r1,r2,c1,c2}
+  const blocks = [];
+  const isClaimed = (r,c) => claimedRects.some(x => r>=x.r1 && r<=x.r2 && c>=x.c1 && c<=x.c2);
+
+  function readItemsDownward(itemCol, qtyCol, unitCol, startRow){
+    const items = [];
+    let blank = 0, endRow = startRow;
+    for (let r=startRow; r<nRows; r++){
+      const row = aoa[r]||[];
+      const item = row[itemCol];
+      if (isBlankCell(item)){ blank++; if (blank>6){ endRow=r; break; } continue; }
+      blank = 0; endRow = r;
+      items.push({item:String(item), qty:row[qtyCol], unit:row[unitCol]});
+    }
+    return {items, endRow};
+  }
+
+  function findTitleNear(anchorRow, anchorCol, colSpan, rowSpan){
+    rowSpan = rowSpan || 9;
+    const EXCLUDE = new Set(['pax','comments','item','per plate','gm/ml','total needed','per person','unit','total','menu pres']);
+    for (let r=anchorRow-1; r>=Math.max(0, anchorRow-rowSpan); r--){
+      const row = aoa[r]||[];
+      for (let c=Math.max(0, anchorCol-colSpan); c<=anchorCol+colSpan; c++){
+        const v = row[c];
+        if (typeof v==='string'){
+          const s = v.trim();
+          const low = s.toLowerCase();
+          if (s.length>3 && !EXCLUDE.has(low) && !s.startsWith('#')) return s;
+        }
+      }
+    }
+    return null;
+  }
+
+  // ---- Pass 1: classic "Item" header blocks ----
+  for (let r=0; r<nRows; r++){
+    const row = aoa[r]||[];
+    for (let c=0; c<20; c++){
+      if (isClaimed(r,c)) continue;
+      if (typeof row[c]==='string' && ITEM_HEADERS.has(row[c].trim().toLowerCase())){
+        const itemCol=c;
+        // Find the Qty / Unit columns from this header row when it labels them (so
+        // "Item | Notes | Qty | Unit" or "Qty | Unit | Item" read the right cells);
+        // otherwise fall back to the classic layout: Qty right of Item, Unit right of Qty.
+        let qtyCol=c+1, unitCol=c+2;
+        const hdr = row.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
+        const near = (set)=>{ for (let d=1; d<=6; d++){ for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; } } return -1; };
+        const qf = near(QTY_HEADERS), uf = near(UNIT_HEADERS);
+        if (qf>=0 && !QTY_HEADERS.has(hdr[c+1]||'')) qtyCol = qf;
+        if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
+        else if (qf>=0 && uf<0) unitCol = qtyCol+1;
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1);
+        if (items.length===0) continue; // false hit — keep scanning the rest of the row
+        const title = findTitleNear(r, itemCol, 4);
+        let pax = null;
+        for (let rr=Math.max(0,r-3); rr<=r+1 && pax===null; rr++){
+          const rw = aoa[rr]||[];
+          for (let cc=0; cc<rw.length; cc++){
+            if (typeof rw[cc]==='string' && rw[cc].trim().toLowerCase()==='pax'){
+              if (typeof rw[cc-1]==='number') pax = rw[cc-1];
+              else if (typeof rw[cc+1]==='number') pax = rw[cc+1];
+            }
+          }
+        }
+        blocks.push({title, items, pax});
+        claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:itemCol+4});
+      }
+    }
+  }
+
+  // ---- Pass 2: PAX-anchor blocks (no literal "Item" text — dishes laid out without one) ----
+  for (let r=0; r<nRows; r++){
+    const row = aoa[r]||[];
+    for (let c=0; c<20; c++){
+      if (isClaimed(r,c)) continue;
+      if (typeof row[c]==='string' && row[c].trim().toLowerCase()==='pax'){
+        const paxVal = (typeof row[c+1]==='number') ? row[c+1] : (typeof row[c-1]==='number' ? row[c-1] : null);
+        const nextRow = aoa[r+1]||[];
+        const candidates = [c, c-2, c-1, 0].filter(x=>x>=0);
+        let itemCol = c;
+        for (const cand of candidates){
+          const v = nextRow[cand];
+          if (typeof v==='string' && v.trim().length>0){ itemCol = cand; break; }
+        }
+        const qtyCol=itemCol+1, unitCol=itemCol+2;
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1);
+        if (items.length===0) continue; // false hit — keep scanning the rest of the row
+        const title = findTitleNear(r, itemCol, 2, 45);
+        blocks.push({title, items, pax:paxVal});
+        const lo = Math.min(itemCol,c), hi = Math.max(itemCol,c,qtyCol,unitCol);
+        claimedRects.push({r1:r, r2:endRow, c1:Math.max(0,lo-1), c2:hi+2});
+      }
+    }
+  }
+
+  // ---- Pass 3: headerless lists — only tried when nothing above matched this sheet ----
+  // Looks for a run of 3+ rows where one column holds a text item and the next column a
+  // number ("Penne | 5 | kg"). Deliberately conservative so ordinary notes never qualify.
+  if (blocks.length===0){
+    const isNum = v => typeof v==='number' || (typeof v==='string' && /^\s*\d+([.,]\d+)?\s*$/.test(v));
+    const isText = v => typeof v==='string' && v.trim().length>=2 && !/^\s*[\d.,/\s]+$/.test(v);
+    let done = false;
+    for (let c=0; c<12 && !done; c++){
+      for (let r=0; r<nRows && !done; r++){
+        let end=r, run=0, gap=0;
+        for (let k=r; k<nRows; k++){
+          const rw = aoa[k]||[];
+          if (isText(rw[c]) && isNum(rw[c+1])){ run++; end=k; gap=0; }
+          else if (isBlankCell(rw[c]) && gap<1 && run>0){ gap++; }
+          else break;
+        }
+        if (run>=3){
+          const items = [];
+          for (let k=r; k<=end; k++){ const rw=aoa[k]||[]; if (isText(rw[c])) items.push({item:String(rw[c]), qty:rw[c+1], unit:rw[c+2]}); }
+          blocks.push({title: findTitleNear(r, c, 3, 6), items, pax:null});
+          done = true;
+        }
+      }
+    }
+  }
+
+  return blocks;
+}
+
+function processWorkbook(wbObj){
+  let sheetsUsed=0, itemsFound=0;
+  const skipped = [];
+  const errored = [];
+  const seenTitles = new Set(); // dedup — the same dish sometimes appears both on its own
+                                // tab and again inside a combined "master" sheet
+  // Process specifically-named tabs first, generic "Sheet1"/"Sheet2"-style tabs last —
+  // when the same dish appears on both a named tab and a generic combined sheet, the
+  // named tab (more likely to be the current, edited copy) wins the dedup.
+  const orderedNames = [...wbObj.SheetNames].sort((a,b)=>{
+    const ga = /^sheet\d*$/i.test(a.trim()) ? 1 : 0;
+    const gb = /^sheet\d*$/i.test(b.trim()) ? 1 : 0;
+    return ga - gb;
+  });
+  orderedNames.forEach(name=>{
+    try{
+      const ws = wbObj.Sheets[name];
+      if (!ws || !ws['!ref']){ skipped.push(name); return; }
+      let range;
+      try{
+        range = XLSX.utils.decode_range(ws['!ref']);
+        range.e.r = Math.min(range.e.r, 400);   // generous — some workbooks stack several
+                                                 // dishes' full preplists on one sheet
+        range.e.c = Math.min(range.e.c, 20);
+      } catch(e){ range = undefined; }
+      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, range});
+      let blocks = extractAllBlocks(aoa);
+      if (blocks.length===0 && range){
+        // safety net: retry with the sheet's full, uncapped range in case the cap
+        // (rare edge case) cut off something the first pass needed
+        const aoaFull = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+        blocks = extractAllBlocks(aoaFull);
+      }
+      if (blocks.length===0){ skipped.push(name); return; }
+      const isGeneric = /^sheet\d*$/i.test(name.trim());
+      blocks.forEach((block, idx)=>{
+        const rawTitle = block.title || (name + (blocks.length>1 ? ` (block ${idx+1})` : ''));
+        const normKey = rawTitle.trim().toUpperCase().replace(/\s+/g,' ');
+        // Only a generic "Sheet1"-style tab gets deduped against titles already seen —
+        // two genuinely distinct, properly-named tabs are always kept separate (they're
+        // guaranteed unique by sheet name below), even if their in-sheet title text matches.
+        if (isGeneric && seenTitles.has(normKey)) return;
+        seenTitles.add(normKey);
+        // Named tabs keep sheet-name identity (unique, and immune to title collisions);
+        // generic sheets (which may hold several dishes) use the dish's own title instead.
+        const dishTitle = isGeneric ? rawTitle : (blocks.length>1 ? rawTitle : name);
+        sheetsUsed++; itemsFound += block.items.length;
+        if (block.pax!=null && paxByDish[dishTitle]===undefined) paxByDish[dishTitle] = block.pax;
+        addRows(dishTitle, block.items);
+      });
+    } catch(err){
+      errored.push(name + ' (' + err.message + ')');
+    }
+  });
+  return {sheetsUsed, itemsFound, skipped, errored};
+}
+
+function routeFiles(fileList){
+  const files = Array.from(fileList||[]);
+  if (!files.length) return;
+  const pdfs = files.filter(f=>f.name.toLowerCase().endsWith('.pdf'));
+  if (pdfs.length){ handlePdfFiles(pdfs); return; }
+  handleFile(files[0]);
+}
+// ---------- production tool PDF parsing ----------
+// A production tool PDF is a bundle of recipe pages: one "main" dish front page,
+// each with a right-hand Ingredients: table, optionally followed by that dish's own
+// sub-recipe pages (named "<dish> - <Sub name> (SUB)") giving that sub-recipe's own
+// raw ingredients and its cooked Yield. A trailer page (Recipe Source / rights footer,
+// sometimes carrying the real Yield line when the Method text overflows) has no title
+// and is merged forward into the recipe unit it continues.
+const PDF_UNIT_TO_GRAMS = {
+  kilograms:1000, kilogram:1000, kg:1000, grams:1, gram:1, g:1,
+  liters:1000, liter:1000, litres:1000, litre:1000, l:1000,
+  milliliters:1, milliliter:1, ml:1,
+};
+function pdfRoundTo(n,d){ const p=Math.pow(10,d); return Math.round(n*p)/p; }
+
+async function pdfExtractPageItems(page){
+  const viewport = page.getViewport({scale:1});
+  const content = await page.getTextContent();
+  const items = [];
+  for (const it of content.items){
+    if (it.str===undefined || it.str===null) continue;
+    items.push({
+      str: it.str,
+      x0: it.transform[4],
+      top: viewport.height - it.transform[5],
+      size: Math.abs(it.transform[0]) || Math.abs(it.transform[3]) || 8,
+    });
+  }
+  return items;
+}
+function pdfGetTitle(items){
+  const t = items.filter(w=>w.size>18).slice();
+  t.sort((a,b)=>(a.top-b.top)||(a.x0-b.x0));
+  return t.map(w=>w.str).join(' ').replace(/\s+/g,' ').trim();
+}
+// Some production-tool PDF exports have a font-kerning quirk that unpredictably injects
+// stray spaces mid-word (seen in real files: "M ethod:", "Kilogram s", "Tim e into",
+// "inform ation"). An exact string match against a label like "Method:" then silently
+// fails, and — since that label is what tells the parser where the ingredient table
+// ENDS — the table-reading loop runs straight past it and vacuums up everything below
+// (the batch/date/temperature table, Yield line, costs, "Recipe Source" footer) into
+// the last ingredient's name. Every label comparison below strips ALL whitespace before
+// comparing, so a stray inserted space never breaks the match.
+function pdfSquash(s){ return (s||'').replace(/\s+/g,'').toLowerCase(); }
+function pdfGetCategoriesLine(items){
+  const w = items.find(w=>pdfSquash(w.str).startsWith('recipecategories:'));
+  return w ? w.str.trim() : null;
+}
+function pdfIsCostToken(t){ return /^\$[\d,.]+$/.test(t.trim()); }
+function pdfGroupByTop(items, tol){
+  tol = tol || 1.6;
+  const sorted = items.slice().sort((a,b)=>a.top-b.top);
+  const lines = [];
+  for (const w of sorted){
+    let line = lines.find(l=>Math.abs(l.top-w.top)<=tol);
+    if (!line){ line = {top:w.top, items:[]}; lines.push(line); }
+    line.items.push(w);
+  }
+  lines.forEach(l=>l.items.sort((a,b)=>a.x0-b.x0));
+  lines.sort((a,b)=>a.top-b.top);
+  return lines;
+}
+function pdfExtractIngredientRows(items){
+  const ingLabel = items.find(w=>pdfSquash(w.str)==='ingredients:');
+  if (!ingLabel) return [];
+  const startTop = ingLabel.top;
+  const methodLabel = items.find(w=>pdfSquash(w.str)==='method:');
+  const endTop = methodLabel ? methodLabel.top : Infinity;
+  const band = items.filter(w=>w.top>startTop+3 && w.top<endTop && w.x0>240 && w.str.trim()!=='');
+  const lines = pdfGroupByTop(band);
+  const parsedLines = [];
+  for (const line of lines){
+    const qty=[], name=[], cost=[];
+    for (const w of line.items){
+      const t = w.str.trim();
+      if (!t) continue;
+      if (w.x0>=430){ if (pdfIsCostToken(t)) cost.push(t); }
+      else if (t==='+'){ qty.push(t); }
+      else if (w.x0<300){ qty.push(t); }
+      else { name.push(t); }
+    }
+    if (qty.length||name.length||cost.length) parsedLines.push({qty,name,cost});
+  }
+  const rows = [];
+  let cur = null;
+  for (const pl of parsedLines){
+    if (pl.cost.length){ if (cur) rows.push(cur); cur=[pl]; }
+    else { if (!cur) cur=[pl]; else cur.push(pl); }
+  }
+  if (cur) rows.push(cur);
+  return rows.map(r=>{
+    const qtyStr = r.map(pl=>pl.qty.join(' ')).join(' ').trim().replace(/\s+/g,' ');
+    const nameStr = r.map(pl=>pl.name.join(' ')).join(' ').trim().replace(/\s+/g,' ');
+    const cost = r.map(pl=>pl.cost[0]).find(Boolean) || null;
+    return {qtyRaw:qtyStr, name:nameStr, cost};
+  });
+}
+function pdfParseQtyString(qtyStr){
+  qtyStr = qtyStr.trim();
+  if (/each/i.test(qtyStr)){
+    const m = qtyStr.match(/([\d.]+)\s*\*?each/i);
+    if (m) return {each:parseFloat(m[1]), grams:null, unitLabel:'each'};
+  }
+  const re = /([\d.]+)\s*(Kilograms|Kilogram|Grams|Gram|Liters|Liter|Litres|Litre|Milliliters|Milliliter)/gi;
+  let m, totalG=0, found=false;
+  while ((m = re.exec(qtyStr))){
+    const mult = PDF_UNIT_TO_GRAMS[m[2].toLowerCase()];
+    if (mult){ totalG += parseFloat(m[1])*mult; found=true; }
+  }
+  if (found) return {each:null, grams:totalG, unitLabel:null};
+  // Fallback: an unrecognized count-style unit (Punnet, Tray, Bunch, etc.) is still a
+  // real countable quantity — keep the number and its own word as the unit label
+  // rather than reporting it as unparsed.
+  const cm = qtyStr.match(/^([\d.]+)\s*([A-Za-z][A-Za-z ]*)/);
+  if (cm) return {each:parseFloat(cm[1]), grams:null, unitLabel:cm[2].trim()};
+  return {each:null, grams:null, unitLabel:null};
+}
+function pdfParseYield(items){
+  const w0 = items.find(w=>pdfSquash(w.str)==='yield:' && w.x0>=230);
+  if (!w0) return null;
+  const sameLine = items.filter(w=>Math.abs(w.top-w0.top)<2 && w.x0>=230);
+  sameLine.sort((a,b)=>a.x0-b.x0);
+  const line = sameLine.map(w=>w.str).join(' ').trim().replace(/\s+/g,' ');
+  const m = line.match(/Yield:\s*([\d.]+)\s+([\d.]+)\s*(\*?\w+)\s*Servings/);
+  if (!m) return {raw:line};
+  return {raw:line, totalQty:parseFloat(m[1]), perServingQty:parseFloat(m[2]), unit:m[3]};
+}
+// The batch number's date IS the function/event date this production run was made for
+// (confirmed against real files — a "fri.pdf" export's batch date fell on a Friday, a
+// "wed.pdf" export's on a Wednesday), so it drives the same day-scheduling machinery
+// that xlsx-derived dishes get from a weekday named in their tab.
+function pdfParseBatDate(items){
+  const merged = items.find(w=>/^bat-?\d{2}\/\d{2}\/\d{4}$/.test(pdfSquash(w.str)));
+  if (merged){
+    const m = merged.str.match(/(\d{2}\/\d{2}\/\d{4})/);
+    return m ? m[1] : null;
+  }
+  const label = items.find(w=>/^bat-?$/.test(pdfSquash(w.str)));
+  if (!label) return null;
+  const candidates = items.filter(w=>/^\d{2}\/\d{2}\/\d{4}$/.test(pdfSquash(w.str)) && w.top>label.top && w.top-label.top<20 && Math.abs(w.x0-label.x0)<30);
+  candidates.sort((a,b)=>a.top-b.top);
+  return candidates.length ? candidates[0].str.trim() : null;
+}
+function pdfBatDateToWeekday(dateStr){
+  const m = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const d = new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+  if (isNaN(d.getTime())) return null;
+  const jsDay = d.getDay();
+  return WEEKDAYS[(jsDay+6)%7];
+}
+function pdfParseAllPages(pagesItems){
+  const rawPages = pagesItems.map((items,i)=>({page:i, items, title:pdfGetTitle(items)}));
+  const units = [];
+  let cur = null;
+  for (const rp of rawPages){
+    if (rp.title){
+      if (cur) units.push(cur);
+      cur = {startPage:rp.page, itemSets:[rp.items]};
+    } else if (cur){
+      cur.itemSets.push(rp.items);
+    }
+  }
+  if (cur) units.push(cur);
+  const finalUnits = units.map(u=>{
+    const firstItems = u.itemSets[0];
+    const title = pdfGetTitle(firstItems);
+    const categories = pdfGetCategoriesLine(firstItems);
+    const ingredients = pdfExtractIngredientRows(firstItems).map(row=>({...row, parsedQty:pdfParseQtyString(row.qtyRaw)}));
+    let yld = null;
+    for (const items of u.itemSets){ yld = pdfParseYield(items); if (yld) break; }
+    let batDate = null;
+    for (const items of u.itemSets){ batDate = pdfParseBatDate(items); if (batDate) break; }
+    // A sub-recipe marker can sit anywhere in the title, not just at the very end —
+    // e.g. "Native spiced eggplant(sub) GF VE" or "Caper yoghurt sauce(SUB)KG" — so
+    // check the whole title, not just its trailing characters.
+    const isSubRecipe = /\(sub\)/i.test(title);
+    return {startPage:u.startPage, title, categories, ingredients, yield:yld, batDate, isSubRecipe};
+  });
+  const dishes = [];
+  let curDish = null;
+  for (const u of finalUnits){
+    if (!u.isSubRecipe){ if (curDish) dishes.push(curDish); curDish = {main:u, subs:[]}; }
+    else if (curDish){ curDish.subs.push(u); }
+  }
+  if (curDish) dishes.push(curDish);
+  return {finalUnits, dishes};
+}
+// Per direct instruction: the preplist reads ONLY the front page of each dish — never a
+// sub-recipe's own page. A front-page line like "Pork Hock (SUB)" is taken exactly as
+// printed there (name + quantity) and left alone; it is NOT replaced or supplemented with
+// that sub-recipe's own raw ingredients. Those raw-ingredient quantities are for whoever
+// is producing the sub-recipe itself, from its own PDF page — mixing them into this dish's
+// list is what caused the confusion this was built to avoid. Every quantity on the front
+// page is therefore already a "cooked"/finished weight (the sub-recipe's own output, or a
+// ready-to-use purchased ingredient) rather than a raw input — see the on-page disclaimer.
+function pdfExplodeDish(dish){
+  return dish.main.ingredients.filter(i=>i.name).map(ing=>({
+    name: ing.name, qtyRaw: ing.qtyRaw, parsedQty: ing.parsedQty, note: null,
+  }));
+}
+// Whether any currently-loaded row came from a production-tool PDF (as opposed to an
+// Excel preplist) — used to decide whether to show the cooked-weight disclaimer at all.
+function pdfRowsPresent(rows){
+  return (rows||ROWS).some(r=>r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null);
+}
+function pdfCookedBannerHtml(rows){
+  if (!pdfRowsPresent(rows)) return '';
+  return `<div class="pdf-cooked-banner">ALL ITEMS IN THIS LIST ARE COOKED WEIGHT — refer to the production tool for raw weights</div>`;
+}
+function pdfQtyToDisplay(parsedQty){
+  if (parsedQty.grams!==null && parsedQty.grams!==undefined){
+    if (parsedQty.grams>=1000) return {value: pdfRoundTo(parsedQty.grams/1000,2), unit:'kg'};
+    return {value: pdfRoundTo(parsedQty.grams,1), unit:'g'};
+  }
+  if (parsedQty.each!==null && parsedQty.each!==undefined) return {value:parsedQty.each, unit: parsedQty.unitLabel || 'each'};
+  return {value:null, unit:''};
+}
+// Mirrors addRows(), but categorizes/dedups/stages off the clean ingredient name only
+// (never the appended raw/cooked note, which could otherwise confuse the keyword
+// matching) while still storing the fuller note text as what's actually displayed —
+// and stores the already-known total as a fixed batch amount rather than a per-pax
+// figure to be multiplied later (see computeTotal()). eventDay (a real weekday, from
+// the dish's own BAT/batch date) drives the same day-scheduling as the xlsx pipeline.
+function addPdfRows(dish, tasks, eventDay){
+  let lastCat = null, lastCore = null;
+  for (const t of tasks){
+    const cleanName = t.name.replace(/\s+/g,' ').trim();
+    let cat = categorize(cleanName, dish);
+    if (cat === null) continue;
+    // categorize() couldn't confidently place this one — it's not being silently
+    // guessed: it's flagged (the same orange "check" tag the xlsx pipeline uses) so
+    // whoever's reading the printed list knows to double-check that one themselves,
+    // rather than trusting an unmarked best-effort guess.
+    let flagged = false;
+    if (cat === 'REVIEW'){
+      if (lastCat && lastCat!=='REVIEW'){ cat = lastCat; flagged = true; }
+      else { cat = 'Vegetables'; flagged = true; }
+    }
+    const stageNum = classifyPrepStage(cleanName, cat, null);
+    lastCat = cat;
+    const core = coreIngredient(cleanName);
+    lastCore = core || lastCore;
+    const disp = pdfQtyToDisplay(t.parsedQty);
+    const taskLabel = cleanName + (t.note ? ' — ' + t.note : (disp.value===null ? ' ('+t.qtyRaw+')' : ''));
+    const day = eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '';
+    ROWS.push({
+      dish, task: taskLabel, qty:'', unit: disp.unit, section: cat, baseCategory: cat,
+      flagged, day, stageNum, pdfFixedTotal: disp.value,
+    });
+  }
+}
+// The pdf.js library now loads as an ES module (see <head>), which fetches and executes
+// asynchronously — unlike a classic script tag, there's no guarantee window.pdfjsLib is
+// set the instant this classic script runs. In practice a person has to open the panel and
+// choose a file before this is ever called, which is plenty of time, but this waits briefly
+// rather than failing outright on the rare chance the module is still loading.
+async function ensurePdfJsLoaded(){
+  if (window.pdfjsLib) return true;
+  for (let i=0; i<50; i++){
+    await new Promise(r=>setTimeout(r,100));
+    if (window.pdfjsLib) return true;
+  }
+  return false;
+}
+async function handlePdfFiles(fileList){
+  setStatus('Reading '+fileList.length+' PDF'+(fileList.length>1?'s':'')+' — production tool parsing can take a moment…');
+  if (!(await ensurePdfJsLoaded())){
+    setStatus('PDF reader failed to load — check your internet connection and try again.', 'err');
+    return;
+  }
+  const prevPdf = {ROWS, paxByDish, eventDayOverride, eventDateByDish};   // restored if nothing usable is found
+  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {};
+  let totalTasks = 0;
+  const dishNames = [];
+  const usedDishTitles = new Set(); // disambiguates the SAME dish uploaded twice at different
+                                     // scales/dates (e.g. two production-tool exports for the
+                                     // same recipe on different days) — each run is a distinct
+                                     // job with its own pax and prep days, so it must not
+                                     // silently collapse into one dish bucket.
+  try{
+    for (const file of fileList){
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+      const pagesItems = [];
+      for (let i=1; i<=pdf.numPages; i++){
+        const page = await pdf.getPage(i);
+        pagesItems.push(await pdfExtractPageItems(page));
+      }
+      const {dishes} = pdfParseAllPages(pagesItems);
+      dishes.forEach(d=>{
+        const tasks = pdfExplodeDish(d);
+        if (!tasks.length) return;
+        let dishTitle = d.main.title;
+        if (usedDishTitles.has(dishTitle)){
+          const suffix = d.main.batDate ? ' — for '+d.main.batDate : ' — run '+(usedDishTitles.size+1);
+          dishTitle = dishTitle + suffix;
+        }
+        usedDishTitles.add(dishTitle);
+        const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
+        if (eventDay) eventDayOverride[dishTitle] = eventDay;
+        if (d.main.batDate) eventDateByDish[dishTitle] = d.main.batDate;
+        addPdfRows(dishTitle, tasks, eventDay);
+        totalTasks += tasks.length;
+        dishNames.push(cleanDishName(dishTitle));
+        // The Yield line's *Each figure is this batch's actual covers/pax count (confirmed
+        // against real production tool exports) — record it for reference (e.g. the pax
+        // panel), even though PDF-derived quantities are already fixed batch totals and
+        // never get multiplied by it (see computeTotal()).
+        if (d.main.yield && /each/i.test(d.main.yield.unit||'') && paxByDish[dishTitle]===undefined){
+          paxByDish[dishTitle] = d.main.yield.totalQty;
+        }
+      });
+    }
+    document.getElementById('fileTag').textContent = fileList.length===1 ? fileList[0].name : fileList.length+' production tool PDFs';
+    if (totalTasks===0){
+      ({ROWS, paxByDish, eventDayOverride, eventDateByDish} = prevPdf);
+      setStatus('Could not find any ingredient rows in that PDF. PDF import reads production tool exports (a page per recipe with an "Ingredients:" table); for other layouts, upload the spreadsheet version or use the paste box. Your previous list has been kept.', 'err');
+      return;
+    }
+    const noteMsg = ' Raw ingredient weights only, with each sub-recipe\'s cooked yield noted alongside it — check the task text on each row.';
+    if (toolMode==='onetime'){
+      sourceInfo = {name: fileList.length===1?fileList[0].name:(fileList.length+' production tool PDFs'), loadedAt: new Date()};
+      setStatus('Sorted '+totalTasks+' raw ingredients from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+noteMsg, 'ok');
+      renderApp();
+      return;
+    }
+    const added = commitRowsToDatabase();
+    setStatus('Added '+added+' dish(es) to your recipe database from PDF ('+totalTasks+' tasks): '+dishNames.join(', ')+'.'+noteMsg, 'ok');
+    appMode = 'weekly';
+    renderApp();
+  } catch(err){
+    ({ROWS, paxByDish, eventDayOverride, eventDateByDish} = prevPdf);
+    setStatus('Could not read that PDF ('+(err && err.message ? err.message : 'unknown error')+'). It may be scanned, password-protected or damaged. Your previous list has been kept.', 'err');
+  }
+}
+
+document.getElementById('dropzone').addEventListener('click', ()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', e=>{
+  routeFiles(e.target.files);
+});
+['dragover','dragleave','drop'].forEach(evt=>{
+  document.getElementById('dropzone').addEventListener(evt, e=>{
+    e.preventDefault();
+    document.getElementById('dropzone').classList.toggle('drag', evt==='dragover');
+    if (evt==='drop') routeFiles(e.dataTransfer.files);
+  });
+});
+
+function handleFile(file){
+  if (typeof XLSX === 'undefined'){
+    setStatus('The spreadsheet reader could not load. This tool needs an internet connection when it opens — connect, reload the page, and try again.', 'err');
+    return;
+  }
+  setStatus('Reading '+file.name+' — this can take a moment on a big workbook…');
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const data = new Uint8Array(ev.target.result);
+      const wbObj = XLSX.read(data, {type:'array', cellDates:false, sheetStubs:false});
+      const prev = {ROWS, paxByDish, eventDateByDish};   // restored if this file turns out unreadable
+      ROWS = []; paxByDish = {}; eventDateByDish = {};
+      const {sheetsUsed, itemsFound, skipped, errored} = processWorkbook(wbObj);
+      if (itemsFound===0){
+        ({ROWS, paxByDish, eventDateByDish} = prev);
+        setStatus('Could not find any recipe rows in "'+file.name+'". Each dish needs a table with a column headed Item, Ingredient or Product (quantity and unit beside it), or a PAX cell above the list — or use the paste box. Your previous list has been kept.', 'err');
+        return;
+      }
+      document.getElementById('fileTag').textContent = file.name;
+      const dishNames = [];
+      ROWS.forEach(r=>{ const n=cleanDishName(r.dish); if(!dishNames.includes(n)) dishNames.push(n); });
+
+      if (toolMode==='onetime'){
+        sourceInfo = {name: file.name, loadedAt: new Date()};
+        let msg = 'Sorted '+itemsFound+' tasks into '+dishNames.length+' dishes: '+dishNames.join(', ')+'.';
+        if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
+        if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
+        setStatus(msg, errored.length ? 'err' : 'ok');
+        renderApp();
+        return;
+      }
+
+      const added = commitRowsToDatabase();
+      let msg = 'Added '+added+' dishes to your recipe database ('+itemsFound+' tasks): '+dishNames.join(', ')+'.';
+      if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
+      if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
+      setStatus(msg, errored.length ? 'err' : 'ok');
+      appMode = 'weekly';
+      renderApp();
+    } catch(err){
+      setStatus('Could not read that file ('+(err && err.message ? err.message : 'unknown error')+'). Please upload an .xlsx, .xls or .csv spreadsheet, or a production tool PDF.', 'err');
+    }
+  };
+  reader.onerror = () => setStatus('The browser could not open that file. Try saving a fresh copy and uploading again.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
+  const raw = document.getElementById('pasteBox').value;
+  if (!raw.trim()){ setStatus('Paste some rows first.', 'err'); return; }
+  const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+  const prevPaste = {ROWS, paxByDish, eventDateByDish};
+  ROWS = []; paxByDish = {}; eventDateByDish = {};
+  const items = [];
+  const numLike = v => /^\s*\d+([.,]\d+)?(\s*\/\s*\d+)?\s*[a-zA-Z]*\s*$/.test(v||'');
+  lines.forEach(line=>{
+    // Excel/Sheets paste = tab-separated; also accept commas or runs of 2+ spaces.
+    const parts = (line.includes('\t') ? line.split('\t') : (line.includes(',') ? line.split(',') : line.split(/\s{2,}/))).map(x=>x.trim());
+    if (parts.length && ITEM_HEADERS.has((parts[0]||'').toLowerCase())) return;   // skip a header line
+    const q = parts.findIndex((v,idx)=>idx>=1 && numLike(v));
+    if (q>=1) items.push({item: parts[q-1] || parts[0], qty: parts[q], unit: parts[q+1]||''});
+    else items.push({item: parts[0], qty:'', unit:''});
+  });
+  addRows('Pasted list', items);
+  if (ROWS.length===0){
+    ({ROWS, paxByDish, eventDateByDish} = prevPaste);
+    setStatus('Nothing usable in the pasted text. Paste rows copied from a spreadsheet: item, quantity, unit.', 'err');
+    return;
+  }
+  document.getElementById('fileTag').textContent = 'pasted rows';
+
+  if (toolMode==='onetime'){
+    sourceInfo = {name: 'Pasted rows (no file)', loadedAt: new Date()};
+    setStatus('Sorted '+ROWS.length+' pasted rows.', 'ok');
+    renderApp();
+    return;
+  }
+
+  const added = commitRowsToDatabase();
+  setStatus('Added '+added+' dish(es) — "Pasted list" — to your recipe database ('+items.length+' tasks).', 'ok');
+  appMode = 'weekly';
+  renderApp();
+});
+
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; document.getElementById('pasteBox').value=''; document.getElementById('fileInput').value='';
+  document.getElementById('fileTag').textContent='no file loaded';
+  sourceInfo = {name: null, loadedAt: null};
+  setStatus(''); renderApp();
+});
+
+document.getElementById('dbImportInput').addEventListener('change', e=>{
+  if (e.target.files[0]) importDatabaseFile(e.target.files[0]);
+});
+
+document.getElementById('bulkPaxBtn').addEventListener('click', ()=>{
+  const val = parseFloat(document.getElementById('bulkPax').value);
+  if (isNaN(val)) return;
+  Object.keys(dishList()).forEach(d=>{ paxByDish[d]=val; });
+  render();
+});
+
+function dishList(){
+  const seen = {};
+  ROWS.forEach(r=>{ seen[r.dish]=true; });
+  return seen;
+}
+
+function renderPaxPanel(){
+  const wrap = document.getElementById('paxPanelWrap');
+  const list = document.getElementById('paxList');
+  const dishes = Object.keys(dishList());
+  if (dishes.length===0){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  list.innerHTML = dishes.map(d=>{
+    const val = paxByDish[d]!==undefined ? paxByDish[d] : '';
+    const safe = d.replace(/"/g,'&quot;');
+    return `<div class="field" style="flex:1 1 220px;">
+      <label title="${safe}">${escapeHtml(cleanDishName(d))}</label>
+      <input type="text" inputmode="numeric" value="${val}" onchange="setPax('${encName(d)}', this.value)">
+    </div>`;
+  }).join('');
+}
+function setPax(encodedDish, val){
+  const dish = decodeURIComponent(encodedDish);
+  const n = parseFloat(val);
+  paxByDish[dish] = isNaN(n) ? undefined : n;
+  render();
+}
+
+document.getElementById('toggleStaffingBtn').addEventListener('click', ()=>{
+  const body = document.getElementById('staffingSettingsBody');
+  body.style.display = body.style.display==='none' ? 'block' : 'none';
+});
+document.getElementById('shiftHoursInput').addEventListener('change', function(){
+  const h = parseFloat(this.value);
+  if (!isNaN(h) && h>0) SHIFT_MINUTES = h*60;
+  render();
+});
+document.getElementById('bufferPercentInput').addEventListener('change', function(){
+  const p = parseFloat(this.value);
+  if (!isNaN(p) && p>=0) BUFFER_PERCENT = p;
+  render();
+});
+document.getElementById('qtyScalingToggle').addEventListener('change', function(){
+  QTY_SCALING_ON = this.checked;
+  render();
+});
+document.getElementById('qtyBaselineInput').addEventListener('change', function(){
+  const n = parseFloat(this.value);
+  if (!isNaN(n) && n>=0) QTY_BASELINE_KG = n;
+  render();
+});
+document.getElementById('qtyRateInput').addEventListener('change', function(){
+  const n = parseFloat(this.value);
+  if (!isNaN(n) && n>=0) QTY_RATE_MIN_PER_KG = n;
+  render();
+});
+function renderStaffingPanel(){
+  const wrap = document.getElementById('staffingPanelWrap');
+  if (ROWS.length===0){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  const row = document.getElementById('minutesPerSectionRow');
+  row.innerHTML = BASE_CATEGORIES.map(cat=>{
+    const val = MINUTES_PER_TASK[cat];
+    const safeCat = cat.replace(/'/g,"\\'");
+    return `<div class="field" style="flex:1 1 180px;">
+      <label>${escapeHtml(cat)}</label>
+      <input type="text" inputmode="numeric" value="${val}" onchange="setMinutesPerTask('${safeCat}', this.value)">
+      <div class="small" style="font-size:11px;color:var(--ink-soft);">min / task</div>
+    </div>`;
+  }).join('');
+  const stageRow = document.getElementById('stageMultiplierRow');
+  stageRow.innerHTML = [1,2,3,4].map(n=>{
+    return `<div class="field" style="flex:1 1 160px;">
+      <label>Stage ${n} — ${escapeHtml(STAGE_NAMES[n-1])}</label>
+      <input type="text" inputmode="numeric" value="${STAGE_MULTIPLIER[n]}" onchange="setStageMultiplier(${n}, this.value)">
+      <div class="small" style="font-size:11px;color:var(--ink-soft);">× multiplier</div>
+    </div>`;
+  }).join('');
+}
+function setMinutesPerTask(cat, val){
+  const n = parseFloat(val);
+  if (!isNaN(n) && n>=0) MINUTES_PER_TASK[cat] = n;
+  render();
+}
+function setStageMultiplier(stageNum, val){
+  const n = parseFloat(val);
+  if (!isNaN(n) && n>=0) STAGE_MULTIPLIER[stageNum] = n;
+  render();
+}
+
+// Per-dish, per-day staffing estimate: {day, minutes, chefs}[] in Monday→Sunday order,
+// only for days that dish actually has tasks on.
+function dishStaffingByDay(dish){
+  const rows = ROWS.filter(r=>r.dish===dish);
+  const byDay = {};
+  rows.forEach(r=>{
+    const d = r.day || 'Unscheduled';
+    byDay[d] = (byDay[d]||0) + estimateMinutes(r);
+  });
+  const order = [...WEEKDAYS, 'Unscheduled'];
+  return order.filter(d=>byDay[d]).map(d=>({day:d, minutes:byDay[d], chefs:chefsNeededForMinutes(byDay[d])}));
+}
+function staffingLineHtml(dish){
+  const staffing = dishStaffingByDay(dish);
+  if (staffing.length===0) return '';
+  return staffing.map(s=>`${s.day.slice(0,3)}: ${s.chefs} chef${s.chefs===1?'':'s'} (${fmtHours(s.minutes)})`).join(' · ');
+}
+
+function fmtDateTime(d){
+  if (!d) return '';
+  return d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) +
+    ' at ' + d.toLocaleTimeString('en-AU', {hour:'numeric', minute:'2-digit'});
+}
+
+function renderMasterSummary(){
+  const dishes = [];
+  ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
+  // Order by event day, Monday → Sunday; dishes with no event day set yet go last.
+  const sorted = [...dishes].sort((a,b)=>{
+    const ia = getEventDay(a) ? WEEKDAYS.indexOf(getEventDay(a)) : 99;
+    const ib = getEventDay(b) ? WEEKDAYS.indexOf(getEventDay(b)) : 99;
+    if (ia !== ib) return ia - ib;
+    return cleanDishName(a).localeCompare(cleanDishName(b));
+  });
+  const totalTasks = ROWS.length;
+  const paxKnown = sorted.filter(d=>paxByDish[d]!==undefined);
+  const paxSum = paxKnown.reduce((s,d)=>s+Number(paxByDish[d]),0);
+  const rowsHtml = sorted.map(d=>{
+    const pax = paxByDish[d];
+    const ev = getEventDay(d);
+    const evDate = getEventDateStr(d);
+    return `<tr><td>${ev?escapeHtml(ev):'<span class="needpax">no event day</span>'}</td><td>${evDate?escapeHtml(evDate):'—'}</td><td>${escapeHtml(cleanDishName(d))}</td><td>${pax!==undefined?pax:'<span class="needpax">not set</span>'}</td></tr>`;
+  }).join('');
+  const sourceLine = sourceInfo.name
+    ? `Sourced from: <b>${escapeHtml(sourceInfo.name)}</b> — loaded ${fmtDateTime(sourceInfo.loadedAt)}`
+    : 'Source: pasted rows';
+  return `
+  <div class="panel master-summary" id="masterSummaryPanel">
+    <div class="row no-print" style="justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">Preplist Summary — All Dishes &amp; Pax</h2>
+      <button class="secondary" onclick="printMasterSummary()" type="button">Print summary sheet</button>
+    </div>
+    <div class="meta" style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin:8px 0 14px;">
+      ${sourceLine} &nbsp;·&nbsp; ${sorted.length} dishes &nbsp;·&nbsp; ${totalTasks} total prep tasks
+      ${paxSum ? ' &nbsp;·&nbsp; ' + paxSum + ' total pax across dishes with pax set' : ''}
+    </div>
+    <div class="no-print" style="border:1px solid var(--line); border-radius:6px;">
+      <table><thead><tr><th style="width:14%">Day</th><th style="width:14%">Date</th><th style="width:52%">Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+    </div>
+  </div>
+  <div class="print-only" id="print-master-summary">
+    ${pdfCookedBannerHtml(ROWS)}
+    <div class="pax-topbar" style="font-size:15px;">${sourceLine}</div>
+    <div class="print-head">
+      <h2>Preplist Summary — All Dishes &amp; Pax</h2>
+      <div class="meta">${sorted.length} dishes &nbsp;·&nbsp; ${totalTasks} total prep tasks${paxSum ? ' · '+paxSum+' total pax' : ''}</div>
+    </div>
+    <table><thead><tr><th>Day</th><th>Date</th><th>Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+  </div>`;
+}
+
+// Printing a specific view (one dish / one section / one prep day / the master summary)
+// now opens a fresh, top-level browser tab and prints from there, rather than toggling
+// this page's own .print-only visibility and calling window.print() on this document.
+// Two reasons: a hosted/published copy of this page can run inside a wrapper the browser
+// treats as embedded, where a print call sometimes silently does nothing; and printing
+// from a dedicated tab means only the one view you asked for is ever on the page, with the
+// rest of the app never a factor. The whole stylesheet is copied across intact — the same
+// @media print rules apply either way, this just runs them in a context that reliably
+// reaches the browser's actual print dialog.
+// Resolves once, the first time it's needed, and is cached — window.claude.use() can
+// answer at any point after this script starts (never guaranteed on the first tick), so
+// every print call awaits this same cached promise rather than re-asking each time.
+let downloadsCapabilityPromise = null;
+function getDownloadsCapability(){
+  if (!downloadsCapabilityPromise){
+    downloadsCapabilityPromise = (async ()=>{
+      try{
+        if (window.claude && typeof window.claude.use === 'function'){
+          // Some browsers/embedding contexts never answer this call at all (rather than
+          // rejecting it) — without a timeout, print would just hang forever with no
+          // error and no fallback, which is exactly what "the button does nothing" looks
+          // like. Racing it against a timeout guarantees we always move on either way.
+          const timeout = new Promise(resolve=>setTimeout(()=>resolve(null), 1200));
+          return await Promise.race([window.claude.use('downloads'), timeout]);
+        }
+      }catch(e){}
+      return null;
+    })();
+  }
+  return downloadsCapabilityPromise;
+}
+function buildPrintDocHtml(target){
+  const styleTag = document.querySelector('style');
+  const styleHtml = styleTag ? styleTag.outerHTML : '';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    ${styleHtml}
+    <style>body{padding:24px;} .print-only{display:block !important;}</style>
+    </head><body>${target.outerHTML}</body></html>`;
+}
+// Printing a specific view (one dish / one section / one prep day / the master summary).
+// A page shared as a hosted link runs inside a wrapper where neither calling window.print()
+// on this document nor opening a plain new tab reliably reaches the browser's real print
+// dialog — both were tried here and neither held up. The platform's own "downloads"
+// capability is the one officially-supported way to hand the viewer a file out of that
+// wrapper, so that's tried first: it hands over a small standalone print-ready HTML page,
+// which the viewer opens themselves and prints from with Ctrl+P/Cmd+P — a completely
+// ordinary browser tab at that point, so printing there is never in question. Only when
+// that capability genuinely isn't available here does this fall back to the new-tab
+// attempt, for a plain downloaded copy of this file opened directly (no wrapper at all).
+async function printReadyHtml(fullHtml, filename){
+  setStatus('Preparing your printout…');
+  const downloads = await getDownloadsCapability();
+  if (downloads){
+    try{
+      await downloads.save({filename, data: fullHtml});
+      setStatus('Downloaded a print-ready page — open it, then press Ctrl+P (Cmd+P on Mac) to print.', 'ok');
+      return;
+    }catch(e){
+      if (e && e.code === 'declined') return; // the person said no — not an error to report
+      // any other rejection (capability not really usable here, etc.) — fall through below
+    }
+  }
+  let w;
+  try{ w = window.open('', '_blank'); }catch(e){ w = null; }
+  if (!w){
+    setStatus('Could not open a print window — allow pop-ups for this page and try again.', 'err');
+    return;
+  }
+  w.document.open();
+  w.document.write(fullHtml);
+  w.document.close();
+  const doPrint = ()=>{ try{ w.focus(); w.print(); }catch(e){} };
+  w.onload = doPrint;
+  setTimeout(doPrint, 400); // fallback if onload doesn't fire promptly
+}
+async function openPrintWindow(elementId){
+  const target = document.getElementById(elementId);
+  if (!target){ setStatus('Nothing to print yet.', 'err'); return; }
+  await printReadyHtml(buildPrintDocHtml(target), elementId+'.html');
+}
+// One combined print job covering every section (or every prep day) at once — for a
+// supervisor who wants the whole team's handouts as one physical stack rather than
+// printing each one separately. Builds each view's print blocks the same way the normal
+// per-section/per-day print does, just switches to that view briefly to gather all of
+// them, then restores whatever the person was actually looking at.
+async function printAllOfView(targetView, filename){
+  const savedView = viewMode;
+  const savedArea = document.getElementById('resultsArea').innerHTML;
+  viewMode = targetView;
+  render();
+  const blocks = [...document.querySelectorAll('#resultsArea .print-only')];
+  viewMode = savedView;
+  document.getElementById('resultsArea').innerHTML = savedArea;
+  if (!blocks.length){ setStatus('Nothing to print yet.', 'err'); return; }
+  const styleTag = document.querySelector('style');
+  const styleHtml = styleTag ? styleTag.outerHTML : '';
+  const bodyHtml = blocks.map((el,i)=>el.outerHTML+(i<blocks.length-1?'<div style="page-break-after:always;"></div>':'')).join('');
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    ${styleHtml}
+    <style>body{padding:24px;} .print-only{display:block !important;}</style>
+    </head><body>${bodyHtml}</body></html>`;
+  await printReadyHtml(fullHtml, filename);
+}
+function printAllSections(){ printAllOfView('section', 'all-sections-preplist.html'); }
+function printAllDays(){ printAllOfView('priority', 'all-days-preplist.html'); }
+function printMasterSummary(){
+  openPrintWindow('print-master-summary');
+}
+
+function render(){
+  const area = document.getElementById('resultsArea');
+  renderPaxPanel();
+  renderStaffingPanel();
+  if (ROWS.length===0){
+    const emptyMsg = (toolMode==='database' && appMode==='weekly')
+      ? 'Tick some dishes and hit Generate above to build this week\'s preplist.'
+      : 'Upload a preplist workbook or paste rows above to get started.';
+    area.innerHTML = `<div class="panel"><div class="empty"><div class="big">Nothing generated yet</div>${emptyMsg}</div></div>`;
+    return;
+  }
+
+  let html = pdfCookedBannerHtml(ROWS) + renderMasterSummary();
+
+  html += `<div class="viewtoggle no-print">
+    <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
+    <button class="${viewMode==='section'?'':'secondary'}" onclick="setView('section')" type="button">By team section</button>
+    <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
+  </div>
+  <div class="row no-print" style="margin-bottom:20px; gap:8px;">
+    <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one job)</button>
+    <button class="secondary" onclick="printAllDays()" type="button">🖨️ Print all prep days (one job)</button>
+  </div>`;
+
+  html += searchBarHtml();
+  html += printOrderControlHtml();
+  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : renderByPriority());
+  area.innerHTML = html;
+}
+
+function setView(v){ viewMode = v; render(); }
+
+// ---------- unified search (works across all 3 views) ----------
+let searchQuery = '';
+function setSearch(val){
+  searchQuery = val;
+  render();
+  const el = document.getElementById('globalSearch');
+  if (el){ el.focus(); const p = val.length; el.setSelectionRange(p,p); }
+}
+function clearSearch(){ searchQuery = ''; render(); }
+// One-click "show me every task like this one" — reuses the same core-ingredient
+// logic that groups wash→cook jobs together, so clicking "Find all" on a spinach
+// line filters the whole tool down to every spinach task, in any dish/section/day.
+function findSimilar(encodedCore){
+  const core = decodeURIComponent(encodedCore);
+  searchQuery = core;
+  render();
+  const el = document.getElementById('globalSearch');
+  if (el) el.focus();
+}
+function rowMatchesSearch(r){
+  const q = searchQuery.trim().toLowerCase();
+  if (!q) return true;
+  return cleanDishName(r.dish).toLowerCase().includes(q) ||
+    r.dish.toLowerCase().includes(q) ||
+    r.task.toLowerCase().includes(q) ||
+    r.section.toLowerCase().includes(q) ||
+    (leaderBySection[r.section]||'').toLowerCase().includes(q) ||
+    (r.day||'').toLowerCase().includes(q);
+}
+function searchBarHtml(){
+  const matchCount = searchQuery.trim() ? ROWS.filter(rowMatchesSearch).length : ROWS.length;
+  return `<div class="row no-print" style="margin-bottom:16px; align-items:center;">
+    <div class="field" style="flex:0 1 360px;">
+      <input type="text" id="globalSearch" placeholder="Search tasks, dishes, sections, leads, days…" value="${escapeHtml(searchQuery)}"
+        oninput="setSearch(this.value)" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:13px;">
+    </div>
+    ${searchQuery.trim() ? `<button class="ghost" onclick="clearSearch()" type="button">Clear</button>` : ''}
+    <div class="meta" style="font-size:12px; color:var(--ink-soft);">${searchQuery.trim() ? matchCount+' of '+ROWS.length+' tasks match' : ROWS.length+' tasks total'}</div>
+  </div>`;
+}
+// Small inline control appended after a task's text — clicking it filters to every
+// task sharing that same core ingredient, anywhere in the workbook.
+function findSimilarBtn(task){
+  const core = coreIngredient(task);
+  if (!core) return '';
+  return `<button class="findsimilar-btn no-print" onclick="findSimilar('${encName(core)}')" title="Show every '${escapeHtml(core)}' task">⌕ find all</button>`;
+}
+
+// ---------- BY DISH VIEW ----------
+function renderByDish(){
+  let dishes = [];
+  ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
+  dishes.sort((a,b)=> cleanDishName(a).localeCompare(cleanDishName(b)));
+  const totalDishCount = dishes.length;
+  if (searchQuery.trim()){
+    dishes = dishes.filter(d => ROWS.some(r=>r.dish===d && rowMatchesSearch(r)));
+  }
+  let html = '';
+  if (dishes.length===0){
+    html += `<div class="empty"><div class="big">No dishes match "${escapeHtml(searchQuery)}"</div>Try a different search term.</div>`;
+    return html;
+  }
+  if (searchQuery.trim()){
+    html += `<div class="meta" style="font-size:12px; color:var(--ink-soft); margin-bottom:12px;">${dishes.length} of ${totalDishCount} dishes have a match</div>`;
+  }
+  dishes.forEach(dish=>{
+    const rows = applySort(ROWS.filter(r=>r.dish===dish && rowMatchesSearch(r)), 'dish');
+    const pax = paxByDish[dish];
+    const dkey = dish.replace(/[^a-z0-9]/gi,'_');
+    const encDish = encName(dish);
+    const eventDay = getEventDay(dish);
+    const eventDateStr = getEventDateStr(dish);
+    const prepSpan = eventDay ? `${calendarDayForPrepNum(eventDay,1)} → ${eventDay}` : null;
+    html += `<div class="dish-block">
+      <div class="dish-head no-print">
+        <div>
+          <h3>${escapeHtml(cleanDishName(dish))}</h3>
+          <div class="meta">${rows.length} ingredients/tasks${prepSpan ? ' · Prep window: '+prepSpan : ''}${eventDateStr ? ' · Event date: '+escapeHtml(eventDateStr) : ''}</div>
+          ${staffingLineHtml(dish) ? `<div class="staffing-line">${staffingLineHtml(dish)}</div>` : ''}
+        </div>
+        <div class="section-actions">
+          <label style="font-size:11px;color:var(--ink-soft);">Event day:</label>
+          ${eventDaySelect(encDish, eventDay)}
+          <label style="font-size:11px;color:var(--ink-soft);">Pax:</label>
+          <input type="text" inputmode="numeric" style="width:70px;" class="leader-input"
+            value="${pax!==undefined?pax:''}" placeholder="—"
+            onchange="setPax('${encDish}', this.value)">
+          <button class="secondary" onclick="printDish('${encDish}')" type="button">Print</button>
+          <button class="ghost" onclick="copyDish('${encDish}')" type="button">Copy as text</button>
+        </div>
+      </div>
+      <div class="section-table-wrap no-print">
+        <table><thead><tr>
+          ${sortableTh('dish','task','Ingredient / prep task','width:36%')}
+          <th style="width:12%">Per pax</th>
+          ${sortableTh('dish','total','Total to make','width:16%')}
+          ${sortableTh('dish','section','Section','width:16%')}
+          ${sortableTh('dish','day','Prep day','width:20%')}
+        </tr></thead><tbody>`;
+    const meta = computeJobMeta(rows);
+    rows.forEach((r,i)=>{
+      const globalIdx = ROWS.indexOf(r);
+      const total = computeTotal(r);
+      const key = SECTION_KEY[r.section];
+      const {isContinuation, band} = meta[i];
+      const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
+      let totalCell;
+      if (total!==null) totalCell = `<b>${fmtNum(total)} ${escapeHtml(String(r.unit||''))}</b>`;
+      else if (isContinuation && noQty) totalCell = '<span class="contnote">uses batch above</span>';
+      else totalCell = '<span class="needpax">set pax →</span>';
+      html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+        <td class="qty total-cell">${totalCell}</td>
+        <td><select class="rowsel section-${key}" onchange="moveRow(${globalIdx}, this.value)">
+          ${SECTIONS.map(sec=>`<option ${sec===r.section?'selected':''}>${sec}</option>`).join('')}
+        </select></td>
+        <td>${daySelect(globalIdx, r.day)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>
+      <div class="print-only" id="print-dish-${dkey}">
+        ${pdfCookedBannerHtml(rows)}
+        <div class="pax-topbar">PAX / YIELD (COVERS): <b>${pax!==undefined?pax:'NOT SET'}</b>${eventDay?' &nbsp;·&nbsp; EVENT DAY: <b>'+escapeHtml(eventDay)+'</b>':''}${eventDateStr?' &nbsp;·&nbsp; EVENT DATE: <b>'+escapeHtml(eventDateStr)+'</b>':''}</div>
+        <div class="print-head">
+          <h2>${escapeHtml(cleanDishName(dish))}</h2>
+          ${staffingLineHtml(dish) ? `<div class="meta">Estimated staffing: ${staffingLineHtml(dish)}</div>` : ''}
+        </div>
+        <table><thead><tr><th>Ingredient / prep task</th><th>Per pax</th><th>Total to make</th><th>Section</th><th>Prep day</th></tr></thead><tbody>
+        ${rows.map((r,i)=>{
+          const total = computeTotal(r);
+          const cont = meta[i].isContinuation;
+          const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
+          const totalTxt = total!==null ? `${fmtNum(total)} ${r.unit||''}` : (cont && noQty ? 'uses batch above' : '—');
+          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${r.qty||'—'} ${r.unit||''}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
+        }).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+
+function printDish(encodedDish){
+  const dish = decodeURIComponent(encodedDish);
+  const dkey = dish.replace(/[^a-z0-9]/gi,'_');
+  openPrintWindow('print-dish-'+dkey);
+}
+
+function copyDish(encodedDish){
+  const dish = decodeURIComponent(encodedDish);
+  const rows = ROWS.filter(r=>r.dish===dish);
+  const pax = paxByDish[dish];
+  const evDay = getEventDay(dish);
+  const evDateStr = getEventDateStr(dish);
+  let text = `${cleanDishName(dish)}\nPax / Yield (covers): ${pax!==undefined?pax:'not set'}${evDay?' · Event day: '+evDay:''}${evDateStr?' · Event date: '+evDateStr:''}\n`;
+  if (pdfRowsPresent(rows)) text += `ALL ITEMS BELOW ARE COOKED WEIGHT — refer to the production tool for raw weights\n`;
+  text += `\n`;
+  rows.forEach(r=>{
+    const total = computeTotal(r);
+    text += `  [ ] ${r.task} — ${total!==null?fmtNum(total)+' '+(r.unit||''):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.section} · ${r.day||'day not set'}\n`;
+  });
+  navigator.clipboard.writeText(text).then(()=>{
+    setStatus('Copied '+dish+' list to clipboard.', 'ok');
+  }).catch(()=>{
+    setStatus('Could not copy — select and copy the printed list instead.', 'err');
+  });
+}
+
+// ---------- BY PREP DAY VIEW ----------
+function renderByPriority(){
+  // Groups by the ACTUAL calendar weekday each task needs to happen — resolved from
+  // that task's own dish event-day plus its Day 1-4 prep stage. Dishes with no event
+  // day detected/set yet fall into "Unscheduled" so they're never silently lost.
+  const order = [...WEEKDAYS, 'Unscheduled'];
+  const dayKeyMap = {'Monday':'day1','Tuesday':'day2','Wednesday':'day3','Thursday':'day4',
+    'Friday':'day1','Saturday':'day2','Sunday':'day3','Unscheduled':'review'};
+  const rowsByDay = {}; order.forEach(d=>rowsByDay[d]=[]);
+  ROWS.filter(rowMatchesSearch).forEach(r=>{ rowsByDay[r.day || 'Unscheduled'].push(r); });
+
+  let html = '<div class="summary no-print">';
+  order.forEach(d=>{
+    if (rowsByDay[d].length===0) return;
+    const key = dayKeyMap[d];
+    const totalMin = rowsByDay[d].reduce((s,r)=>s+estimateMinutes(r),0);
+    const chefs = chefsNeededForMinutes(totalMin);
+    const gap = staffingGap(d, chefs);
+    let gapLine = '';
+    if (gap!==null){
+      gapLine = gap<0 ? `<div class="lead" style="color:var(--prot); font-weight:700;">Short by ${Math.abs(gap)}</div>`
+        : gap>0 ? `<div class="lead" style="color:var(--veg1); font-weight:700;">+${gap} spare</div>`
+        : `<div class="lead" style="font-weight:700;">Exactly covered</div>`;
+    }
+    html += `<div class="sumcard ${key}"><div class="n">${chefs}</div><div class="lbl">${d}</div><div class="lead">${rowsByDay[d].length} tasks · ${fmtHours(totalMin)}</div>${gapLine}</div>`;
+  });
+  html += '</div>';
+  html += consolidateToggleHtml();
+
+  order.forEach(d=>{
+    const rowsForDay = applySort(rowsByDay[d], 'priority');
+    if (rowsForDay.length===0) return;
+    const key = dayKeyMap[d];
+    const heading = d==='Unscheduled' ? 'Unscheduled — set an event day on these dishes' : d;
+    const totalMin = rowsForDay.reduce((s,r)=>s+estimateMinutes(r),0);
+    const chefs = chefsNeededForMinutes(totalMin);
+    const gap = (d!=='Unscheduled') ? staffingGap(d, chefs) : null;
+    let gapText = '';
+    if (gap!==null){
+      gapText = gap<0 ? ` · <b style="color:var(--prot);">short by ${Math.abs(gap)}</b>`
+        : gap>0 ? ` · <b style="color:var(--veg1);">${gap} spare</b>`
+        : ` · <b>exactly covered</b>`;
+    }
+    const rosterInput = d!=='Unscheduled'
+      ? `<label style="font-size:11px;color:var(--ink-soft); margin-left:10px;">Rostered:</label>
+         <input type="text" inputmode="numeric" class="leader-input" style="width:60px;" placeholder="—"
+           value="${rosteredChefs[d]!==undefined?rosteredChefs[d]:''}" onchange="setRosteredChefs('${d}', this.value)">`
+      : '';
+    const groups = consolidateOn ? buildConsolidatedGroups(rowsForDay) : null;
+    const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForDay.length} tasks)` : `${rowsForDay.length} tasks`;
+    html += `<div class="section-head no-print" style="background:var(--${key}-bg);">
+      <div><h3 style="color:var(--${key})">${heading}</h3><div class="meta">${rowCountLabel} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)${gapText}</div></div>
+      <div class="section-actions">
+        ${rosterInput}
+        <button class="secondary" onclick="printPriority('${key}-${d}')" type="button">Print handout</button>
+        <button class="ghost" onclick="copyPriority('${d}', '${key}-${d}')" type="button">Copy as text</button>
+      </div>
+    </div>
+    <div class="section-table-wrap no-print">`;
+
+    if (consolidateOn){
+      html += `<table><thead><tr>
+        <th style="width:32%">Task</th>
+        <th style="width:26%">Dishes</th>
+        <th style="width:12%">Total needed</th>
+        <th style="width:14%">Section</th>
+        <th style="width:10%">Lead</th>
+        <th style="width:6%"></th>
+      </tr></thead><tbody>`;
+      groups.forEach(g=>{
+        const isMerged = g.rows.length>1;
+        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
+        html += `<tr class="${isMerged?'job-band-1':''}">
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
+          <td class="dish">${dishList}</td>
+          <td class="qty">${totalCell}</td>
+          <td>${escapeHtml(g.section)}</td>
+          <td>${escapeHtml(leaderBySection[g.section] || '—')}</td>
+          <td>${isMerged ? '' : `<button class="ghost" onclick="setConsolidate(false)" type="button" style="font-size:10px;">edit</button>`}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    } else {
+    html += `<table><thead><tr>
+        ${sortableTh('priority','dish','Dish','width:15%')}
+        ${sortableTh('priority','task','Task','')}
+        ${sortableTh('priority','total','Total needed','width:10%')}
+        ${sortableTh('priority','section','Section','width:13%')}
+        ${sortableTh('priority','lead','Lead','width:10%')}
+        <th style="width:18%">Move to day</th>
+      </tr></thead>
+      <tbody>`;
+    const meta = computeJobMeta(rowsForDay);
+    rowsForDay.forEach((r,i)=>{
+      const globalIdx = ROWS.indexOf(r);
+      const total = computeTotal(r);
+      const {isContinuation, band} = meta[i];
+      const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
+      const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+        : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
+      const evDay = getEventDay(r.dish);
+      html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
+        <td class="dish">${escapeHtml(cleanDishName(r.dish))}${evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:''}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="qty">${totalCell}</td>
+        <td>${r.section}</td>
+        <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
+        <td>${daySelect(globalIdx, r.day)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    }
+
+    let printRowsHtml2;
+    if (consolidateOn){
+      printRowsHtml2 = groups.map(g=>{
+        const isMerged = g.rows.length>1;
+        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
+        return `<tr class="${isMerged?'job-band-1':''}">
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
+          <td class="dish">${dishList}</td>
+          <td class="qty">${totalCell}</td>
+          <td>${escapeHtml(g.section)}</td>
+          <td>${escapeHtml(leaderBySection[g.section] || '—')}</td>
+        </tr>`;
+      }).join('');
+    } else {
+      const pMeta = computeJobMeta(rowsForDay);
+      printRowsHtml2 = rowsForDay.map((r,i)=>{
+        const total = computeTotal(r);
+        const {isContinuation, band} = pMeta[i];
+        const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
+        const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+          : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
+        const evDay = getEventDay(r.dish);
+        return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
+          <td class="dish">${escapeHtml(cleanDishName(r.dish))}${evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:''}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
+          <td class="qty">${totalCell}</td>
+          <td>${escapeHtml(r.section)}</td>
+          <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
+        </tr>`;
+      }).join('');
+    }
+    html += `<div class="print-only" id="print-priority-${key}-${d}">
+      ${pdfCookedBannerHtml(rowsForDay)}
+      ${paxReferenceBlock(rowsForDay)}
+      <div class="print-head">
+        <h2>${heading}</h2>
+        <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForDay.length+' tasks)' : rowsForDay.length+' tasks'} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)</div>
+      </div>
+      <table><thead>${consolidateOn
+        ? '<tr><th style="width:32%">Task</th><th style="width:26%">Dishes</th><th style="width:12%">Total needed</th><th style="width:14%">Section</th><th style="width:10%">Lead</th></tr>'
+        : '<tr><th style="width:15%">Dish</th><th>Task</th><th style="width:10%">Total needed</th><th style="width:13%">Section</th><th style="width:10%">Lead</th></tr>'}</thead>
+      <tbody>
+      ${printRowsHtml2}
+      </tbody></table>
+    </div>`;
+  });
+  return html;
+}
+
+function printPriority(key){
+  openPrintWindow('print-priority-'+key);
+}
+
+function copyPriority(label, key){
+  const rowsForDay = ROWS.filter(r=> (r.day || 'Unscheduled') === label);
+  let text = `${label}\n`;
+  if (pdfRowsPresent(rowsForDay)) text += `ALL ITEMS BELOW ARE COOKED WEIGHT — refer to the production tool for raw weights\n`;
+  text += `\n`;
+  if (consolidateOn){
+    const groups = buildConsolidatedGroups(rowsForDay);
+    groups.forEach(g=>{
+      const totalTxt = g.hasTotal ? `${fmtNum(g.total)} ${g.unit||''}` : '(set pax for total)';
+      text += `  [ ] ${g.taskLabel} — ${totalTxt} · ${g.section} · ${leaderBySection[g.section] || 'lead TBC'}${g.rows.length>1 ? ' — for: '+g.dishes.map(cleanDishName).join(', ') : ''}\n`;
+    });
+  } else {
+    const byDish = {};
+    rowsForDay.forEach(r=>{ (byDish[r.dish] = byDish[r.dish]||[]).push(r); });
+    Object.keys(byDish).forEach(dish=>{
+      const evDay = getEventDay(dish);
+      text += cleanDishName(dish) + (evDay ? ` (event: ${evDay})` : '') + '\n';
+      byDish[dish].forEach(r=>{
+        const total = computeTotal(r);
+        text += `  [ ] ${r.task} — ${fmtNum(total)} ${total!==null?(r.unit||''):'(set pax for total)'} · ${r.section} · ${leaderBySection[r.section] || 'lead TBC'}\n`;
+      });
+      text += '\n';
+    });
+  }
+  navigator.clipboard.writeText(text).then(()=>{
+    setStatus('Copied '+label+' list to clipboard.', 'ok');
+  }).catch(()=>{
+    setStatus('Could not copy — select and copy the printed list instead.', 'err');
+  });
+}
+
+// ---------- BY SECTION VIEW ----------
+function renderBySection(){
+  const counts = {}; SECTIONS.forEach(s=>counts[s]=0);
+  let flaggedCount=0;
+  ROWS.filter(rowMatchesSearch).forEach(r=>{ counts[r.section]++; if (r.flagged) flaggedCount++; });
+
+  let html = '<div class="summary no-print">';
+  SECTIONS.forEach(s=>{
+    const key = SECTION_KEY[s];
+    const active = activeFilter===s ? 'active' : '';
+    html += `<div class="sumcard ${key} ${active}" onclick="setFilter('${s}')">
+      <div class="n">${counts[s]}</div><div class="lbl">${s}</div>
+      <div class="lead">Lead: ${escapeHtml(leaderBySection[s] || 'unassigned')}</div>
+    </div>`;
+  });
+  const reviewActive = activeFilter==='REVIEW' ? 'active':'';
+  html += `<div class="sumcard review ${reviewActive}" onclick="setFilter('REVIEW')">
+      <div class="n">${flaggedCount}</div><div class="lbl">Flagged / check</div>
+      <div class="lead">Low-confidence lines</div>
+    </div>`;
+  html += `<div class="sumcard" style="display:flex;align-items:center;justify-content:center;background:#fff;cursor:pointer;" onclick="setFilter('all')"><b>Show all sections</b></div>`;
+  html += '</div>';
+  html += consolidateToggleHtml();
+
+  const sectionsToShow = activeFilter==='all' ? SECTIONS : (activeFilter==='REVIEW' ? SECTIONS : [activeFilter]);
+
+  sectionsToShow.forEach(s=>{
+    const key = SECTION_KEY[s];
+    const rowsForSection = applySort(ROWS.filter(r=> r.section===s && (activeFilter!=='REVIEW' || r.flagged) && rowMatchesSearch(r)), 'section');
+    if (rowsForSection.length===0) return;
+    const groups = consolidateOn ? buildConsolidatedGroups(rowsForSection) : null;
+    const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForSection.length} tasks)` : `${rowsForSection.length} tasks`;
+    html += `<div class="section-head no-print" style="background:var(--${key}-bg);">
+      <div><h3 style="color:var(--${key})">${s}</h3><div class="meta">${rowCountLabel}</div></div>
+      <div class="section-actions">
+        <input type="text" class="leader-input" placeholder="Team leader name" maxlength="40"
+          value="${escapeHtml(leaderBySection[s]||'')}" onchange="setLeader('${s}', this.value)"
+          style="padding:7px 10px; border:1px solid var(--line); border-radius:var(--radius); font-size:12.5px; min-width:150px; background:#fff;">
+        <button class="secondary" onclick="printSection('${s}')" type="button">Print handout</button>
+        <button class="ghost" onclick="copySection('${s}')" type="button">Copy as text</button>
+      </div>
+    </div>
+    <div class="section-table-wrap no-print">`;
+
+    if (consolidateOn){
+      html += `<table><thead><tr>
+        <th style="width:34%">Task</th>
+        <th style="width:26%">Dishes</th>
+        <th style="width:14%">Total needed</th>
+        <th style="width:16%">Prep day</th>
+        <th style="width:10%"></th>
+      </tr></thead><tbody>`;
+      groups.forEach(g=>{
+        const isMerged = g.rows.length>1;
+        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
+        html += `<tr class="${isMerged?'job-band-1':''}">
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
+          <td class="dish">${dishList}</td>
+          <td class="qty">${totalCell}</td>
+          <td>${escapeHtml(g.day||'not set')}</td>
+          <td>${isMerged ? '' : `<button class="ghost" onclick="setConsolidate(false)" type="button" style="font-size:10px;">edit</button>`}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    } else {
+    html += `<table><thead><tr>
+        ${sortableTh('section','dish','Dish','width:16%')}
+        ${sortableTh('section','task','Task','')}
+        <th style="width:8%">Pax</th>
+        <th style="width:9%">Per pax</th>
+        ${sortableTh('section','total','Total needed','width:11%')}
+        <th style="width:13%">Section</th>
+        ${sortableTh('section','day','Prep day','width:16%')}
+      </tr></thead>
+      <tbody>`;
+    const meta = computeJobMeta(rowsForSection);
+    rowsForSection.forEach((r,idx)=>{
+      const globalIdx = ROWS.indexOf(r);
+      const total = computeTotal(r);
+      const pax = paxByDish[r.dish];
+      const {isContinuation, band} = meta[idx];
+      const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
+      const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+        : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
+      html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
+        <td class="dish">${escapeHtml(cleanDishName(r.dish))}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
+        <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+        <td class="qty">${totalCell}</td>
+        <td><select class="rowsel" onchange="moveRow(${globalIdx}, this.value)">
+          ${SECTIONS.map(sec=>`<option ${sec===r.section?'selected':''}>${sec}</option>`).join('')}
+        </select></td>
+        <td>${daySelect(globalIdx, r.day)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    }
+
+    // print-only version — literally the same table, columns, and classes as the
+    // on-screen view above (dish/task/qty styling, job-band row striping, flagtags),
+    // just with the interactive controls swapped for their plain-text equivalent.
+    let printRowsHtml;
+    if (consolidateOn){
+      printRowsHtml = groups.map(g=>{
+        const isMerged = g.rows.length>1;
+        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
+        return `<tr class="${isMerged?'job-band-1':''}">
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
+          <td class="dish">${dishList}</td>
+          <td class="qty">${totalCell}</td>
+          <td class="pf-day">${escapeHtml(g.day||'not set')}</td>
+        </tr>`;
+      }).join('');
+    } else {
+      const printMeta = computeJobMeta(rowsForSection);
+      printRowsHtml = rowsForSection.map((r,i)=>{
+        const total = computeTotal(r);
+        const pax = paxByDish[r.dish];
+        const {isContinuation, band} = printMeta[i];
+        const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
+        const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+          : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
+        return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
+          <td class="dish">${escapeHtml(cleanDishName(r.dish))}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
+          <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
+          <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+          <td class="qty">${totalCell}</td>
+          <td class="pf-section">${escapeHtml(r.section)}</td>
+          <td class="pf-day">${escapeHtml(r.day||'not set')}</td>
+        </tr>`;
+      }).join('');
+    }
+    html += `<div class="print-only" id="print-${key}">
+      ${pdfCookedBannerHtml(rowsForSection)}
+      ${paxReferenceBlock(rowsForSection)}
+      <div class="print-head">
+        <h2>${s} — ${escapeHtml(leaderBySection[s] || 'Team Leader TBC')}</h2>
+        <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForSection.length+' tasks)' : rowsForSection.length+' tasks'}</div>
+      </div>
+      <table><thead>${consolidateOn
+        ? '<tr><th style="width:34%">Task</th><th style="width:26%">Dishes</th><th style="width:14%">Total needed</th><th style="width:16%">Prep day</th></tr>'
+        : '<tr><th style="width:16%">Dish</th><th>Task</th><th style="width:8%">Pax</th><th style="width:9%">Per pax</th><th style="width:11%">Total needed</th><th style="width:13%">Section</th><th style="width:16%">Prep day</th></tr>'}</thead>
+      <tbody>
+      ${printRowsHtml}
+      </tbody></table>
+    </div>`;
+  });
+  return html;
+}
+
+function paxReferenceBlock(rowsSubset){
+  const dishes = [];
+  rowsSubset.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
+  if (dishes.length===0) return '';
+  return `<div class="pax-ref">
+    <div class="pax-ref-title">Pax / Yield (covers) &amp; event date per dish</div>
+    <table class="pax-ref-table"><tbody>
+      ${dishes.map(d=>{
+        const eventDay = getEventDay(d);
+        const eventDateStr = getEventDateStr(d);
+        const pax = paxByDish[d]!==undefined ? paxByDish[d] : 'not set';
+        const dateBits = [eventDay, eventDateStr].filter(Boolean).join(' ');
+        return `<tr><td>${escapeHtml(cleanDishName(d))}</td><td>${pax}${dateBits?' · '+escapeHtml(dateBits):''}</td></tr>`;
+      }).join('')}
+    </tbody></table>
+  </div>`;
+}
+
+function coreIngredient(taskText){
+  let s = (taskText||'').toLowerCase();
+  s = s.replace(/\([^)]*\)/g,' ');
+  s = s.replace(/^(wash|trim|blanch|steam|saut[ée]|cook|pick|portion|make|prep|slice|dice|peel|roast|glaze|grill|sear|marinate|brine|bag|deep\s*fry|fry|crumb|roll|press|chill|freeze|thaw|reduce|whisk|blend|mix|collect|weigh|cut|julienne|shred|squeeze|drain|strain|wrap|tray|plate)\b\.?\s*/,'');
+  s = s.split('/')[0];
+  s = s.replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();
+  const words = s.split(' ').filter(Boolean);
+  return words.slice(0,2).join(' ');
+}
+
+function computeJobMeta(rows){
+  const meta = [];
+  let band = 0, currentCore = null, currentDish = null;
+  rows.forEach(r=>{
+    const core = coreIngredient(r.task);
+    const sameDish = (r.dish === currentDish);
+    const isContinuation = sameDish && currentDish!==null && (r.flagged || !core || core === currentCore);
+    if (!isContinuation){ band = 1 - band; currentCore = core; }
+    else if (core){ currentCore = core; }
+    currentDish = r.dish;
+    meta.push({isContinuation, band});
+  });
+  return meta;
+}
+
+// ---------- cross-dish consolidation ----------
+// The same simple prep (e.g. "Wash spinach") often shows up separately for every dish
+// that needs it, which is what makes a multi-dish list feel messy. When switched on,
+// identical tasks — same normalized wording, same unit, same day — get merged into one
+// line with a combined total, instead of one line per dish. Off by default keeps the
+// full one-line-per-dish detail if that's what's wanted instead.
+let consolidateOn = true;
+function setConsolidate(checked){ consolidateOn = checked; render(); }
+function taskSignature(task){
+  let t = norm(task);
+  t = t.replace(/\([^)]*\)/g,' ');
+  t = t.replace(/\d+(\.\d+)?\s*(cm|kg|g|ml|l|lt|pc|pcs|portion|portions|per|each|ea|hour|hours|hr|hrs|min|mins|deg|degc|%|percent)\b/g,' ');
+  t = t.replace(/[^a-z\s]/g,' ');
+  t = t.replace(/\s+/g,' ').trim();
+  return t;
+}
+function cleanTaskLabel(task){
+  return task.replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim() || task;
+}
+// Groups rows that are the literal same task (same wording, same unit, same day) across
+// different dishes. Rows whose total can't be computed (no pax set) are never merged —
+// summing an unknown with a known would be misleading — they stay as their own singleton.
+function buildConsolidatedGroups(rows){
+  const groups = {}; const order = [];
+  rows.forEach(r=>{
+    const total = computeTotal(r);
+    const unitKey = (r.unit||'').toLowerCase().trim();
+    const sig = taskSignature(r.task);
+    const key = (total===null || !sig) ? 'single-'+order.length+'-'+Math.random() : sig+'|'+(r.day||'')+'|'+r.section+'|'+unitKey;
+    if (!groups[key]){
+      groups[key] = {taskLabel: cleanTaskLabel(r.task), unit:r.unit, total:0, hasTotal:false,
+        day:r.day, section:r.section, rows:[], dishes:[]};
+      order.push(key);
+    }
+    const g = groups[key];
+    g.rows.push(r);
+    if (!g.dishes.includes(r.dish)) g.dishes.push(r.dish);
+    if (total!==null){ g.total += total; g.hasTotal = true; }
+    const label = cleanTaskLabel(r.task);
+    if (label.length < g.taskLabel.length) g.taskLabel = label;
+  });
+  return order.map(k=>groups[k]);
+}
+function consolidateToggleHtml(){
+  return `<label class="no-print" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; cursor:pointer;">
+    <input type="checkbox" ${consolidateOn?'checked':''} onchange="setConsolidate(this.checked)" style="width:auto;">
+    Group identical tasks across dishes into one line (recommended — keeps long lists readable)
+  </label>`;
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const DISH_NAME_ALIASES = {
+  'bara':'Barramundi','cutaway - bara':'Barramundi','cutaway-bara':'Barramundi','barramundi':'Barramundi',
+  '2026 barra main':'Barramundi',
+  'cutaway - beef':'Beef Fillet','cutaway-beef':'Beef Fillet','2026 beef eye fillet mains':'Beef Fillet',
+  'beef mains':'Beef Fillet',
+  'cutaway - eggplant dietary':'Eggplant (Dietary)','cutaway-eggplant dietary':'Eggplant (Dietary)',
+  '2026 18 hour braised beef cheek':'Beef Cheek','beef cheek 2024':'Beef Cheek',
+  'chicken entree 2024':'Chicken','2026 chicken mosaic main':'Chicken Mosaic',
+  'roulard 2':'Chicken Roulade','chicken roulade':'Chicken Roulade',
+  'ravioli':'Ravioli','2026 ravioli entree':'Ravioli','2026 agnolotti entree':'Agnolotti',
+  'lamb rump':'Lamb Rump','2026 lamb rump main':'Lamb Rump',
+  '2026 lamb two-ways main':'Lamb Two-Ways','lamb shoulder mains':'Lamb Shoulder',
+  '2026 bannockburn chicken main':'Bannockburn Chicken','chicken entree (bannockburn)':'Bannockburn Chicken',
+  'country style chicken mains':'Country Chicken',
+  'slow cooked short rib':'Short Rib',
+  'pork belly main':'Pork Belly','2026 pork entree':'Pork',
+  '2026 duck entree':'Duck','2026 salmon main':'Salmon',
+  'hasselback potato':'Hasselback Potato','dietary entree (hassleback)':'Hasselback (Dietary)',
+  '2026 cabbage brik dietary':'Cabbage Brik (Dietary)',
+  '2026 eggplant steak dietary':'Eggplant Steak (Dietary)',
+};
+function cleanDishName(raw){
+  raw = (raw===undefined || raw===null) ? '' : String(raw);
+  let t = raw.trim();
+  const lower = t.toLowerCase().replace(/\s+/g,' ');
+  if (DISH_NAME_ALIASES[lower]) return DISH_NAME_ALIASES[lower];
+  t = t.replace(/^copy of\s+/i, '');        // "Copy of X" -> "X"
+  t = t.replace(/^\d{4}\s+/, '');           // leading year: "2026 Chicken..."
+  t = t.replace(/\s+\d{4}$/, '');           // trailing year: "...Chicken 2024"
+  t = t.replace(/^cutaway\s*-\s*/i, '');    // "CUTAWAY - X"
+  t = t.replace(/^entree\s*plated\s*-?\s*/i, ''); // "Entree Plated- X"
+  t = t.replace(/^\d+\s*hour\s+/i, '');     // "18 Hour Braised X" -> "Braised X"
+  t = t.replace(/\bbraised\b/gi, '').trim();
+  t = t.replace(/\bhass?leback\b/gi, 'Hasselback');
+  t = t.replace(/\s+/g,' ').trim();
+  if (t === t.toUpperCase() || t === t.toLowerCase()){
+    t = t.replace(/\w\S*/g, w => w.charAt(0).toUpperCase()+w.slice(1).toLowerCase());
+  }
+  t = t.replace(/\bMains?\b/gi,'').replace(/\bEntrees?\b/gi,'').replace(/\s+/g,' ').trim();
+  if (/\bDietary\b/i.test(t) && !/\(.*dietary.*\)/i.test(t)){
+    t = t.replace(/\bDietary\b/gi,'').replace(/\s+/g,' ').trim();
+    const m = t.match(/^(.*)\(([^)]*)\)\s*$/);
+    if (m){
+      const base = m[1].trim(), inner = m[2].trim();
+      t = base ? `${base} (${inner}, Dietary)` : `${inner} (Dietary)`;
+    } else if (t){
+      t = `${t} (Dietary)`;
+    } else {
+      t = 'Dietary';
+    }
+  }
+  t = t.replace(/\(\s*/g,'(').replace(/\s*\)/g,')').replace(/\s+/g,' ').trim();
+  return t || raw;
+}
+function setFilter(s){ activeFilter = s; render(); }
+function setLeader(section, name){ leaderBySection[section] = (name||'').trim(); render(); }
+function moveRow(idx, newSection){ ROWS[idx].section = newSection; ROWS[idx].flagged=false; render(); }
+
+function printSection(section){
+  const key = SECTION_KEY[section];
+  openPrintWindow('print-'+key);
+}
+
+function copySection(section){
+  const rows = ROWS.filter(r=>r.section===section);
+  const leader = leaderBySection[section] || 'unassigned';
+  let text = `${section} — Lead: ${leader}\n`;
+  if (pdfRowsPresent(rows)) text += `ALL ITEMS BELOW ARE COOKED WEIGHT — refer to the production tool for raw weights\n`;
+  text += `\n`;
+  if (consolidateOn){
+    const groups = buildConsolidatedGroups(rows);
+    groups.forEach(g=>{
+      const totalTxt = g.hasTotal ? `${fmtNum(g.total)} ${g.unit||''}` : '(set pax for total)';
+      text += `  [ ] ${g.taskLabel} — ${totalTxt} · ${g.day||'day not set'}${g.rows.length>1 ? ' — for: '+g.dishes.map(cleanDishName).join(', ') : ''}\n`;
+    });
+  } else {
+    const byDish = {};
+    rows.forEach(r=>{ (byDish[r.dish] = byDish[r.dish]||[]).push(r); });
+    Object.keys(byDish).forEach(dish=>{
+      const pax = paxByDish[dish];
+      text += cleanDishName(dish) + (pax!==undefined ? ` (${pax} pax)` : ' (pax not set)') + '\n';
+      byDish[dish].forEach(r=>{
+        const total = computeTotal(r);
+        text += `  [ ] ${r.task} — ${fmtNum(total)} ${total!==null?(r.unit||''):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.day||'day not set'}\n`;
+      });
+      text += '\n';
+    });
+  }
+  navigator.clipboard.writeText(text).then(()=>{
+    setStatus('Copied '+section+' list to clipboard.', 'ok');
+  }).catch(()=>{
+    setStatus('Could not copy — select and copy the printed list instead.', 'err');
+  });
+}
+
+loadDatabase();
+loadOnetimeSession();
+const hasExistingDb = Object.keys(dishDatabase).length>0;
+toolMode = (ROWS && ROWS.length>0) ? 'onetime' : (hasExistingDb ? 'database' : 'onetime');
+appMode = hasExistingDb ? 'weekly' : 'database';
+renderApp();
+
+
+
+</script>
+</body>
+</html>
