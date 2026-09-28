@@ -3,10 +3,14 @@
 
     python3 build_offline.py            # uses ./vendor, downloads anything missing
     python3 build_offline.py --src index.html
+    python3 build_offline.py --edition pro   # Pro build (pro branch): unlocked offline edition
 
 Outputs:
     dist/Preplist-Sorter-offline.html   one self-contained HTML file (no network needed)
     dist/Preplist-Sorter-Windows.zip    "Preplist Sorter.html" + "READ ME FIRST.txt"
+  --edition pro (never overwrites the free files above):
+    dist/Prepline-Pro-offline.html      same, with LICENSE_CONFIG.edition = 'offline-pro' (Pro unlocked)
+    dist/Prepline-Pro-Windows.zip       "Prepline Pro.html" + "READ ME FIRST.txt"
 
 How the CDN dependencies are replaced:
   * SheetJS xlsx 0.18.5   -> inlined in a classic <script> (same global XLSX as before).
@@ -91,8 +95,27 @@ def replace_once(html, old, new, what):
         sys.exit(f"expected exactly one {what} in source, found {n}")
     return html.replace(old, new)
 
-def build(src):
+README_PRO = """Prepline Pro - offline Windows edition (works offline, no install needed)
+
+1. Unzip: right-click "Prepline-Pro-Windows.zip" and choose "Extract All...", then click Extract.
+2. Open the extracted folder and double-click "Prepline Pro.html" (it opens in Edge or Chrome).
+3. Optional: right-click "Prepline Pro.html" > Send to > Desktop (create shortcut) for a desktop icon.
+
+No internet connection, Python, installer or admin rights are required.
+This copy is licensed to the Prepline Pro purchaser. Please don't share it publicly.
+Support: support@autoprod.example (TODO)
+"""
+
+EDITIONS = {
+    "free": ("Preplist-Sorter-offline.html", "Preplist-Sorter-Windows.zip", "Preplist Sorter.html", README),
+    "pro":  ("Prepline-Pro-offline.html", "Prepline-Pro-Windows.zip", "Prepline Pro.html", README_PRO),
+}
+
+def build(src, edition="free"):
     html = open(src, encoding="utf-8").read()
+    out_html, out_zip, inner_name, readme = EDITIONS[edition]
+    if edition == "pro":
+        html = replace_once(html, "edition: 'web',", "edition: 'offline-pro',", "LICENSE_CONFIG edition line")
     xlsx = safe_js("xlsx", fetch("xlsx.full.min.js", *LIBS["xlsx.full.min.js"]).decode("utf-8"))
     pdfm = safe_js("pdf.js", fetch("pdf.min.mjs", *LIBS["pdf.min.mjs"]).decode("utf-8"))
     pdfw = safe_js("pdf.worker", fetch("pdf.worker.min.mjs", *LIBS["pdf.worker.min.mjs"]).decode("utf-8"))
@@ -198,14 +221,14 @@ def build(src):
         sys.exit(f"external references remain: {leftovers[:5]}")
 
     os.makedirs(DIST, exist_ok=True)
-    out = os.path.join(DIST, "Preplist-Sorter-offline.html")
+    out = os.path.join(DIST, out_html)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
         f.write(html)
-    zpath = os.path.join(DIST, "Preplist-Sorter-Windows.zip")
+    zpath = os.path.join(DIST, out_zip)
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         stamp = (2026, 1, 1, 0, 0, 0)  # fixed timestamp -> reproducible zip
-        for name, data in (("Preplist Sorter.html", html.encode("utf-8")),
-                           ("READ ME FIRST.txt", README.replace("\n", "\r\n").encode("utf-8"))):
+        for name, data in ((inner_name, html.encode("utf-8")),
+                           ("READ ME FIRST.txt", readme.replace("\n", "\r\n").encode("utf-8"))):
             zi = zipfile.ZipInfo(name, stamp); zi.compress_type = zipfile.ZIP_DEFLATED
             zi.external_attr = 0o644 << 16
             z.writestr(zi, data)
@@ -216,4 +239,6 @@ def build(src):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=os.path.join(HERE, "index.html"))
-    build(ap.parse_args().src)
+    ap.add_argument("--edition", choices=sorted(EDITIONS), default="free")
+    a = ap.parse_args()
+    build(a.src, a.edition)
