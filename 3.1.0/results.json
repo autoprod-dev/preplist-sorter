@@ -1,0 +1,290 @@
+{
+ "url": "http://localhost:8765/index.html",
+ "version": "3.1.0",
+ "results": [
+  {
+   "test": "load: title is Prepline",
+   "ok": true,
+   "info": "Prepline: prep list sorter"
+  },
+  {
+   "test": "load: version string present = 3.1.0",
+   "ok": true,
+   "info": "3.1.0"
+  },
+  {
+   "test": "load: TEST MODE badge visible",
+   "ok": true,
+   "info": "TEST MODEfree"
+  },
+  {
+   "test": "load: Upgrade + Enter licence key buttons",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "load: no JS errors",
+   "ok": true,
+   "info": "[]"
+  },
+  {
+   "test": "PDF: prep list sorted (9 items, 2 dishes)",
+   "ok": true,
+   "info": "Sorted 9 raw ingredients from 2 dish(es): Roast Pumpkin Salad, Lamb Shoulder. Raw ingredient weights only, with each sub-recipe's cooked yield noted alongside it \u2014 check the task text on each row. Original page images: available for all 2 dish(es)."
+  },
+  {
+   "test": "PDF: items split into sections",
+   "ok": true,
+   "info": "['Sauce, Purees and Gels', 'Vegetables', 'Garnishes, Herbs, Powders, Oils Etc.', 'Big Jobs']"
+  },
+  {
+   "test": "PDF: method crop captured for each dish",
+   "ok": true,
+   "info": "{'Roast Pumpkin Salad': 1, 'Braised Lamb Shoulder': 1}"
+  },
+  {
+   "test": "PDF: \"View original\" button per dish",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "method: printed dish sheet has the Method crop below the prep list",
+   "ok": true,
+   "info": "39485"
+  },
+  {
+   "test": "print all sections: builds with method crops",
+   "ok": true,
+   "info": "131931"
+  },
+  {
+   "test": "print all days: builds with method crops",
+   "ok": true,
+   "info": "113579"
+  },
+  {
+   "test": "tweak 1: print button labels",
+   "ok": true,
+   "info": "['\ud83d\udda8\ufe0f Print all sections (one page complete)', '\ud83d\udda8\ufe0f Print all prep days (one page complete)']"
+  },
+  {
+   "test": "reload: list restored, no blank page, no errors",
+   "ok": true,
+   "info": "[]"
+  },
+  {
+   "test": "reload: method crops survive reload",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "screenshot-only PDF (no text layer): not read, no OCR",
+   "ok": true,
+   "info": "Could not find any ingredient rows in that PDF. PDF import reads production tool exports (a page per recipe with an \"Ingredients:\" table); for other layouts, upload the spreadsheet version or use the paste box. Your previous list has been kept."
+  },
+  {
+   "test": "PNG screenshot upload: not supported (accept=.xlsx,.xls,.pdf)",
+   "ok": true,
+   "info": "Could not read that file (PNG Image File is not a spreadsheet). Please upload an .xlsx, .xls or .csv spreadsheet, or a production tool PDF."
+  },
+  {
+   "test": "image inputs: no new outside requests",
+   "ok": true,
+   "info": "{}"
+  },
+  {
+   "test": "licence: made-up key refused",
+   "ok": true,
+   "info": "license_key not found."
+  },
+  {
+   "test": "licence: TEST-PRO-YEARLY unlocks Pro",
+   "ok": true,
+   "info": "TEST MODEPrepline Pro (Yearly)"
+  },
+  {
+   "test": "licence: Pro panel shows (templates, stations, kitchens)",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "licence: Pro survives reload",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "Pro: append another PDF keeps list + method crops",
+   "ok": true,
+   "info": "Appended 9 raw ingredients from 2 dish(es): Roast Pumpkin Salad \u2014 for 02/10/2026, Lamb Shoulder \u2014 for 02/10/2026. The list now has 18 items. Raw ingredient weig"
+  },
+  {
+   "test": "licence: TEST-PRO-MONTHLY unlocks",
+   "ok": true,
+   "info": "monthly"
+  },
+  {
+   "test": "licence: TEST-PRO-LIFETIME unlocks",
+   "ok": true,
+   "info": "lifetime"
+  },
+  {
+   "test": "licence: deactivate returns to free",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "checkout: Buy monthly opens the test-mode LS checkout",
+   "ok": true,
+   "info": "https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e?enabled=2179964"
+  },
+  {
+   "test": "checkout: Buy yearly opens the test-mode LS checkout",
+   "ok": true,
+   "info": "https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c?enabled=2179971"
+  },
+  {
+   "test": "checkout: Buy lifetime opens the test-mode LS checkout",
+   "ok": true,
+   "info": "https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314?checkout%5Bdiscount_code%5D=LAUNCH50"
+  },
+  {
+   "test": "checkout: page stays on the app",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "xlsx: multi-sheet workbook sorted",
+   "ok": true,
+   "info": "Sorted 12 tasks into 5 dishes: Beef Fillet Sat, Tuna Tartare Canap\u00e9, Pavlova (GF) - Sunday Lunch Mkt, Chicken Curry, Steamed Rice."
+  },
+  {
+   "test": "tweak 2: dish view has its own \"\ud83d\udcca Export to Excel (editable)\" button",
+   "ok": true,
+   "info": "\ud83d\udcca Export to Excel (editable)"
+  },
+  {
+   "test": "export xlsx-by-dish.xlsx: editable cells, no images, Item header",
+   "ok": true,
+   "info": "{'Beef Fillet Sat': (6, 3), 'Tuna Tartare Canap\u00e9': (6, 3), 'Pavlova (GF) - Sunday Lunch Mkt': (6, 3), 'Staff Meal': (17, 3)}"
+  },
+  {
+   "test": "tweak 2: section view has its own \"\ud83d\udcca Export to Excel (editable)\" button",
+   "ok": true,
+   "info": "\ud83d\udcca Export to Excel (editable)"
+  },
+  {
+   "test": "export xlsx-by-section.xlsx: editable cells, no images, Item header",
+   "ok": true,
+   "info": "{'Vegetables': (40, 4), 'Proteins': (29, 4), 'Sauce, Purees and Gels': (17, 3), 'Garnishes, Herbs, Powders, Oils': (4, 1)}"
+  },
+  {
+   "test": "tweak 2: priority view has its own \"\ud83d\udcca Export to Excel (editable)\" button",
+   "ok": true,
+   "info": "\ud83d\udcca Export to Excel (editable)"
+  },
+  {
+   "test": "export xlsx-by-day.xlsx: editable cells, no images, Item header",
+   "ok": true,
+   "info": "{'Wednesday': (4, 1), 'Thursday': (4, 1), 'Friday': (18, 4), 'Unscheduled': (31, 6)}"
+  },
+  {
+   "test": "tweak 3: By dish tabs = imported workbook tabs (same names, same order)",
+   "ok": true,
+   "info": "(['Beef Fillet Sat', 'Tuna Tartare Canap\u00e9', 'Pavlova (GF) - Sunday Lunch Mkt', 'Staff Meal'], ['Beef Fillet Sat', 'Tuna Tartare Canap\u00e9', 'Pavlova (GF) - Sunday Lunch Mkt', 'Staff Meal'])"
+  },
+  {
+   "test": "tweak 3: a source tab with two dishes exports as one tab with both",
+   "ok": true,
+   "info": "['Chicken Curry', 'Steamed Rice']"
+  },
+  {
+   "test": "export: Total needed is a live formula (editable)",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "export: section/day views use section/day tab names",
+   "ok": true,
+   "info": "(['Vegetables', 'Proteins', 'Sauce, Purees and Gels', 'Garnishes, Herbs, Powders, Oils'], ['Wednesday', 'Thursday', 'Friday', 'Unscheduled'])"
+  },
+  {
+   "test": "round trip: re-uploaded By dish export gives the same dishes",
+   "ok": true,
+   "info": "['Beef Fillet Sat', 'Tuna Tartare Canap\u00e9', 'Pavlova (GF) - Sunday Lunch Mkt', 'Chicken Curry', 'Steamed Rice']"
+  },
+  {
+   "test": "round trip: second export keeps the same tab names",
+   "ok": true,
+   "info": "['Beef Fillet Sat', 'Tuna Tartare Canap\u00e9', 'Pavlova (GF) - Sunday Lunch Mkt', 'Staff Meal']"
+  },
+  {
+   "test": "sheet-name sanitiser: 31 chars, no []:*?/\\, unique (case-insensitive), no History/apostrophes",
+   "ok": true,
+   "info": "['Mains- Beef -Sat-', 'mains- beef -sat--2', 'Quoted', 'History-1', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAA-2', 'Tab----x']"
+  },
+  {
+   "test": "export pdf-by-dish.xlsx: tabs + editable cells",
+   "ok": true,
+   "info": "['Roast Pumpkin Salad', 'Braised Lamb Shoulder']"
+  },
+  {
+   "test": "export pdf-by-section.xlsx: tabs + editable cells",
+   "ok": true,
+   "info": "['Vegetables', 'Sauce, Purees and Gels', 'Garnishes, Herbs, Powders, Oils', 'Big Jobs']"
+  },
+  {
+   "test": "export pdf-by-day.xlsx: tabs + editable cells",
+   "ok": true,
+   "info": "['Tuesday', 'Wednesday', 'Thursday']"
+  },
+  {
+   "test": "free plan: several PDFs at once still allowed (Gerard behaviour)",
+   "ok": true,
+   "info": "Sorted 14 raw ingredients from 3 dish(es): Roast Pumpkin Salad, Lamb Shoulder, Market Fish with Salsa Verde. Raw ingredi"
+  },
+  {
+   "test": "phone 390px: loads, sorts, no JS errors",
+   "ok": true,
+   "info": "[]"
+  },
+  {
+   "test": "phone 390px: version string visible in page",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "test": "phone scrollWidth (info)",
+   "ok": true,
+   "info": 591
+  },
+  {
+   "test": "network: no AI/OCR service hosts contacted",
+   "ok": true,
+   "info": "[]"
+  }
+ ],
+ "external": {
+  "fonts.googleapis.com": [
+   "GET https://fonts.googleapis.com/css2"
+  ],
+  "cdnjs.cloudflare.com": [
+   "GET https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.min.mjs",
+   "GET https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.worker.min.mjs",
+   "GET https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+  ],
+  "fonts.gstatic.com": [
+   "GET https://fonts.gstatic.com/s/fraunces/v38/6NU78FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0KxC9TeA.woff2",
+   "GET https://fonts.gstatic.com/s/ibmplexmono/v20/-F63fjptAgt5VM-kVkqdyU8n1i8q1w.woff2",
+   "GET https://fonts.gstatic.com/s/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3vAOwlBFgg.woff2",
+   "GET https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2"
+  ],
+  "api.lemonsqueezy.com": [
+   "POST https://api.lemonsqueezy.com/v1/licenses/activate"
+  ],
+  "autoprod-dev.lemonsqueezy.com": [
+   "GET https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e",
+   "GET https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c",
+   "GET https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314"
+  ]
+ }
+}
