@@ -883,7 +883,7 @@ var LICENSE_CONFIG = {
     </div>
     <div class="dropzone" id="dropzone">
       <div class="big">Drop an .xlsx preplist, or one or more production tool PDFs, here — or click to browse</div>
-      <div class="small" id="dropzoneHint">Every tab in a workbook is read as one dish. A production tool PDF is read for its raw ingredients — sub-recipes (batter, sauces, purees etc.) are automatically exploded into their own raw ingredients, each tagged with the sub-recipe's cooked yield.</div>
+      <div class="small" id="dropzoneHint">Every tab in a workbook is read as one dish. A production tool PDF is read from each dish's front page only: quantities are as printed there (finished/cooked weights for sub-recipes such as sauces and purees), not raw weights.</div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.pdf" multiple>
     </div>
     <div class="row no-print" id="appendRow" style="margin-top:10px; display:none; align-items:center;">
@@ -1079,7 +1079,7 @@ var LICENSE_CONFIG = {
     <div class="help-num">01</div>
     <div class="help-body">
       <h3>Load a preplist</h3>
-      <p>Drop an .xlsx preplist, or one or more production tool PDFs, into the dropzone. Every tab in a workbook is read as one dish; a PDF is read for its raw ingredients, with sub-recipes automatically broken out.</p>
+      <p>Drop an .xlsx preplist, or one or more production tool PDFs, into the dropzone. Every tab in a workbook is read as one dish; a PDF is read from each dish's front page, so its quantities are finished/cooked weights (check the production tool for raw weights).</p>
       <p class="note">Choose "recipe database" mode if you want to build a reusable library you'll draw on every week, or "one-time sort" for a single preplist you won't reuse. Either way, your work saves automatically to this browser as you go.</p>
     </div>
   </div>
@@ -2895,10 +2895,10 @@ async function handlePdfFiles(fileList, opts){
       (dishesGotAnyImg===dishesWithSnaps.size ? ' Original page images: available for all '+dishesGotAnyImg+' dish(es).'
         : dishesGotAnyImg===0 ? ' Original page images: none could be captured this time (open your browser console for details) — the sorted list above is unaffected.'
         : ' Original page images: available for '+dishesGotAnyImg+' of '+dishesWithSnaps.size+' dish(es).');
-    const noteMsg = ' Raw ingredient weights only, with each sub-recipe\'s cooked yield noted alongside it — check the task text on each row.'+imgMsg;
+    const noteMsg = ' Quantities are as printed on each dish\'s front page, i.e. COOKED/finished weights for sub-recipes: refer to the production tool for raw weights.'+imgMsg;
     if (toolMode==='onetime'){
       sourceInfo = {name: tagName, loadedAt: new Date()};
-      setStatus(skipWarn+(opts.append?'Appended ':'Sorted ')+totalTasks+' raw ingredients from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+(opts.append?' The list now has '+ROWS.length+' items.':'')+noteMsg, skipWarn?'warn':'ok');
+      setStatus(skipWarn+(opts.append?'Appended ':'Sorted ')+totalTasks+' items from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+(opts.append?' The list now has '+ROWS.length+' items.':'')+noteMsg, skipWarn?'warn':'ok');
       renderApp();
       return;
     }
