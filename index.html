@@ -3416,9 +3416,9 @@ function render(){
     <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
   </div>
   <div class="row no-print" style="margin-bottom:10px; gap:8px;">
-    ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button">📊 Export to Excel — by dish (editable)</button>`
-      : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button">📊 Export to Excel — by section (editable)</button>`
-      : `<button class="secondary" onclick="exportDaysToXlsx()" type="button">📊 Export to Excel — by prep day (editable)</button>`}
+    ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="Exports this view (By dish) as an editable .xlsx">📊 Export to Excel (editable)</button>`
+      : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
+      : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
   </div>
   <div class="row no-print" style="margin-bottom:20px; gap:8px;">
     <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one page complete)</button>
