@@ -1362,7 +1362,9 @@ function loadOnetimeSession(){
       && typeof r.section==='string' && SECTIONS.includes(r.section);
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:r.section, baseCategory:r.baseCategory||r.section, flagged:!!r.flagged, day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1}));
+        section:r.section, baseCategory:r.baseCategory||r.section, flagged:!!r.flagged, day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
+        // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
+        ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {})}));
       leaderBySection = isObj(s.leaderBySection) ? s.leaderBySection : {};
       SECTIONS.forEach(x=>{ if(typeof leaderBySection[x]!=='string') leaderBySection[x]=''; });
       paxByDish = isObj(s.paxByDish) ? s.paxByDish : {};
