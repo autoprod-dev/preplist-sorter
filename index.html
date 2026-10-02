@@ -679,6 +679,7 @@ var LICENSE_CONFIG = {
     font-size:13.5px; background:var(--accent-bg); color:var(--accent-dark); padding:3px 9px; border-radius:6px; display:inline-block;
   }
   #preplistTab .needpax{color:var(--prot); font-size:11.5px; font-style:italic;}
+  #preplistTab input.pax-invalid{border-color:var(--prot) !important; background:#fff3f1; outline:1px solid var(--prot);}
   #preplistTab tr.dish-excluded td{opacity:0.45; text-decoration:line-through;}
   #preplistTab tr.dish-excluded td:first-child{text-decoration:none;}
   #preplistTab .findsimilar-btn {
@@ -928,7 +929,7 @@ var LICENSE_CONFIG = {
     <div class="row" style="align-items:flex-end; margin-bottom:14px;">
       <div class="field" style="flex:0 0 160px;">
         <label>Set every dish to</label>
-        <input type="text" inputmode="numeric" id="bulkPax" placeholder="e.g. 350">
+        <input type="text" inputmode="decimal" id="bulkPax" placeholder="e.g. 350">
       </div>
       <div class="field" style="flex:0 0 auto;">
         <button class="secondary" id="bulkPaxBtn" type="button">Apply to all</button>
@@ -1334,6 +1335,9 @@ function sanitizeDatabase(raw){
         section, baseCategory: SECTIONS.includes(it.baseCategory) ? it.baseCategory : section,
         flagged: known ? !!it.flagged : true, stageNum: Number.isFinite(it.stageNum) ? it.stageNum : 1};
       if (Number.isFinite(it.pdfFixedTotal)) clean.pdfFixedTotal = it.pdfFixedTotal;
+      if (Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0) clean.pdfBasePax = it.pdfBasePax;   // v3.2.2
+      ['srcSheet','srcType'].forEach(k=>{ if (typeof it[k]==='string') clean[k] = it[k]; });
+      if (Number.isFinite(it.srcSheetIdx)) clean.srcSheetIdx = it.srcSheetIdx;
       items.push(clean);
     });
     if (!items.length) { skipped++; return; }
@@ -1393,13 +1397,16 @@ function loadOnetimeSession(){
         section:r.section, baseCategory:r.baseCategory||r.section, flagged:!!r.flagged, day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
         // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
         ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
+        // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
+        ...(Number.isFinite(r.pdfBasePax) && r.pdfBasePax>0 ? {pdfBasePax:r.pdfBasePax} : {}),
         // v3.2: the original tab / PDF title each row came from (used to name Excel export tabs)
         ...(typeof r.srcSheet==='string' ? {srcSheet:r.srcSheet} : {}),
         ...(Number.isFinite(r.srcSheetIdx) ? {srcSheetIdx:r.srcSheetIdx} : {}),
         ...(typeof r.srcType==='string' ? {srcType:r.srcType} : {})}));
       leaderBySection = isObj(s.leaderBySection) ? s.leaderBySection : {};
       SECTIONS.forEach(x=>{ if(typeof leaderBySection[x]!=='string') leaderBySection[x]=''; });
-      paxByDish = isObj(s.paxByDish) ? s.paxByDish : {};
+      paxByDish = cleanPaxMap(s.paxByDish);
+      migratePdfBasePax(ROWS, paxByDish);
       activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
       viewMode = ['dish','section','priority'].includes(s.viewMode) ? s.viewMode : 'dish';
       eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
@@ -1445,7 +1452,7 @@ function commitRowsToDatabase(){
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
       baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
-      pdfFixedTotal:r.pdfFixedTotal, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType
+      pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType
     }));
     dishDatabase[dish] = {items};
     if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
@@ -1518,14 +1525,21 @@ function generateWeekly(){
       const [yy,mm,dd] = sel.date.split('-');
       eventDateByDish[dish] = `${dd}/${mm}/${yy}`;
     }
-    if (sel.pax) paxByDish[dish] = parseFloat(sel.pax);
+    const selPax = parsePaxInput(sel.pax);
+    if (selPax.ok && selPax.n!==undefined) paxByDish[dish] = selPax.n;
     const eventDay = getEventDay(dish);
     dishDatabase[dish].items.forEach(it=>{
       const day = eventDay ? calendarDayForPrepNum(eventDay, it.stageNum) : '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
         baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum,
-        pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType});
+        pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType,
+        ...(Number.isFinite(it.pdfBasePax) ? {pdfBasePax:it.pdfBasePax} : {})});
     });
+    // v3.2.2: a PDF dish with no pax picked this week starts at its printed yield
+    if (paxByDish[dish]===undefined){
+      const b = dishDatabase[dish].items.find(it=>Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0);
+      if (b) paxByDish[dish] = b.pdfBasePax;
+    }
   });
   if (includedCount===0){ setWeeklyStatus('Tick at least one dish to generate this week\'s preplist.', 'err'); return; }
   sourceInfo = {name: 'Recipe database — '+includedCount+' dish(es) selected this week', loadedAt: new Date()};
@@ -1534,10 +1548,15 @@ function generateWeekly(){
   renderApp();
 }
 
-function setWeeklyPax(encodedDish, val){
+function setWeeklyPax(encodedDish, val, el){
   const dish = decodeURIComponent(encodedDish);
   if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
-  weeklySelection[dish].pax = val;
+  const p = parsePaxInput(val);
+  if (el) el.classList.toggle('pax-invalid', !p.ok);
+  if (!p.ok) return;
+  weeklySelection[dish].pax = p.n===undefined ? '' : String(p.n);
+  // v3.2.2: already generated this week? rescale the live list straight away
+  if (ROWS.some(r=>r.dish===dish)){ storePax(dish, p.n); render(); }
 }
 function setWeeklyDate(encodedDish, val){
   const dish = decodeURIComponent(encodedDish);
@@ -1571,7 +1590,7 @@ function renderWeeklyPanel(){
       return `<tr>
         <td><input type="checkbox" ${sel.include?'checked':''} onchange="toggleWeeklyInclude('${enc}', this.checked)"></td>
         <td class="task">${escapeHtml(cleanDishName(dish))}<div class="dish" style="margin-top:2px;">${taskCount} tasks saved</div></td>
-        <td><input type="text" inputmode="numeric" class="leader-input" style="width:90px;" placeholder="pax" value="${escapeHtml(String(sel.pax||''))}" onchange="setWeeklyPax('${enc}', this.value)"></td>
+        <td><input type="text" inputmode="decimal" class="leader-input" style="width:90px;" placeholder="pax" value="${escapeHtml(String(sel.pax||''))}" oninput="setWeeklyPax('${enc}', this.value, this)"></td>
         <td><input type="date" class="leader-input" value="${sel.date||''}" onchange="setWeeklyDate('${enc}', this.value)"></td>
         <td><button class="ghost" onclick="removeDishFromDatabase('${enc}')" type="button" style="color:var(--prot);">Remove</button></td>
       </tr>`;
@@ -2077,15 +2096,55 @@ function parseQty(q){
   const n = parseFloat(String(q).replace(/,/g,''));
   return n;
 }
+// v3.2.2: pax is a plain number from 0 to PAX_MAX. Blank = "not set". Anything else
+// (letters, negatives, "1e9") is refused rather than half-read (parseFloat("12abc") = 12).
+const PAX_MAX = 1000000;
+function parsePaxInput(val){
+  if (typeof val==='number') return (Number.isFinite(val) && val>=0 && val<=PAX_MAX) ? {ok:true, n:val} : {ok:false};
+  const t = String(val==null?'':val).trim().replace(/[\s,]/g,'');
+  if (t==='') return {ok:true, n:undefined};
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(t)) return {ok:false};
+  const n = Number(t);
+  if (!Number.isFinite(n) || n<0 || n>PAX_MAX) return {ok:false};
+  return {ok:true, n};
+}
+// Keeps only valid pax numbers (old saves, templates and backups may hold strings or junk).
+function cleanPaxMap(obj){
+  const out = {};
+  if (!obj || typeof obj!=='object' || Array.isArray(obj)) return out;
+  Object.keys(obj).forEach(k=>{
+    if (k==='__proto__' || k==='constructor' || k==='prototype') return;
+    const p = parsePaxInput(obj[k]); if (p.ok && p.n!==undefined) out[k] = p.n;
+  });
+  return out;
+}
+// v3.2.2: rows saved before v3.2.2 have a PDF batch total but no record of the pax it was
+// printed for. At import that pax was always the front-page yield, so use the saved pax.
+function migratePdfBasePax(rows, paxMap){
+  rows.forEach(r=>{
+    if (r.pdfFixedTotal===undefined || r.pdfFixedTotal===null) return;
+    if (Number.isFinite(r.pdfBasePax) && r.pdfBasePax>0) return;
+    delete r.pdfBasePax;
+    const p = paxMap[r.dish];
+    if (Number.isFinite(p) && p>0) r.pdfBasePax = p;
+  });
+  return rows;
+}
 function computeTotal(r){
-  // PDF production-tool rows carry an already-scaled batch total — never a per-pax
-  // figure — so pax (whatever it's set to) never multiplies these.
-  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null) return r.pdfFixedTotal;
   const pax = paxByDish[r.dish];
+  const hasPax = typeof pax==='number' && Number.isFinite(pax) && pax>=0;
+  // PDF production-tool rows carry the batch total as printed, for the batch's own yield
+  // (pdfBasePax, read off the front page's "Yield: N ... *Each" line). v3.2.2: changing
+  // pax now scales that total by pax ÷ yield; before, it ignored pax completely. With no
+  // pax set, or a PDF with no readable yield, the printed total is shown unchanged.
+  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
+    const base = r.pdfBasePax;
+    if (!hasPax || !(Number.isFinite(base) && base>0)) return r.pdfFixedTotal;
+    return Math.round(r.pdfFixedTotal * pax / base * 10000)/10000;
+  }
   const q = parseQty(r.qty);
-  if (!pax || isNaN(q)) return null;
-  const t = q * pax;
-  return Math.round(t*100)/100;
+  if (!hasPax || isNaN(q)) return null;
+  return Math.round(q * pax * 10000)/10000;
 }
 // Totals of 1000 g or more display as kg (and 1000 ml+ as L): "10 kg", never "10000 g".
 const G_UNITS = new Set(['g','gm','gms','gram','grams']), KG_UNITS = new Set(['kg','kgs','kilo','kilos','kilogram','kilograms']);
@@ -2351,7 +2410,7 @@ function processWorkbook(wbObj){
         // generic sheets (which may hold several dishes) use the dish's own title instead.
         const dishTitle = isGeneric ? rawTitle : (blocks.length>1 ? rawTitle : name);
         sheetsUsed++; itemsFound += block.items.length;
-        if (block.pax!=null && paxByDish[dishTitle]===undefined) paxByDish[dishTitle] = block.pax;
+        if (block.pax!=null && paxByDish[dishTitle]===undefined){ const bp = parsePaxInput(block.pax); if (bp.ok && bp.n!==undefined) paxByDish[dishTitle] = bp.n; }
         const rowsBefore = ROWS.length;
         addRows(dishTitle, block.items);
         // v3.1: remember the workbook tab each row came from, so every Excel export can
@@ -2895,8 +2954,18 @@ async function handlePdfFiles(fileList, opts){
         // against real production tool exports) — record it for reference (e.g. the pax
         // panel), even though PDF-derived quantities are already fixed batch totals and
         // never get multiplied by it (see computeTotal()).
-        if (d.main.yield && /each/i.test(d.main.yield.unit||'') && paxByDish[dishTitle]===undefined){
-          paxByDish[dishTitle] = d.main.yield.totalQty;
+        // v3.2.2: that yield is also the base every PDF total is scaled from when pax
+        // changes (see computeTotal()). A yield in another unit (e.g. 5 kg at 0.1 kg per
+        // serving) still gives a servings count: total ÷ per serving.
+        let basePax = null;
+        const y = d.main.yield;
+        if (y && Number.isFinite(y.totalQty) && y.totalQty>0){
+          if (/each/i.test(y.unit||'')) basePax = y.totalQty;
+          else if (Number.isFinite(y.perServingQty) && y.perServingQty>0) basePax = Math.round(y.totalQty / y.perServingQty * 100)/100;
+        }
+        if (basePax){
+          for (let i=pdfRowsBefore; i<ROWS.length; i++) ROWS[i].pdfBasePax = basePax;
+          if (paxByDish[dishTitle]===undefined) paxByDish[dishTitle] = basePax;
         }
         // One image per page belonging to this dish: its own front page, plus every
         // sub-recipe's own page — so the whole production tool for this dish is on hand.
@@ -3066,9 +3135,9 @@ document.getElementById('dbImportInput').addEventListener('change', e=>{
 });
 
 document.getElementById('bulkPaxBtn').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('bulkPax').value);
-  if (isNaN(val)) return;
-  Object.keys(dishList()).forEach(d=>{ paxByDish[d]=val; });
+  const p = parsePaxInput(document.getElementById('bulkPax').value);
+  if (!p.ok || p.n===undefined){ setStatus('Enter a pax number from 0 to '+PAX_MAX.toLocaleString('en-AU')+' to apply to every dish.', 'warn'); return; }
+  Object.keys(dishList()).forEach(d=>storePax(d, p.n));
   render();
 });
 
@@ -3099,15 +3168,67 @@ function renderPaxPanel(){
     const dateLabel = evDate ? escapeHtml(String(evDate)) : (evDay ? escapeHtml(evDay) : '');
     return `<div class="field" style="flex:1 1 220px;">
       <label title="${safe}">${escapeHtml(dishKeyword(d))}${dateLabel ? ` <span style="font-weight:400; color:var(--ink-soft);">— ${dateLabel}</span>` : ''}</label>
-      <input type="text" inputmode="numeric" value="${val}" onchange="setPax('${encName(d)}', this.value)">
+      ${paxInputHtml(d, 'panel', '')}
+      ${pdfNoYieldNote(d)}
     </div>`;
   }).join('');
 }
+// v3.2.2: one pax box markup everywhere. oninput = live rescale while typing; onchange
+// (blur/Enter) tidies the box to the stored value.
+function paxInputHtml(dish, loc, extra){
+  const val = paxByDish[dish]!==undefined ? paxByDish[dish] : '';
+  return `<input type="text" inputmode="decimal" autocomplete="off" data-pax-dish="${encName(dish)}" data-pax-loc="${loc}" ${extra||''}
+    value="${val}" oninput="onPaxInput(this)" onchange="onPaxChange(this)" title="Pax (covers) for this dish: 0 to ${PAX_MAX.toLocaleString('en-AU')}. Blank = not set.">`;
+}
+function pdfNoYieldNote(dish){
+  const rows = ROWS.filter(r=>r.dish===dish);
+  if (!rows.length || !rows.some(r=>r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null)) return '';
+  if (rows.some(r=>Number.isFinite(r.pdfBasePax) && r.pdfBasePax>0)) return '';
+  return '<div class="needpax pax-noyield">This PDF has no readable Yield line, so its totals stay as printed.</div>';
+}
+function storePax(dish, n){
+  if (n===undefined) delete paxByDish[dish]; else paxByDish[dish] = n;
+  // keep this week's Recipe database pick in step, so Generate again doesn't undo the edit
+  if (toolMode==='database' && weeklySelection[dish]) weeklySelection[dish].pax = n===undefined ? '' : String(n);
+}
+// Re-renders every view (and so every print block and the data each export reads), then
+// puts the cursor back in the box being typed in, with exactly what was typed (e.g. "12.").
+function rerenderKeepingPaxFocus(el){
+  const loc = el && el.dataset ? el.dataset.paxLoc : null, enc = el && el.dataset ? el.dataset.paxDish : null;
+  const raw = el ? el.value : '';
+  let ss = null, se = null;
+  try{ ss = el.selectionStart; se = el.selectionEnd; }catch(e){}
+  render();
+  if (!loc || !enc) return;
+  const again = [...document.querySelectorAll('input[data-pax-loc]')].find(x=>x.dataset.paxLoc===loc && x.dataset.paxDish===enc);
+  if (!again) return;
+  again.value = raw;
+  try{ again.focus({preventScroll:true}); }catch(e){ again.focus(); }
+  try{ if (ss!==null) again.setSelectionRange(ss, se); }catch(e){}
+}
+function onPaxInput(el){
+  const dish = decodeURIComponent(el.dataset.paxDish);
+  const p = parsePaxInput(el.value);
+  if (!p.ok){ el.classList.add('pax-invalid'); return; }   // keep the last good pax until it's a number again
+  el.classList.remove('pax-invalid');
+  storePax(dish, p.n);
+  rerenderKeepingPaxFocus(el);
+}
+function onPaxChange(el){
+  const p = parsePaxInput(el.value);
+  if (!p.ok){
+    const dish = decodeURIComponent(el.dataset.paxDish);
+    setStatus('Pax for '+cleanDishName(dish)+' must be a number from 0 to '+PAX_MAX.toLocaleString('en-AU')+'. Kept '+(paxByDish[dish]!==undefined?paxByDish[dish]:'not set')+'.', 'warn');
+  }
+  render();
+}
 function setPax(encodedDish, val){
   const dish = decodeURIComponent(encodedDish);
-  const n = parseFloat(val);
-  paxByDish[dish] = isNaN(n) ? undefined : n;
+  const p = parsePaxInput(val);
+  if (!p.ok) return false;
+  storePax(dish, p.n);
   render();
+  return true;
 }
 
 document.getElementById('toggleStaffingBtn').addEventListener('click', ()=>{
@@ -3449,16 +3570,21 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
     const rowIdx = dataStartRow + ri;
     let totalCell = '';
     if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
-      // A production-tool batch total — fixed, never scales with pax, so this is a
-      // plain number, not a formula (writing it as Qty×Pax would misrepresent it).
-      totalCell = Math.round(r.pdfFixedTotal*100)/100;
+      // A production-tool batch total, printed for the batch's own yield. v3.2.2: with a
+      // yield and a PAX row it's a live formula (printed total × PAX ÷ yield), so it matches
+      // the app and still rescales if PAX is edited in Excel; otherwise the plain number.
+      const base = r.pdfBasePax;
+      if (paxRowIdx>=0 && Number.isFinite(base) && base>0){
+        const addr = XLSX.utils.encode_cell({r:rowIdx, c:3});
+        formulaCells.push({addr, formula: r.pdfFixedTotal+'*$B$'+(paxRowIdx+1)+'/'+base, preview: computeTotal(r)});
+      } else totalCell = computeTotal(r);
     } else if (typeof qtyNum==='number' && !isNaN(qtyNum) && paxRowIdx>=0){
       // A real formula, not a frozen snapshot — editing Qty or PAX in Excel/Sheets after
       // export recalculates this automatically, which is the whole point.
       const addr = XLSX.utils.encode_cell({r:rowIdx, c:3});
       const qtyRef = XLSX.utils.encode_cell({r:rowIdx, c:1});
       const paxRef = '$B$'+(paxRowIdx+1);
-      formulaCells.push({addr, formula: qtyRef+'*'+paxRef, preview: Math.round(qtyNum*Number(pax)*100)/100});
+      formulaCells.push({addr, formula: qtyRef+'*'+paxRef, preview: computeTotal(r)});
     }
     aoa.push([r.task, qtyNum, r.unit || '', totalCell, r.section || '', r.day || '', srcName(r)]);   // v3.2: exact original tab / PDF title
   });
@@ -3568,6 +3694,7 @@ function printMasterSummary(){
 
 function render(){
   const area = document.getElementById('resultsArea');
+  scheduleOnetimeSave();   // v3.2.2: every change that re-renders is saved (pax edits were lost on reload)
   renderPaxPanel();
   renderStaffingPanel();
   if (ROWS.length===0){
@@ -3709,9 +3836,7 @@ function renderByDish(){
           <label style="font-size:11px;color:var(--ink-soft);">Event day:</label>
           ${eventDaySelect(encDish, eventDay)}
           <label style="font-size:11px;color:var(--ink-soft);">Pax:</label>
-          <input type="text" inputmode="numeric" style="width:70px;" class="leader-input"
-            value="${pax!==undefined?pax:''}" placeholder="—"
-            onchange="setPax('${encDish}', this.value)">
+          ${paxInputHtml(dish, 'dish', 'style="width:70px;" class="leader-input" placeholder="—"')}
           <button class="secondary" onclick="printDish('${encDish}')" type="button">Print</button>
           <button class="ghost" onclick="copyDish('${encDish}')" type="button">Copy as text</button>
           ${originalPageImages[dish] ? `<button class="ghost" onclick="openOriginalViewer('${encDish}')" type="button">📖 View original${originalPageImages[dish].length>1?' ('+originalPageImages[dish].length+' pages)':''}</button>` : ''}
@@ -4475,7 +4600,8 @@ function loadTemplate(enc){
   });
   leaderBySection = isObj(t.leaderBySection) ? {...t.leaderBySection} : {};
   SECTIONS.forEach(s=>{ if (typeof leaderBySection[s]!=='string') leaderBySection[s]=''; });
-  paxByDish = isObj(t.paxByDish) ? {...t.paxByDish} : {};
+  paxByDish = cleanPaxMap(t.paxByDish);
+  migratePdfBasePax(ROWS, paxByDish);
   eventDayOverride = isObj(t.eventDayOverride) ? {...t.eventDayOverride} : {};
   eventDateByDish = isObj(t.eventDateByDish) ? {...t.eventDateByDish} : {};
   sourceInfo = {name: 'Template: '+name, loadedAt: new Date()};
