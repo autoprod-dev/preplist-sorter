@@ -17,3 +17,13 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Each view's own button reads "📊 Export to Excel (editable)".
 - Excel exports use the imported workbook's tab names (By dish); stricter Excel-safe tab names.
 - Tests: `tests/v3/test_v3.py` (headless Chromium), samples in `tests/v3/samples/`.
+
+## 3.2.0 (2026-10-03) Gerard's answers
+- (a) No screenshot/image OCR or AI. PDF method capture unchanged.
+- (b) Every parsed row stores its original source name (`srcSheet`): the workbook tab name exactly, a PDF recipe's title exactly as printed, or "Pasted list". Survives reload, append PDF, templates and the recipe database. By dish export names tabs from it for spreadsheets and PDFs alike, in the source order.
+- (c) Every export has a "Source tab" column with the exact original name; re-uploading an export reads it back, so names survive a round trip even when Excel forced a change.
+- Tab names change only where Excel forces it (\ / ? * [ ] :, apostrophe at either end, 31 chars, "History", blank, case-only duplicates); each change is listed in the export message.
+- (d) Free limits stay off.
+- (e) Re-applied from v2: PDF quantity+name split (with skipped-row warning); "butternut" no longer a sauce; kg/L display with litres never shown as kg; one raw vs cooked story (PDF quantities are front-page COOKED/finished weights, matching the printed banner).
+- Reload: PDF rows' fixed batch totals now survive a reload (before, they showed "set pax").
+- Tests: 99 checks in `tests/v3/test_v3.py`; new samples `awkward-tabs.xlsx`, `fixes-and-titles.pdf`.

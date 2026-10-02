@@ -56,4 +56,53 @@ ws = wb.create_sheet('Tuna Tartare Canapé'); block(ws, 1, 'Tuna Tartare Canapé
 ws = wb.create_sheet('Pavlova (GF) - Sunday Lunch Mkt'); block(ws, 1, 'Pavlova (GF) - Sunday Lunch Mkt', 60, [('Meringue bake', 1, 'ea'), ('Cream whip', 0.04, 'L'), ('Passionfruit pulp', 0.02, 'L')])
 ws = wb.create_sheet('Staff Meal'); r = block(ws, 1, 'Chicken Curry', 30, [('Chicken thigh dice', 0.15, 'kg'), ('Onion slice', 0.05, 'kg')]); block(ws, r, 'Steamed Rice', 30, [('Jasmine rice wash', 0.08, 'kg')])
 wb.save(os.path.join(D, 'sample-multisheet.xlsx'))
+
+
+# ---- v3.2 samples ----
+import zipfile, shutil, re as _re
+# Awkward tab names. openpyxl refuses case-only duplicates and warns past 31 chars, so the
+# real names are written into xl/workbook.xml afterwards (other tools do produce such files).
+AWK = ["Chef's Special Lamb", "Mains", "MAINS", "Pavlova (GF) - Sunday Lunch Market Stall", "  Two  Spaces Tab ", "Staff Meal", "Café Crème Brûlée"]
+wb = openpyxl.Workbook(); wb.remove(wb.active)
+tmp_names = [f"T{i}" for i in range(len(AWK))]
+data = {
+  0: [("Chef's Special Lamb", 40, [("Lamb rump trim", 0.2, 'kg'), ("Butternut pumpkin roast", 0.015, 'kg')])],
+  1: [("Beef Fillet", 80, [("Beef fillet portion", 0.18, 'kg'), ("Red wine jus", 0.05, 'L')])],
+  2: [("Snapper", 50, [("Snapper fillet pin-bone", 0.15, 'kg')])],
+  3: [("Pavlova", 60, [("Meringue bake", 1, 'ea'), ("Cream whip", 0.04, 'L')])],
+  4: [("Tuna Tartare", 150, [("Yellowfin tuna dice", 0.03, 'kg')])],
+  5: [("Chicken Curry", 30, [("Chicken thigh dice", 0.15, 'kg')]), ("Steamed Rice", 30, [("Jasmine rice wash", 0.08, 'kg')])],
+  6: [("Crème Brûlée", 40, [("Custard base", 0.12, 'L'), ("Raw sugar", 0.01, 'kg')])],
+}
+for i, t in enumerate(tmp_names):
+    ws = wb.create_sheet(t); r = 1
+    for title, pax, items in data[i]: r = block(ws, r, title, pax, items)
+tmpx = os.path.join(D, '_tmp.xlsx'); wb.save(tmpx)
+out = os.path.join(D, 'awkward-tabs.xlsx')
+from xml.sax.saxutils import quoteattr
+with zipfile.ZipFile(tmpx) as zi, zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zo:
+    for item in zi.infolist():
+        b = zi.read(item.filename)
+        if item.filename == 'xl/workbook.xml':
+            x = b.decode('utf-8')
+            for t, real in zip(tmp_names, AWK): x = x.replace(f'name="{t}"', 'name=' + quoteattr(real))
+            b = x.encode('utf-8')
+        zo.writestr(item, b)
+os.remove(tmpx)
+
+# Text PDF exercising the four fixes and awkward recipe titles.
+c = canvas.Canvas(os.path.join(D, 'fixes-and-titles.pdf'), pagesize=A4)
+recipe_page(c, "Braised Lamb Shoulder: 18 Hour [GF]", [("12 Kilograms", "Lamb shoulder", "$180.00"), ("2 Liters", "Lamb jus", "$15.00"), ("1500 Milliliters", "Red wine", "$20.00")],
+    ["1. Season and sear the lamb.", "2. Braise at 150C for 4 hours."], 100, "03/10/2026")
+# page 2: merged quantity+name items, as pdf.js sometimes extracts them
+c.setFont("Helvetica-Bold", 20); c.drawString(40, H-60, "Market Fish's Salsa Verde")
+c.setFont("Helvetica", 9); c.drawString(40, H-120, "BAT-03/10/2026")
+c.setFont("Helvetica-Bold", 10); c.drawString(250, H-120, "Ingredients:"); c.setFont("Helvetica", 9)
+c.drawString(250, H-140, "2.5 Kilograms Chicken thigh"); c.drawString(450, H-140, "$20.00")
+c.drawString(250, H-156, "900 Grams"); c.drawString(310, H-156, "Butternut pumpkin"); c.drawString(450, H-156, "$5.00")
+c.drawString(310, H-172, "Lemon zest 200 Grams"); c.drawString(450, H-172, "$2.00")
+c.setFont("Helvetica-Bold", 10); c.drawString(250, H-200, "Method:"); c.setFont("Helvetica", 9)
+c.drawString(250, H-216, "1. Dice and marinate the chicken."); c.drawString(250, H-230, "2. Roast pumpkin, zest lemon.")
+for x, t in [(250, "Batch number"), (330, "Produced by"), (410, "Date"), (470, "Temperature")]: c.drawString(x, H-256, t)
+c.drawString(250, H-280, "Yield:"); c.drawString(285, H-280, "60 1 *Each Servings"); c.showPage(); c.save()
 print('ok', sorted(os.listdir(D)))
