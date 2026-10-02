@@ -1364,7 +1364,11 @@ function loadOnetimeSession(){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
         section:r.section, baseCategory:r.baseCategory||r.section, flagged:!!r.flagged, day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
         // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
-        ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {})}));
+        ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
+        // v3.2: the original tab / PDF title each row came from (used to name Excel export tabs)
+        ...(typeof r.srcSheet==='string' ? {srcSheet:r.srcSheet} : {}),
+        ...(Number.isFinite(r.srcSheetIdx) ? {srcSheetIdx:r.srcSheetIdx} : {}),
+        ...(typeof r.srcType==='string' ? {srcType:r.srcType} : {})}));
       leaderBySection = isObj(s.leaderBySection) ? s.leaderBySection : {};
       SECTIONS.forEach(x=>{ if(typeof leaderBySection[x]!=='string') leaderBySection[x]=''; });
       paxByDish = isObj(s.paxByDish) ? s.paxByDish : {};
@@ -1413,7 +1417,7 @@ function commitRowsToDatabase(){
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
       baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
-      pdfFixedTotal:r.pdfFixedTotal, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx
+      pdfFixedTotal:r.pdfFixedTotal, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType
     }));
     dishDatabase[dish] = {items};
     if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
@@ -1492,7 +1496,7 @@ function generateWeekly(){
       const day = eventDay ? calendarDayForPrepNum(eventDay, it.stageNum) : '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
         baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum,
-        pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx});
+        pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType});
     });
   });
   if (includedCount===0){ setWeeklyStatus('Tick at least one dish to generate this week\'s preplist.', 'err'); return; }
@@ -2112,7 +2116,8 @@ function addRows(dish, items){
     lastCore = core || lastCore;
     // A Prep day column in the file wins over auto-calculation too, for the same reason.
     const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '');
-    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum});
+    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum,
+      ...(typeof it.srcSheet==='string' ? {srcSheet: it.srcSheet} : {})});
   }
 }
 
@@ -2139,13 +2144,14 @@ const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity n
 const UNIT_HEADERS = new Set(['unit','units','uom','unit of measure','measure']);
 const DAY_HEADERS  = new Set(['prep day','day','prepday']);
 const SECTION_HEADERS = new Set(['section','category','team']);
+const SOURCE_HEADERS = new Set(['source tab']);   // v3.2: written by this tool's own Excel export
 function extractAllBlocks(aoa){
   const nRows = aoa.length;
   const claimedRects = []; // {r1,r2,c1,c2}
   const blocks = [];
   const isClaimed = (r,c) => claimedRects.some(x => r>=x.r1 && r<=x.r2 && c>=x.c1 && c<=x.c2);
 
-  function readItemsDownward(itemCol, qtyCol, unitCol, startRow, dayCol, sectionCol){
+  function readItemsDownward(itemCol, qtyCol, unitCol, startRow, dayCol, sectionCol, sourceCol){
     const items = [];
     let blank = 0, endRow = startRow;
     for (let r=startRow; r<nRows; r++){
@@ -2156,6 +2162,7 @@ function extractAllBlocks(aoa){
       const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
       if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim();
       if (sectionCol!=null && !isBlankCell(row[sectionCol])) entry.section = String(row[sectionCol]).trim();
+      if (sourceCol!=null && !isBlankCell(row[sourceCol])) entry.srcSheet = String(row[sourceCol]);   // exact, not trimmed
       items.push(entry);
     }
     return {items, endRow};
@@ -2195,8 +2202,8 @@ function extractAllBlocks(aoa){
         if (qf>=0 && !QTY_HEADERS.has(hdr[c+1]||'')) qtyCol = qf;
         if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
         else if (qf>=0 && uf<0) unitCol = qtyCol+1;
-        const dayCol = near(DAY_HEADERS), sectionColFound = near(SECTION_HEADERS);
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null);
+        const dayCol = near(DAY_HEADERS), sectionColFound = near(SECTION_HEADERS), sourceColFound = near(SOURCE_HEADERS);
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 4);
         let pax = null;
@@ -2322,7 +2329,10 @@ function processWorkbook(wbObj){
         // v3.1: remember the workbook tab each row came from, so every Excel export can
         // name its tabs after the imported file's own tabs (see exportDishesToXlsx).
         const srcIdx = wbObj.SheetNames.indexOf(name);
-        for (let i=rowsBefore; i<ROWS.length; i++){ ROWS[i].srcSheet = name; ROWS[i].srcSheetIdx = srcIdx; }
+        for (let i=rowsBefore; i<ROWS.length; i++){
+          ROWS[i].srcType = 'xlsx';
+          if (typeof ROWS[i].srcSheet!=='string'){ ROWS[i].srcSheet = name; ROWS[i].srcSheetIdx = srcIdx; }   // a Source tab column (re-upload) wins
+        }
       });
     } catch(err){
       errored.push(name + ' (' + err.message + ')');
@@ -2846,7 +2856,11 @@ async function handlePdfFiles(fileList, opts){
         const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
         if (eventDay) eventDayOverride[dishTitle] = eventDay;
         if (d.main.batDate) eventDateByDish[dishTitle] = d.main.batDate;
+        const pdfRowsBefore = ROWS.length;
         addPdfRows(dishTitle, tasks, eventDay).forEach(raw=>skippedRows.push(raw));
+        // v3.2: a PDF's closest thing to a tab name is the recipe title as printed on its
+        // front page (before any "— for <date>" de-duplication suffix added to the dish key).
+        for (let i=pdfRowsBefore; i<ROWS.length; i++){ ROWS[i].srcSheet = d.main.title; ROWS[i].srcType = 'pdf'; }
         totalTasks += tasks.length;
         dishNames.push(cleanDishName(dishTitle));
         // The Yield line's *Each figure is this batch's actual covers/pax count (confirmed
@@ -2991,6 +3005,7 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
     else items.push({item: parts[0], qty:'', unit:''});
   });
   addRows('Pasted list', items);
+  ROWS.forEach(r=>{ r.srcSheet = 'Pasted list'; r.srcType = 'paste'; });
   if (ROWS.length===0){
     ({ROWS, paxByDish, eventDateByDish} = prevPaste);
     setStatus('Nothing usable in the pasted text. Paste rows copied from a spreadsheet: item, quantity, unit.', 'err');
@@ -3456,17 +3471,20 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
   setStatus('Exported '+groupOrder.length+' tab(s) to Excel, with Total needed included — edit it in Excel or Google Sheets, then re-upload that same file here later to update the preplist.', 'ok');
 }
 // By dish — one sheet per dish, tab named after that dish (not a generic placeholder).
-// v3.1: a dish imported from a workbook goes back into a tab with that workbook's own tab
-// name (several dishes that shared one source tab share it again, in the same order);
-// a dish from a PDF or the paste box has no source tab, so it keeps the dish-name tab.
+// By dish: one tab per original source tab (several dishes that shared one source tab share
+// it again), in the source workbook's own tab order where known.
+// v3.2: one rule for every source: the tab is the row's original source name (srcName):
+// a workbook's own tab name, or a PDF recipe's title as printed. Older saved rows with no
+// recorded source fall back to the dish name as it was imported.
+function srcName(r){ return (typeof r.srcSheet==='string' && r.srcSheet!=='') ? r.srcSheet : r.dish; }
 function exportDishesToXlsx(){
   const firstSeen = {};
-  activeRows().forEach((r,i)=>{ const k = r.srcSheet ? 'tab:'+r.srcSheet : 'dish:'+r.dish; if (firstSeen[k]===undefined) firstSeen[k] = i; });
+  activeRows().forEach((r,i)=>{ const k = srcName(r); if (firstSeen[k]===undefined) firstSeen[k] = i; });
   const idxOf = {};
-  activeRows().forEach(r=>{ if (r.srcSheet && idxOf['tab:'+r.srcSheet]===undefined) idxOf['tab:'+r.srcSheet] = (typeof r.srcSheetIdx==='number' && r.srcSheetIdx>=0) ? r.srcSheetIdx : 9999; });
+  activeRows().forEach(r=>{ const k = srcName(r); if (idxOf[k]===undefined && r.srcType==='xlsx' && Number.isFinite(r.srcSheetIdx) && r.srcSheetIdx>=0) idxOf[k] = r.srcSheetIdx; });
   exportGroupedToXlsx(
-    r => r.srcSheet ? 'tab:'+r.srcSheet : 'dish:'+r.dish,
-    key => key.startsWith('tab:') ? key.slice(4) : dishKeyword(key.slice(5)),
+    r => srcName(r),
+    key => key,
     'Preplist_By_Dish',
     'Nothing to export yet — load a preplist first.',
     (a,b) => ((idxOf[a] ?? 10000) - (idxOf[b] ?? 10000)) || (firstSeen[a] - firstSeen[b])
