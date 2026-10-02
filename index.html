@@ -1111,7 +1111,7 @@ var LICENSE_CONFIG = {
     <div class="help-body">
       <h3>Export to Excel — an editable, re-uploadable copy</h3>
       <p>Each view has its own "📊 Export to Excel" button, laid out to match how you're looking at it — By dish gives one sheet per dish, By team section one sheet per section, By prep day one sheet per day (several dishes can share a sheet when grouped this way). Open it in Excel or Google Sheets to update quantities, sections or prep days as the function changes, then upload that same file back into the tool later and it reads straight back in.</p>
-      <p class="note">By dish uses the same tab names as the workbook you imported (a dish from a PDF or the paste box gets a tab named after the dish); By team section and By prep day name each tab after the section or day. Names are made Excel-safe: at most 31 characters, no [ ] : * ? / \, and no two tabs the same. For the By-dish export specifically, a dish name longer than that comes back under its truncated tab name on re-upload, rather than its full original title — the By-section and By-day exports don't have this limit, since several dishes sharing one tab always keep their full names.</p>
+      <p class="note">By dish uses the original tab names: the workbook's own tab names in the same order, or for a PDF each recipe's title as printed. By team section and By prep day name each tab after the section or day. Every export has a Source tab column with the exact original name of the tab (or PDF recipe) each row came from. Names are made Excel-safe: at most 31 characters, no [ ] : * ? / \, and no two tabs the same; any name Excel forces us to change is listed in the message after the export. For the By-dish export specifically, a dish name longer than that comes back under its truncated tab name on re-upload, rather than its full original title — the By-section and By-day exports don't have this limit, since several dishes sharing one tab always keep their full names.</p>
     </div>
   </div>
 </div>
@@ -3378,15 +3378,27 @@ async function printAllOfView(targetView, filename){
 // Excel sheet names: max 31 chars, and \ / ? * [ ] are never allowed. Used for every
 // export below so a tab is always named after something real — the dish, the section,
 // or the day it actually represents — never a generic placeholder.
-// v3.1: also strips leading/trailing apostrophes, avoids the reserved name "History",
-// and checks uniqueness case-insensitively (Excel treats "Mains" and "MAINS" as the same tab).
-function safeSheetName(raw, usedNames){
-  let base = (raw||'Sheet').toString().replace(/[\\/?*[\]:]/g, '-').replace(/[\u0000-\u001f]/g, ' ').trim()
-    .replace(/^'+|'+$/g, '').trim().slice(0,31).trim() || 'Sheet';
-  if (base.toLowerCase()==='history') base = 'History-1';
+// v3.2: changes a name ONLY where Excel forces it, and reports every change: the 7
+// characters Excel bans (\ / ? * [ ] :) become "-", a leading/trailing apostrophe is
+// dropped, names are cut to 31 characters, "History" is reserved, a blank name becomes
+// "Sheet", and a name Excel would see as a duplicate (it ignores capitals) gets "-2", "-3"...
+// Spaces, capitals and every other character are kept exactly.
+function safeSheetName(raw, usedNames, changes){
+  const orig = (raw===undefined || raw===null) ? '' : String(raw);
+  const why = [];
+  let base = orig.replace(/[\\/?*[\]:]/g, '-');
+  if (base!==orig) why.push('Excel does not allow \\ / ? * [ ] : in tab names');
+  const noApos = base.replace(/^'+|'+$/g, '');
+  if (noApos!==base){ why.push('Excel does not allow an apostrophe at the start or end'); base = noApos; }
+  const cut31 = s => { let t = s.slice(0,31); if (/[\ud800-\udbff]$/.test(t)) t = t.slice(0,-1); return t; };
+  if (base.length>31){ why.push('Excel tab names are at most 31 characters'); base = cut31(base); }
+  if (base.trim()===''){ why.push('Excel tab names cannot be blank'); base = 'Sheet'; }
+  if (base.toLowerCase()==='history'){ why.push('"History" is reserved by Excel'); base = 'History-1'; }
   let finalName = base, n = 2;
-  while (usedNames.has(finalName.toLowerCase())){ const suf = '-'+n; finalName = base.slice(0, 31-suf.length)+suf; n++; }
+  while (usedNames.has(finalName.toLowerCase())){ const suf = '-'+n; finalName = cut31(base.slice(0, 31-suf.length))+suf; n++; }
+  if (finalName!==base) why.push('Excel treats tab names that differ only in capitals as the same tab');
   usedNames.add(finalName.toLowerCase());
+  if (changes && finalName!==orig) changes.push({from: orig, to: finalName, why});
   return finalName;
 }
 // Builds one dish's block within a sheet — its own title row, a PAX row if set, the
@@ -3402,7 +3414,7 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
   aoa.push([fromSheet ? dish : (cleanDishName(dish) || dish)]);
   let paxRowIdx = -1;
   if (pax!==undefined && pax!==null && pax!==''){ aoa.push(['PAX', Number(pax)]); paxRowIdx = aoa.length-1; }
-  aoa.push(['Item','Qty (per pax)','Unit','Total needed','Section','Prep day']);
+  aoa.push(['Item','Qty (per pax)','Unit','Total needed','Section','Prep day','Source tab']);
   const dataStartRow = aoa.length;
   rows.forEach((r, ri)=>{
     const qtyNum = (r.qty!==undefined && r.qty!==null && r.qty!=='' && !isNaN(parseFloat(r.qty))) ? parseFloat(r.qty) : (r.qty ?? '');
@@ -3420,7 +3432,7 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
       const paxRef = '$B$'+(paxRowIdx+1);
       formulaCells.push({addr, formula: qtyRef+'*'+paxRef, preview: Math.round(qtyNum*Number(pax)*100)/100});
     }
-    aoa.push([r.task, qtyNum, r.unit || '', totalCell, r.section || '', r.day || '']);
+    aoa.push([r.task, qtyNum, r.unit || '', totalCell, r.section || '', r.day || '', srcName(r)]);   // v3.2: exact original tab / PDF title
   });
   // The app's own importer tolerates up to 6 blank rows in a row before it decides a
   // dish's block has ended — a single blank row isn't enough of a gap, so without this it
@@ -3431,6 +3443,7 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
 // Shared engine behind all three "Export to Excel" buttons — By dish, By section, and By
 // prep day each just group the ticked rows differently before handing them to this.
 // groupFn(row) returns the group a row belongs to; tabNameFn(groupKey) names its sheet.
+let lastExportNameChanges = [];   // v3.2: the tab-name changes made by the most recent export (also shown in the status message)
 function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortFn){
   if (typeof XLSX === 'undefined' || !XLSX.utils || typeof XLSX.writeFile !== 'function'){
     setStatus('The spreadsheet export could not load. This tool needs an internet connection when it opens — connect, reload the page, and try again.', 'err');
@@ -3454,6 +3467,7 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
   if (sortFn) groupOrder.sort(sortFn);
   const wb = XLSX.utils.book_new();
   const usedNames = new Set();
+  const nameChanges = [];
   groupOrder.forEach(key=>{
     const rowsInGroup = groupRows[key];
     const aoa = []; const formulaCells = [];
@@ -3464,11 +3478,16 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     formulaCells.forEach(fc=>{ ws[fc.addr] = {t:'n', f: fc.formula, v: fc.preview}; });
-    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(tabNameFn(key), usedNames));
+    ws['!cols'] = [{wch:38},{wch:12},{wch:8},{wch:13},{wch:24},{wch:12},{wch:34}];
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(tabNameFn(key), usedNames, nameChanges));
   });
   const stamp = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, filenamePrefix+'_'+stamp+'.xlsx');
-  setStatus('Exported '+groupOrder.length+' tab(s) to Excel, with Total needed included — edit it in Excel or Google Sheets, then re-upload that same file here later to update the preplist.', 'ok');
+  lastExportNameChanges = nameChanges;
+  const renameNote = nameChanges.length ? '⚠ '+nameChanges.length+' tab name'+(nameChanges.length>1?'s':'')+' changed because Excel requires it: '
+    + nameChanges.map(c=>'"'+c.from+'" → "'+c.to+'" ('+c.why.join('; ')+')').join(', ')
+    + '. The exact original name is kept in each row\'s Source tab column. ' : '';
+  setStatus(renameNote+'Exported '+groupOrder.length+' tab(s) to Excel, with Total needed included — edit it in Excel or Google Sheets, then re-upload that same file here later to update the preplist.', nameChanges.length?'warn':'ok');
 }
 // By dish — one sheet per dish, tab named after that dish (not a generic placeholder).
 // By dish: one tab per original source tab (several dishes that shared one source tab share
