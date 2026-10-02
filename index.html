@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.0.0">
+<meta name="prepline-version" content="3.1.0">
 <title>Prepline: prep list sorter</title>
 <script>
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
@@ -1000,7 +1000,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.0.0</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.1.0</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -3421,8 +3421,8 @@ function render(){
       : `<button class="secondary" onclick="exportDaysToXlsx()" type="button">📊 Export to Excel — by prep day (editable)</button>`}
   </div>
   <div class="row no-print" style="margin-bottom:20px; gap:8px;">
-    <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one job)</button>
-    <button class="secondary" onclick="printAllDays()" type="button">🖨️ Print all prep days (one job)</button>
+    <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one page complete)</button>
+    <button class="secondary" onclick="printAllDays()" type="button">🖨️ Print all prep days (one page complete)</button>
   </div>`;
 
   html += searchBarHtml();
