@@ -41,3 +41,14 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Pax input: blank = not set (spreadsheet: "set pax"; PDF: printed total), 0 gives 0, decimals allowed, up to 1,000,000; anything else is refused and the box turns red. kg/L rollover unchanged (900 g × 1.5 = 1.35 kg). Editing pax in the list also updates this week's Recipe database pick, and the weekly pax box is live once generated.
 - Excel: PDF totals become a formula (printed × PAX ÷ yield), like spreadsheet totals (Qty × PAX).
 - Tests: pax checks for each view, prints, exports (openpyxl), reload, PDF, append, templates, recipe database, edge cases and phone; new samples `pax-scaling.xlsx`, `no-yield.pdf`.
+
+## 3.2.3 (2026-10-03) per-pax in Excel and in the app
+- All three "Export to Excel (editable)" files use one layout, with every task row carrying its own per-pax and PAX cells:
+  `Item | Quantity per pax | Unit | PAX (this row) | Total needed | Section | Prep day | Source tab`.
+  Each dish block keeps its PAX row (B = the dish's pax). On every task row, PAX (this row) is `=$B$<PAX row>` and Total needed is `=B<row>*D<row>`: cell references only. Editing a dish's PAX updates all its rows (in the combined By section / By day tabs too, since each dish has its own block); editing one row's per-pax, or typing over its PAX (this row), recalculates just that row. A dish with no pax yet gets a blank PAX cell and guarded formulas that stay blank.
+- Units: one Unit column per row, shared by the per-pax amount and the total, so the formula is a plain multiply with no conversion. Spreadsheet rows keep the unit they were imported in (0.18 kg per pax → total in kg). PDF rows are written in g or ml (2.5 kg for 60 pax → 41.67 g per pax, total 2500 g); counts keep their own unit (bunch, each).
+- PDF per-pax = printed total ÷ Yield. A PDF with no Yield line: Quantity per pax and PAX are blank and the printed total is a plain value (nothing to scale from).
+- App: the Per pax column (screen, prints, copy as text) shows PDF per-pax too, e.g. 41.7 g, 15 ml, 3.33 g (3 significant figures below 10, 1 decimal from 10; kg/L from 1000). No Yield: "—".
+- Totals keep full precision internally (only float noise removed), so the app and a recalculated Excel file agree exactly; display rounding is unchanged.
+- Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
+- Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.

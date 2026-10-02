@@ -153,15 +153,15 @@ with sync_playwright() as p:
             hdr = None
             for row in ws.iter_rows(values_only=True):
                 if row and row[0] == 'Item': hdr = list(row); continue
-                if hdr and row and row[0] and len(row) > 6 and row[6] is not None:
-                    out.append((ws.title, row[0], row[6]))
+                if hdr and row and row[0] and len(row) > 7 and row[7] is not None:
+                    out.append((ws.title, row[0], row[7]))
         return out, wb
     def check_exports(src_label, expect_tabs, task_src):
         for view, fn in [('dish', f'{src_label}-by-dish.xlsx'), ('section', f'{src_label}-by-section.xlsx'), ('priority', f'{src_label}-by-day.xlsx')]:
             path, n, label = export_view(pg, view, fn); info = xlsx_info(path); exp[fn] = info
             st = pg.inner_text('#statusMsg')
             check(f'{src_label} {view}: own "📊 Export to Excel (editable)" button', n == 1 and label.strip() == '📊 Export to Excel (editable)', label)
-            check(f'{src_label} {view}: editable cells, no images, Item + Source tab header', all(v['images'] == 0 and v['header'] and v['header'][6] == 'Source tab' for v in info.values()), list(info))
+            check(f'{src_label} {view}: editable cells, no images, Item + Source tab header', all(v['images'] == 0 and v['header'] and v['header'][7] == 'Source tab' for v in info.values()), list(info))
             rows, wb = rows_of(path)
             bad = [(t, it, sv) for (t, it, sv) in rows if task_src.get(it) != sv]
             check(f'{src_label} {view}: Source tab column = exact original name on every row ({len(rows)} rows)', rows and not bad, bad[:4])
@@ -299,7 +299,7 @@ with sync_playwright() as p:
                 if a == 'PAX': pax = rf[1].value; hdr = False; continue
                 if a == 'Item': hdr = True; continue
                 if a is None: continue
-                if hdr and any(c.value is not None for c in rf[1:4]): out[(ws.title, a, pax)] = (rf[3].value, rv[3].value, rf[2].value)
+                if hdr and any(c.value is not None for c in rf[1:5]): out[(ws.title, a, pax)] = (rf[4].value, rv[4].value, rf[2].value)
         return out
     L, BF = 'Lamb Rump Sat', 'Beef Fillet Sat'
     def txt(h): return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', re.sub(r'<style.*?</style>', '', h, flags=re.S)))
@@ -337,7 +337,7 @@ with sync_playwright() as p:
         got = {(it, px): val for (tab, it, px), (f, val, u) in t.items()}
         forms = [f for (f, val, u) in t.values()]
         bad = {k: (got.get(k), v) for k, v in want.items() if got.get(k) is None or abs(got[k] - v) > 1e-9}
-        check(f'export {view} (openpyxl): PAX cells 15/30 and scaled Total needed values', not bad and all(isinstance(f, str) and f.startswith('=') and '$B$' in f for f in forms), bad or forms[:3])
+        check(f'export {view} (openpyxl): PAX cells 15/30 and scaled Total needed values', not bad and all(isinstance(f, str) and re.fullmatch(r'=B(\d+)\*D\1', f) for f in forms), bad or forms[:3])
     # reload
     pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
     px = pg.evaluate('paxByDish'); g2 = vrow('Garlic confit', 'dish'); o2 = vrow('Onion dice', 'priority')
@@ -369,10 +369,10 @@ with sync_playwright() as p:
     check('PDF: print all days has 1.35 kg', '1.35 kg' in txt(capture_print(pg, 'printAllDays()')))
     path, _, _ = export_view(pg, 'dish', 'pax-pdf-by-dish.xlsx'); t = xlsx_totals(path)
     pv = {it: (f, val) for (tab, it, px), (f, val, u) in t.items() if px == 90}
-    check('PDF export (openpyxl): PAX 90, Total needed = printed x PAX / yield (1350 g, 3.75 kg)', pv.get('Butternut pumpkin', (0, 0))[1] == 1350 and pv.get('Chicken thigh', (0, 0))[1] == 3.75 and '/60' in str(pv.get('Butternut pumpkin', ('',))[0]), pv)
+    check('PDF export (openpyxl): PAX 90, Total needed = per-pax x PAX in g (1350 g, 3750 g)', abs(pv.get('Butternut pumpkin', (0, 0))[1] - 1350) < 1e-6 and abs(pv.get('Chicken thigh', (0, 0))[1] - 3750) < 1e-6 and str(pv.get('Butternut pumpkin', ('',))[0]).startswith('=B'), pv)
     pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
-    rb = vrow('Butternut pumpkin', 'dish'); txt = pg.inner_text('#resultsArea')
-    check('PDF reload: pax 90 and 1.35 kg survive; still no "set pax" on PDF rows (v3.2 fix kept)', pg.evaluate(f'paxByDish[{json.dumps(MF)}]') == 90 and '1.35 kg' in rb and 'set pax' not in txt, rb)
+    rb = vrow('Butternut pumpkin', 'dish'); rtxt = pg.inner_text('#resultsArea')
+    check('PDF reload: pax 90 and 1.35 kg survive; still no "set pax" on PDF rows (v3.2 fix kept)', pg.evaluate(f'paxByDish[{json.dumps(MF)}]') == 90 and '1.35 kg' in rb and 'set pax' not in rtxt, rb)
     type_pax('dish', MF, ''); check('PDF blank pax: back to the printed 900 g', '900 g' in vrow('Butternut pumpkin', 'dish'))
     # a list saved by v3.2.1 or earlier (no base yield stored) still scales after reload
     pg.evaluate(f"""(()=>{{const k='preplistOnetimeSession_v1'; const s=JSON.parse(localStorage.getItem(k)); s.ROWS.forEach(r=>delete r.pdfBasePax); s.paxByDish[{json.dumps(MF)}]=60; localStorage.setItem(k, JSON.stringify(s));}})()""")
@@ -412,6 +412,149 @@ with sync_playwright() as p:
     pg.evaluate("dishDatabase={}; weeklySelection={}; saveDatabase(); setToolMode('onetime')")
     check('v3.2.2 pax checks: no JS errors', not [e for e in errs if 'Failed to load resource' not in e], (errs, bad_urls))
     results.append({'test': 'v3.2.2 failed loads (info)', 'ok': True, 'info': str(bad_urls)})
+    # ---------- G7. v3.2.3: Quantity per pax column + live Excel formulas ----------
+    import shutil, subprocess
+    HDR = ['Item', 'Quantity per pax', 'Unit', 'PAX (this row)', 'Total needed', 'Section', 'Prep day', 'Source tab']
+    REF = re.compile(r'\$?[A-Z]{1,3}\$?\d+')
+    HAVE_LO = bool(shutil.which('soffice'))
+    def sheet_rows(path):
+        wb = openpyxl.load_workbook(path); out = []
+        for ws in wb.worksheets:
+            paxrow, hdr = None, None
+            for row in ws.iter_rows(max_col=8):
+                a = row[0].value
+                if a == 'PAX': paxrow, hdr = row[0].row, None; continue
+                if a == 'Item': hdr = [c.value for c in row]; continue
+                if a is None or not hdr or all(c.value is None for c in row[1:]): continue
+                out.append({'tab': ws.title, 'r': row[0].row, 'paxrow': paxrow, 'hdr': hdr, 'item': a, 'B': row[1].value, 'C': row[2].value,
+                            'D': row[3].value, 'E': row[4].value, 'src': row[7].value})
+        return out
+    def py_eval(path):   # fallback evaluator for the export's own formula shapes, if LibreOffice is missing
+        wb = openpyxl.load_workbook(path)
+        def val(ws, ref, depth=0):
+            v = ws[ref.replace('$', '')].value
+            if isinstance(v, str) and v.startswith('='): return ev(ws, v[1:], depth + 1)
+            return '' if v is None else v
+        def ev(ws, f, depth):
+            m = re.fullmatch(r'IF\((.+?)="","",(.+)\)', f)
+            if m: a = val(ws, m.group(1)); return '' if a == '' else ev(ws, m.group(2), depth)
+            m = re.fullmatch(r'IF\(ISNUMBER\((\w+)\),(.+),""\)', f)
+            if m: return ev(ws, m.group(2), depth) if isinstance(val(ws, m.group(1)), (int, float)) else ''
+            m = re.fullmatch(r'(\$?\w+\$?\d+)\*(\$?\w+\$?\d+)', f)
+            if m:
+                a, c = val(ws, m.group(1)), val(ws, m.group(2))
+                return a * c if isinstance(a, (int, float)) and isinstance(c, (int, float)) else ''
+            return val(ws, f, depth)
+        res = {}
+        for ws in wb.worksheets:
+            for row in ws.iter_rows(max_col=5):
+                for c in row:
+                    if isinstance(c.value, str) and c.value.startswith('='): res[(ws.title, c.coordinate)] = ev(ws, c.value[1:], 0)
+        return res
+    def recalc(paths):
+        """Recalculated values {path: {(tab, cell): value}} — LibreOffice headless if present."""
+        out = {}
+        if HAVE_LO:
+            d = os.path.join(OUT, 'lo-recalc'); os.makedirs(d, exist_ok=True)
+            subprocess.run(['soffice', '--headless', '--norestore', '--convert-to', 'xlsx', '--outdir', d] + paths, capture_output=True, timeout=300)
+            for pth in paths:
+                wb = openpyxl.load_workbook(os.path.join(d, os.path.basename(pth)), data_only=True)
+                out[pth] = {(ws.title, c.coordinate): c.value for ws in wb.worksheets for row in ws.iter_rows(max_col=5) for c in row}
+        else:
+            for pth in paths: out[pth] = py_eval(pth)
+        return out
+    def app_vals():
+        return {(x[0], x[1]): x[2:] for x in pg.evaluate("""activeRows().map(r=>{const t=computeTotal(r); const b=toBaseQty(t, r.unit);
+            return [srcName(r), r.task, t, r.unit||'', b.n, b.u, r.pdfFixedTotal!=null, Number.isFinite(r.pdfBasePax)&&r.pdfBasePax>0, r.dish]})""")}
+    def app_in(unit, v):
+        t, u, bn, bu = v[0], v[1], v[2], v[3]
+        if t is None: return None
+        return t if (unit or '') == u else (bn if unit == bu else ('unit mismatch', unit, u))
+    def close(a, b2): return isinstance(a, (int, float)) and isinstance(b2, (int, float)) and abs(a - b2) <= 1e-6 * max(1, abs(b2))
+    def g7(label):
+        vals0 = app_vals(); files = []
+        for view in ['dish', 'section', 'priority']:
+            path, _, _ = export_view(pg, view, f'g7-{label}-{view}.xlsx'); files.append(path)
+        rows_all = [sheet_rows(f) for f in files]; bad = []
+        for rows in rows_all:
+            for x in rows:
+                v = vals0.get((x['src'], x['item']))
+                if x['hdr'] != HDR: bad.append(('header', x['hdr']))
+                if v is None: bad.append(('no app row', x['src'], x['item'])); continue
+                if v[4] and not v[5]:
+                    if not (x['B'] is None and x['D'] is None and isinstance(x['E'], (int, float))): bad.append(('no-yield row', x))
+                    continue
+                if not (isinstance(x['D'], str) and x['D'].startswith('=') and f"$B${x['paxrow']}" in x['D']): bad.append(('PAX cell', x))
+                if not (isinstance(x['E'], str) and x['E'].startswith('=') and f"B{x['r']}" in x['E'] and f"D{x['r']}" in x['E']): bad.append(('Total cell', x))
+                for f in (x['D'], x['E']):
+                    if isinstance(f, str) and re.search(r'\d', REF.sub('', f)): bad.append(('number inside formula', f))
+                if v[4] and v[1] in ('kg', 'g', 'L', 'ml') and x['C'] not in ('g', 'ml'): bad.append(('PDF unit not g/ml', x['item'], x['C']))
+        check(f'{label}: all 3 exports — every row has Quantity per pax + PAX (this row); Total needed = per-pax cell x PAX cell (cell refs only, no numbers in formulas)',
+              not bad and all(rows_all), bad[:3])
+        # edit in "Excel": every PAX +7; in the section file also double one row's per-pax and override one row's PAX
+        edited, special = [], {}
+        for f, rows in zip(files, rows_all):
+            wb = openpyxl.load_workbook(f)
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(max_col=2):
+                    if row[0].value == 'PAX' and isinstance(row[1].value, (int, float)): row[1].value = row[1].value + 7
+            if f.endswith('-section.xlsx'):
+                fr = [x for x in rows if isinstance(x['E'], str)]
+                if len(fr) >= 2:
+                    a, c = fr[0], fr[1]
+                    wb[a['tab']][f"B{a['r']}"] = a['B'] * 2; wb[c['tab']][f"D{c['r']}"] = 3
+                    special = {(a['tab'], f"E{a['r']}"): ('x2', a), (c['tab'], f"E{c['r']}"): ('pax3', c)}
+            e = f.replace('.xlsx', '-edited.xlsx'); wb.save(e); edited.append(e)
+        rc = recalc(files + edited)
+        for d0, px in pg.evaluate("Object.entries(paxByDish)"): pg.evaluate(f"setPax(encName({json.dumps(d0)}), '{px + 7}')")
+        vals1 = app_vals(); pg.wait_for_timeout(100)
+        mism0, mism1 = [], []
+        for f, e, rows in zip(files, edited, rows_all):
+            for x in rows:
+                cell = (x['tab'], f"E{x['r']}")
+                v0, v1 = vals0[(x['src'], x['item'])], vals1[(x['src'], x['item'])]
+                exp0, got0 = app_in(x['C'], v0), rc[f].get(cell)
+                if not ((exp0 is None and got0 in (None, '')) or close(got0, exp0)): mism0.append((x['tab'], x['item'], got0, exp0))
+                if cell in special and e.endswith('-section-edited.xlsx'):
+                    kind, a = special[cell]; pax1 = rc[e].get((x['tab'], f"D{x['r']}"))
+                    exp1 = a['B'] * 2 * pax1 if kind == 'x2' else a['B'] * 3
+                else: exp1 = app_in(x['C'], v1)
+                got1 = rc[e].get(cell)
+                if not ((exp1 is None and got1 in (None, '')) or close(got1, exp1)): mism1.append((x['tab'], x['item'], got1, exp1))
+        how = 'LibreOffice headless' if HAVE_LO else 'Python formula evaluator'
+        check(f'{label}: recalculated ({how}) totals match the app exactly as exported', not mism0, mism0[:3])
+        check(f'{label}: after editing PAX (+7) in Excel, recalculated totals match the app with the same pax; edited per-pax (x2) and one row\'s own PAX (3) recalc just that row',
+              not mism1 and (len(special) == 2 or label.startswith('PDF no Yield')), (mism1[:3], len(special)))
+        return files
+    # spreadsheet
+    up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted'); g7('spreadsheet')
+    # PDF with Yield: per-pax in the app too
+    up(pg, S + 'fixes-and-titles.pdf'); wait_status(pg, 'Sorted|Could not', 30000)
+    pp = {t: vrow(t, 'dish') for t in ['Chicken thigh', 'Butternut pumpkin', 'Lemon zest', 'Lamb shoulder', 'Red wine']}
+    check('app Per pax (PDF, printed total ÷ Yield): 2.5 kg/60 = 41.7 g, 900 g/60 = 15 g, 200 g/60 = 3.33 g, 12 kg/100 = 120 g, 1.5 L/100 = 15 ml',
+          '41.7 g' in pp['Chicken thigh'] and '15 g' in pp['Butternut pumpkin'] and '3.33 g' in pp['Lemon zest'] and '120 g' in pp['Lamb shoulder'] and '15 ml' in pp['Red wine'], pp)
+    pg.evaluate('setConsolidate(false)'); sv = vrow('Chicken thigh', 'section'); pg.evaluate("setConsolidate(true); setView('dish')"); hp = txt(capture_print(pg, f"printDish(encodeURIComponent({json.dumps(MF)}))"))
+    check('app Per pax shows in By team section and on the printed dish sheet too', '41.7 g' in sv and '41.7 g' in hp, sv)
+    pfiles = g7('PDF')
+    up(pg, pfiles[0]); wait_status(pg, 'Sorted|Could not')
+    rt = vrow('Chicken thigh', 'dish')
+    check('round trip: re-uploading the PDF By dish export keeps the total (41.67 g x 60 = 2.5 kg)', '2.5 kg' in rt, rt)
+    # PDF with no Yield
+    up(pg, S + 'no-yield.pdf'); wait_status(pg, 'Sorted|Could not', 30000)
+    nyp = vrow('Bread flour', 'dish')
+    nf = g7('PDF no Yield'); nr = {x['item']: x for x in sheet_rows(nf[0])}
+    check('PDF no Yield: app Per pax is "—"; export leaves Quantity per pax and PAX blank and writes the printed total (3 kg, 800 g) as a plain value',
+          '—' in nyp and nr['Bread flour']['B'] is None and nr['Bread flour']['E'] == 3 and nr['Bread flour']['C'] == 'kg' and nr['Rosemary oil']['E'] == 800, (nyp, nr))
+    # append + template (Pro)
+    pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
+    up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+    pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', [S + 'fixes-and-titles.pdf', S + 'no-yield.pdf']); wait_status(pg, 'Appended|Could not', 30000)
+    pg.evaluate(f"setPax(encName({json.dumps(MF)}), '90')"); g7('append')
+    pg.fill('#proTemplateName', 'Per pax test'); pg.click('#proSaveTemplateBtn')
+    up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted')
+    pg.evaluate("loadTemplate(encodeURIComponent('Per pax test'))"); pg.wait_for_timeout(300); g7('template')
+    pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
+    check('v3.2.3 per-pax checks: no JS errors', not [e for e in errs if 'Failed to load resource' not in e], errs)
     # ---------- H. phone width ----------
     ctx, _ = new_ctx(b, 390, 844, is_mobile=True, has_touch=True, device_scale_factor=2); pg, errs = page_with_errs(ctx)
     pg.goto(URL); pg.wait_for_load_state('networkidle')
