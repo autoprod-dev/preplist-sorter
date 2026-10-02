@@ -27,3 +27,9 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - (e) Re-applied from v2: PDF quantity+name split (with skipped-row warning); "butternut" no longer a sauce; kg/L display with litres never shown as kg; one raw vs cooked story (PDF quantities are front-page COOKED/finished weights, matching the printed banner).
 - Reload: PDF rows' fixed batch totals now survive a reload (before, they showed "set pax").
 - Tests: 99 checks in `tests/v3/test_v3.py`; new samples `awkward-tabs.xlsx`, `fixes-and-titles.pdf`.
+
+## 3.2.1 (2026-10-03) sorting fix
+- The six built-in sections have no pastry or starch station, so desserts/pastry (meringue, pavlova, tarts, sponge, mousse, ice cream, sorbet, panna cotta...) and rice/grain/starch prep (rice, risotto, arancini, couscous, quinoa, barley, pasta, gnocchi, noodles, bread, dough...) now go to Big Jobs, which already held polenta, mash and rosti. Savoury items (chicken liver parfait, salmon mousse, beef tartare, beef wellington pastry) stay Proteins; "rice wine/vinegar" stay sauces. A Pro custom station (e.g. Pastry) still wins.
+- Whole-word matching fixes: cauliflower (was Garnishes via "flower"), trumpet mushroom (was Proteins via "rump"), gelato and "adjust" (were Sauces via "gel"/"jus"), pavlova (was caught by the pave prep-day rule), swiss chard / charcuterie (were cook-day via "char").
+- Brussels sprouts, green beans, sweet corn → Vegetables; vinegar, mirin, caramel, horseradish → Sauces.
+- Tests: classifier table + end-to-end checks.

@@ -232,6 +232,25 @@ with sync_playwright() as p:
     pg.evaluate("setView('dish')"); pg.wait_for_timeout(300)
     t1, t2, t3 = row_text('Red wine jus'), row_text('Butternut pumpkin roast'), row_text('Beef fillet portion')
     check('fix 3: xlsx 0.05 L x 80 = 4 L; 0.015 kg x 40 = 600 g; 0.18 kg x 80 = 14.4 kg', '4 L' in t1 and '600 g' in t2 and '14.4 kg' in t3, (t1, t2, t3))
+    # ---------- G4b. v3.2.1 classifier ----------
+    BJ, VEG, SAU, GAR, PRO = 'Big Jobs', 'Vegetables', 'Sauce, Purees and Gels', 'Garnishes, Herbs, Powders, Oils Etc.', 'Proteins'
+    table = {'Meringue bake': BJ, 'Jasmine rice wash': BJ, 'Steamed rice': BJ, 'Risotto base': BJ, 'Couscous steep': BJ,
+             'Fresh pasta dough': BJ, 'Gnocchi roll': BJ, 'Focaccia bake': BJ, 'Pavlova base bake': BJ, 'Lemon tart shell': BJ,
+             'Chocolate mousse': BJ, 'Vanilla ice cream': BJ, 'Gelato base': BJ, 'Pancake batter': BJ, 'Cheesecake base': BJ,
+             'Chicken liver parfait': PRO, 'Salmon mousse': PRO, 'Beef tartare': PRO, 'Puff pastry for beef wellington': PRO,
+             'Cauliflower florets': VEG, 'Brussels sprouts halve': VEG, 'Trumpet mushroom slice': VEG, 'Green beans trim': VEG,
+             'Breadcrumb for crumbing': GAR, 'Edible flowers pick': GAR, 'Rice wine vinegar': SAU, 'Red wine jus': SAU,
+             'Raspberry gel': SAU, 'Unsalted butter': SAU, 'Butternut pumpkin': VEG, 'Beef rump portion': PRO, 'Potato mash': BJ}
+    got = pg.evaluate("t => Object.fromEntries(Object.keys(t).map(k=>[k, categorize(k,'')]))", table)
+    wrong = {k: (got[k], v) for k, v in table.items() if got[k] != v}
+    check(f'classifier: {len(table)} items land in the expected section (desserts/starch → Big Jobs, no substring mis-hits)', not wrong, wrong)
+    days = pg.evaluate("[classifyPrepStage('Swiss chard wash','Vegetables',null), classifyPrepStage('Pavlova base portion','Big Jobs',null)]")
+    check('classifier: "Swiss chard wash" is a day-1 wash (not "char" cook); pavlova not treated as a pave', days == [1, 3], days)
+    up(pg, S + 'sample-multisheet.xlsx'); wait_status(pg, 'Sorted')
+    rr = {r['task']: r for r in pg.evaluate('ROWS')}
+    check('classifier e2e: "Meringue bake" → Big Jobs, not flagged', rr['Meringue bake']['section'] == BJ and not rr['Meringue bake']['flagged'], rr['Meringue bake'])
+    check('classifier e2e: "Jasmine rice wash" → Big Jobs, not flagged', rr['Jasmine rice wash']['section'] == BJ and not rr['Jasmine rice wash']['flagged'], rr['Jasmine rice wash'])
+    up(pg, S + 'awkward-tabs.xlsx'); wait_status(pg, 'Sorted')
     # ---------- G5. source names survive reload, templates, append ----------
     before_src = pg.evaluate('ROWS.map(r=>r.srcSheet)')
     pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
