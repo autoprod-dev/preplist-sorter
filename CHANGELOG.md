@@ -33,3 +33,11 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Whole-word matching fixes: cauliflower (was Garnishes via "flower"), trumpet mushroom (was Proteins via "rump"), gelato and "adjust" (were Sauces via "gel"/"jus"), pavlova (was caught by the pave prep-day rule), swiss chard / charcuterie (were cook-day via "char").
 - Brussels sprouts, green beans, sweet corn → Vegetables; vinegar, mirin, caramel, horseradish → Sauces.
 - Tests: classifier table + end-to-end checks.
+
+## 3.2.2 (2026-10-03) pax rescaling fix
+- Changing a dish's pax now rescales every quantity and kg for that dish straight away, while typing (not only on leaving the box), in By dish, By team section and By prep day, including combined totals across dishes, every print handout (dish, section, day, "one page complete") and all three "Export to Excel (editable)" files.
+- Root causes: (1) PDF rows stored the printed batch total as a fixed number and ignored pax, with no record of the yield it was printed for; (2) the pax boxes only reacted on change (blur/Enter); (3) render() never saved, so a pax edit was lost on reload unless something else saved.
+- PDF dishes scale from the front-page Yield (printed total × pax ÷ yield), kept per row as `pdfBasePax` through reload, append, templates and the recipe database. Lists saved before 3.2.2 get the yield back from their saved pax. A PDF with no readable Yield keeps its printed totals and says so.
+- Pax input: blank = not set (spreadsheet: "set pax"; PDF: printed total), 0 gives 0, decimals allowed, up to 1,000,000; anything else is refused and the box turns red. kg/L rollover unchanged (900 g × 1.5 = 1.35 kg). Editing pax in the list also updates this week's Recipe database pick, and the weekly pax box is live once generated.
+- Excel: PDF totals become a formula (printed × PAX ÷ yield), like spreadsheet totals (Qty × PAX).
+- Tests: pax checks for each view, prints, exports (openpyxl), reload, PDF, append, templates, recipe database, edge cases and phone; new samples `pax-scaling.xlsx`, `no-yield.pdf`.

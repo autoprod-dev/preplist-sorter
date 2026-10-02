@@ -105,4 +105,23 @@ c.setFont("Helvetica-Bold", 10); c.drawString(250, H-200, "Method:"); c.setFont(
 c.drawString(250, H-216, "1. Dice and marinate the chicken."); c.drawString(250, H-230, "2. Roast pumpkin, zest lemon.")
 for x, t in [(250, "Batch number"), (330, "Produced by"), (410, "Date"), (470, "Temperature")]: c.drawString(x, H-256, t)
 c.drawString(250, H-280, "Yield:"); c.drawString(285, H-280, "60 1 *Each Servings"); c.showPage(); c.save()
+
+
+# ---- v3.2.2 samples (pax scaling) ----
+# Two dishes on Saturday sharing "Onion dice" (combined total), and 90 g/pax garlic (kg rollover).
+wb = openpyxl.Workbook(); wb.remove(wb.active)
+ws = wb.create_sheet('Lamb Rump Sat'); block(ws, 1, 'Lamb Rump Sat', 10, [('Lamb rump trim', 0.2, 'kg'), ('Onion dice', 0.09, 'kg'), ('Garlic confit', 90, 'g'), ('Red wine jus', 0.05, 'L')])
+ws = wb.create_sheet('Beef Fillet Sat'); block(ws, 1, 'Beef Fillet Sat', 20, [('Beef fillet portion', 0.18, 'kg'), ('Onion dice', 0.05, 'kg')])
+wb.save(os.path.join(D, 'pax-scaling.xlsx'))
+# A production-tool style PDF with no Yield line: its totals cannot be scaled, so they stay as printed.
+c = canvas.Canvas(os.path.join(D, 'no-yield.pdf'), pagesize=A4)
+c.setFont("Helvetica-Bold", 20); c.drawString(40, H-60, "Herb Focaccia")
+c.setFont("Helvetica", 9); c.drawString(40, H-120, "BAT-03/10/2026")
+c.setFont("Helvetica-Bold", 10); c.drawString(250, H-120, "Ingredients:"); c.setFont("Helvetica", 9)
+for i, (q, n, co) in enumerate([("3 Kilograms", "Bread flour", "$6.00"), ("800 Grams", "Rosemary oil", "$9.00")]):
+    c.drawString(250, H-140-16*i, q); c.drawString(310, H-140-16*i, n); c.drawString(450, H-140-16*i, co)
+c.setFont("Helvetica-Bold", 10); c.drawString(250, H-200, "Method:"); c.setFont("Helvetica", 9)
+c.drawString(250, H-216, "1. Mix, prove and bake.")
+c.showPage(); c.save()
+print('ok v3.2.2 samples')
 print('ok', sorted(os.listdir(D)))

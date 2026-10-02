@@ -277,6 +277,141 @@ with sync_playwright() as p:
     up(pg, [S + 'sample-recipes.pdf', '/home/box/prototypes/monetise/tests/samples/sample-prep-B.pdf']); st5 = wait_status(pg, 'Sorted|Could not', 30000)
     check('free plan: several PDFs at once still allowed (free limits off)', len(set(pg.evaluate('ROWS.map(r=>r.dish)'))) == 3, st5[:120])
     check('free plan: no "Made with Prepline" footer on free prints', 'Made with Prepline' not in capture_print(pg, "printAllSections()"))
+    # ---------- G6. v3.2.2: pax changes rescale everything, live ----------
+    def vrow(task, view):
+        pg.evaluate(f"setView('{view}')"); pg.wait_for_timeout(120)
+        return ' | '.join(pg.locator(f'#resultsArea .section-table-wrap.no-print tr:has(td:has-text("{task}"))').all_inner_texts())
+    def pax_box(loc, dish):
+        enc = pg.evaluate("d => encName(d)", dish)
+        return pg.locator(f'input[data-pax-loc="{loc}"][data-pax-dish="{enc}"]')
+    def type_pax(loc, dish, text, view='dish'):
+        pg.evaluate(f"setView('{view}')"); pg.wait_for_timeout(120)
+        box = pax_box(loc, dish); box.click(); pg.keyboard.press('Control+A'); pg.keyboard.press('Backspace')
+        pg.keyboard.type(text, delay=30); pg.wait_for_timeout(150)   # no blur, no Enter: must already be live
+        return pg.evaluate("[document.activeElement.dataset.paxLoc, decodeURIComponent(document.activeElement.dataset.paxDish||''), document.activeElement.value]")
+    def blur(): pg.evaluate("document.activeElement && document.activeElement.blur()"); pg.wait_for_timeout(150)
+    def xlsx_totals(path):
+        f = openpyxl.load_workbook(path); v = openpyxl.load_workbook(path, data_only=True); out = {}
+        for ws in f.worksheets:
+            wv = v[ws.title]; pax = None; hdr = False
+            for (rf, rv) in zip(ws.iter_rows(), wv.iter_rows()):
+                a = rf[0].value
+                if a == 'PAX': pax = rf[1].value; hdr = False; continue
+                if a == 'Item': hdr = True; continue
+                if a is None: continue
+                if hdr and any(c.value is not None for c in rf[1:4]): out[(ws.title, a, pax)] = (rf[3].value, rv[3].value, rf[2].value)
+        return out
+    L, BF = 'Lamb Rump Sat', 'Beef Fillet Sat'
+    def txt(h): return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', re.sub(r'<style.*?</style>', '', h, flags=re.S)))
+    errs.clear(); bad_urls = []; pg.on('response', lambda r: r.status >= 400 and bad_urls.append(f'{r.status} {r.url[:120]}'))
+    up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted')
+    g0 = vrow('Garlic confit', 'dish')
+    foc = type_pax('dish', L, '15')
+    g1, r1 = vrow('Garlic confit', 'dish'), vrow('Lamb rump trim', 'dish')
+    check('pax live (By dish): typing 15 rescales while typing, no blur needed: 90 g x 10 = 900 g → 90 g x 15 = 1.35 kg; 0.2 kg x 15 = 3 kg', '900 g' in g0 and '1.35 kg' in g1 and '3 kg' in r1, (g0, g1, r1))
+    check('pax live: cursor stays in the pax box with what was typed', foc == ['dish', L, '15'], foc)
+    s_on, s_r = vrow('Onion dice', 'section'), vrow('Lamb rump trim', 'section')
+    check('pax live (By team section): 3 kg row + combined Onion dice 0.09x15 + 0.05x20 = 2.35 kg', '3 kg' in s_r and '2.35 kg' in s_on and '×2' in s_on, (s_r, s_on))
+    d_g, d_on = vrow('Garlic confit', 'priority'), vrow('Onion dice', 'priority')
+    check('pax live (By prep day): 1.35 kg row + combined Onion dice 2.35 kg', '1.35 kg' in d_g and '2.35 kg' in d_on, (d_g, d_on))
+    foc = type_pax('panel', BF, '30', view='section')
+    s_on, s_b = vrow('Onion dice', 'section'), vrow('Beef fillet portion', 'section')
+    check('pax panel box is live too (Beef 30): beef 5.4 kg, combined Onion dice 1.35 + 1.5 = 2.85 kg', '5.4 kg' in s_b and '2.85 kg' in s_on and foc == ['panel', BF, '30'], (s_b, s_on, foc))
+    pg.evaluate("setView('dish')"); pg.wait_for_timeout(150)
+    check('pax boxes stay in step: the By dish box for Beef now shows 30', pax_box('dish', BF).input_value() == '30', pax_box('dish', BF).input_value())
+    type_pax('dish', L, '12.5'); w, rj = vrow('Lamb rump trim', 'dish'), vrow('Red wine jus', 'dish')
+    check('decimal pax 12.5: 0.2 kg → 2.5 kg; 0.05 L → 625 ml (L rolls back to ml)', '2.5 kg' in w and '625 ml' in rj, (w, rj))
+    type_pax('dish', L, '15'); blur()
+    # prints
+    hd = txt(capture_print(pg, f"printDish(encodeURIComponent({json.dumps(L)}))"))
+    hs, hy = txt(capture_print(pg, "printAllSections()")), txt(capture_print(pg, "printAllDays()"))
+    pg.evaluate("setView('section')"); hsec = txt(capture_print(pg, "printSection('Vegetables')"))
+    pg.evaluate("setView('priority')"); hday = txt(capture_print(pg, "printPriority([...document.querySelectorAll('[id^=print-priority-]')].map(e=>e.id.replace('print-priority-','')).find(k=>k.endsWith('Wednesday')))"))
+    check('print dish sheet: PAX 15 and 1.35 kg / 3 kg', 'PAX / YIELD (COVERS): 15 ' in hd and '1.35 kg' in hd and '3 kg' in hd, len(hd))
+    check('print section + day handouts: combined Onion dice 2.85 kg', '2.85 kg' in hsec and '2.85 kg' in hday, (len(hsec), len(hday)))
+    check('print all sections / all days (one page complete): 1.35 kg, 2.85 kg, 5.4 kg', all(x in hs and x in hy for x in ['1.35 kg', '2.85 kg', '5.4 kg']), (len(hs), len(hy)))
+    # exports
+    want = {('Lamb rump trim', 15): 3, ('Garlic confit', 15): 1350, ('Onion dice', 15): 1.35, ('Red wine jus', 15): 0.75, ('Beef fillet portion', 30): 5.4, ('Onion dice', 30): 1.5}
+    for view, fn in [('dish', 'pax-by-dish.xlsx'), ('section', 'pax-by-section.xlsx'), ('priority', 'pax-by-day.xlsx')]:
+        path, _, _ = export_view(pg, view, fn); t = xlsx_totals(path)
+        got = {(it, px): val for (tab, it, px), (f, val, u) in t.items()}
+        forms = [f for (f, val, u) in t.values()]
+        bad = {k: (got.get(k), v) for k, v in want.items() if got.get(k) is None or abs(got[k] - v) > 1e-9}
+        check(f'export {view} (openpyxl): PAX cells 15/30 and scaled Total needed values', not bad and all(isinstance(f, str) and f.startswith('=') and '$B$' in f for f in forms), bad or forms[:3])
+    # reload
+    pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
+    px = pg.evaluate('paxByDish'); g2 = vrow('Garlic confit', 'dish'); o2 = vrow('Onion dice', 'priority')
+    check('reload: edited pax (15, 30) and the scaled totals survive', px == {L: 15, BF: 30} and '1.35 kg' in g2 and '2.85 kg' in o2, (px, g2, o2))
+    # edge cases
+    type_pax('dish', L, ''); e0 = vrow('Garlic confit', 'dish')
+    check('blank pax = not set: spreadsheet total says "set pax"', 'set pax' in e0 and L not in pg.evaluate('paxByDish'), e0)
+    type_pax('dish', L, '0'); e1 = vrow('Garlic confit', 'dish')
+    check('pax 0: totals are 0 (not "set pax", no NaN)', '0 g' in e1 and 'NaN' not in e1, e1)
+    pg.evaluate("setView('dish')"); bx = pax_box('dish', L); bx.click(); pg.keyboard.press('Control+A'); pg.keyboard.type('abc', delay=30); pg.wait_for_timeout(150)
+    bad_cls = pax_box('dish', L).get_attribute('class') or ''
+    check('junk pax "abc" refused: box marked red, last good pax (0) kept', 'pax-invalid' in bad_cls and pg.evaluate(f'paxByDish[{json.dumps(L)}]') == 0, (bad_cls, pg.evaluate('paxByDish')))
+    blur(); check('junk pax: leaving the box explains it', 'must be a number' in pg.inner_text('#statusMsg'), pg.inner_text('#statusMsg'))
+    type_pax('dish', L, '1,000,000'); e2 = vrow('Garlic confit', 'dish')
+    check('very large pax 1,000,000: 90 g x 1,000,000 = 90000 kg, no "e+" or NaN', '90000 kg' in e2 and 'e+' not in e2 and 'NaN' not in e2, e2)
+    type_pax('dish', L, '2000000')
+    check('pax above 1,000,000 refused: box marked red, 2,000,000 never stored', pg.evaluate(f'paxByDish[{json.dumps(L)}]') <= 1000000 and 'pax-invalid' in (pax_box('dish', L).get_attribute('class') or ''), pg.evaluate('paxByDish'))
+    type_pax('dish', L, '15'); blur()
+    # PDF dishes: scale from the front-page yield
+    up(pg, S + 'fixes-and-titles.pdf'); wait_status(pg, 'Sorted|Could not', 30000)
+    MF, BL = "Market Fish's Salsa Verde", 'Braised Lamb Shoulder: 18 Hour [GF]'
+    base = pg.evaluate("Object.fromEntries(ROWS.map(r=>[r.dish, r.pdfBasePax]))")
+    b0 = vrow('Butternut pumpkin', 'dish')
+    check('PDF: base pax = front-page Yield (60 and 100) and totals start as printed (900 g)', base == {BL: 100, MF: 60} and '900 g' in b0, (base, b0))
+    type_pax('dish', MF, '90')
+    pb, pc, pz, pl = vrow('Butternut pumpkin', 'dish'), vrow('Chicken thigh', 'dish'), vrow('Lemon zest', 'dish'), vrow('Lamb shoulder', 'dish')
+    check('PDF pax 60 → 90 (x1.5): 900 g → 1.35 kg, 2.5 kg → 3.75 kg, 200 g → 300 g; other dish unchanged (12 kg)', '1.35 kg' in pb and '3.75 kg' in pc and '300 g' in pz and '12 kg' in pl, (pb, pc, pz, pl))
+    check('PDF: section and day views show the scaled 1.35 kg', '1.35 kg' in vrow('Butternut pumpkin', 'section') and '1.35 kg' in vrow('Butternut pumpkin', 'priority'))
+    check('PDF: print all days has 1.35 kg', '1.35 kg' in txt(capture_print(pg, 'printAllDays()')))
+    path, _, _ = export_view(pg, 'dish', 'pax-pdf-by-dish.xlsx'); t = xlsx_totals(path)
+    pv = {it: (f, val) for (tab, it, px), (f, val, u) in t.items() if px == 90}
+    check('PDF export (openpyxl): PAX 90, Total needed = printed x PAX / yield (1350 g, 3.75 kg)', pv.get('Butternut pumpkin', (0, 0))[1] == 1350 and pv.get('Chicken thigh', (0, 0))[1] == 3.75 and '/60' in str(pv.get('Butternut pumpkin', ('',))[0]), pv)
+    pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
+    rb = vrow('Butternut pumpkin', 'dish'); txt = pg.inner_text('#resultsArea')
+    check('PDF reload: pax 90 and 1.35 kg survive; still no "set pax" on PDF rows (v3.2 fix kept)', pg.evaluate(f'paxByDish[{json.dumps(MF)}]') == 90 and '1.35 kg' in rb and 'set pax' not in txt, rb)
+    type_pax('dish', MF, ''); check('PDF blank pax: back to the printed 900 g', '900 g' in vrow('Butternut pumpkin', 'dish'))
+    # a list saved by v3.2.1 or earlier (no base yield stored) still scales after reload
+    pg.evaluate(f"""(()=>{{const k='preplistOnetimeSession_v1'; const s=JSON.parse(localStorage.getItem(k)); s.ROWS.forEach(r=>delete r.pdfBasePax); s.paxByDish[{json.dumps(MF)}]=60; localStorage.setItem(k, JSON.stringify(s));}})()""")
+    pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
+    mg = pg.evaluate("Object.fromEntries(ROWS.map(r=>[r.dish, r.pdfBasePax]))"); type_pax('dish', MF, '90')
+    check('older save without a stored yield: base restored from its pax (60), then 90 pax → 1.35 kg', mg.get(MF) == 60 and '1.35 kg' in vrow('Butternut pumpkin', 'dish'), mg)
+    up(pg, S + 'no-yield.pdf'); wait_status(pg, 'Sorted|Could not', 30000)
+    ny = 'Herb Focaccia'; type_pax('dish', ny, '50'); nyr = vrow('Bread flour', 'dish')
+    check('PDF with no Yield line: totals stay as printed (3 kg) and the pax panel says why', '3 kg' in nyr and 'no readable Yield' in pg.inner_text('#paxList'), (nyr, pg.inner_text('#paxList')))
+    # append + templates (Pro)
+    pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
+    up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+    pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'fixes-and-titles.pdf'); wait_status(pg, 'Appended|Could not', 30000)
+    type_pax('dish', MF, '90'); type_pax('dish', 'Roast Pumpkin Salad', '60')
+    ab = vrow('Butternut pumpkin', 'dish')
+    check('append PDF: appended dish scales (1.35 kg) and the first PDF scales on its own yield (120 → 60: 4 kg → 2 kg)', '1.35 kg' in ab and '2 kg' in ab and pg.evaluate("ROWS.filter(r=>r.dish==='Braised Lamb Shoulder')[0].pdfBasePax") == 120, ab)
+    blur(); pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
+    check('append + reload: both pax edits and scaled totals survive', '1.35 kg' in vrow('Butternut pumpkin', 'dish') and '2 kg' in vrow('Butternut pumpkin', 'dish'))
+    pg.fill('#proTemplateName', 'Pax test'); pg.click('#proSaveTemplateBtn')
+    up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted')
+    pg.evaluate("loadTemplate(encodeURIComponent('Pax test'))"); pg.wait_for_timeout(300)
+    tb = vrow('Butternut pumpkin', 'dish'); type_pax('dish', MF, '120'); tb2 = vrow('Butternut pumpkin', 'dish')
+    check('template: reloads pax 90/60 with scaled totals, and still rescales live (120 → 1.8 kg)', '1.35 kg' in tb and '2 kg' in tb and '1.8 kg' in tb2, (tb, tb2))
+    pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
+    # recipe database (weekly) dishes
+    pg.evaluate("setToolMode('database')"); up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Added|Could not')
+    up(pg, S + 'fixes-and-titles.pdf'); wait_status(pg, 'Added|Could not', 30000)
+    pg.evaluate("appMode='weekly'; renderApp()")
+    pg.fill(f'#weeklyDishList tr:has-text("{L}") input[placeholder="pax"]', '15'); pg.evaluate('generateWeekly()'); pg.wait_for_timeout(300)
+    dg, dbf = vrow('Garlic confit', 'dish'), vrow('Butternut pumpkin', 'dish')
+    check('recipe database: weekly pax 15 → 1.35 kg; a PDF dish with no pax picked starts at its yield (900 g)', '1.35 kg' in dg and '900 g' in dbf, (dg, dbf))
+    type_pax('dish', L, '20'); dg2 = vrow('Garlic confit', 'dish')
+    check('recipe database: editing pax in the list rescales live (1.8 kg) and updates this week\'s pick', '1.8 kg' in dg2 and pg.evaluate(f'weeklySelection[{json.dumps(L)}].pax') == '20', dg2)
+    wbox = pg.locator(f'#weeklyDishList tr:has-text("{L}") input[placeholder="pax"]'); wbox.click(); pg.keyboard.press('Control+A'); pg.keyboard.type('25', delay=30); pg.wait_for_timeout(150)
+    type_pax('dish', MF, '90'); dg3, dbf3 = vrow('Garlic confit', 'dish'), vrow('Butternut pumpkin', 'dish')
+    check('recipe database: weekly pax box is live after Generate (25 → 2.25 kg); database PDF dish scales (1.35 kg)', '2.25 kg' in dg3 and '1.35 kg' in dbf3, (dg3, dbf3))
+    pg.evaluate("dishDatabase={}; weeklySelection={}; saveDatabase(); setToolMode('onetime')")
+    check('v3.2.2 pax checks: no JS errors', not [e for e in errs if 'Failed to load resource' not in e], (errs, bad_urls))
+    results.append({'test': 'v3.2.2 failed loads (info)', 'ok': True, 'info': str(bad_urls)})
     # ---------- H. phone width ----------
     ctx, _ = new_ctx(b, 390, 844, is_mobile=True, has_touch=True, device_scale_factor=2); pg, errs = page_with_errs(ctx)
     pg.goto(URL); pg.wait_for_load_state('networkidle')
@@ -285,6 +420,11 @@ with sync_playwright() as p:
     check('phone 390px: loads, sorts, no JS errors', not errs and pg.evaluate('ROWS.length') == 9, errs)
     check('phone 390px: version string visible in page', pg.get_attribute('meta[name="prepline-version"]', 'content') == ver)
     pg.screenshot(path=f'{SHOTS}/04-phone-390.png', full_page=False)
+    enc = pg.evaluate("encName('Roast Pumpkin Salad')"); box = pg.locator(f'input[data-pax-loc="dish"][data-pax-dish="{enc}"]')
+    box.tap(); pg.keyboard.press('Control+A'); pg.keyboard.press('Backspace'); pg.keyboard.type('60', delay=30); pg.wait_for_timeout(200)
+    ph = ' | '.join(pg.locator('#resultsArea .section-table-wrap.no-print tr:has(td:has-text("Butternut pumpkin"))').all_inner_texts())
+    check('phone 390px: typing pax (120 → 60) rescales live, 4 kg → 2 kg, keyboard stays in the box', '2 kg' in ph and pg.evaluate("document.activeElement.dataset.paxLoc") == 'dish', ph)
+    pg.screenshot(path=f'{SHOTS}/07-phone-pax-live.png', full_page=False)
     results.append({'test': 'phone scrollWidth (info)', 'ok': True, 'info': sw})
     ctx.close(); b.close()
 
