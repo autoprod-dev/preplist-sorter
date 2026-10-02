@@ -2140,11 +2140,11 @@ function computeTotal(r){
   if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
     const base = r.pdfBasePax;
     if (!hasPax || !(Number.isFinite(base) && base>0)) return r.pdfFixedTotal;
-    return Math.round(r.pdfFixedTotal * pax / base * 10000)/10000;
+    return Math.round(r.pdfFixedTotal * pax / base * 1e9)/1e9;   // v3.2.3: only float noise removed, so it matches Excel's per-pax × PAX exactly (display rounds)
   }
   const q = parseQty(r.qty);
   if (!hasPax || isNaN(q)) return null;
-  return Math.round(q * pax * 10000)/10000;
+  return Math.round(q * pax * 1e9)/1e9;
 }
 // Totals of 1000 g or more display as kg (and 1000 ml+ as L): "10 kg", never "10000 g".
 const G_UNITS = new Set(['g','gm','gms','gram','grams']), KG_UNITS = new Set(['kg','kgs','kilo','kilos','kilogram','kilograms']);
@@ -2166,6 +2166,26 @@ function dispQty(n, unit){
   return {n, u:unit||''};
 }
 function qN(n, unit){ return fmtNum(dispQty(n, unit).n); }
+// v3.2.3: the per-pax amount for the Per pax columns. Spreadsheet rows show their own figure
+// as imported; PDF rows show printed total ÷ Yield in g/ml (kg/L from 1000), rounded to
+// 3 significant figures below 10 and 1 decimal place from 10 (41.7 g, 0.0167 bunch).
+function fmtPerPax(n){
+  if (n===null || n===undefined || !Number.isFinite(n)) return '—';
+  if (n===0) return '0';
+  const a = Math.abs(n);
+  const v = a>=10 ? Math.round(n*10)/10 : Number(n.toPrecision(3));
+  return String(v);
+}
+function perPaxText(r){
+  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
+    const pp = exportPerPax(r);
+    if (!pp) return '—';
+    const d = dispQty(pp.n, pp.unit);
+    return fmtPerPax(d.n)+' '+(d.u||'');
+  }
+  const has = r.qty!==undefined && r.qty!==null && r.qty!=='';
+  return (has ? String(r.qty) : '—') + (r.unit ? ' '+String(r.unit) : '');
+}
 function qU(n, unit){ return String(dispQty(n, unit).u||''); }
 function fmtNum(n){
   if (n===null || n===undefined) return '—';
@@ -2227,7 +2247,7 @@ function isBlankCell(v){ return v===undefined || v===null || (typeof v==='string
 // a row (e.g. two "PAX" cells side by side in the same row for two different dishes).
 // Header wording other kitchens use for the same columns.
 const ITEM_HEADERS = new Set(['item','items','ingredient','ingredients','product','products','prep item','prep items','component','components','description']);
-const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight','qty (per pax)']);
+const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight','qty (per pax)','quantity per pax']);   // v3.2.3 export header
 const UNIT_HEADERS = new Set(['unit','units','uom','unit of measure','measure']);
 const DAY_HEADERS  = new Set(['prep day','day','prepday']);
 const SECTION_HEADERS = new Set(['section','category','team']);
@@ -2284,7 +2304,8 @@ function extractAllBlocks(aoa){
         // otherwise fall back to the classic layout: Qty right of Item, Unit right of Qty.
         let qtyCol=c+1, unitCol=c+2;
         const hdr = row.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
-        const near = (set)=>{ for (let d=1; d<=6; d++){ for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; } } return -1; };
+        const near = (set)=>{ for (let d=1; d<=8; d++){   // v3.2.3: export has 8 columns (Source tab is 7 right of Item)
+           for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; } } return -1; };
         const qf = near(QTY_HEADERS), uf = near(UNIT_HEADERS);
         if (qf>=0 && !QTY_HEADERS.has(hdr[c+1]||'')) qtyCol = qf;
         if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
@@ -3550,43 +3571,71 @@ function safeSheetName(raw, usedNames, changes){
   if (changes && finalName!==orig) changes.push({from: orig, to: finalName, why});
   return finalName;
 }
-// Builds one dish's block within a sheet — its own title row, a PAX row if set, the
-// Item/Qty/Unit/Total/Section/Prep day header, then its task rows — and appends it
-// directly onto an existing aoa/formulaCells pair (so several dishes can share one sheet,
-// stacked one block after another, which is exactly what the By-section and By-day
-// exports need — several dishes' tasks landing in the same tab).
+// Builds one dish's block within a sheet — its own title row, its PAX row, the header,
+// then its task rows — and appends it directly onto an existing aoa/formulaCells pair (so
+// several dishes can share one sheet, stacked one block after another, which is exactly
+// what the By-section and By-day exports need — several dishes' tasks in the same tab).
+// v3.2.3 layout, the same in all three exports:
+//   Item | Quantity per pax | Unit | PAX (this row) | Total needed | Section | Prep day | Source tab
+// - Every block has its own "PAX" row (B = that dish's pax; blank if not set yet).
+// - "PAX (this row)" on each task row is =$B$<PAX row>, so editing the block's PAX updates
+//   every row of that dish, and typing a number over one row's cell changes just that row.
+// - "Total needed" is =B<row>*D<row>: cell references only, no numbers inside formulas.
+// - Units: one Unit column per row, shared by the per-pax amount AND the total, so the
+//   formula never needs a conversion and kg/g can't get mixed. Spreadsheet rows keep the
+//   unit they were imported in (0.18 kg per pax → total in kg); PDF rows use g or ml
+//   (per-pax amounts are small), counts keep their own unit (bunch, each...).
+// - PDF row with no Yield line: no per-pax can be worked out, so B and D are blank and the
+//   printed total is a plain value in its own unit.
+function exportPerPax(r){
+  // {n, unit} written to the sheet, or null. Full precision, so B×D gives the app's total.
+  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
+    const base = r.pdfBasePax;
+    if (!(Number.isFinite(base) && base>0)) return null;
+    const b = toBaseQty(r.pdfFixedTotal, r.unit);
+    return {n: b.n / base, unit: b.u};
+  }
+  return null;
+}
 function appendDishBlock(aoa, formulaCells, dish, rows){
   const pax = paxByDish[dish];
+  const paxSet = typeof pax==='number' && Number.isFinite(pax);
   // v3.1: a dish that came from a spreadsheet keeps its exact imported title (cleanDishName
   // would drop words like "Braised" or "Mains"), so a re-upload finds the same dish.
   const fromSheet = rows.some(r=>r.srcSheet);
   aoa.push([fromSheet ? dish : (cleanDishName(dish) || dish)]);
-  let paxRowIdx = -1;
-  if (pax!==undefined && pax!==null && pax!==''){ aoa.push(['PAX', Number(pax)]); paxRowIdx = aoa.length-1; }
-  aoa.push(['Item','Qty (per pax)','Unit','Total needed','Section','Prep day','Source tab']);
+  aoa.push(['PAX', paxSet ? pax : '']);
+  const paxRowNum = aoa.length;               // 1-based Excel row of this dish's PAX cell
+  const paxAbs = '$B$'+paxRowNum;
+  aoa.push(['Item','Quantity per pax','Unit','PAX (this row)','Total needed','Section','Prep day','Source tab']);
   const dataStartRow = aoa.length;
+  const put = (rowIdx, c, formula, preview) => formulaCells.push({addr: XLSX.utils.encode_cell({r:rowIdx, c}), formula, preview});
   rows.forEach((r, ri)=>{
-    const qtyNum = (r.qty!==undefined && r.qty!==null && r.qty!=='' && !isNaN(parseFloat(r.qty))) ? parseFloat(r.qty) : (r.qty ?? '');
-    const rowIdx = dataStartRow + ri;
-    let totalCell = '';
-    if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
-      // A production-tool batch total, printed for the batch's own yield. v3.2.2: with a
-      // yield and a PAX row it's a live formula (printed total × PAX ÷ yield), so it matches
-      // the app and still rescales if PAX is edited in Excel; otherwise the plain number.
-      const base = r.pdfBasePax;
-      if (paxRowIdx>=0 && Number.isFinite(base) && base>0){
-        const addr = XLSX.utils.encode_cell({r:rowIdx, c:3});
-        formulaCells.push({addr, formula: r.pdfFixedTotal+'*$B$'+(paxRowIdx+1)+'/'+base, preview: computeTotal(r)});
-      } else totalCell = computeTotal(r);
-    } else if (typeof qtyNum==='number' && !isNaN(qtyNum) && paxRowIdx>=0){
-      // A real formula, not a frozen snapshot — editing Qty or PAX in Excel/Sheets after
-      // export recalculates this automatically, which is the whole point.
-      const addr = XLSX.utils.encode_cell({r:rowIdx, c:3});
-      const qtyRef = XLSX.utils.encode_cell({r:rowIdx, c:1});
-      const paxRef = '$B$'+(paxRowIdx+1);
-      formulaCells.push({addr, formula: qtyRef+'*'+paxRef, preview: computeTotal(r)});
+    const rowIdx = dataStartRow + ri, n = rowIdx + 1;
+    const isPdf = r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null;
+    let perPax = '', unit = r.unit || '', totalCell = '';
+    let paxFormula = true, totalFormula = null, totalPreview = '';
+    if (isPdf){
+      const pp = exportPerPax(r);
+      if (pp){
+        perPax = pp.n; unit = pp.unit;
+        totalFormula = 'B'+n+'*D'+n; totalPreview = paxSet ? Math.round(pp.n*pax*1e9)/1e9 : '';
+      } else {
+        totalCell = r.pdfFixedTotal; paxFormula = false;   // no Yield: printed total, plain value
+      }
+    } else {
+      const q = parseQty(r.qty);
+      if (typeof r.qty==='number' || (r.qty!=='' && r.qty!=null && !isNaN(q) && /^\s*[\d.,]+\s*$/.test(String(r.qty)))){
+        perPax = q; totalFormula = 'B'+n+'*D'+n; totalPreview = paxSet ? Math.round(q*pax*1e9)/1e9 : '';
+      } else {
+        perPax = (r.qty===undefined || r.qty===null) ? '' : r.qty;   // e.g. blank, "to taste": kept as written
+        totalFormula = 'IF(ISNUMBER(B'+n+'),B'+n+'*D'+n+',"")'; totalPreview = '';
+      }
     }
-    aoa.push([r.task, qtyNum, r.unit || '', totalCell, r.section || '', r.day || '', srcName(r)]);   // v3.2: exact original tab / PDF title
+    if (!paxSet && totalFormula && totalFormula.indexOf('IF(')!==0) totalFormula = 'IF(D'+n+'="","",'+totalFormula+')';
+    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day || '', srcName(r)]);   // v3.2: exact original tab / PDF title
+    if (paxFormula) put(rowIdx, 3, paxSet ? paxAbs : 'IF('+paxAbs+'="","",'+paxAbs+')', paxSet ? pax : '');
+    if (totalFormula) put(rowIdx, 4, totalFormula, totalPreview);
   });
   // The app's own importer tolerates up to 6 blank rows in a row before it decides a
   // dish's block has ended — a single blank row isn't enough of a gap, so without this it
@@ -3631,8 +3680,8 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
       appendDishBlock(aoa, formulaCells, dish, rowsInGroup.filter(r=>r.dish===dish));
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    formulaCells.forEach(fc=>{ ws[fc.addr] = {t:'n', f: fc.formula, v: fc.preview}; });
-    ws['!cols'] = [{wch:38},{wch:12},{wch:8},{wch:13},{wch:24},{wch:12},{wch:34}];
+    formulaCells.forEach(fc=>{ ws[fc.addr] = (typeof fc.preview==='number') ? {t:'n', f: fc.formula, v: fc.preview} : {t:'s', f: fc.formula, v: ''}; });
+    ws['!cols'] = [{wch:38},{wch:16},{wch:8},{wch:14},{wch:13},{wch:24},{wch:12},{wch:34}];
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName(tabNameFn(key), usedNames, nameChanges));
   });
   const stamp = new Date().toISOString().slice(0,10);
@@ -3866,7 +3915,7 @@ function renderByDish(){
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td><input type="checkbox" class="rowcheck" ${selectedRowIdx.has(globalIdx)?'checked':''} onchange="toggleRowSelected(${globalIdx}, this.checked)"></td>
         <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
-        <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+        <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty total-cell">${totalCell}</td>
         <td><select class="rowsel section-${key}" onchange="moveRow(${globalIdx}, this.value)">
           ${SECTIONS.map(sec=>`<option ${sec===r.section?'selected':''}>${sec}</option>`).join('')}
@@ -3888,7 +3937,7 @@ function renderByDish(){
           const cont = meta[i].isContinuation;
           const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
           const totalTxt = total!==null ? `${qN(total,r.unit)} ${qU(total,r.unit)}` : (cont && noQty ? 'uses batch above' : '—');
-          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${r.qty||'—'} ${r.unit||''}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
+          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
         }).join('')}
         </tbody></table>
         ${methodCropsPageHtml(rows)}
@@ -3915,7 +3964,7 @@ function copyDish(encodedDish){
   text += `\n`;
   rows.forEach(r=>{
     const total = computeTotal(r);
-    text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.section} · ${r.day||'day not set'}\n`;
+    text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'(set pax for total)'} [${perPaxText(r)} per pax] · ${r.section} · ${r.day||'day not set'}\n`;
   });
   navigator.clipboard.writeText(text).then(()=>{
     setStatus('Copied '+dish+' list to clipboard.', 'ok');
@@ -4066,7 +4115,7 @@ function renderByPriority(){
           <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
           <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
-          <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+          <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
           <td class="pf-section">${escapeHtml(r.section)}</td>
           <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
@@ -4216,7 +4265,7 @@ function renderBySection(){
         <td class="dish">${(idx>0 && rowsForSection[idx-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
         <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
-        <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+        <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty">${totalCell}</td>
         <td><select class="rowsel" onchange="moveRow(${globalIdx}, this.value)">
           ${SECTIONS.map(sec=>`<option ${sec===r.section?'selected':''}>${sec}</option>`).join('')}
@@ -4256,7 +4305,7 @@ function renderBySection(){
           <td class="dish">${(i>0 && rowsForSection[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
           <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
-          <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+          <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
           <td class="pf-section">${escapeHtml(r.section)}</td>
           <td class="pf-day">${escapeHtml(r.day||'not set')}</td>
@@ -4484,7 +4533,7 @@ function copySection(section){
       text += cleanDishName(dish) + (pax!==undefined ? ` (${pax} pax)` : ' (pax not set)') + '\n';
       byDish[dish].forEach(r=>{
         const total = computeTotal(r);
-        text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'— (set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.day||'day not set'}\n`;
+        text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'— (set pax for total)'} [${perPaxText(r)} per pax] · ${r.day||'day not set'}\n`;
       });
       text += '\n';
     });
