@@ -1110,7 +1110,7 @@ var LICENSE_CONFIG = {
     <div class="help-body">
       <h3>Export to Excel — an editable, re-uploadable copy</h3>
       <p>Each view has its own "📊 Export to Excel" button, laid out to match how you're looking at it — By dish gives one sheet per dish, By team section one sheet per section, By prep day one sheet per day (several dishes can share a sheet when grouped this way). Open it in Excel or Google Sheets to update quantities, sections or prep days as the function changes, then upload that same file back into the tool later and it reads straight back in.</p>
-      <p class="note">Tab names are readable (the dish, section, or day itself), truncated to Excel's 31-character limit when needed. For the By-dish export specifically, a dish name longer than that comes back under its truncated tab name on re-upload, rather than its full original title — the By-section and By-day exports don't have this limit, since several dishes sharing one tab always keep their full names.</p>
+      <p class="note">By dish uses the same tab names as the workbook you imported (a dish from a PDF or the paste box gets a tab named after the dish); By team section and By prep day name each tab after the section or day. Names are made Excel-safe: at most 31 characters, no [ ] : * ? / \, and no two tabs the same. For the By-dish export specifically, a dish name longer than that comes back under its truncated tab name on re-upload, rather than its full original title — the By-section and By-day exports don't have this limit, since several dishes sharing one tab always keep their full names.</p>
     </div>
   </div>
 </div>
@@ -1410,7 +1410,7 @@ function commitRowsToDatabase(){
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
       baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
-      pdfFixedTotal:r.pdfFixedTotal
+      pdfFixedTotal:r.pdfFixedTotal, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx
     }));
     dishDatabase[dish] = {items};
     if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
@@ -1489,7 +1489,7 @@ function generateWeekly(){
       const day = eventDay ? calendarDayForPrepNum(eventDay, it.stageNum) : '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
         baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum,
-        pdfFixedTotal:it.pdfFixedTotal});
+        pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx});
     });
   });
   if (includedCount===0){ setWeeklyStatus('Tick at least one dish to generate this week\'s preplist.', 'err'); return; }
@@ -2293,7 +2293,12 @@ function processWorkbook(wbObj){
         const dishTitle = isGeneric ? rawTitle : (blocks.length>1 ? rawTitle : name);
         sheetsUsed++; itemsFound += block.items.length;
         if (block.pax!=null && paxByDish[dishTitle]===undefined) paxByDish[dishTitle] = block.pax;
+        const rowsBefore = ROWS.length;
         addRows(dishTitle, block.items);
+        // v3.1: remember the workbook tab each row came from, so every Excel export can
+        // name its tabs after the imported file's own tabs (see exportDishesToXlsx).
+        const srcIdx = wbObj.SheetNames.indexOf(name);
+        for (let i=rowsBefore; i<ROWS.length; i++){ ROWS[i].srcSheet = name; ROWS[i].srcSheetIdx = srcIdx; }
       });
     } catch(err){
       errored.push(name + ' (' + err.message + ')');
@@ -3273,11 +3278,15 @@ async function printAllOfView(targetView, filename){
 // Excel sheet names: max 31 chars, and \ / ? * [ ] are never allowed. Used for every
 // export below so a tab is always named after something real — the dish, the section,
 // or the day it actually represents — never a generic placeholder.
+// v3.1: also strips leading/trailing apostrophes, avoids the reserved name "History",
+// and checks uniqueness case-insensitively (Excel treats "Mains" and "MAINS" as the same tab).
 function safeSheetName(raw, usedNames){
-  let base = (raw||'Sheet').toString().replace(/[\\/?*[\]:]/g, '-').trim().slice(0,31) || 'Sheet';
+  let base = (raw||'Sheet').toString().replace(/[\\/?*[\]:]/g, '-').replace(/[\u0000-\u001f]/g, ' ').trim()
+    .replace(/^'+|'+$/g, '').trim().slice(0,31).trim() || 'Sheet';
+  if (base.toLowerCase()==='history') base = 'History-1';
   let finalName = base, n = 2;
-  while (usedNames.has(finalName)){ finalName = (base.slice(0,28)+'-'+n); n++; }
-  usedNames.add(finalName);
+  while (usedNames.has(finalName.toLowerCase())){ const suf = '-'+n; finalName = base.slice(0, 31-suf.length)+suf; n++; }
+  usedNames.add(finalName.toLowerCase());
   return finalName;
 }
 // Builds one dish's block within a sheet — its own title row, a PAX row if set, the
@@ -3287,7 +3296,10 @@ function safeSheetName(raw, usedNames){
 // exports need — several dishes' tasks landing in the same tab).
 function appendDishBlock(aoa, formulaCells, dish, rows){
   const pax = paxByDish[dish];
-  aoa.push([cleanDishName(dish) || dish]);
+  // v3.1: a dish that came from a spreadsheet keeps its exact imported title (cleanDishName
+  // would drop words like "Braised" or "Mains"), so a re-upload finds the same dish.
+  const fromSheet = rows.some(r=>r.srcSheet);
+  aoa.push([fromSheet ? dish : (cleanDishName(dish) || dish)]);
   let paxRowIdx = -1;
   if (pax!==undefined && pax!==null && pax!==''){ aoa.push(['PAX', Number(pax)]); paxRowIdx = aoa.length-1; }
   aoa.push(['Item','Qty (per pax)','Unit','Total needed','Section','Prep day']);
@@ -3359,12 +3371,20 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
   setStatus('Exported '+groupOrder.length+' tab(s) to Excel, with Total needed included — edit it in Excel or Google Sheets, then re-upload that same file here later to update the preplist.', 'ok');
 }
 // By dish — one sheet per dish, tab named after that dish (not a generic placeholder).
+// v3.1: a dish imported from a workbook goes back into a tab with that workbook's own tab
+// name (several dishes that shared one source tab share it again, in the same order);
+// a dish from a PDF or the paste box has no source tab, so it keeps the dish-name tab.
 function exportDishesToXlsx(){
+  const firstSeen = {};
+  activeRows().forEach((r,i)=>{ const k = r.srcSheet ? 'tab:'+r.srcSheet : 'dish:'+r.dish; if (firstSeen[k]===undefined) firstSeen[k] = i; });
+  const idxOf = {};
+  activeRows().forEach(r=>{ if (r.srcSheet && idxOf['tab:'+r.srcSheet]===undefined) idxOf['tab:'+r.srcSheet] = (typeof r.srcSheetIdx==='number' && r.srcSheetIdx>=0) ? r.srcSheetIdx : 9999; });
   exportGroupedToXlsx(
-    r => r.dish,
-    key => dishKeyword(key),
+    r => r.srcSheet ? 'tab:'+r.srcSheet : 'dish:'+r.dish,
+    key => key.startsWith('tab:') ? key.slice(4) : dishKeyword(key.slice(5)),
     'Preplist_By_Dish',
-    'Nothing to export yet — load a preplist first.'
+    'Nothing to export yet — load a preplist first.',
+    (a,b) => ((idxOf[a] ?? 10000) - (idxOf[b] ?? 10000)) || (firstSeen[a] - firstSeen[b])
   );
 }
 // By team section — one sheet per section (Vegetables, Proteins, etc.), tab named after
