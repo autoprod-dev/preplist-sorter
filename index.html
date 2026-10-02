@@ -1138,7 +1138,26 @@ const SECTION_KEY = {
   'Box off/ Trolley organising team':'box'
 };
 
-const WORDBOUND_KW = new Set(['ragu','oil','roe','pea','crate','butter']); // 'butter' whole-word so "butternut pumpkin" isn't filed as a sauce
+const WORDBOUND_KW = new Set(['ragu','oil','roe','pea','crate','butter',  // 'butter' whole-word so "butternut pumpkin" isn't filed as a sauce
+  // v3.2.1: whole words only, so these stop matching inside other words:
+  'flower',   // not "cauliflower" (was filed as a garnish)
+  'rump',     // not "trumpet mushroom" (was filed as a protein)
+  'gel',      // not "gelato" / "angel" (was filed as a sauce)
+  'jus',      // not "adjust seasoning" (was filed as a sauce)
+  'pave',     // not "pavlova"
+  'rice','bread','tart','cake','sable']);  // new starch/dessert words: not "price", "breadcrumb", "tartare", "pancake", "disable"
+// v3.2.1: there is no pastry or starch station in the six built-in sections, so desserts/pastry
+// and rice/grain/starch prep go to Big Jobs, where this list already files batch starch work
+// (polenta, mash, rosti, gnocchi-style dumplings). A Pro custom station (e.g. "Pastry") is
+// checked before all of these, so a kitchen that runs one gets those items there instead.
+const DESSERT_KW = ['meringue','pavlova','pastry','tart','tarts','tartlet','sponge','cake','cheesecake','cupcake',
+  'brownie','biscuit','shortbread','cookie','choux','eclair','éclair','profiterole','macaron','sable','sablé',
+  'financier','madeleine','friand','panna cotta','pannacotta','mousse','souffle','soufflé','parfait','sorbet',
+  'gelato','ice cream','semifreddo','brulee','brûlée','tiramisu','frangipane','praline','nougat','fudge',
+  'petit four','petits fours','tuile','pudding','pancake','crepe','crêpe','waffle','crème pâtissière','creme patissiere','sweet dough'];
+const STARCH_KW = ['rice','risotto','arancini','couscous','cous cous','quinoa','freekeh','farro','barley','bulgur',
+  'burghul','semolina','pasta','gnocchi','noodle','orzo','bread','brioche','focaccia','sourdough','dough',
+  'flatbread','roti','naan','bao bun','grain','wonton'];
 const BOX_OFF_KW = ['breadcrate','logistics team','portioning pre event','sanitise all items','vacuumbag whatever',
   'dolleys for transport','dolley','trolley','box off','crate','wrap and label','dispatch','load out',
   'send to event','pack for event','packing list','coolroom transport'];
@@ -1146,7 +1165,7 @@ const BIG_JOB_PHRASES = ['pave','terrine','scallop','hasselback','hassleback','r
   'croquette','roulade','mosaic','brik','moussaka','mousakka','mandu','dumpling',
   'pithivier','boudin','agnolotti','ravioli','polenta','cigar','pangrattato',
   'overnight','beef cheek','short rib','lamb shoulder','pork shoulder','pork belly','mash','tempura batter'];
-const GARNISH_KW = ['oil','crumb','soil','microherb','micro herb','micro basil','micro','cress','edible flower',
+const GARNISH_KW = ['flowers','oil','crumb','soil','microherb','micro herb','micro basil','micro','cress','edible flower',
   'finger lime','fingerlime','salmon roe','roe','vinegar pearl','caviar','cavier','powder','dust','pearls',
   'preserved lemon','preserve lemon','chives','thyme','parsley','gremolata','bronze fennel','nasturtium',
   'sultana','sorrel','caper','pine nut','pickled','radicchio','radiccio','herbs','herb','viola','amaranth',
@@ -1155,7 +1174,7 @@ const SAUCE_KW = ['jus','puree','sauce','glaze','dressing','gel','emulsion','red
   'romesco','ragu','ragout','compote','fondue','labneh','yoghurt','yogurt','ghanoush','miso','dashi','feta',
   'fetta','parmesan','ricotta','grana padano','cheese','butter','stock','cream','vincotto','agrodolce',
   'infused milk','mirepoix','cashew nut','salsa','mayo','mayonnaise','aioli','relish','chutney','pesto',
-  'coulis','custard','curd','ganache','marinade','brine','roux'];
+  'coulis','custard','curd','ganache','marinade','brine','roux','gels','horseradish','caramel','vinegar','mirin'];
 const PROTEIN_KW = ['chicken','beef','lamb','pork','duck','salmon','barramundi','bara','prawn','fish','fillet',
   'breast','rump','cutlet','wing','veal','venison','quail','turkey','rabbit','goat','kangaroo','crab',
   'lobster','oyster','squid','calamari','octopus','mussel','clam','pipi','yabby','scampi','crayfish',
@@ -1170,7 +1189,10 @@ const VEGETABLE_KW = ['carrot','asparagus','leek','broccolini','broccoli','spina
   'saltbush','shimeji','pencil leek','kingbrown','king brown','potato','poatato','avocado','mushroom',
   'capsicum','beetroot','beet','pumpkin','squash','sweetcorn','celeriac','celery','garlic',
   'eschallot','shallot','parsnip','swede','turnip','witlof','endive','lettuce','rocket','watercress',
-  'silverbeet','bok choy','choy sum','daikon','okra','artichoke'];
+  'silverbeet','bok choy','choy sum','daikon','okra','artichoke','cauliflower','romanesco','sweet corn','corn cob',
+  'green bean','broad bean','snow pea','sugar snap'];
+// checked before the garnish list: "brussels sprouts" would otherwise hit the garnish word "sprout"
+const VEG_FIRST_KW = ['brussels sprout','brussel sprout'];
 const SHEET_BIG_JOB_OVERRIDE = ['mosaic','roulade','roulard'];
 
 // encodeURIComponent leaves ' ! ( ) * untouched, and an apostrophe would break the quoted
@@ -1252,8 +1274,14 @@ function categorize(itemText, sheetTitle){
   // Eggplant "eye fillet"/"eye fillets" is the vegetarian dish's centrepiece, not a meat
   // cut — check this before PROTEIN_KW, since "fillet" would otherwise wrongly win.
   if (t.includes('eggplant') || t.includes('aubergine')) return 'Vegetables';
+  if (kwHit(t, VEG_FIRST_KW)) return 'Vegetables';
   if (kwHit(t, GARNISH_KW)) return 'Garnishes, Herbs, Powders, Oils Etc.';
+  // v3.2.1: desserts/pastry before sauces ("ice cream", "lemon curd tart" aren't sauces), but a
+  // savoury item ("chicken liver parfait", "salmon mousse", "beef wellington pastry") stays a protein.
+  if (kwHit(t, DESSERT_KW) && !kwHit(t, PROTEIN_KW)) return 'Big Jobs';
   if (kwHit(t, SAUCE_KW)) return 'Sauce, Purees and Gels';
+  // v3.2.1: rice, grains and starch prep (not "rice wine/vinegar", which are condiments)
+  if (kwHit(t, STARCH_KW) && !/\brice (wine|vinegar)\b/.test(t)) return 'Big Jobs';
   if (kwHit(t, PROTEIN_KW)) return SHEET_BIG_JOB_OVERRIDE.some(k=>st.includes(k)) ? 'Big Jobs' : 'Proteins';
   if (kwHit(t, VEGETABLE_KW)) return 'Vegetables';
   return 'REVIEW';
@@ -1864,14 +1892,14 @@ function eventDaySelect(encodedDish, current){
 const DAY1_KW = ['collect','trim','wash','count','top up order','topup order','top-up order','order top up','order',
   'peel','devein','de-vein','unpack','receive delivery','receiving','stocktake','par level','tally','defrost',
   'thaw','pat dry','squeeze','drain'];
-const DAY2_KW = ['cook','steam','blanch','chargrill','char-grill','char grill','roast','grill','sear','saute','sauté',
+const DAY2_KW = ['cook','charred','steam','blanch','chargrill','char-grill','char grill','roast','grill','sear','saute','sauté',
   'braise','sous vide','deep fry','smoke','poach','simmer','reduce','bake','ferment','infuse','char','griddle',
   'pan-fry','panfry','confit','render','caramelise','caramelize','toast','dehydrate','vac cook','melt','glaze'];
 const DAY3_KW = ['portion','tray up','trolley card','trolley','organise','organize','box off','plate up',
   'divide into','allocate','arrange on tray','set up tray','label and store','wrap individually','crumb'];
 const DAY4_KW = ['continuation','production tool','fill up cambro','fill cambro','restock','top up trolley',
   'replenish','fill up','pack extra','spare stock','buffer stock','contingency'];
-const DAY_WORDBOUND = new Set(['order','count']);
+const DAY_WORDBOUND = new Set(['order','count','char','melt']);   // v3.2.1: 'char' not "swiss chard"/"charcuterie", 'melt' not "smelt"
 
 // Fallback default per base category when no day-keyword is found in the task text —
 // reflects the general shape of each station's work (from the prep-flow guide).
@@ -1945,7 +1973,7 @@ function classifyPrepStage(taskText, baseCategory, contextStage){
   const t = norm(taskText);
 
   if (/\bmash\b/.test(t)) return 1; // non-negotiable
-  if (t.includes('pave') || t.includes('terrine')){
+  if (/\bpave\b/.test(t) || t.includes('terrine')){   // v3.2.1: whole word, so "pavlova" isn't treated as a pave
     const d = paveDayOverride(t);
     if (d) return d; // non-negotiable
   }
