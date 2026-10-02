@@ -2053,6 +2053,27 @@ function computeTotal(r){
   const t = q * pax;
   return Math.round(t*100)/100;
 }
+// Totals of 1000 g or more display as kg (and 1000 ml+ as L): "10 kg", never "10000 g".
+const G_UNITS = new Set(['g','gm','gms','gram','grams']), KG_UNITS = new Set(['kg','kgs','kilo','kilos','kilogram','kilograms']);
+const ML_UNITS = new Set(['ml','millilitre','millilitres','milliliter','milliliters']), L_UNITS = new Set(['l','lt','ltr','litre','litres','liter','liters']);
+function toBaseQty(n, unit){
+  const u = String(unit||'').toLowerCase().trim();
+  if (n===null || n===undefined || isNaN(n)) return {n, u:unit||'', key:u};
+  if (G_UNITS.has(u)) return {n, u:'g', key:'g'};
+  if (KG_UNITS.has(u)) return {n:n*1000, u:'g', key:'g'};
+  if (ML_UNITS.has(u)) return {n, u:'ml', key:'ml'};
+  if (L_UNITS.has(u)) return {n:n*1000, u:'ml', key:'ml'};
+  return {n, u:unit||'', key:u};
+}
+function dispQty(n, unit){
+  if (n===null || n===undefined || isNaN(n)) return {n, u:unit||''};
+  const b = toBaseQty(n, unit);
+  if (b.key==='g') return Math.abs(b.n)>=1000 ? {n:Math.round(b.n)/1000, u:'kg'} : {n:Math.round(b.n*100)/100, u:'g'};
+  if (b.key==='ml') return Math.abs(b.n)>=1000 ? {n:Math.round(b.n)/1000, u:'L'} : {n:Math.round(b.n*100)/100, u:'ml'};
+  return {n, u:unit||''};
+}
+function qN(n, unit){ return fmtNum(dispQty(n, unit).n); }
+function qU(n, unit){ return String(dispQty(n, unit).u||''); }
 function fmtNum(n){
   if (n===null || n===undefined) return '—';
   if (Number.isInteger(n)) return String(n);
@@ -2570,12 +2591,13 @@ function pdfParseQtyString(qtyStr){
     if (m) return {each:parseFloat(m[1]), grams:null, unitLabel:'each'};
   }
   const re = /([\d.]+)\s*(Kilograms|Kilogram|Grams|Gram|Liters|Liter|Litres|Litre|Milliliters|Milliliter)/gi;
-  let m, totalG=0, found=false;
+  let m, totalG=0, found=false, allVolume=true;
   while ((m = re.exec(qtyStr))){
     const mult = PDF_UNIT_TO_GRAMS[m[2].toLowerCase()];
-    if (mult){ totalG += parseFloat(m[1])*mult; found=true; }
+    if (mult){ totalG += parseFloat(m[1])*mult; found=true; if (!/^(lit|lite|mil)/i.test(m[2])) allVolume=false; }
   }
-  if (found) return {each:null, grams:totalG, unitLabel:null};
+  // Litres/millilitres stay a volume (shown as L/ml), rather than being displayed as kg/g.
+  if (found) return {each:null, grams:totalG, unitLabel:null, volume:allVolume};
   // Fallback: an unrecognized count-style unit (Punnet, Tray, Bunch, etc.) is still a
   // real countable quantity — keep the number and its own word as the unit label
   // rather than reporting it as unparsed.
@@ -2715,8 +2737,8 @@ function pdfCookedBannerHtml(rows){
 }
 function pdfQtyToDisplay(parsedQty){
   if (parsedQty.grams!==null && parsedQty.grams!==undefined){
-    if (parsedQty.grams>=1000) return {value: pdfRoundTo(parsedQty.grams/1000,2), unit:'kg'};
-    return {value: pdfRoundTo(parsedQty.grams,1), unit:'g'};
+    if (parsedQty.grams>=1000) return {value: pdfRoundTo(parsedQty.grams/1000,2), unit: parsedQty.volume ? 'L' : 'kg'};
+    return {value: pdfRoundTo(parsedQty.grams,1), unit: parsedQty.volume ? 'ml' : 'g'};
   }
   if (parsedQty.each!==null && parsedQty.each!==undefined) return {value:parsedQty.each, unit: parsedQty.unitLabel || 'each'};
   return {value:null, unit:''};
@@ -3646,7 +3668,7 @@ function renderByDish(){
       const {isContinuation, band} = meta[i];
       const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
       let totalCell;
-      if (total!==null) totalCell = `<b>${fmtNum(total)} ${escapeHtml(String(r.unit||''))}</b>`;
+      if (total!==null) totalCell = `<b>${qN(total,r.unit)} ${escapeHtml(qU(total,r.unit))}</b>`;
       else if (isContinuation && noQty) totalCell = '<span class="contnote">uses batch above</span>';
       else totalCell = '<span class="needpax">set pax →</span>';
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
@@ -3673,7 +3695,7 @@ function renderByDish(){
           const total = computeTotal(r);
           const cont = meta[i].isContinuation;
           const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-          const totalTxt = total!==null ? `${fmtNum(total)} ${r.unit||''}` : (cont && noQty ? 'uses batch above' : '—');
+          const totalTxt = total!==null ? `${qN(total,r.unit)} ${qU(total,r.unit)}` : (cont && noQty ? 'uses batch above' : '—');
           return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${r.qty||'—'} ${r.unit||''}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
         }).join('')}
         </tbody></table>
@@ -3701,7 +3723,7 @@ function copyDish(encodedDish){
   text += `\n`;
   rows.forEach(r=>{
     const total = computeTotal(r);
-    text += `  [ ] ${r.task} — ${total!==null?fmtNum(total)+' '+(r.unit||''):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.section} · ${r.day||'day not set'}\n`;
+    text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.section} · ${r.day||'day not set'}\n`;
   });
   navigator.clipboard.writeText(text).then(()=>{
     setStatus('Copied '+dish+' list to clipboard.', 'ok');
@@ -3781,7 +3803,7 @@ function renderByPriority(){
       </tr></thead><tbody>`;
       groups.forEach(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
@@ -3809,7 +3831,7 @@ function renderByPriority(){
       const total = computeTotal(r);
       const {isContinuation, band} = meta[i];
       const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-      const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+      const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       const evDay = getEventDay(r.dish);
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
@@ -3828,7 +3850,7 @@ function renderByPriority(){
     if (consolidateOn){
       printRowsHtml2 = groups.map(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
@@ -3845,7 +3867,7 @@ function renderByPriority(){
         const pax = paxByDish[r.dish];
         const {isContinuation, band} = pMeta[i];
         const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-        const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+        const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         const evDay = getEventDay(r.dish);
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
@@ -3890,7 +3912,7 @@ function copyPriority(label, key){
   if (consolidateOn){
     const groups = buildConsolidatedGroups(rowsForDay);
     groups.forEach(g=>{
-      const totalTxt = g.hasTotal ? `${fmtNum(g.total)} ${g.unit||''}` : '(set pax for total)';
+      const totalTxt = g.hasTotal ? `${qN(g.total,g.unit)} ${qU(g.total,g.unit)}` : '(set pax for total)';
       text += `  [ ] ${g.taskLabel} — ${totalTxt} · ${g.section} · ${leaderBySection[g.section] || 'lead TBC'}${g.rows.length>1 ? ' — for: '+g.dishes.map(cleanDishName).join(', ') : ''}\n`;
     });
   } else {
@@ -3901,7 +3923,7 @@ function copyPriority(label, key){
       text += cleanDishName(dish) + (evDay ? ` (event: ${evDay})` : '') + '\n';
       byDish[dish].forEach(r=>{
         const total = computeTotal(r);
-        text += `  [ ] ${r.task} — ${fmtNum(total)} ${total!==null?(r.unit||''):'(set pax for total)'} · ${r.section} · ${leaderBySection[r.section] || 'lead TBC'}\n`;
+        text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'— (set pax for total)'} · ${r.section} · ${leaderBySection[r.section] || 'lead TBC'}\n`;
       });
       text += '\n';
     });
@@ -3967,7 +3989,7 @@ function renderBySection(){
       </tr></thead><tbody>`;
       groups.forEach(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
@@ -3996,7 +4018,7 @@ function renderBySection(){
       const pax = paxByDish[r.dish];
       const {isContinuation, band} = meta[idx];
       const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-      const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+      const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(idx>0 && rowsForSection[idx-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
@@ -4020,7 +4042,7 @@ function renderBySection(){
     if (consolidateOn){
       printRowsHtml = groups.map(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
@@ -4036,7 +4058,7 @@ function renderBySection(){
         const pax = paxByDish[r.dish];
         const {isContinuation, band} = printMeta[i];
         const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-        const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+        const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForSection[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
@@ -4136,12 +4158,14 @@ function cleanTaskLabel(task){
 function buildConsolidatedGroups(rows){
   const groups = {}; const order = [];
   rows.forEach(r=>{
-    const total = computeTotal(r);
-    const unitKey = (r.unit||'').toLowerCase().trim();
+    const rawTotal = computeTotal(r);
+    const based = toBaseQty(rawTotal, r.unit);
+    const total = rawTotal===null ? null : based.n;
+    const unitKey = based.key;
     const sig = taskSignature(r.task);
     const key = (total===null || !sig) ? 'single-'+order.length+'-'+Math.random() : sig+'|'+(r.day||'')+'|'+r.section+'|'+unitKey;
     if (!groups[key]){
-      groups[key] = {taskLabel: cleanTaskLabel(r.task), unit:r.unit, total:0, hasTotal:false,
+      groups[key] = {taskLabel: cleanTaskLabel(r.task), unit: rawTotal===null ? r.unit : based.u, total:0, hasTotal:false,
         day:r.day, section:r.section, rows:[], dishes:[]};
       order.push(key);
     }
@@ -4257,7 +4281,7 @@ function copySection(section){
   if (consolidateOn){
     const groups = buildConsolidatedGroups(rows);
     groups.forEach(g=>{
-      const totalTxt = g.hasTotal ? `${fmtNum(g.total)} ${g.unit||''}` : '(set pax for total)';
+      const totalTxt = g.hasTotal ? `${qN(g.total,g.unit)} ${qU(g.total,g.unit)}` : '(set pax for total)';
       text += `  [ ] ${g.taskLabel} — ${totalTxt} · ${g.day||'day not set'}${g.rows.length>1 ? ' — for: '+g.dishes.map(cleanDishName).join(', ') : ''}\n`;
     });
   } else {
@@ -4268,7 +4292,7 @@ function copySection(section){
       text += cleanDishName(dish) + (pax!==undefined ? ` (${pax} pax)` : ' (pax not set)') + '\n';
       byDish[dish].forEach(r=>{
         const total = computeTotal(r);
-        text += `  [ ] ${r.task} — ${fmtNum(total)} ${total!==null?(r.unit||''):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.day||'day not set'}\n`;
+        text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'— (set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.day||'day not set'}\n`;
       });
       text += '\n';
     });
