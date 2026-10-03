@@ -313,7 +313,14 @@ with sync_playwright() as p:
         pg.evaluate("(()=>{const s=document.querySelector('#shareModal svg.qr-svg'); const n=+s.getAttribute('viewBox').split(' ')[2]; s.style.width=s.style.height=(n*5)+'px'; s.style.maxWidth='none';})()")
         png = pg.locator('#shareModal svg.qr-svg').first.screenshot(path=os.path.join(OUT, 'qr.png'))
         img = cv2.imread(os.path.join(OUT, 'qr.png')); img = cv2.copyMakeBorder(img, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(255, 255, 255))
-        txt, _, _ = cv2.QRCodeDetector().detectAndDecode(img)
+        txt = ''
+        raw = cv2.imread(os.path.join(OUT, 'qr.png'))
+        for sc in (1, 1.25, 1.5, 2, 3):   # OpenCV's detector is picky about module size and quiet zone; try a few scales
+            for im2 in (cv2.copyMakeBorder(cv2.resize(raw, None, fx=sc, fy=sc, interpolation=cv2.INTER_NEAREST), 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(255, 255, 255)),
+                        cv2.resize(img, None, fx=sc, fy=sc, interpolation=cv2.INTER_NEAREST)):
+                txt, _, _ = cv2.QRCodeDetector().detectAndDecode(im2)
+                if txt: break
+            if txt: break
         check('share: the QR code scans (OpenCV) to exactly the share link', txt == link, (len(txt), len(link)))
     except ImportError:
         check('share: QR decode skipped (no OpenCV) — info only', True, 'opencv not installed')
