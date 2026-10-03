@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
-"""Build the offline, single-file Windows package of Preplist Sorter.
+"""Build the offline package of Prepline from index.html (the live page).
 
-    python3 build_offline.py            # uses ./vendor, downloads anything missing
+    python3 build_offline.py            # uses ./vendor (pinned by SHA-256), downloads anything missing
     python3 build_offline.py --src index.html
 
-Outputs:
-    dist/Preplist-Sorter-offline.html   one self-contained HTML file (no network needed)
-    dist/Preplist-Sorter-Windows.zip    "Preplist Sorter.html" + "READ ME FIRST.txt"
+Outputs (same file names/URLs as earlier offline packages):
+    dist/Preplist-Sorter-Windows.zip    folder "Prepline/":
+                                          index.html            open this
+                                          lib/xlsx.full.min.js  SheetJS 0.18.5 (unmodified)
+                                          lib/pdf.min.js        pdf.js 5.6.205 (source wrapped in a string, see below)
+                                          lib/pdf.worker.min.js pdf.js 5.6.205 worker (same)
+                                          README.txt, LICENSES/
+    dist/Preplist-Sorter-offline.html   the same app as one self-contained file (libraries inlined)
 
-How the CDN dependencies are replaced:
-  * SheetJS xlsx 0.18.5   -> inlined in a classic <script> (same global XLSX as before).
-  * pdf.js 5.6.205        -> module + worker source are stored in inert
-                             <script type="text/x-inline-module"> blocks, turned into
-                             Blob URLs at runtime; the library is loaded with import(blobURL)
-                             the worker is converted to a classic script, started as
-                             new Worker(blobURL) and passed in via GlobalWorkerOptions.workerPort
-                             (Chromium blocks ES-module imports from file:// and module Workers
-                             from Blob URLs there; classic Blob Workers are fine).
-  * Google Fonts          -> latin-subset woff2 files embedded as base64 @font-face data URIs
-                             (also injected into the print-window documents).
-Every vendored file is pinned by SHA-256; the build fails if anything doesn't match.
+Offline rules:
+  * No network at all: the CDN <script>s point at the local lib/ copies, and the Google Fonts
+    <link>s are removed; the CSS falls back to system fonts (font stacks rewritten below).
+  * Chromium blocks ES-module imports and Workers from file:// URLs, so the pdf.js module and
+    worker sources are shipped as JavaScript strings (lib/pdf*.js set window.__preplineLib.*),
+    turned into Blob URLs at runtime and loaded with import(blobURL); the worker is converted
+    to a classic script (export stripped, import.meta.url -> self.location.href) and handed to
+    pdf.js via GlobalWorkerOptions.workerPort. The library code itself is unchanged.
+  * The app keeps whatever LICENSE_CONFIG the live index.html has (live: mode 'off').
 """
-import argparse, base64, hashlib, os, re, sys, urllib.request, zipfile
+import argparse, hashlib, json, os, re, sys, urllib.request, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VENDOR = os.path.join(HERE, "vendor")
 DIST = os.path.join(HERE, "dist")
+VERSION_FILE = os.path.join(HERE, "VERSION")
 
 CDN = "https://cdnjs.cloudflare.com/ajax/libs"
 LIBS = {
@@ -36,38 +39,53 @@ LIBS = {
     "pdf.worker.min.mjs": (f"{CDN}/pdf.js/5.6.205/pdf.worker.min.mjs",
                            "51a2fd1ea47f1a9b0814e65e0c336c739c54957795ee774e8f93cb81e8028dd1"),
 }
-GS = "https://fonts.gstatic.com/s"
-# file -> (url, sha256, family, css font-weight)   (Fraunces and Inter are variable fonts)
-FONTS = {
-    "fonts/fraunces-var-latin.woff2":    (f"{GS}/fraunces/v38/6NU78FyLNQOQZAnv9bYEvDiIdE9Ea92uemAk_WBq8U_9v0c2Wa0KxC9TeA.woff2",
-        "7234ed860a9cc83045413c4faee63c960a8f2d1917adcf728119307d56e0d783", "Fraunces", "500 700"),
-    "fonts/inter-var-latin.woff2":       (f"{GS}/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
-        "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62", "Inter", "400 700"),
-    "fonts/ibmplexmono-400-latin.woff2": (f"{GS}/ibmplexmono/v20/-F63fjptAgt5VM-kVkqdyU8n1i8q1w.woff2",
-        "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7", "IBM Plex Mono", "400"),
-    "fonts/ibmplexmono-500-latin.woff2": (f"{GS}/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3twJwlBFgg.woff2",
-        "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22", "IBM Plex Mono", "500"),
-    "fonts/ibmplexmono-600-latin.woff2": (f"{GS}/ibmplexmono/v20/-F6qfjptAgt5VM-kVkqdyU8n3vAOwlBFgg.woff2",
-        "0d1f0b8d0722224e32e9f28261bdc86c79115be73444ae5eceb73976a1bcdf83", "IBM Plex Mono", "600"),
-}
-LATIN_RANGE = ("U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, "
-               "U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD")
-MAX_FONT_BYTES = 6 * 1024 * 1024  # above this, fall back to system fonts
+LICENSES = {"licenses/pdfjs-LICENSE.txt": "pdfjs-LICENSE.txt", "licenses/sheetjs-LICENSE.txt": "sheetjs-LICENSE.txt"}
 
-README = """Preplist Sorter - works offline, no install needed
+SANS = "system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif"
+SERIF = "Georgia,Cambria,Times New Roman,serif"
+MONO = "ui-monospace,Cascadia Mono,Consolas,Menlo,monospace"
 
-1. Unzip: right-click "Preplist-Sorter-Windows.zip" and choose "Extract All...", then click Extract.
-2. Open the extracted folder and double-click "Preplist Sorter.html" (it opens in Edge or Chrome).
-3. Optional: right-click "Preplist Sorter.html" > Send to > Desktop (create shortcut) for a desktop icon.
+def readme(ver):
+    return f"""Prepline v{ver} - offline version, by Autoprod
 
-No internet connection, Python, installer or admin rights are required.
+How to use
+1. Unzip the download (Windows: right-click > Extract All... > Extract).
+2. Open the "Prepline" folder and double-click index.html.
+   It opens in your web browser (Microsoft Edge or Google Chrome recommended).
+
+It works with no internet connection. Nothing is installed and nothing is sent anywhere:
+your files are read inside the browser on this computer. Keep the "lib" folder next to
+index.html - the app needs it.
+
+Included third-party software (licence texts in the LICENSES folder):
+- pdf.js 5.6.205, Mozilla Foundation, Apache License 2.0 (lib/pdf.min.js, lib/pdf.worker.min.js)
+- SheetJS Community Edition (xlsx) 0.18.5, SheetJS LLC, Apache License 2.0 (lib/xlsx.full.min.js)
+"""
+
+NOTICES = """Third-party notices for Prepline (offline version)
+
+pdf.js 5.6.205
+  Copyright Mozilla Foundation. Licensed under the Apache License, Version 2.0.
+  https://github.com/mozilla/pdf.js
+  Files: lib/pdf.min.js, lib/pdf.worker.min.js. These contain the unmodified pdf.min.mjs and
+  pdf.worker.min.mjs from the official 5.6.205 release, stored as JavaScript strings so they can be
+  loaded from a file:// page; in the worker copy the final ES-module export statement is removed and
+  import.meta.url is replaced by self.location.href so it can run as a classic Web Worker.
+  Full licence: pdfjs-LICENSE.txt
+
+SheetJS Community Edition (xlsx) 0.18.5
+  Copyright (C) 2013-present SheetJS LLC. Licensed under the Apache License, Version 2.0.
+  https://sheetjs.com
+  File: lib/xlsx.full.min.js (unmodified).
+  Full licence: sheetjs-LICENSE.txt
+
+No fonts are bundled: the offline version uses the fonts already installed on your computer.
 """
 
 def fetch(rel, url, sha):
     path = os.path.join(VENDOR, rel)
     if not os.path.exists(path):
         print("downloading", url)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req) as r, open(path, "wb") as f:
             f.write(r.read())
@@ -78,7 +96,6 @@ def fetch(rel, url, sha):
     return data
 
 def safe_js(name, text):
-    # Inlined into raw-text <script> blocks: a "</script" or "<!-- ... <script" would end/confuse it.
     if re.search(r"</script", text, re.I):
         sys.exit(f"{name} contains '</script' - cannot inline safely")
     if "<!--" in text and re.search(r"<script", text, re.I):
@@ -91,127 +108,134 @@ def replace_once(html, old, new, what):
         sys.exit(f"expected exactly one {what} in source, found {n}")
     return html.replace(old, new)
 
-def build(src):
-    html = open(src, encoding="utf-8").read()
-    xlsx = safe_js("xlsx", fetch("xlsx.full.min.js", *LIBS["xlsx.full.min.js"]).decode("utf-8"))
-    pdfm = safe_js("pdf.js", fetch("pdf.min.mjs", *LIBS["pdf.min.mjs"]).decode("utf-8"))
-    pdfw = safe_js("pdf.worker", fetch("pdf.worker.min.mjs", *LIBS["pdf.worker.min.mjs"]).decode("utf-8"))
-    # Classic-script version of the ES-module worker (see loader comment below).
+LOADER = """<script type="module">
+  // pdf.js 5.6.205 (pinned - other builds parse PDF layout differently). Loaded from local
+  // copies via Blob URLs, because Chromium blocks ES-module imports and Workers on file://.
+  const blobUrl = name => URL.createObjectURL(new Blob([%(GET)s], {type: 'text/javascript'}));
+  const pdfjsLib = await import(blobUrl('pdfjs'));
+  const workerUrl = blobUrl('pdfjsWorker');
+  // Classic worker started by us and handed to pdf.js; wait for its "ready" handshake. If a
+  // Worker can't start, load the same code on the main thread (pdf.js "fake worker", slower).
+  const workerOk = await new Promise(resolve => {
+    let w;
+    try { w = new Worker(workerUrl); } catch (e) { resolve(false); return; }
+    const timer = setTimeout(() => { w.terminate(); resolve(false); }, 8000);
+    w.addEventListener('message', function onReady(ev) {
+      if (ev.data && ev.data.action === 'ready') {
+        clearTimeout(timer); w.removeEventListener('message', onReady);
+        pdfjsLib.GlobalWorkerOptions.workerPort = w; resolve(true);
+      }
+    });
+    w.addEventListener('error', ev => { ev.preventDefault(); clearTimeout(timer); w.terminate(); resolve(false); });
+  });
+  if (!workerOk) {
+    console.info('pdf.js: Web Worker unavailable, parsing PDFs on the main thread');
+    await new Promise(resolve => {
+      const sc = document.createElement('script');
+      sc.src = workerUrl; sc.onload = sc.onerror = resolve;
+      document.head.appendChild(sc);
+    });
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+  }
+  window.pdfjsWorkerMode = workerOk ? 'worker' : 'main-thread';
+  window.pdfjsLib = pdfjsLib;
+</script>"""
+
+def offline_html(html):
+    """Common edits: no Google Fonts, system font stacks. Returns html with the CDN tags still in."""
+    font_links = re.compile(r'[ \t]*<link rel="preconnect" href="https://fonts\.googleapis\.com">\n'
+                            r'[ \t]*<link href="https://fonts\.googleapis\.com/css2\?[^"]*" rel="stylesheet">\n')
+    n = len(font_links.findall(html))
+    if n != 3:
+        sys.exit(f"expected 3 Google Fonts link blocks (head + 2 print templates), found {n}")
+    html = font_links.sub("", html)
+    html = re.sub(r"'IBM Plex Mono',\s*monospace", MONO, html)
+    html = re.sub(r"'Inter',\s*sans-serif", SANS, html)
+    html = re.sub(r"'Fraunces',\s*(?:sans-)?serif", SERIF, html)
+    left = re.findall(r".{20}(?:'Fraunces'|'Inter'|IBM Plex).{20}", html)
+    if left:
+        sys.exit(f"web-font names remain: {left[:3]}")
+    return html
+
+def split_pdf_sources():
+    xlsx = fetch("xlsx.full.min.js", *LIBS["xlsx.full.min.js"]).decode("utf-8")
+    pdfm = fetch("pdf.min.mjs", *LIBS["pdf.min.mjs"]).decode("utf-8")
+    pdfw = fetch("pdf.worker.min.mjs", *LIBS["pdf.worker.min.mjs"]).decode("utf-8")
     tail = "export{WorkerMessageHandler};"
     if not pdfw.rstrip().endswith(tail) or "export{" in pdfw.rstrip()[:-len(tail)]:
         sys.exit("pdf.worker.min.mjs: unexpected export layout - review the classic-worker conversion")
     pdfw = pdfw.rstrip()[:-len(tail)].replace("import.meta.url", "self.location.href")
     if re.search(r"\bimport\.meta\b|^\s*import[\s{*]", pdfw, re.M):
         sys.exit("pdf.worker.min.mjs: module-only syntax remains after conversion")
+    return xlsx, pdfm, pdfw
 
-    fonts = {rel: fetch(rel, url, sha) for rel, (url, sha, _f, _w) in FONTS.items()}
-    font_bytes = sum(len(b) for b in fonts.values())
-    if font_bytes * 4 // 3 <= MAX_FONT_BYTES:
-        rules = []
-        for rel, (_u, _s, fam, weight) in FONTS.items():
-            b64 = base64.b64encode(fonts[rel]).decode("ascii")
-            rules.append(f"@font-face{{font-family:'{fam}';font-style:normal;font-weight:{weight};"
-                         f"font-display:swap;src:url(data:font/woff2;base64,{b64}) format('woff2');"
-                         f"unicode-range:{LATIN_RANGE};}}")
-        font_css = "\n".join(rules)
-        font_mode = f"embedded ({font_bytes:,} bytes woff2)"
-    else:
-        font_css = "/* fonts too large to embed - using system fonts */"
-        font_mode = "system-font fallback"
-    font_style = f'<style id="offline-fonts">\n{font_css}\n</style>'
+def check_no_remote(html, what):
+    left = re.findall(r'(?:src|href)="https?://[^"]+"|https://(?:cdnjs|fonts\.g)[^\s"\')]+', html)
+    if left:
+        sys.exit(f"{what}: external references remain: {left[:5]}")
 
-    # 1) Google Fonts <link>s in <head> -> nothing (embedded @font-face goes before </head>,
-    #    AFTER the app's first <style>, because print code copies document.querySelector('style')).
-    font_links = re.compile(r'[ \t]*<link rel="preconnect" href="https://fonts\.googleapis\.com">\n'
-                            r'[ \t]*<link href="https://fonts\.googleapis\.com/css2\?[^"]*" rel="stylesheet">\n')
-    links = font_links.findall(html)
-    if len(links) != 3:
-        sys.exit(f"expected 3 Google Fonts link blocks (head + 2 print templates), found {len(links)}")
-    head_links = links[0]
-    html = replace_once(html, head_links, "", "head font links")
-    # print-window templates (JS template literals): inject the embedded font <style> instead
-    html = font_links.sub("    ${(document.getElementById('offline-fonts')||{}).outerHTML||''}\n", html)
-
-    # the document's own </head> is the only one at the start of a line (the print templates
-    # have indented ones); do this before inlining libraries so their text can't interfere.
-    html = replace_once(html, "\n</head>\n", "\n" + font_style + "\n</head>\n", "top-level </head>")
-
-    # 2) SheetJS
-    html = replace_once(html,
-        '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>',
-        f"<!-- SheetJS xlsx 0.18.5 (inlined for offline use) -->\n<script>\n{xlsx}\n</script>",
-        "xlsx script tag")
-
-    # 3) pdf.js module + worker
-    m = re.search(r'<script type="module">\s*\n.*?pdf\.min\.mjs.*?</script>', html, re.S)
-    if not m:
+def build(src):
+    ver = open(VERSION_FILE).read().strip()
+    html = open(src, encoding="utf-8").read()
+    m = re.search(r'<meta name="prepline-version" content="([^"]+)">', html)
+    if not m or m.group(1) != ver:
+        sys.exit(f"index.html version {m and m.group(1)} != VERSION {ver}")
+    html = offline_html(html)
+    xlsx, pdfm, pdfw = split_pdf_sources()
+    xlsx_tag = '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>'
+    mod = re.search(r'<script type="module">\s*\n.*?pdf\.min\.mjs.*?</script>', html, re.S)
+    if not mod:
         sys.exit("pdf.js module loader block not found")
-    loader = f"""<!-- pdf.js 5.6.205 (inlined for offline use; loaded via Blob URLs because
-     Chromium blocks ES-module imports from file://) -->
-<script type="text/x-inline-module" id="pdfjs-lib-src">
-{pdfm}
-</script>
-<script type="text/x-inline-module" id="pdfjs-worker-src">
-{pdfw}
-</script>
-<script type="module">
-  // Pinned to pdf.js 5.6.205 - do not swap for a different build,
-  // older builds parse PDF layout differently and will break extraction.
-  const blobUrl = id => URL.createObjectURL(new Blob(
-    [document.getElementById(id).textContent], {{type: 'text/javascript'}}));
-  const pdfjsLib = await import(blobUrl('pdfjs-lib-src'));
-  const workerUrl = blobUrl('pdfjs-worker-src');
-  // Chromium refuses *module* Workers from Blob URLs on a file:// page (and pdf.js's own
-  // wrapper for a "null" origin fails too, dropping to its slow main-thread "fake worker").
-  // So the build ships the worker as a classic script (export stripped, import.meta.url ->
-  // self.location.href), we start it ourselves and hand pdf.js the port. We wait for the
-  // worker's "ready" handshake; if it can't start, load the same code on the main thread
-  // (pdf.js then uses its built-in fake worker - slower, but still works).
-  const workerOk = await new Promise(resolve => {{
-    let w;
-    try {{ w = new Worker(workerUrl); }} catch (e) {{ resolve(false); return; }}
-    const timer = setTimeout(() => {{ w.terminate(); resolve(false); }}, 8000);
-    w.addEventListener('message', function onReady(ev) {{
-      if (ev.data && ev.data.action === 'ready') {{
-        clearTimeout(timer); w.removeEventListener('message', onReady);
-        pdfjsLib.GlobalWorkerOptions.workerPort = w; resolve(true);
-      }}
-    }});
-    w.addEventListener('error', ev => {{ ev.preventDefault(); clearTimeout(timer); w.terminate(); resolve(false); }});
-  }});
-  if (!workerOk) {{
-    console.info('pdf.js: Web Worker unavailable, parsing PDFs on the main thread');
-    await new Promise(resolve => {{
-      const sc = document.createElement('script');
-      sc.src = workerUrl; sc.onload = sc.onerror = resolve;
-      document.head.appendChild(sc);
-    }});
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-  }}
-  window.pdfjsWorkerMode = workerOk ? 'worker' : 'main-thread';
-  window.pdfjsLib = pdfjsLib;
-</script>"""
-    html = html[:m.start()] + loader + html[m.end():]
 
-    leftovers = re.findall(r'(?:src|href)="https?://[^"]+"|https://(?:cdnjs|fonts\.g)[^\s"\')]+', html)
-    if leftovers:
-        sys.exit(f"external references remain: {leftovers[:5]}")
+    # A) folder package: index.html + lib/
+    pkg = html[:mod.start()] + (
+        '<!-- pdf.js 5.6.205: local copies (see LICENSES/THIRD-PARTY-NOTICES.txt) -->\n'
+        '<script src="lib/pdf.min.js"></script>\n<script src="lib/pdf.worker.min.js"></script>\n'
+        + LOADER % {"GET": "window.__preplineLib[name]"}) + html[mod.end():]
+    pkg = replace_once(pkg, xlsx_tag, '<script src="lib/xlsx.full.min.js"></script>', "xlsx script tag")
+    check_no_remote(pkg, "package index.html")
+    def wrap(key, text, desc):
+        return ("/*! " + desc + " - Apache License 2.0, see LICENSES/. Unmodified library source stored as a\n"
+                " * string so Prepline can load it from a file:// page (browsers block module imports there). */\n"
+                "window.__preplineLib = window.__preplineLib || {};\n"
+                f"window.__preplineLib.{key} = " + json.dumps(text, ensure_ascii=True) + ";\n")
+    files = [
+        ("Prepline/index.html", pkg),
+        ("Prepline/lib/xlsx.full.min.js", xlsx),
+        ("Prepline/lib/pdf.min.js", wrap("pdfjs", pdfm, "pdf.js 5.6.205 (pdf.min.mjs), (c) Mozilla Foundation")),
+        ("Prepline/lib/pdf.worker.min.js", wrap("pdfjsWorker", pdfw,
+            "pdf.js 5.6.205 worker (pdf.worker.min.mjs as a classic script), (c) Mozilla Foundation")),
+        ("Prepline/README.txt", readme(ver).replace("\n", "\r\n")),
+        ("Prepline/LICENSES/THIRD-PARTY-NOTICES.txt", NOTICES.replace("\n", "\r\n")),
+    ] + [(f"Prepline/LICENSES/{dst}", open(os.path.join(VENDOR, rel), encoding="utf-8").read())
+         for rel, dst in LICENSES.items()]
+
+    # B) single self-contained file (same app, libraries inlined)
+    one = html[:mod.start()] + (
+        '<!-- pdf.js 5.6.205 (Mozilla, Apache-2.0), inlined for offline use -->\n'
+        f'<script type="text/x-inline-module" id="pdfjs-src">\n{safe_js("pdf.js", pdfm)}\n</script>\n'
+        f'<script type="text/x-inline-module" id="pdfjsWorker-src">\n{safe_js("pdf.worker", pdfw)}\n</script>\n'
+        + LOADER % {"GET": "document.getElementById(name + '-src').textContent"}) + html[mod.end():]
+    one = replace_once(one, xlsx_tag,
+        f"<!-- SheetJS xlsx 0.18.5 (Apache-2.0), inlined for offline use -->\n<script>\n{safe_js('xlsx', xlsx)}\n</script>",
+        "xlsx script tag")
+    check_no_remote(one, "single-file html")
 
     os.makedirs(DIST, exist_ok=True)
     out = os.path.join(DIST, "Preplist-Sorter-offline.html")
     with open(out, "w", encoding="utf-8", newline="\n") as f:
-        f.write(html)
+        f.write(one)
     zpath = os.path.join(DIST, "Preplist-Sorter-Windows.zip")
+    stamp = (2026, 1, 1, 0, 0, 0)  # fixed timestamp -> reproducible zip
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        stamp = (2026, 1, 1, 0, 0, 0)  # fixed timestamp -> reproducible zip
-        for name, data in (("Preplist Sorter.html", html.encode("utf-8")),
-                           ("READ ME FIRST.txt", README.replace("\n", "\r\n").encode("utf-8"))):
+        for d in ("Prepline/", "Prepline/lib/", "Prepline/LICENSES/"):
+            zi = zipfile.ZipInfo(d, stamp); zi.external_attr = (0o40755 << 16) | 0x10; z.writestr(zi, b"")
+        for name, text in files:
             zi = zipfile.ZipInfo(name, stamp); zi.compress_type = zipfile.ZIP_DEFLATED
             zi.external_attr = 0o644 << 16
-            z.writestr(zi, data)
-    print(f"fonts: {font_mode}")
-    print(f"wrote {out} ({os.path.getsize(out):,} bytes)")
-    print(f"wrote {zpath} ({os.path.getsize(zpath):,} bytes)")
+            z.writestr(zi, text.encode("utf-8"))
+    print(f"Prepline v{ver}: wrote {out} ({os.path.getsize(out):,} bytes)")
+    print(f"Prepline v{ver}: wrote {zpath} ({os.path.getsize(zpath):,} bytes)")
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
