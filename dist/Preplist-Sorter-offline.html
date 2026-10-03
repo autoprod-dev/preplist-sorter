@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.3.1">
+<meta name="prepline-version" content="3.3.2">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Prepline">
-<title>Prepline: prep list sorter</title>
+<title>Prepline: free kitchen prep list organiser and sorter</title>
 <script>
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
  * mode 'test':    no network calls, only the TEST- keys below unlock Pro, a TEST MODE badge shows,
@@ -565,7 +565,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
     display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
     padding:16px 24px; background:#1C1E1B; color:#fff;
   }
-  .shell-masthead h1{font-family:Georgia,Cambria,Times New Roman,serif; font-size:19px; margin:0; letter-spacing:-0.01em;}
+  .shell-masthead h1, .shell-masthead .shell-brand{font-family:Georgia,Cambria,Times New Roman,serif; font-size:19px; margin:0; letter-spacing:-0.01em;}
   .shell-masthead h1::before{content:'🍳 ';}
   .shell-tabs{display:flex; gap:6px;}
   .shell-tab-btn{
@@ -1039,18 +1039,36 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   .sumcard.cust6{background:var(--cust6-bg);} .sumcard.cust6 .n,.sumcard.cust6 .lbl{color:var(--cust6);}
   .sumcard.cust7{background:var(--cust7-bg);} .sumcard.cust7 .n,.sumcard.cust7 .lbl{color:var(--cust7);}
   @media (max-width:600px){ .shell-tabs{flex-wrap:wrap;} .shell-tab-btn{padding:8px 12px;} }
+  /* survey link, one-time survey prompt, survey QR (v3.3.2) */
+  .shell-brand{font-weight:600; color:inherit;}
+  #preplistTab .masthead h1 .h1-tag{display:block; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin-top:2px;}
+  #preplistTab .masthead h1 .h1-tag::before{content:none;}
+  .shell-tab-btn.survey-link{text-decoration:none; display:inline-flex; align-items:center; font-weight:600; opacity:.92;}
+  .shell-tab-btn.survey-link[hidden]{display:none;}
+  .shell-tab-btn.contact-link{text-decoration:none; display:inline-flex; align-items:center;} .shell-tab-btn.contact-link[hidden]{display:none;}
+  .survey-toast{position:fixed; right:16px; bottom:16px; z-index:9000; max-width:330px; background:#1C1E1B; color:#F6F1E7; border-radius:12px; padding:14px 16px; box-shadow:0 8px 28px rgba(0,0,0,.28); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+  .survey-toast b{display:block; font-size:15px; margin-bottom:4px;}
+  .survey-toast .st-row{display:flex; gap:8px; margin-top:10px;}
+  .survey-toast a.st-go{background:#F6F1E7; color:#1C1E1B; border-radius:8px; padding:7px 12px; font-weight:700; text-decoration:none;}
+  .survey-toast button.st-no{background:transparent; color:#F6F1E7; border:1px solid rgba(246,241,231,.45); border-radius:8px; padding:7px 12px; font-weight:600; cursor:pointer;}
+  @media (max-width:600px){ .survey-toast{left:12px; right:12px; bottom:12px; max-width:none;} }
+  .share-survey{display:flex; gap:10px; align-items:center; margin-top:14px; padding-top:10px; border-top:1px solid #e3ddd0; font-size:12.5px; color:#5C5F58;}
+  .share-survey .qr-svg{width:84px; height:84px; flex:0 0 84px; border:1px solid #ddd;}
+  .sv-survey{margin-top:10px;}
 </style>
 </head>
 <body>
 
 <div class="shell-masthead no-print">
-  <h1>Prepline</h1>
+  <div class="shell-brand">Prepline</div>
   <div class="shell-tabs">
     <button class="shell-tab-btn pro-cta" id="proUpgradeBtn" onclick="AutoprodLicence.openUpgrade()" type="button">★ Upgrade to Pro</button>
     <button class="shell-tab-btn" id="licenceKeyBtn" onclick="AutoprodLicence.openLicenceDialog()" type="button">Enter licence key</button>
     <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
     <button class="shell-tab-btn" id="feedbackBtn" onclick="openFeedback()" type="button" title="Send feedback (opens your email app or copies the text)">Feedback</button>
+    <a class="shell-tab-btn contact-link" id="contactLink" href="#" hidden title="Email Prepline support">Email us</a>
+    <a class="shell-tab-btn survey-link" id="surveyLink" href="#" target="_blank" rel="noopener" hidden title="Opens a short anonymous survey in a new tab">Help shape Prepline – 1-min survey</a>
   </div>
 </div>
 
@@ -1060,7 +1078,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
 
   <div class="masthead no-print">
     <div>
-      <h1>Prepline</h1>
+      <h1>Prepline <span class="h1-tag">kitchen prep list organiser</span></h1>
       <div class="sub" id="mastheadSub">Sort a preplist once, or build a recipe database you reuse every week — your choice below.</div>
     </div>
     <div class="tag" id="fileTag">no file loaded</div>
@@ -1201,7 +1219,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.1</div>
+    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.2</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -1373,6 +1391,8 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
     <div class="help-body">
       <h3>Feedback</h3>
       <p>The Feedback button (top right) builds a short message and copies it, to paste into an email, Teams or a text to whoever shared Prepline with you. It includes the app version and browser only; your list is added only if you tick “Include my current list”.</p>
+      <p><b>Help shape Prepline – 1-min survey</b> (next to Feedback) opens a short anonymous survey in a new tab. Nothing is sent unless you open it and press Send.</p>
+      <p><b>Email us</b> (next to Feedback) or <b>Email feedback</b> in the Feedback window opens your own email app with a message to Prepline support at autoprod.help@gmail.com. A small survey QR code also sits in a corner of printouts and in the share-to-phone window; it is drawn inside the app, no outside service is used.</p>
     </div>
   </div>
 </div>
@@ -4041,6 +4061,7 @@ function render(){
     return;
   }
 
+  maybeSurveyPrompt();
   let html = sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
 
   html += `<div class="viewtoggle no-print">
@@ -4900,7 +4921,7 @@ function proCleanName(s, max){ return String(s||'').replace(/[^A-Za-z0-9 &\/,.+(
 function freeFooterOn(){ return !!(LICENSE_CONFIG.freeLimits && LICENSE_CONFIG.freeLimits.printFooter); }
 function sampleMarkHtml(){ return (typeof sampleActive==='function' && sampleActive()) ? '<div style="text-align:center; font:700 11px monospace; color:#B5442E; margin-top:10px;">SAMPLE DATA — made-up menu</div>' : ''; }
 function printFooterHtml(){
-  return sampleMarkHtml() + ((proActive() || !freeFooterOn()) ? '' : `<div class="made-with-footer" style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#777; text-align:center;">Made with Prepline</div>`);
+  return sampleMarkHtml() + surveyPrintQrHtml() + ((proActive() || !freeFooterOn()) ? '' : `<div class="made-with-footer" style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#777; text-align:center;">Made with Prepline</div>`);
 }
 
 // ---- custom stations (Pro): extra sections with their own keywords, checked before the built-in ones ----
@@ -5909,7 +5930,7 @@ async function openShareSection(section){
   }
   html += `<div class="share-link"><input type="text" readonly id="shareLinkInput" value="${escapeHtml(res.whole)}" onclick="this.select()">
     <button type="button" onclick="copyShareLink()">Copy link</button> <a href="${escapeHtml(res.whole)}" target="_blank" rel="noopener">Open</a></div>
-    <div class="small share-size" id="shareSize">Full link: ${res.whole.length.toLocaleString()} characters.${res.whole.length>8000 ? ' Very long: some chat apps cut links this long, so email may work better.' : ''}</div>`;
+    <div class="small share-size" id="shareSize">Full link: ${res.whole.length.toLocaleString()} characters.${res.whole.length>8000 ? ' Very long: some chat apps cut links this long, so email may work better.' : ''}</div>` + surveyShareHtml();
   box.querySelector('.share-body').innerHTML = html;
   box.dataset.parts = String(res.parts.length);
 }
@@ -5954,6 +5975,7 @@ function renderSharedView(){
     </div>
     ${days.map(day=>`<h2 class="sv-day">${S(day)}</h2><table class="sv-table"><tbody>${byDay[day].map(row=>`<tr><td class="sv-tick"><input type="checkbox" aria-label="done"></td><td><div class="sv-task">${S(row[1])}${row[4] ? row[4].split(' ').map(t=>`<span class="al-chip${t.endsWith('?')?' sug':''}">${S(t)}</span>`).join('') : ''}</div><div class="sv-dish">${S(d.ds[row[0]])}${d.dp && d.dp[row[0]]!=null ? ' · '+S(d.dp[row[0]])+' pax' : ''}</div></td><td class="sv-qty">${row[2] ? S(row[2]) : '—'}</td></tr>`).join('')}</tbody></table>`).join('')}
     <p class="sv-foot">Ticks stay on this phone only while the page is open. This is a snapshot: ask for a new link after changes.${d.r.some(r=>r[4] && r[4].includes('?')) ? ' Allergen tags with ? are automatic suggestions: check them.' : ''}<br><a href="#" onclick="closeSharedView(); return false;">Open Prepline</a></p>
+    ${surveyUrl('phone') ? `<p class="sv-foot sv-survey"><a href="${escapeHtml(surveyUrl('phone'))}" target="_blank" rel="noopener">Help shape Prepline – 1-min survey</a></p>` : ''}
   </div>`;
 }
 function closeSharedView(fromHash){
@@ -5964,6 +5986,68 @@ function closeSharedView(fromHash){
 }
 window.addEventListener('hashchange', ()=>{ openSharedViewFromHash(); });
 
+
+// ---------- Survey link, one-time prompt and survey QR (v3.3.2) ----------
+// SURVEY_URL is the ONLY place the survey address lives. Empty string = every survey link,
+// prompt and QR is hidden. Nothing here makes a network request: the link only opens when the
+// user clicks it, and QR codes are drawn locally with the bundled qrcode-generator.
+const SURVEY_URL = 'https://autoprod-dev.github.io/prepline-survey/';
+const SURVEY_PROMPT_KEY = 'prepline.surveyPrompt.v1';
+// Public support / feedback address (Autoprod). The ONLY place it lives. Empty = no email link or button.
+const SUPPORT_EMAIL = 'autoprod.help@gmail.com';
+const MAILTO_MAX = 1800;   // keep mailto links short enough for every mail app
+function supportMailto(subject, body){
+  if (!SUPPORT_EMAIL) return '';
+  let b = body || '';
+  if (b.length > MAILTO_MAX) b = b.slice(0, MAILTO_MAX) + '\n\n[cut short: use Copy feedback text and paste the full text]';
+  return 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent(subject || 'Prepline feedback') + (b ? '&body=' + encodeURIComponent(b) : '');
+}
+function initContactLink(){
+  const a = document.getElementById('contactLink'); if (!a) return;
+  if (!SUPPORT_EMAIL){ a.hidden = true; a.removeAttribute('href'); return; }
+  a.href = supportMailto('Prepline feedback'); a.title = 'Email ' + SUPPORT_EMAIL; a.hidden = false;
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initContactLink); else initContactLink();
+function surveyUrl(from){
+  if (!SURVEY_URL) return '';
+  const src = (typeof teamEdition==='function' && teamEdition()) ? 'team' : 'app';
+  return SURVEY_URL + (SURVEY_URL.includes('?') ? '&' : '?') + 'from=' + src + (from ? '-' + from : '');
+}
+function initSurveyLink(){
+  const a = document.getElementById('surveyLink'); if (!a) return;
+  if (!SURVEY_URL){ a.hidden = true; a.removeAttribute('href'); return; }
+  a.href = surveyUrl('link'); a.hidden = false;
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSurveyLink); else initSurveyLink();
+function surveyPromptSeen(){ try{ return !!localStorage.getItem(SURVEY_PROMPT_KEY); }catch(e){ return true; } }
+function markSurveyPrompt(v){ try{ localStorage.setItem(SURVEY_PROMPT_KEY, v + ' ' + new Date().toISOString().slice(0,10)); }catch(e){} }
+let _surveyPromptQueued = false;
+function maybeSurveyPrompt(){
+  if (_surveyPromptQueued || !SURVEY_URL || !ROWS.length || surveyPromptSeen()) return;
+  if (document.body.classList.contains('shared-mode')) return;
+  _surveyPromptQueued = true;
+  setTimeout(showSurveyPrompt, 1500);
+}
+function showSurveyPrompt(){
+  if (document.getElementById('surveyToast') || surveyPromptSeen()) return;
+  markSurveyPrompt('shown');   // remembered as soon as it appears, so it never shows again
+  const t = document.createElement('div'); t.id = 'surveyToast'; t.className = 'survey-toast no-print';
+  t.setAttribute('role', 'dialog'); t.setAttribute('aria-label', 'Help shape Prepline');
+  t.innerHTML = `<b>Help shape Prepline – 1-min survey</b>A few quick taps about how your kitchen does prep lists. Anonymous, no sign-in.
+    <div class="st-row"><a class="st-go" href="${escapeHtml(surveyUrl('prompt'))}" target="_blank" rel="noopener">Take survey</a><button type="button" class="st-no">No thanks</button></div>`;
+  t.querySelector('.st-go').addEventListener('click', ()=>{ markSurveyPrompt('taken'); t.remove(); });
+  t.querySelector('.st-no').addEventListener('click', ()=>{ markSurveyPrompt('declined'); t.remove(); });
+  document.body.appendChild(t);
+}
+function surveyPrintQrHtml(){
+  const u = surveyUrl('print'); if (!u || typeof qrcode!=='function') return '';
+  const svg = qrSvg(u).svg.replace('class="qr-svg"', 'class="qr-svg" style="width:0.62in;height:0.62in;display:block;"');
+  return `<div class="survey-print-qr" style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:6px; break-inside:avoid; page-break-inside:avoid; font:9px/1.25 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#777; text-align:right;"><span>Feedback / survey<br>1 minute, anonymous</span>${svg}</div>`;
+}
+function surveyShareHtml(){
+  const u = surveyUrl('share'); if (!u || typeof qrcode!=='function') return '';
+  return `<div class="share-survey">${qrSvg(u).svg}<div><b>Feedback / survey</b><br>Scan, or <a href="${escapeHtml(u)}" target="_blank" rel="noopener">open the 1-min survey</a>. Anonymous, helps shape Prepline. (Not the list: use the big code above for that.)</div></div>`;
+}
 
 // ---------- 7. Feedback button (no server, no address) ----------
 // Builds a short feedback text and copies it, to send to whoever shared Prepline with the user.
@@ -5996,16 +6080,23 @@ function openFeedback(){
   closeFeedback();
   const box = document.createElement('div'); box.id = 'feedbackModal'; box.className = 'share-modal no-print';
   box.innerHTML = `<div class="share-card" style="max-width:560px;"><div class="share-top"><h3>Feedback</h3><button type="button" class="ghost" onclick="closeFeedback()" aria-label="Close">✕</button></div>
-    <p class="share-lede">Ideas, problems, wrong sorting? Write it here, press <b>Copy feedback text</b>, then paste it into an email, Teams or a text to whoever shared Prepline with you (or whoever looks after it in your kitchen). Nothing is sent from this page.</p>
+    <p class="share-lede">Ideas, problems, wrong sorting? Write it here, press <b>Copy feedback text</b>, then paste it into an email, Teams or a text to whoever shared Prepline with you (or whoever looks after it in your kitchen)${SUPPORT_EMAIL ? `, or press <b>Email feedback</b> to send it to us at <a href="${escapeHtml(supportMailto('Prepline feedback'))}">${escapeHtml(SUPPORT_EMAIL)}</a> from your own email app` : ''}. Nothing is sent from this page.</p>
     <textarea id="fbText" rows="6" style="width:100%; box-sizing:border-box;" placeholder="What happened, or what would help?"></textarea>
     <label style="display:block; font-size:13px; margin:8px 0;"><input type="checkbox" id="fbIncludeList"> Include my current list (dish names, tasks, totals) — off by default</label>
     <div class="small" style="font-size:11.5px; color:#5C5F58;">Always included: app version, browser and screen size. Nothing else.</div>
     <div class="row" style="gap:8px; margin-top:10px; align-items:center;">
       <button type="button" id="fbCopyBtn" onclick="copyFeedback()">Copy feedback text</button>
+      ${SUPPORT_EMAIL ? '<button type="button" class="secondary" id="fbMailBtn" onclick="emailFeedback()">Email feedback</button>' : ''}
       <span class="small" id="fbStatus" style="font-size:12px;"></span>
     </div>
     <textarea id="fbPreview" readonly rows="5" style="display:none; width:100%; box-sizing:border-box; margin-top:8px; font-size:12px;" aria-label="Feedback text to copy"></textarea></div>`;
   document.body.appendChild(box);
+}
+function emailFeedback(){
+  const url = supportMailto('Prepline feedback', feedbackBody()); if (!url) return;
+  window.__lastFeedbackMailto = url;
+  const st = document.getElementById('fbStatus'); if (st) st.textContent = 'Opening your email app… If nothing opens, use Copy feedback text and email ' + SUPPORT_EMAIL + '.';
+  location.href = url;
 }
 function closeFeedback(){ const m = document.getElementById('feedbackModal'); if (m) m.remove(); }
 function copyFeedback(){

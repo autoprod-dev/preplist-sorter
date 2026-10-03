@@ -143,6 +143,8 @@ LOADER = """<script type="module">
 
 def offline_html(html):
     """Common edits: no Google Fonts, system font stacks. Returns html with the CDN tags still in."""
+    # 3.3.2: the public page's SEO block (canonical, Open Graph, JSON-LD) is for the website only
+    html = re.sub(r'\n<!-- SEO:START.*?<!-- SEO:END -->', '', html, flags=re.S)
     font_links = re.compile(r'[ \t]*<link rel="preconnect" href="https://fonts\.googleapis\.com">\n'
                             r'[ \t]*<link href="https://fonts\.googleapis\.com/css2\?[^"]*" rel="stylesheet">\n')
     n = len(font_links.findall(html))
