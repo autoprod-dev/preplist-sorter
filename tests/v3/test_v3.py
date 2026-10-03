@@ -95,8 +95,11 @@ with sync_playwright() as p:
     pg.evaluate("setView('dish')"); pg.wait_for_timeout(300)
     pg.evaluate("document.querySelector('#resultsArea .viewtoggle').scrollIntoView()"); pg.wait_for_timeout(300)
     pg.screenshot(path=f'{SHOTS}/01-prep-list-by-dish-desktop.png', full_page=False)
+    h0 = capture_print(pg, "printDish(encodeURIComponent(Object.keys(methodCrops)[0]))")
+    check('v3.2.5: fresh storage, print toggle shows No and the dish print has no method captures', pg.evaluate("[includeMethodInPrint, localStorage.getItem('preplinePref_printIncludeMethod_v1'), document.querySelector('#printMethodToggle [data-pmt=no]').getAttribute('aria-pressed')]") == [False, None, 'true'] and 'Method reference' not in h0 and '<img' not in re.sub(r'<style.*?</style>', '', h0, flags=re.S), len(h0))
+    pg.click('#printMethodToggle [data-pmt=yes]'); pg.wait_for_timeout(200)   # switch to Yes for the method print checks below
     html = capture_print(pg, "printDish(encodeURIComponent(Object.keys(methodCrops)[0]))")
-    check('method: printed dish sheet has the Method crop below the prep list', 'Method reference' in html and 'data:image/jpeg' in html and html.index('Method reference') > html.index('<table'), len(html))
+    check('method (toggle Yes): printed dish sheet has the Method crop below the prep list', 'Method reference' in html and 'data:image/jpeg' in html and html.index('Method reference') > html.index('<table'), len(html))
     pp = ctx.new_page(); pp.set_viewport_size({'width': 900, 'height': 1200}); pp.set_content(html); pp.emulate_media(media='print'); pp.wait_for_timeout(800)
     pp.screenshot(path=f'{SHOTS}/02-method-captured-below-prep-list.png', full_page=True); pp.close()
     for fn, lbl in [('printAllSections()', 'sections'), ('printAllDays()', 'days')]:
@@ -594,7 +597,7 @@ with sync_playwright() as p:
         pg.evaluate(f"setView('{v}')"); pg.wait_for_timeout(150)
         beside.append(pg.evaluate("(()=>{const t=document.getElementById('printMethodToggle'); const row=t&&t.closest('.print-row'); return !!(row && row.querySelector('button[onclick^=printAllSections]') && t.offsetParent && t.innerText.includes('Include method in printout'));})()"))
     check('print toggle: "Include method in printout" Yes/No sits in the print-button row in all 3 views', beside == [True, True, True], beside)
-    check('print toggle: default is Yes (nothing stored yet)', pmt_state() == [True, None, 'true'], pmt_state())
+    check('print toggle: default is No (nothing stored yet), Yes not pressed', pmt_state() == [False, None, 'false'] and pg.evaluate("document.querySelector('#printMethodToggle [data-pmt=no]').getAttribute('aria-pressed')") == 'true', pmt_state())
     def all_prints():
         out = {}
         pg.evaluate("setView('dish')"); pg.wait_for_timeout(150)
@@ -609,6 +612,10 @@ with sync_playwright() as p:
         return out
     def nostyle(h): return re.sub(r'<style.*?</style>', '', h, flags=re.S)
     def has_method(h): h = nostyle(h); return any(x in h for x in ['Method reference', 'orig-pages-grid"', 'class="orig-page-item', '<img', 'data:image'])
+    dflt = all_prints()
+    check('v3.2.5 default No: every print type (dish, section, prep day, both one-page-complete) has no method captures', not any(has_method(h) for h in dflt.values()) and all('<table' in h for h in dflt.values()), {k: has_method(v) for k, v in dflt.items()})
+    pg.click('#printMethodToggle [data-pmt=yes]'); pg.wait_for_timeout(200)
+    check('Yes: toggle shows Yes pressed and stores yes', pmt_state() == [True, 'yes', 'true'], pmt_state())
     yes = all_prints()
     check('Yes: every print type (dish, section, prep day, both one-page-complete) includes the Method captures', all(has_method(h) and 'Method reference' in h for h in yes.values()), {k: has_method(v) for k, v in yes.items()})
     pg.click('#printMethodToggle [data-pmt=no]'); pg.wait_for_timeout(200)
@@ -630,6 +637,17 @@ with sync_playwright() as p:
     pg.screenshot(path=f'{SHOTS}/08-print-method-toggle-desktop.png')
     check('print toggle: no JS errors', not errs, errs)
     ctx8.close()
+    # v3.2.5: a 'yes' remembered from before (v3.2.4 default) still prints the method; 'no' stays No
+    for stored, want in [('yes', True), ('no', False)]:
+        ctx8, _ = new_ctx(b); pg, errs = page_with_errs(ctx8)
+        pg.goto(URL); pg.wait_for_load_state('networkidle')
+        pg.evaluate(f"localStorage.setItem('preplinePref_printIncludeMethod_v1', '{stored}')"); pg.reload(); pg.wait_for_load_state('networkidle')
+        up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+        hs = capture_print(pg, "printDish(encodeURIComponent(Object.keys(methodCrops)[0]))")
+        check(f"v3.2.5: a stored '{stored}' stays {'Yes' if want else 'No'} (toggle and dish print {'with' if want else 'without'} method)", pmt_state() == [want, stored, 'true' if want else 'false'] and has_method(hs) == want and ('Method reference' in hs) == want and not errs, (pmt_state(), errs))
+        pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_function("document.getElementById('printMethodToggle')", timeout=10000)
+        check(f"v3.2.5: stored '{stored}' survives a reload", pmt_state() == [want, stored, 'true' if want else 'false'], pmt_state())
+        ctx8.close()
     ctx8, _ = new_ctx(b, 390, 844, is_mobile=True, has_touch=True, device_scale_factor=2); pg, errs = page_with_errs(ctx8)
     pg.goto(URL); pg.wait_for_load_state('networkidle'); up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
     box = pg.evaluate("(()=>{const r=document.getElementById('printMethodToggle').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), Math.round(r.height)];})()")

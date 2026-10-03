@@ -53,6 +53,12 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.2.5 (2026-10-03) "Include method in printout" defaults to No
+- New users and devices start with "Include method in printout: No", so printouts leave out the Method screen captures unless someone switches it to Yes.
+- Choices already remembered on a device stay as they are: a saved Yes stays Yes, a saved No stays No. Nothing saved (or storage unavailable) now means No.
+- Nothing else changed. Same key, `preplinePref_printIncludeMethod_v1`.
+- Tests: fresh storage shows No and prints have no method; a stored 'yes' still prints the method; the choice survives a reload.
+
 ## 3.2.4 (2026-10-03) "Include method in printout"
 - New Yes/No toggle, "Include method in printout", in the print-button row (next to "Print all sections / prep days (one page complete)"). That row sits above the list in all three views (By dish, By team section, By prep day), so it's one shared control, visible from every view, right above each dish/section/day Print button.
 - No: the captured Method screen captures ("Method reference" crops) are left out of every printout: dish sheets, section handouts, prep-day handouts and both "one page complete" prints. The heading and the extra print page go too, so the sheet ends after the table. As a safety net, every printout also has any method/page image block or other image removed before printing.
