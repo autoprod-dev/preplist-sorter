@@ -60,6 +60,7 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Survey links carry `?from=app-link|app-prompt|app-print|app-share|app-phone` (`team-…` in the team build) so the survey can tell where answers came from. No personal data.
 - SEO (public page only, inside `<!-- SEO:START/END -->`, stripped from team and test builds): title, meta description, canonical, Open Graph + Twitter card with `icons/og-image.png` (1200x630), JSON-LD SoftwareApplication (free, AUD), `robots.txt`, `sitemap.xml`; one h1 ("Prepline – kitchen prep list organiser"), the top-bar brand is no longer an h1.
 - Public support / feedback contact: **autoprod.help@gmail.com** (Autoprod), in one constant `SUPPORT_EMAIL` (empty = hidden). "Email us" mailto link next to Feedback; the Feedback dialog keeps **Copy feedback text** and adds **Email feedback** (opens the user's own mail app with the same text; mailto body capped at 1,800 characters, with a note to use Copy for longer text). The copied text itself still has no address. Help text names the address. Nothing is sent from the page.
+- Pro switched off (`LICENSE_CONFIG.mode 'off'`, the live site): every PRO pill / badge is hidden (`body.pro-off` + CSS), e.g. on "+ Append another PDF to this list". Pro test builds keep their pills.
 
 ## 3.3.1 (2026-10-03) Live release of 3.3; team build; no support address
 - Feedback: no email address and no mailto anywhere. "Copy feedback text" is the main action, to paste into
