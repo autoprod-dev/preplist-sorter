@@ -53,6 +53,26 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.3.0 (2026-10-03) Seven kitchen features (test site only)
+Built on 3.2.5, one commit per feature. Everything new is stored under new keys
+(`preplineIngredientInfo_v1`, `preplinePref_ingPanelOpen_v1`); existing saved lists, the recipe database,
+the print-method default (No), per-pax formulas and Source tab columns are unchanged. No Pro limits enforced.
+1. Allergen tags: 11 standard tags + custom, keyword suggestions marked "?" until confirmed, dish-level tags,
+   chips in all views and printouts, disclaimer, Allergens column (I) in all three Excel exports, saved in the recipe database.
+2. Order sheet: supplier per ingredient (remembered), Order sheet view grouped by supplier with roll-up (g→kg, ml→L),
+   rounded-up order qty, unassigned items last; print per supplier or all; Excel with one tab per supplier and an editable Order qty.
+   Supplier column (J) in the main exports.
+3. Cost per dish: price per kg / L / each (remembered); cost per dish, per pax and list total; missing or mismatched prices flagged.
+   Excel: Price, Price per, unit factor and Cost formula columns (K–N), dish cost SUM and cost per pax formula; Est. cost on the order sheet.
+4. Instant demo: "Try with sample menu" loads a made-up 5-dish menu (with allergens, suppliers, prices), marked SAMPLE DATA, one-click clear.
+5. Team share: per section, QR code + link opening a read-only phone view with no server (list compressed in the URL hash,
+   bundled MIT QR library). Splits into up to 8 parts, link only beyond. Limits: docs/TEAM_SHARE_LIMITS.md.
+6. Feedback button: pre-filled email to a PLACEHOLDER address (support@autoprod.example) or copy to clipboard;
+   version, browser and screen only, list only when ticked.
+7. Installable app on /prepline-test/ only: manifest, icons, iOS tags, versioned service worker (network-first pages,
+   cached CDN libraries), "update available — Reload" prompt. Nothing registers on any other path or on file://.
+- Tests: `tests/v3/test_v33.py` (new) plus the full `tests/v3/test_v3.py`.
+
 ## 3.2.5 (2026-10-03) "Include method in printout" defaults to No
 - New users and devices start with "Include method in printout: No", so printouts leave out the Method screen captures unless someone switches it to Yes.
 - Choices already remembered on a device stay as they are: a saved Yes stays Yes, a saved No stays No. Nothing saved (or storage unavailable) now means No.

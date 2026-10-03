@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.2.5">
+<meta name="prepline-version" content="3.3.0">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1093,7 +1093,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.2.5</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.0</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -1204,6 +1204,67 @@ var LICENSE_CONFIG = {
       <h3>Export to Excel — an editable, re-uploadable copy</h3>
       <p>Each view has its own "📊 Export to Excel" button, laid out to match how you're looking at it — By dish gives one sheet per dish, By team section one sheet per section, By prep day one sheet per day (several dishes can share a sheet when grouped this way). Open it in Excel or Google Sheets to update quantities, sections or prep days as the function changes, then upload that same file back into the tool later and it reads straight back in.</p>
       <p class="note">By dish uses the original tab names: the workbook's own tab names in the same order, or for a PDF each recipe's title as printed. By team section and By prep day name each tab after the section or day. Every export has a Source tab column with the exact original name of the tab (or PDF recipe) each row came from. Names are made Excel-safe: at most 31 characters, no [ ] : * ? / \, and no two tabs the same; any name Excel forces us to change is listed in the message after the export. For the By-dish export specifically, a dish name longer than that comes back under its truncated tab name on re-upload, rather than its full original title — the By-section and By-day exports don't have this limit, since several dishes sharing one tab always keep their full names.</p>
+    </div>
+  </div>
+
+  <div class="help-section-title">Kitchen tools (new in 3.3)</div>
+
+  <div class="help-step">
+    <div class="help-num">06</div>
+    <div class="help-body">
+      <h3>Try it with the sample menu</h3>
+      <p>No file handy? Press “Try with sample menu” under the dropzone. A made-up five-dish menu loads with days, pax, sections, allergens, suppliers and prices, so every view, print and export can be tried in seconds.</p>
+      <p class="note">It is clearly marked SAMPLE DATA on screen and in prints. “Clear sample” removes it, and any sample suppliers or prices, in one click.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">07</div>
+    <div class="help-body">
+      <h3>Allergen tags</h3>
+      <p>Open “4 · Ingredients” under the list. Each ingredient gets suggested tags from its name (gluten, dairy, egg, tree nuts, peanuts, sesame, soy, fish, crustacea, molluscs, lupin), shown with a ? until you confirm or edit them. Add your own tags (e.g. celery, sulphites) and dish-level tags. Confirmed tags are remembered on this device and saved with dishes in the recipe database.</p>
+      <p>Tags show in every view, every printout and an Allergens column in all three Excel exports.</p>
+      <p class="note">Suggestions come from a keyword list and can be wrong or incomplete. Always check them against supplier specifications. Prepline does not guarantee allergen information.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">08</div>
+    <div class="help-body">
+      <h3>Order sheet by supplier</h3>
+      <p>Give each ingredient a supplier in the Ingredients panel (remembered for next time), then press “Order sheet (by supplier)”. Totals from every ticked dish are added up per ingredient, rolled up to kg or L and rounded up to a sensible order quantity. Items with no supplier are listed last.</p>
+      <p>Print one supplier’s sheet or all of them, or export to Excel with an editable Order qty column.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">09</div>
+    <div class="help-body">
+      <h3>Cost per dish</h3>
+      <p>Enter each ingredient’s price once, per kg, L or each. Prepline shows the cost of each dish, the cost per pax and the total for the ticked dishes, and flags missing prices or units that don’t fit (e.g. a price per kg for an item counted in bunches).</p>
+      <p>The Excel exports get Price and Cost columns. Cost, dish cost and cost per pax are formulas, so they recalculate when you change pax in Excel.</p>
+      <p class="note">Prices are used as you enter them (ex or inc GST is your choice). Missing prices count as zero, so a total with missing prices is a minimum.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">10</div>
+    <div class="help-body">
+      <h3>Share a section to phones</h3>
+      <p>In the By team section view, press “📱 Share to phone” on a section. A QR code and a link open that section’s list read-only on any phone, with no app, account or server: the list travels inside the link itself.</p>
+      <p>One QR code holds a link of up to 2,953 characters: about 200 typical tasks, though under about 60 tasks the code is much easier to scan. Bigger lists are split into parts (Part 1 of 2 …); a very big list offers the link only, to send by email, Teams or text.</p>
+      <p class="note">The shared list is a snapshot. Share again after changes.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">11</div>
+    <div class="help-body">
+      <h3>Install Prepline on a phone or computer</h3>
+      <p>On the test site, Prepline can be installed like an app: “Install” in Chrome or Edge, or Share → “Add to Home Screen” on an iPhone. Once opened, it works offline.</p>
+      <p>When a new version is published, a bar offers “Reload” to switch to it.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">12</div>
+    <div class="help-body">
+      <h3>Feedback</h3>
+      <p>The Feedback button (top right) opens your email app with a short message ready to fill in, or copies it to paste anywhere. It includes the app version and browser only; your list is added only if you tick “Include my current list”.</p>
     </div>
   </div>
 </div>
