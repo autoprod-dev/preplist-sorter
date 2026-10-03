@@ -8,6 +8,7 @@ URL = sys.argv[1]
 SHOTS = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith('--') else '/workspace/prepline-v2-shots'
 OUT = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith('--') else '/workspace/prepline-v3-test-out'
 EXPECT_VER = sys.argv[sys.argv.index('--expect-version')+1] if '--expect-version' in sys.argv else None
+LIVE = '--live' in sys.argv   # public build: LICENSE_CONFIG mode 'off' (no Pro UI, no Lemon Squeezy)
 S = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'samples') + '/'
 os.makedirs(SHOTS, exist_ok=True); os.makedirs(OUT, exist_ok=True)
 results = []; ext = {}
@@ -64,8 +65,13 @@ with sync_playwright() as p:
     ver = pg.get_attribute('meta[name="prepline-version"]', 'content')
     check('load: title is Prepline', pg.title().startswith('Prepline'), pg.title())
     check('load: version string present' + (f' = {EXPECT_VER}' if EXPECT_VER else ''), ver and (not EXPECT_VER or ver == EXPECT_VER) and ('v' + ver) in pg.inner_text('#appVersion'), ver)
-    check('load: TEST MODE badge visible', pg.is_visible('#plTestBadge') and 'TEST MODE' in pg.inner_text('#plTestBadge'), pg.inner_text('#plTestBadge'))
-    check('load: Upgrade + Enter licence key buttons', pg.is_visible('#proUpgradeBtn') and pg.is_visible('#licenceKeyBtn'))
+    if not LIVE:
+        check('load: TEST MODE badge visible', pg.is_visible('#plTestBadge') and 'TEST MODE' in pg.inner_text('#plTestBadge'), pg.inner_text('#plTestBadge'))
+        check('load: Upgrade + Enter licence key buttons', pg.is_visible('#proUpgradeBtn') and pg.is_visible('#licenceKeyBtn'))
+    else:
+        check('live: no TEST MODE badge', pg.locator('#plTestBadge').count() == 0 or not pg.is_visible('#plTestBadge'))
+        check('live: no Upgrade / Enter licence key buttons, no Pro panel', not pg.is_visible('#proUpgradeBtn') and not pg.is_visible('#licenceKeyBtn') and not pg.is_visible('#proPanel'))
+        check('live: no noindex, title has no (TEST)', pg.locator('meta[name=robots]').count() == 0 and '(TEST)' not in pg.title(), pg.title())
     check('load: no JS errors', not errs, errs)
     pg.screenshot(path=f'{SHOTS}/00-load-desktop.png')
     # ---------- B. PDF sort + method capture ----------
@@ -103,36 +109,47 @@ with sync_playwright() as p:
     newreq = {h: v - before.get(h, set()) for h, v in ext.items() if v - before.get(h, set())}
     check('image inputs: no new outside requests', not newreq, newreq)
     # ---------- E. licence ----------
-    pg.click('#licenceKeyBtn'); pg.fill('#plKey', 'NOT-A-KEY'); pg.click('#plActivate'); pg.wait_for_timeout(1500)
-    check('licence: made-up key refused', 'pl-msg err' in (pg.get_attribute('#plLicMsg', 'class') or ''), pg.inner_text('#plLicMsg'))
-    pg.fill('#plKey', 'TEST-PRO-YEARLY'); pg.click('#plActivate'); pg.wait_for_timeout(800)
-    check('licence: TEST-PRO-YEARLY unlocks Pro', pg.evaluate('AutoprodLicence.isPro()') and 'Pro' in pg.inner_text('#plTestBadge'), pg.inner_text('#plTestBadge'))
-    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
-    check('licence: Pro panel shows (templates, stations, kitchens)', 'Saved templates' in pg.inner_text('#proPanel') and not pg.is_visible('#licenceKeyBtn'))
-    pg.screenshot(path=f'{SHOTS}/03-pro-unlocked-desktop.png')
-    pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle')
-    check('licence: Pro survives reload', pg.evaluate('AutoprodLicence.isPro()'))
-    # append (Pro)
-    up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
-    pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'sample-recipes.pdf'); st4 = wait_status(pg, 'Appended|Could not', 30000)
-    check('Pro: append another PDF keeps list + method crops', 'Appended' in st4 and pg.evaluate('ROWS.length') == 18 and len(pg.evaluate('Object.keys(methodCrops)')) == 4, st4[:160])
-    for k in ['TEST-PRO-MONTHLY', 'TEST-PRO-LIFETIME']:
-        r = pg.evaluate(f"AutoprodLicence.deactivate().then(()=>AutoprodLicence.activate('{k}')).then(r=>r.ok && AutoprodLicence.plan())")
-        check(f'licence: {k} unlocks', r in ('monthly', 'lifetime'), r)
-    pg.evaluate('AutoprodLicence.deactivate()'); pg.wait_for_timeout(300)
-    check('licence: deactivate returns to free', not pg.evaluate('AutoprodLicence.isPro()'))
-    # ---------- F. checkout links ----------
-    want = {'monthly': 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e?enabled=2179964',
-            'yearly': 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c?enabled=2179971',
-            'lifetime': 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314?checkout%5Bdiscount_code%5D=LAUNCH50'}
-    pg.click('#proUpgradeBtn'); pg.wait_for_timeout(300)
-    got = {}
-    for plan in ['monthly', 'yearly', 'lifetime']:
-        with ctx.expect_page() as pop: pg.click(f'#plUpgradeDialog [data-plan="{plan}"]')
-        pop.value.wait_for_timeout(500); got[plan] = ls[-1] if ls else None; pop.value.close()
-    for plan in want: check(f'checkout: Buy {plan} opens the test-mode LS checkout', got[plan] == want[plan], got[plan])
-    check('checkout: page stays on the app', pg.url.startswith(URL.split('#')[0].rsplit('/', 1)[0]))
-    pg.keyboard.press('Escape')
+    if not LIVE:
+        pg.click('#licenceKeyBtn'); pg.fill('#plKey', 'NOT-A-KEY'); pg.click('#plActivate'); pg.wait_for_timeout(1500)
+        check('licence: made-up key refused', 'pl-msg err' in (pg.get_attribute('#plLicMsg', 'class') or ''), pg.inner_text('#plLicMsg'))
+        pg.fill('#plKey', 'TEST-PRO-YEARLY'); pg.click('#plActivate'); pg.wait_for_timeout(800)
+        check('licence: TEST-PRO-YEARLY unlocks Pro', pg.evaluate('AutoprodLicence.isPro()') and 'Pro' in pg.inner_text('#plTestBadge'), pg.inner_text('#plTestBadge'))
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+        check('licence: Pro panel shows (templates, stations, kitchens)', 'Saved templates' in pg.inner_text('#proPanel') and not pg.is_visible('#licenceKeyBtn'))
+        pg.screenshot(path=f'{SHOTS}/03-pro-unlocked-desktop.png')
+        pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle')
+        check('licence: Pro survives reload', pg.evaluate('AutoprodLicence.isPro()'))
+        # append (Pro)
+        up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+        pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'sample-recipes.pdf'); st4 = wait_status(pg, 'Appended|Could not', 30000)
+        check('Pro: append another PDF keeps list + method crops', 'Appended' in st4 and pg.evaluate('ROWS.length') == 18 and len(pg.evaluate('Object.keys(methodCrops)')) == 4, st4[:160])
+        for k in ['TEST-PRO-MONTHLY', 'TEST-PRO-LIFETIME']:
+            r = pg.evaluate(f"AutoprodLicence.deactivate().then(()=>AutoprodLicence.activate('{k}')).then(r=>r.ok && AutoprodLicence.plan())")
+            check(f'licence: {k} unlocks', r in ('monthly', 'lifetime'), r)
+        pg.evaluate('AutoprodLicence.deactivate()'); pg.wait_for_timeout(300)
+        check('licence: deactivate returns to free', not pg.evaluate('AutoprodLicence.isPro()'))
+        # ---------- F. checkout links ----------
+        want = {'monthly': 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e?enabled=2179964',
+                'yearly': 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c?enabled=2179971',
+                'lifetime': 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314?checkout%5Bdiscount_code%5D=LAUNCH50'}
+        pg.click('#proUpgradeBtn'); pg.wait_for_timeout(300)
+        got = {}
+        for plan in ['monthly', 'yearly', 'lifetime']:
+            with ctx.expect_page() as pop: pg.click(f'#plUpgradeDialog [data-plan="{plan}"]')
+            pop.value.wait_for_timeout(500); got[plan] = ls[-1] if ls else None; pop.value.close()
+        for plan in want: check(f'checkout: Buy {plan} opens the test-mode LS checkout', got[plan] == want[plan], got[plan])
+        check('checkout: page stays on the app', pg.url.startswith(URL.split('#')[0].rsplit('/', 1)[0]))
+        pg.keyboard.press('Escape')
+    else:
+        # live build: Pro switched off (mode 'off'): no licence, no checkout, no Pro tools
+        r = pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY').then(r=>[r.ok, AutoprodLicence.isPro(), AutoprodLicence.isTestMode()])")
+        check('live: Pro is off — a TEST key does not unlock anything, not test mode', r == [False, False, False], r)
+        pg.evaluate("AutoprodLicence.openUpgrade(); AutoprodLicence.openLicenceDialog(); AutoprodLicence.buy('yearly')"); pg.wait_for_timeout(500)
+        check('live: Upgrade / licence / Buy calls do nothing (no dialog, no checkout tab)', pg.locator('dialog[open]').count() == 0 and len(ctx.pages) == 1 and not ls, (pg.locator('dialog[open]').count(), len(ctx.pages), ls))
+        vis = pg.evaluate("['proUpgradeBtn','licenceKeyBtn','proPanel','appendRow','appendPdfBtn','plTestBadge'].map(id=>{const e=document.getElementById(id); return [id, !!(e && e.offsetParent)];})")
+        check('live: with a list loaded, no Upgrade, licence key, Pro panel, Append PDF or TEST badge is visible', not any(v for _, v in vis), vis)
+        body = pg.inner_text('body')
+        check('live: page text has no TEST MODE, Upgrade, Buy, Lemon Squeezy or test card wording', not re.search(r'TEST MODE|Upgrade|Buy (monthly|yearly|lifetime)|Lemon Squeezy|4242|licence key', body, re.I), re.findall(r'.{30}(?:TEST MODE|Upgrade|Lemon Squeezy|4242|licence key).{30}', body, re.I)[:3])
     # ---------- G. exports: tab names + Source tab ----------
     def src_tabs_xml(path):
         import zipfile, html as _h
@@ -255,18 +272,19 @@ with sync_playwright() as p:
     before_src = pg.evaluate('ROWS.map(r=>r.srcSheet)')
     pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
     after_src = pg.evaluate('ROWS.map(r=>r.srcSheet)'); check('reload: every row keeps its original source name', after_src == before_src, (before_src[:3], after_src[:3]))
-    pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
-    pg.fill('#proTemplateName', 'Awkward test'); pg.click('#proSaveTemplateBtn')
-    up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
-    pg.evaluate("loadTemplate(encodeURIComponent('Awkward test'))"); pg.wait_for_timeout(300)
-    check('template: loading a saved template keeps original source names', pg.evaluate('ROWS.map(r=>r.srcSheet)') == before_src)
-    up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
-    pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'fixes-and-titles.pdf'); wait_status(pg, 'Appended|Could not', 30000)
-    srcs = pg.evaluate('[...new Set(ROWS.map(r=>r.srcSheet))]')
-    check('append PDF: old and new rows keep their own recipe titles', srcs == ['Roast Pumpkin Salad', 'Braised Lamb Shoulder', 'Braised Lamb Shoulder: 18 Hour [GF]', "Market Fish's Salsa Verde"], srcs)
-    pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
-    check('append + reload: source names and PDF totals survive', pg.evaluate('[...new Set(ROWS.map(r=>r.srcSheet))]') == srcs and pg.evaluate('ROWS.every(r=>r.pdfFixedTotal!==undefined)'))
-    pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
+    if not LIVE:
+        pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
+        pg.fill('#proTemplateName', 'Awkward test'); pg.click('#proSaveTemplateBtn')
+        up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+        pg.evaluate("loadTemplate(encodeURIComponent('Awkward test'))"); pg.wait_for_timeout(300)
+        check('template: loading a saved template keeps original source names', pg.evaluate('ROWS.map(r=>r.srcSheet)') == before_src)
+        up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+        pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'fixes-and-titles.pdf'); wait_status(pg, 'Appended|Could not', 30000)
+        srcs = pg.evaluate('[...new Set(ROWS.map(r=>r.srcSheet))]')
+        check('append PDF: old and new rows keep their own recipe titles', srcs == ['Roast Pumpkin Salad', 'Braised Lamb Shoulder', 'Braised Lamb Shoulder: 18 Hour [GF]', "Market Fish's Salsa Verde"], srcs)
+        pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
+        check('append + reload: source names and PDF totals survive', pg.evaluate('[...new Set(ROWS.map(r=>r.srcSheet))]') == srcs and pg.evaluate('ROWS.every(r=>r.pdfFixedTotal!==undefined)'))
+        pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
     # Source tab column screenshot: render the section export like a sheet
     rows, _ = rows_of(os.path.join(OUT, 'awkward-by-section.xlsx'))
     tbl = ''.join(f'<tr><td>{t}</td><td>{i}</td><td><b>{sv.replace(" ", "&middot;")}</b></td></tr>' for t, i, sv in rows)
@@ -383,20 +401,21 @@ with sync_playwright() as p:
     ny = 'Herb Focaccia'; type_pax('dish', ny, '50'); nyr = vrow('Bread flour', 'dish')
     check('PDF with no Yield line: totals stay as printed (3 kg) and the pax panel says why', '3 kg' in nyr and 'no readable Yield' in pg.inner_text('#paxList'), (nyr, pg.inner_text('#paxList')))
     # append + templates (Pro)
-    pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
-    up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
-    pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'fixes-and-titles.pdf'); wait_status(pg, 'Appended|Could not', 30000)
-    type_pax('dish', MF, '90'); type_pax('dish', 'Roast Pumpkin Salad', '60')
-    ab = vrow('Butternut pumpkin', 'dish')
-    check('append PDF: appended dish scales (1.35 kg) and the first PDF scales on its own yield (120 → 60: 4 kg → 2 kg)', '1.35 kg' in ab and '2 kg' in ab and pg.evaluate("ROWS.filter(r=>r.dish==='Braised Lamb Shoulder')[0].pdfBasePax") == 120, ab)
-    blur(); pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
-    check('append + reload: both pax edits and scaled totals survive', '1.35 kg' in vrow('Butternut pumpkin', 'dish') and '2 kg' in vrow('Butternut pumpkin', 'dish'))
-    pg.fill('#proTemplateName', 'Pax test'); pg.click('#proSaveTemplateBtn')
-    up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted')
-    pg.evaluate("loadTemplate(encodeURIComponent('Pax test'))"); pg.wait_for_timeout(300)
-    tb = vrow('Butternut pumpkin', 'dish'); type_pax('dish', MF, '120'); tb2 = vrow('Butternut pumpkin', 'dish')
-    check('template: reloads pax 90/60 with scaled totals, and still rescales live (120 → 1.8 kg)', '1.35 kg' in tb and '2 kg' in tb and '1.8 kg' in tb2, (tb, tb2))
-    pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
+    if not LIVE:
+        pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
+        up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+        pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'fixes-and-titles.pdf'); wait_status(pg, 'Appended|Could not', 30000)
+        type_pax('dish', MF, '90'); type_pax('dish', 'Roast Pumpkin Salad', '60')
+        ab = vrow('Butternut pumpkin', 'dish')
+        check('append PDF: appended dish scales (1.35 kg) and the first PDF scales on its own yield (120 → 60: 4 kg → 2 kg)', '1.35 kg' in ab and '2 kg' in ab and pg.evaluate("ROWS.filter(r=>r.dish==='Braised Lamb Shoulder')[0].pdfBasePax") == 120, ab)
+        blur(); pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(600)
+        check('append + reload: both pax edits and scaled totals survive', '1.35 kg' in vrow('Butternut pumpkin', 'dish') and '2 kg' in vrow('Butternut pumpkin', 'dish'))
+        pg.fill('#proTemplateName', 'Pax test'); pg.click('#proSaveTemplateBtn')
+        up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted')
+        pg.evaluate("loadTemplate(encodeURIComponent('Pax test'))"); pg.wait_for_timeout(300)
+        tb = vrow('Butternut pumpkin', 'dish'); type_pax('dish', MF, '120'); tb2 = vrow('Butternut pumpkin', 'dish')
+        check('template: reloads pax 90/60 with scaled totals, and still rescales live (120 → 1.8 kg)', '1.35 kg' in tb and '2 kg' in tb and '1.8 kg' in tb2, (tb, tb2))
+        pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
     # recipe database (weekly) dishes
     pg.evaluate("setToolMode('database')"); up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Added|Could not')
     up(pg, S + 'fixes-and-titles.pdf'); wait_status(pg, 'Added|Could not', 30000)
@@ -546,14 +565,15 @@ with sync_playwright() as p:
     check('PDF no Yield: app Per pax is "—"; export leaves Quantity per pax and PAX blank and writes the printed total (3 kg, 800 g) as a plain value',
           '—' in nyp and nr['Bread flour']['B'] is None and nr['Bread flour']['E'] == 3 and nr['Bread flour']['C'] == 'kg' and nr['Rosemary oil']['E'] == 800, (nyp, nr))
     # append + template (Pro)
-    pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
-    up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
-    pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', [S + 'fixes-and-titles.pdf', S + 'no-yield.pdf']); wait_status(pg, 'Appended|Could not', 30000)
-    pg.evaluate(f"setPax(encName({json.dumps(MF)}), '90')"); g7('append')
-    pg.fill('#proTemplateName', 'Per pax test'); pg.click('#proSaveTemplateBtn')
-    up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted')
-    pg.evaluate("loadTemplate(encodeURIComponent('Per pax test'))"); pg.wait_for_timeout(300); g7('template')
-    pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
+    if not LIVE:
+        pg.evaluate("AutoprodLicence.activate('TEST-PRO-YEARLY')"); pg.wait_for_timeout(300); pg.evaluate('renderApp()')
+        up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+        pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', [S + 'fixes-and-titles.pdf', S + 'no-yield.pdf']); wait_status(pg, 'Appended|Could not', 30000)
+        pg.evaluate(f"setPax(encName({json.dumps(MF)}), '90')"); g7('append')
+        pg.fill('#proTemplateName', 'Per pax test'); pg.click('#proSaveTemplateBtn')
+        up(pg, S + 'pax-scaling.xlsx'); wait_status(pg, 'Sorted')
+        pg.evaluate("loadTemplate(encodeURIComponent('Per pax test'))"); pg.wait_for_timeout(300); g7('template')
+        pg.evaluate("AutoprodLicence.deactivate()"); pg.wait_for_timeout(300)
     check('v3.2.3 per-pax checks: no JS errors', not [e for e in errs if 'Failed to load resource' not in e], errs)
     # ---------- G8. v3.2.4: "Include method in printout" Yes/No ----------
     ctx8, _ = new_ctx(b); pg, errs = page_with_errs(ctx8)
@@ -631,6 +651,9 @@ print('\nEXTERNAL REQUESTS:')
 for h in sorted(ext):
     print(' ', h); [print('    ', u) for u in sorted(ext[h])]
 bad = [h for h in ext if re.search(r'anthropic|openai|claude|generativelanguage|vision|ocr|tesseract|azure|aws|huggingface', h)]
+if LIVE:
+    allowed = {'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', urlparse(URL).hostname}
+    check('live: outside requests only to the CDN, Google Fonts and the site itself (no Lemon Squeezy)', set(ext) <= allowed and not any('lemonsqueezy' in h for h in ext), sorted(ext))
 check('network: no AI/OCR service hosts contacted', not bad, bad)
 json.dump({'url': URL, 'version': ver, 'results': results, 'external': {h: sorted(v) for h, v in ext.items()}}, open(os.path.join(OUT, 'results.json'), 'w'), indent=1)
 fails = [r for r in results if not r['ok']]

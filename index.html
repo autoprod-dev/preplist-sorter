@@ -15,10 +15,13 @@
  *                 live. TEST- keys still work offline. TEST MODE badge stays visible.
  * mode 'live':    keys are checked with Lemon Squeezy's public License API. Before switching, replace
  *                 the ids and checkout URLs with the LIVE-mode ones (test-mode keys are refused).
+ * mode 'off':     Pro switched off (public site while the store is not approved for real money):
+ *                 no TEST badge, no Upgrade / licence / Buy UI, no Lemon Squeezy calls, no Pro panel or
+ *                 Pro-only tools (append PDF, templates, custom stations, kitchens). The code stays here.
  * Activation limit (3 devices per key) is set on the Lemon Squeezy product, not here.
  */
 var LICENSE_CONFIG = {
-  mode: 'ls-test',                               // 'test' | 'ls-test' | 'live'
+  mode: 'ls-test',                               // 'off' | 'test' | 'ls-test' | 'live'  ('off' = Pro switched off: no licence UI, no network, everything free stays free)
   edition: 'web',
   // v3: free-plan limits from the v2 Pro build, OFF so the v3 baseline behaviour is unchanged
   // (several PDFs at once are free; free prints have no footer). Set true to bring them back.
@@ -406,6 +409,23 @@ var LICENSE_CONFIG = {
     api.revalidate(false);
   };
 
+  if (C.mode === 'off') {
+    // Pro switched off: this module stays in the file but does nothing. Always free, no badge,
+    // no dialogs, no checkout, no network; a licence saved by another build is ignored.
+    var noop = function () {};
+    api.activate = function () { return Promise.resolve({ ok: false, error: 'Pro is not available.' }); };
+    api.revalidate = function () { return Promise.resolve('free'); };
+    api.deactivate = function () { return Promise.resolve({ ok: true }); };
+    api.isPro = function () { return false; };
+    api.status = function () { return 'free'; };
+    api.plan = function () { return null; };
+    api.state = function () { return null; };
+    api.isTestMode = function () { return false; };
+    api.openLicenceDialog = noop; api.openUpgrade = noop; api.buy = noop;
+    api.init = function () { api._inited = true; };
+    window.AutoprodLicence = api;
+    return;
+  }
   load(); status = computeStatus();
   window.AutoprodLicence = api;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', api.init); else api.init();
@@ -1397,10 +1417,13 @@ function loadOnetimeSession(){
     const s = JSON.parse(raw);
     const isObj = v => v && typeof v==='object' && !Array.isArray(v);
     const rowOk = r => r && typeof r==='object' && typeof r.dish==='string' && typeof r.task==='string'
-      && typeof r.section==='string' && SECTIONS.includes(r.section);
+      && typeof r.section==='string';
+    // A list saved by another build may use a station this build doesn't have (e.g. a Pro custom
+    // station while Pro is off): keep the row, in its base section (or Vegetables), flagged.
+    const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:r.section, baseCategory:r.baseCategory||r.section, flagged:!!r.flagged, day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
+        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
         // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
         ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
         // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
@@ -4833,7 +4856,16 @@ function renderProPanel(){
     <div class="status ${proPanelMsg.cls}" id="proPanelStatus">${proEsc(proPanelMsg.text)}</div>
     ${freeFooterOn() ? '<div class="pro-per">Clean prints are on: no footer on your printouts.</div>' : ''}`;
 }
+function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro'; }
 function renderProChrome(){
+  if (proUiOff()){
+    // Pro switched off: no Upgrade / licence buttons, no Pro panel, no append-PDF row, no footer.
+    ['proUpgradeBtn','licenceKeyBtn'].forEach(id=>{ const b = document.getElementById(id); if (b){ b.hidden = true; b.style.display = 'none'; } });
+    const pp = document.getElementById('proPanel'); if (pp){ pp.innerHTML = ''; pp.style.display = 'none'; }
+    const ar = document.getElementById('appendRow'); if (ar) ar.style.display = 'none';
+    const f = document.getElementById('madeWithFooter'); if (f) f.hidden = !freeFooterOn();
+    return;
+  }
   const pro = proActive();
   const up = document.getElementById('proUpgradeBtn');
   if (up){ up.textContent = pro ? '★ Pro' : '★ Upgrade to Pro'; up.classList.toggle('active', pro);
@@ -4849,6 +4881,7 @@ const _builtinRenderApp = renderApp;
 renderApp = function(){ _builtinRenderApp(); renderProChrome(); };
 
 function proBeforeInit(){
+  if (proUiOff()){ customStations = []; return; }   // Pro off: built-in stations only
   loadCustomStations();
   registerCustomStations();
 }
