@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.2.4">
+<meta name="prepline-version" content="3.2.5">
 <title>Prepline: prep list sorter</title>
 <script>
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
@@ -1137,7 +1137,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.2.4</div>
+    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.2.5</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -3972,9 +3972,11 @@ function findSimilarBtn(task){
 // The actual pixels of just the Method: region from every relevant page, packed onto one
 // consolidated page — not the whole production tool page, and not re-typed text either.
 // v3.2.4: "Include method in printout" (Yes/No). A device preference, kept in its own
-// localStorage key (not the session, database, template or Pro-kitchen keys), default Yes.
+// localStorage key (not the session, database, template or Pro-kitchen keys).
+// v3.2.5: default No. Only a stored 'yes' turns it on; 'no' or nothing stored (new user or
+// device, or storage unavailable) means No. A choice already saved as 'yes' stays Yes.
 const PRINT_METHOD_KEY = 'preplinePref_printIncludeMethod_v1';
-let includeMethodInPrint = (function(){ try{ return localStorage.getItem(PRINT_METHOD_KEY)!=='no'; }catch(e){ return true; } })();
+let includeMethodInPrint = (function(){ try{ return localStorage.getItem(PRINT_METHOD_KEY)==='yes'; }catch(e){ return false; } })();
 function setIncludeMethodInPrint(on){
   includeMethodInPrint = !!on;
   try{ localStorage.setItem(PRINT_METHOD_KEY, includeMethodInPrint ? 'yes' : 'no'); }catch(e){}
