@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.3.0">
+<meta name="prepline-version" content="3.3.1">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,11 +30,10 @@ var LICENSE_CONFIG = {
   edition: 'web',
   // v3: free-plan limits from the v2 Pro build, OFF so the v3 baseline behaviour is unchanged
   // (several PDFs at once are free; free prints have no footer). Set true to bring them back.
-  freeLimits: { onePdfPerSort: false, printFooter: false },                                // 'web' | 'offline-pro' (set by build_offline.py --edition pro)
+  freeLimits: { onePdfPerSort: false, printFooter: false },                                // edition: 'web' | 'offline-pro' | 'team' (team = team build: every tool unlocked, no licence; only honoured on file://, localhost or /prepline-team/)
   storeName: 'Autoprod',
   appName: 'Prepline',
   productName: 'Prepline Pro',
-  supportEmail: 'support@autoprod.example',      // TODO: real support address before launch
   storageKey: 'autoprod.licence.prepline.v1',
   revalidateDays: 7,                             // re-check with Lemon Squeezy at most once a week
   offlineGraceDays: 14,                          // keep Pro working this long past a missed check (offline)
@@ -1093,7 +1092,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.0</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.1</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -1256,7 +1255,7 @@ var LICENSE_CONFIG = {
     <div class="help-num">11</div>
     <div class="help-body">
       <h3>Install Prepline on a phone or computer</h3>
-      <p>On the test site, Prepline can be installed like an app: “Install” in Chrome or Edge, or Share → “Add to Home Screen” on an iPhone. Once opened, it works offline.</p>
+      <p>On the website, Prepline can be installed like an app: “Install” in Chrome or Edge, or Share → “Add to Home Screen” on an iPhone. Once opened, it works offline.</p>
       <p>When a new version is published, a bar offers “Reload” to switch to it.</p>
     </div>
   </div>
@@ -1264,7 +1263,7 @@ var LICENSE_CONFIG = {
     <div class="help-num">12</div>
     <div class="help-body">
       <h3>Feedback</h3>
-      <p>The Feedback button (top right) opens your email app with a short message ready to fill in, or copies it to paste anywhere. It includes the app version and browser only; your list is added only if you tick “Include my current list”.</p>
+      <p>The Feedback button (top right) builds a short message and copies it, to paste into an email, Teams or a text to whoever shared Prepline with you. It includes the app version and browser only; your list is added only if you tick “Include my current list”.</p>
     </div>
   </div>
 </div>
@@ -3082,7 +3081,8 @@ function addPdfRows(dish, tasks, eventDay){
 // rather than failing outright on the rare chance the module is still loading.
 async function ensurePdfJsLoaded(){
   if (window.pdfjsLib) return true;
-  for (let i=0; i<50; i++){
+  // up to 20 s: on a slow work PC or network the library (and its worker start-up) can take a while
+  for (let i=0; i<200; i++){
     await new Promise(r=>setTimeout(r,100));
     if (window.pdfjsLib) return true;
   }
@@ -3092,7 +3092,7 @@ async function handlePdfFiles(fileList, opts){
   opts = opts || {};
   setStatus('Reading '+fileList.length+' PDF'+(fileList.length>1?'s':'')+' — production tool parsing can take a moment…');
   if (!(await ensurePdfJsLoaded())){
-    setStatus('PDF reader failed to load — check your internet connection and try again.', 'err');
+    setStatus('The PDF reader has not loaded yet. Wait a moment, or reload the page, then try again.', 'err');
     return;
   }
   const prevPdf = {ROWS, paxByDish, eventDayOverride, eventDateByDish, originalPageImages, methodCrops};   // restored if nothing usable is found
@@ -4771,7 +4771,15 @@ function copySection(section){
 // ================= Prepline Pro: licence-gated features =================
 // Licence handling lives in the shared Autoprod licence module (<head>, window.AutoprodLicence).
 // Everything here is stored in this browser's localStorage only; nothing is uploaded.
+// Team edition: the team build (file:// copy, or the team website under /prepline-team/), with
+// every tool unlocked and no licence, upgrade or Buy UI. Only honoured on file://, localhost or
+// the /prepline-team/ path, so the flag can't unlock anything on the public site
+// (/preplist-sorter/), which ships with edition 'web' anyway.
+function teamEdition(){
+  return LICENSE_CONFIG.edition === 'team' && (location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || location.pathname.startsWith('/prepline-team/'));
+}
 function proActive(){
+  if (teamEdition()) return true;
   if (LICENSE_CONFIG.edition === 'offline-pro') return true;        // offline Pro build ships unlocked
   return !!(window.AutoprodLicence && AutoprodLicence.isPro());
 }
@@ -4981,10 +4989,11 @@ function renderProPanel(){
   }
   const ps = profilesState();
   const tpl = getTemplates(); const tplNames = Object.keys(tpl).sort((a,b)=>a.localeCompare(b));
-  const offline = C.edition==='offline-pro';
-  const plan = offline ? 'Offline edition' : ((C.plans.find(p=>p.id===AutoprodLicence.plan())||{}).label || 'Pro');
+  const team = teamEdition();
+  const offline = C.edition==='offline-pro' || team;
+  const plan = team ? 'Team edition' : (offline ? 'Offline edition' : ((C.plans.find(p=>p.id===AutoprodLicence.plan())||{}).label || 'Pro'));
   el.innerHTML = `<div class="row" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <h2 style="margin:0;">Prepline Pro <span class="pro-pill">${proEsc(plan)}</span></h2>
+      <h2 style="margin:0;">${team ? 'Kitchen tools' : 'Prepline Pro'} <span class="pro-pill">${proEsc(plan)}</span></h2>
       <div class="row" style="gap:6px; align-items:center;">
         <label class="small" for="proKitchenSel" style="font-size:12px;color:var(--ink-soft);">Kitchen</label>
         <select id="proKitchenSel" class="rowsel" onchange="switchKitchen(this.value)">${ps.list.map(n=>`<option ${n===ps.active?'selected':''} value="${proEsc(n)}">${proEsc(n)}</option>`).join('')}</select>
@@ -5012,16 +5021,26 @@ function renderProPanel(){
           <button class="secondary" type="button" id="proAddKitchenBtn" onclick="addKitchen()">Add and switch</button></div>
         ${ps.list.length>1 ? `<div class="row" style="gap:6px; margin-top:8px;"><select id="proKitchenDelete" class="rowsel">${ps.list.filter(n=>n!==ps.active).map(n=>`<option value="${proEsc(n)}">${proEsc(n)}</option>`).join('')}</select><button class="ghost" type="button" onclick="deleteKitchen()" style="color:var(--prot);">Delete kitchen</button></div>` : ''}
       </details>
-      <details class="pro-box"><summary>Offline Windows version</summary>
+      ${team ? '' : `<details class="pro-box"><summary>Offline Windows version</summary>
         <div class="pro-per" style="margin:6px 0;">${offline ? 'You are using the offline Pro edition: it works with no internet.' : 'A single file that runs in Edge or Chrome with no internet connection. Unzip, double-click, done.'}</div>
         ${offline ? '' : `<button class="secondary" type="button" id="proOfflineBtn" onclick="downloadOffline()">Download Prepline-Pro-Windows.zip</button>`}
-      </details>
+      </details>`}
     </div>
     <div class="status ${proPanelMsg.cls}" id="proPanelStatus">${proEsc(proPanelMsg.text)}</div>
     ${freeFooterOn() ? '<div class="pro-per">Clean prints are on: no footer on your printouts.</div>' : ''}`;
 }
-function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro'; }
+function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro' && !teamEdition(); }
 function renderProChrome(){
+  if (teamEdition()){
+    // Team edition: all tools on, no Upgrade / licence buttons, no footer, append row like Pro.
+    ['proUpgradeBtn','licenceKeyBtn'].forEach(id=>{ const b = document.getElementById(id); if (b){ b.hidden = true; b.style.display = 'none'; } });
+    const f = document.getElementById('madeWithFooter'); if (f) f.hidden = true;
+    const ar = document.getElementById('appendRow'); if (ar) ar.style.display = (toolMode==='onetime' && ROWS.length>0) ? 'flex' : 'none';
+    const pill = document.querySelector('#appendPdfBtn .pro-pill'); if (pill) pill.hidden = true;
+    const pp = document.getElementById('proPanel'); if (pp) pp.style.display = '';
+    renderProPanel();
+    return;
+  }
   if (proUiOff()){
     // Pro switched off: no Upgrade / licence buttons, no Pro panel, no append-PDF row, no footer.
     ['proUpgradeBtn','licenceKeyBtn'].forEach(id=>{ const b = document.getElementById(id); if (b){ b.hidden = true; b.style.display = 'none'; } });
@@ -5708,7 +5727,7 @@ const SHARE_CONFIG = {
   qrComfortChars: 1200,   // above this the QR is dense: warn, suggest the link
   maxParts: 8,
   // A copy opened from a file (offline build) has no web address a phone can open, so links point here instead.
-  fallbackUrl: 'https://autoprod-dev.github.io/prepline-test/',
+  fallbackUrl: 'https://autoprod-dev.github.io/preplist-sorter/',
 };
 const DAY_CODES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 function b64urlFromBytes(bytes){ let s = ''; for (let i=0;i<bytes.length;i+=0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000)); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
@@ -5841,17 +5860,16 @@ function closeSharedView(fromHash){
 window.addEventListener('hashchange', ()=>{ openSharedViewFromHash(); });
 
 
-// ---------- 7. Feedback button (no server) ----------
-// Opens the user's email app with a pre-filled message, or copies the text. Only the app
-// version, browser and screen size are included, plus the list itself ONLY if the user ticks it.
-const FEEDBACK_CONFIG = {
-  email: 'support@autoprod.example',   // PLACEHOLDER address: replace with a real, monitored inbox before relying on it
-  placeholder: true,
-  mailtoMax: 1800,                     // keep mailto links short: some mail apps cut longer ones
-};
+// ---------- 7. Feedback button (no server, no address) ----------
+// Builds a short feedback text and copies it, to send to whoever shared Prepline with the user.
+// Only the app version, browser and screen size are included, plus the list itself ONLY if the
+// user ticks it. Nothing is sent from the page and there is no built-in address.
+function feedbackEditionLabel(){
+  return teamEdition() ? 'team build' : (LICENSE_CONFIG.mode==='off' ? 'public build' : 'test build');
+}
 function feedbackMeta(){
   const v = (document.querySelector('meta[name="prepline-version"]')||{}).content || '';
-  return [`App: Prepline v${v} (${LICENSE_CONFIG.mode==='off' ? 'public' : 'test'} build)`, `Browser: ${navigator.userAgent}`,
+  return [`App: Prepline v${v} (${feedbackEditionLabel()})`, `Browser: ${navigator.userAgent}`,
     `Screen: ${window.screen ? screen.width+'x'+screen.height : '?'} · window ${window.innerWidth}x${window.innerHeight}`,
     `Page: ${location.protocol==='file:' ? 'offline file' : location.origin + location.pathname}`].join('\n');
 }
@@ -5867,56 +5885,48 @@ function feedbackListText(){
 function feedbackBody(){
   const msg = (document.getElementById('fbText')||{}).value || '';
   const inc = (document.getElementById('fbIncludeList')||{}).checked;
-  return `${msg.trim() || '(write your feedback here)'}\n\n---\n${feedbackMeta()}${inc ? '\n\nMy current list:\n' + feedbackListText() : ''}`;
+  return `Prepline feedback\n\n${msg.trim() || '(write your feedback here)'}\n\n---\n${feedbackMeta()}${inc ? '\n\nMy current list:\n' + feedbackListText() : ''}`;
 }
 function openFeedback(){
   closeFeedback();
   const box = document.createElement('div'); box.id = 'feedbackModal'; box.className = 'share-modal no-print';
-  box.innerHTML = `<div class="share-card" style="max-width:560px;"><div class="share-top"><h3>Send feedback</h3><button type="button" class="ghost" onclick="closeFeedback()" aria-label="Close">✕</button></div>
-    <p class="share-lede">Ideas, problems, wrong sorting? Tell us. Nothing is sent from this page: it opens your email app with the message filled in, or copies it for you to paste anywhere.</p>
+  box.innerHTML = `<div class="share-card" style="max-width:560px;"><div class="share-top"><h3>Feedback</h3><button type="button" class="ghost" onclick="closeFeedback()" aria-label="Close">✕</button></div>
+    <p class="share-lede">Ideas, problems, wrong sorting? Write it here, press <b>Copy feedback text</b>, then paste it into an email, Teams or a text to whoever shared Prepline with you (or whoever looks after it in your kitchen). Nothing is sent from this page.</p>
     <textarea id="fbText" rows="6" style="width:100%; box-sizing:border-box;" placeholder="What happened, or what would help?"></textarea>
     <label style="display:block; font-size:13px; margin:8px 0;"><input type="checkbox" id="fbIncludeList"> Include my current list (dish names, tasks, totals) — off by default</label>
     <div class="small" style="font-size:11.5px; color:#5C5F58;">Always included: app version, browser and screen size. Nothing else.</div>
     <div class="row" style="gap:8px; margin-top:10px; align-items:center;">
-      <button type="button" id="fbMailBtn" onclick="sendFeedbackEmail()">Open email</button>
-      <button type="button" class="secondary" id="fbCopyBtn" onclick="copyFeedback()">Copy to clipboard</button>
+      <button type="button" id="fbCopyBtn" onclick="copyFeedback()">Copy feedback text</button>
       <span class="small" id="fbStatus" style="font-size:12px;"></span>
     </div>
-    <div class="small" style="font-size:11.5px; color:#5C5F58; margin-top:8px;">To: ${escapeHtml(FEEDBACK_CONFIG.email)}${FEEDBACK_CONFIG.placeholder ? ' <span class="share-warn">(placeholder address, not monitored yet)</span>' : ''}</div></div>`;
+    <textarea id="fbPreview" readonly rows="5" style="display:none; width:100%; box-sizing:border-box; margin-top:8px; font-size:12px;" aria-label="Feedback text to copy"></textarea></div>`;
   document.body.appendChild(box);
 }
 function closeFeedback(){ const m = document.getElementById('feedbackModal'); if (m) m.remove(); }
-function feedbackMailto(){
-  const v = (document.querySelector('meta[name="prepline-version"]')||{}).content || '';
-  let body = feedbackBody(), cut = false;
-  const mk = b => 'mailto:' + FEEDBACK_CONFIG.email + '?subject=' + encodeURIComponent('Prepline v'+v+' feedback') + '&body=' + encodeURIComponent(b);
-  while (mk(body).length > FEEDBACK_CONFIG.mailtoMax && body.length > 200){ body = body.slice(0, Math.floor(body.length*0.85)); cut = true; }
-  if (cut) body += '\n[cut short: use Copy to clipboard for the full text]';
-  return {url: mk(body), cut};
-}
-function sendFeedbackEmail(){
-  const m = feedbackMailto();
-  const st = document.getElementById('fbStatus');
-  if (st) st.textContent = m.cut ? 'Long message: the email is cut short. Use Copy to clipboard for everything.' : 'Opening your email app…';
-  window.__lastFeedbackMailto = m.url;
-  location.href = m.url;
-}
 function copyFeedback(){
-  const text = 'To: ' + FEEDBACK_CONFIG.email + '\n\n' + feedbackBody();
+  const text = feedbackBody();
   const st = document.getElementById('fbStatus');
-  const ok = () => { if (st) st.textContent = 'Copied. Paste it into an email, Teams or a text.'; };
-  const fail = () => { if (st) st.textContent = 'Could not copy automatically; select the text and copy it.'; };
+  const ok = () => { if (st) st.textContent = 'Copied. Paste it into an email, Teams or a text to whoever shared Prepline with you.'; };
+  const fail = () => {   // no clipboard access (e.g. some file:// pages): show the text, selected, to copy by hand
+    const pv = document.getElementById('fbPreview');
+    if (pv){ pv.value = text; pv.style.display = 'block'; pv.focus(); pv.select(); }
+    if (st) st.textContent = 'Could not copy automatically: the text is selected below, press Ctrl+C (or Cmd+C) to copy it.';
+  };
   window.__lastFeedbackCopy = text;
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail();
+  try{ if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail(); }catch(e){ fail(); }
 }
 
 
-// ---------- 8. Installable app (PWA), TEST SITE ONLY ----------
-// Only switches on when served over http(s) from /prepline-test/. On the live path, a file:// copy
-// or anywhere else nothing is injected and no service worker is registered.
-const PWA_CONFIG = { basePath: '/prepline-test/', checkEveryMin: 60 };
+// ---------- 8. Installable app (PWA) ----------
+// Switches on only when served over http(s) from one of the site paths below (live, test, team); each site gets
+// its own manifest, service worker (scope = its own path) and cache names, so they never clash.
+// A file:// copy (offline zip, single file, team build) or any other path: nothing is injected,
+// no service worker is registered, silently.
+const PWA_CONFIG = { paths: ['/preplist-sorter/', '/prepline-test/', '/prepline-team/'], basePath: null, checkEveryMin: 60 };
 function pwaEnabled(){
-  return /^https?:$/.test(location.protocol) && location.pathname.startsWith(PWA_CONFIG.basePath);
+  if (!/^https?:$/.test(location.protocol)) return false;
+  PWA_CONFIG.basePath = PWA_CONFIG.paths.find(p => location.pathname.startsWith(p)) || null;
+  return !!PWA_CONFIG.basePath;
 }
 function pwaInjectHead(){
   const b = PWA_CONFIG.basePath, head = document.head;

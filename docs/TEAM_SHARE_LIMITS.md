@@ -1,4 +1,4 @@
-# Team share: size limits (measured, v3.3.0)
+# Team share: size limits (measured in v3.3.0, unchanged in v3.3.1)
 
 How it works: a section's list is packed into the link itself, after `#s=` (the hash is never sent to
 any server). JSON → UTF-8 → deflate-raw (`CompressionStream`) → base64url, prefix `z`
@@ -40,5 +40,5 @@ with OpenCV to check it scans to the exact link.
 - The shared view is a snapshot. Share again after changes.
 - The phone needs nothing installed or stored; the shared view reads and writes no storage.
   Ticks live in memory only while the page is open.
-- A copy opened from a file (offline build) has no web address, so its links point to
-  `SHARE_CONFIG.fallbackUrl` (currently the test site).
+- A copy opened from a file (offline zip, single file, team build) has no web address, so its links
+  point to `SHARE_CONFIG.fallbackUrl`, the live site https://autoprod-dev.github.io/preplist-sorter/.

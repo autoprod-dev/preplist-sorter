@@ -53,6 +53,23 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.3.1 (2026-10-03) Live release of 3.3; team build; no support address
+- Feedback: no email address and no mailto anywhere. "Copy feedback text" is the main action, to paste into
+  an email, Teams or a text to whoever shared Prepline with you. If the clipboard is blocked, the text is shown selected.
+  The unused licence `supportEmail` setting is removed.
+- Live site gets the 3.3 features (Pro off). Installable app now works on both sites, each scoped to its own path
+  (/preplist-sorter/ and /prepline-test/) with its own cache names (`prepline:<path><version>`); neither site
+  can control or clear the other. The manifest uses relative start_url/scope.
+- Share links from file:// copies (offline zip, single file) point at the live site; from team copies, at the team site.
+- New edition flag `edition: 'team'` for the team build: every tool unlocked (templates, custom stations,
+  kitchens, append PDF and the 3.3 tools), no licence, Upgrade, Buy or TEST badge. Honoured only on file://,
+  localhost or the team site path /prepline-team/; the public site keeps `edition: 'web'`.
+- Team website (/prepline-team/): every library served from the site itself, system fonts, no request to any
+  other domain. The service worker precaches same-site lib/ copies when present and never contacts a CDN there.
+- PDF reader: waits up to 20 s for the library on a slow PC or network (was 5 s), with a clearer message.
+- Unchanged: GST and "$" as entered, allergen disclaimer, per-kitchen data and free/Pro defaults,
+  "Include method in printout" default No.
+
 ## 3.3.0 (2026-10-03) Seven kitchen features (test site only)
 Built on 3.2.5, one commit per feature. Everything new is stored under new keys
 (`preplineIngredientInfo_v1`, `preplinePref_ingPanelOpen_v1`); existing saved lists, the recipe database,
@@ -67,7 +84,7 @@ the print-method default (No), per-pax formulas and Source tab columns are uncha
 4. Instant demo: "Try with sample menu" loads a made-up 5-dish menu (with allergens, suppliers, prices), marked SAMPLE DATA, one-click clear.
 5. Team share: per section, QR code + link opening a read-only phone view with no server (list compressed in the URL hash,
    bundled MIT QR library). Splits into up to 8 parts, link only beyond. Limits: docs/TEAM_SHARE_LIMITS.md.
-6. Feedback button: pre-filled email to a PLACEHOLDER address (support@autoprod.example) or copy to clipboard;
+6. Feedback button: pre-filled email to a placeholder address (removed in 3.3.1) or copy to clipboard;
    version, browser and screen only, list only when ticked.
 7. Installable app on /prepline-test/ only: manifest, icons, iOS tags, versioned service worker (network-first pages,
    cached CDN libraries), "update available — Reload" prompt. Nothing registers on any other path or on file://.

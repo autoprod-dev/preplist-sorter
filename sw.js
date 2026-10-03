@@ -1,4 +1,7 @@
-/* Prepline service worker (TEST SITE ONLY: registered solely under /prepline-test/).
+/* Prepline service worker. The same file serves the live site (/preplist-sorter/), the test site
+ * (/prepline-test/) and the team site (/prepline-team/); each registers it with its own path as the
+ * scope, and its caches are named after that scope, so the sites (same origin) never share or
+ * delete each other's caches.
  * Strategy
  *  - App pages (navigations): network first, fresh from the server every time you are online
  *    (revalidated with no-cache), cached copy only when offline or the network takes > 6 s.
@@ -9,11 +12,18 @@
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '3.3.0';
-const CACHE = 'prepline-test-' + VERSION;
-const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/prepline-test/'
+const VERSION = '3.3.1';
+const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
+// The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
+const NO_CDN = SCOPE_PATH === '/prepline-team/';
+const CACHE_PREFIX = 'prepline:' + SCOPE_PATH;                  // e.g. 'prepline:/preplist-sorter/'
+const CACHE = CACHE_PREFIX + VERSION;
+// 3.3.0 (test site only) used 'prepline-test-<version>'
+const LEGACY_PREFIX = SCOPE_PATH === '/prepline-test/' ? 'prepline-test-' : null;
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
+// Same-site library copies (team site). Precached when present, skipped where absent (404).
+const LOCAL_LIBS = ['./lib/xlsx.full.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js'];
 const CDN_LIBS = [
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.min.mjs',
@@ -25,8 +35,13 @@ self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cache.addAll(APP_SHELL.map(u => new Request(u, {cache: 'reload'})));
-    // CDN libraries: best effort, so a CDN hiccup never blocks installing the app.
-    await Promise.allSettled(CDN_LIBS.map(async u => {
+    // Same-site library copies: best effort, a 404 on the other sites is simply skipped.
+    await Promise.allSettled(LOCAL_LIBS.map(async u => {
+      const res = await fetch(new Request(u, {cache: 'reload'}));
+      if (res.ok) await cache.put(u, res);
+    }));
+    // CDN libraries: best effort, so a CDN hiccup never blocks installing the app. Never on the team site.
+    if (!NO_CDN) await Promise.allSettled(CDN_LIBS.map(async u => {
       let res;
       try { res = await fetch(u, {mode: 'cors'}); } catch (e) { res = await fetch(u, {mode: 'no-cors'}); }
       if (res && (res.ok || res.type === 'opaque')) await cache.put(u, res);
@@ -38,7 +53,8 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k.startsWith('prepline-test-') && k !== CACHE).map(k => caches.delete(k)));
+    // only this site's own old caches: never the other site's
+    await Promise.all(keys.filter(k => k !== CACHE && (k.startsWith(CACHE_PREFIX) || (LEGACY_PREFIX && k.startsWith(LEGACY_PREFIX)))).map(k => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -97,6 +113,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(staleWhileRevalidate(req));
     return;
   }
+  if (NO_CDN) return;   // team site: nothing outside the site is ever handled (or requested) here
   if (CDN_LIBS.includes(url.href)) { event.respondWith(cacheFirst(req)); return; }
   if (FONT_HOSTS.includes(url.hostname)) { event.respondWith(staleWhileRevalidate(req)); return; }
   // everything else (licence checks, checkout, analytics-free by design): straight to the network

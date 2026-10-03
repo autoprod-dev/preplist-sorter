@@ -103,7 +103,6 @@ README_PRO = """Prepline Pro - offline Windows edition (works offline, no instal
 
 No internet connection, Python, installer or admin rights are required.
 This copy is licensed to the Prepline Pro purchaser. Please don't share it publicly.
-Support: support@autoprod.example (TODO)
 """
 
 EDITIONS = {

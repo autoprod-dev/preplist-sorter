@@ -1,11 +1,13 @@
 # Headless Chromium tests for the Prepline v3.3.0 features (test site build):
 # allergens, order sheet, cost, sample menu, team share, feedback, installable app (PWA).
 # Usage: python3 test_v33.py URL [shots_dir] [out_dir] [--expect-version X]
-#          [--pwa] [--live-url URL] [--update-url URL --update-dir DIR]
+#          [--pwa] [--live-url URL] [--update-url URL --update-dir DIR] [--offline] [--team]
 #   URL          the app's index.html
 #   --pwa        check the installable-app part (URL must be under /prepline-test/ over http(s))
 #   --live-url   a page on the same origin that must NOT be controlled by a service worker
 #   --update-*   a served copy whose sw.js this script may edit, to test the update prompt (local only)
+#   --offline    file:// build: block ALL network; any request attempt fails the run
+#   --team       team build: every tool unlocked, no licence UI
 import sys, os, json, re, base64, zlib, shutil, subprocess, time
 from urllib.parse import urlparse, unquote
 from playwright.sync_api import sync_playwright
@@ -18,6 +20,10 @@ SHOTS = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith('--') el
 OUT = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith('--') else '/workspace/prepline-v33-test-out'
 EXPECT_VER = arg('--expect-version'); PWA = '--pwa' in sys.argv
 LIVE_URL = arg('--live-url'); UPD_URL = arg('--update-url'); UPD_DIR = arg('--update-dir')
+OFFLINE = '--offline' in sys.argv or '--team' in sys.argv; SITEONLY = '--team-site' in sys.argv; TEAM = '--team' in sys.argv or SITEONLY
+LIVE_SHARE = arg('--share-base', 'https://autoprod-dev.github.io/preplist-sorter/')   # where a file:// copy's share links point
+SITE_HOST = urlparse(URL).hostname
+net_attempts = []
 S = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'samples') + '/'
 os.makedirs(SHOTS, exist_ok=True); os.makedirs(OUT, exist_ok=True)
 results = []; measures = {}
@@ -26,6 +32,12 @@ def check(name, ok, info=''):
 def new_ctx(b, w=1280, h=900, **kw):
     ctx = b.new_context(viewport={'width': w, 'height': h}, accept_downloads=True, **kw)
     ctx.route(re.compile(r'.*lemonsqueezy\.com/checkout.*'), lambda route: route.abort())
+    if SITEONLY:   # corporate-network simulation: every outside domain blocked, any attempt fails the run
+        ctx.route(lambda u: urlparse(u).scheme in ('http', 'https', 'ws', 'wss') and urlparse(u).hostname != SITE_HOST, lambda route: (net_attempts.append('BLOCKED ' + route.request.url[:140]), route.abort()))
+    if OFFLINE:
+        ctx.set_offline(True)
+        ctx.on('request', lambda r: None if r.url.startswith(('file:', 'data:', 'blob:')) else net_attempts.append(r.url[:140]))
+        ctx.route(re.compile(r'^(https?|wss?|ftp)://.*'), lambda route: (net_attempts.append('ROUTED ' + route.request.url[:140]), route.abort()))
     return ctx
 def page_with_errs(ctx):
     pg = ctx.new_page(); errs = []
@@ -285,7 +297,8 @@ with sync_playwright() as p:
     check('share: a "Share to phone" button on every section in By team section', nbtn == len(pg.evaluate("[...new Set(activeRows().map(r=>r.section))]")), nbtn)
     pg.locator('#resultsArea .share-btn').first.click(); pg.wait_for_selector('#shareModal figure.share-qr', timeout=10000)
     link = pg.input_value('#shareLinkInput'); sec = pg.evaluate("[...new Set(activeRows().map(r=>r.section))]")
-    check('share: link points at this page with the list in the #hash (never sent to a server)', link.startswith(URL.split('#')[0]) and '#s=z' in link, link[:120])
+    want_base = LIVE_SHARE if URL.startswith('file:') else URL.split('#')[0]
+    check('share: link points at ' + ('the live site (file:// copy)' if URL.startswith('file:') else 'this page') + ' with the list in the #hash (never sent to a server)', link.startswith(want_base) and '#s=z' in link, link[:120])
     tok = link.split('#s=')[1]
     raw = zlib.decompress(base64.urlsafe_b64decode(tok[1:] + '=' * (-len(tok[1:]) % 4)), -15)
     data = json.loads(raw)
@@ -296,6 +309,8 @@ with sync_playwright() as p:
     try:
         import cv2, numpy as np
         pg.set_viewport_size({'width': 1280, 'height': 1400})
+        # draw the on-screen SVG at a whole number of pixels per module so the camera-style decoder sees crisp modules
+        pg.evaluate("(()=>{const s=document.querySelector('#shareModal svg.qr-svg'); const n=+s.getAttribute('viewBox').split(' ')[2]; s.style.width=s.style.height=(n*5)+'px'; s.style.maxWidth='none';})()")
         png = pg.locator('#shareModal svg.qr-svg').first.screenshot(path=os.path.join(OUT, 'qr.png'))
         img = cv2.imread(os.path.join(OUT, 'qr.png')); img = cv2.copyMakeBorder(img, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(255, 255, 255))
         txt, _, _ = cv2.QRCodeDetector().detectAndDecode(img)
@@ -359,14 +374,15 @@ with sync_playwright() as p:
     # phone, nothing stored, link opened cold
     ctx = new_ctx(b, 390, 844, is_mobile=True, has_touch=True, device_scale_factor=2); pg, errs = page_with_errs(ctx)
     pg.add_init_script("window.__lsWrites=[]; const _si=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ window.__lsWrites.push(k); return _si.call(this,k,v); };")
-    go(pg, link); pg.wait_for_selector('#sharedView .sv-table', timeout=10000)
+    open_url = (URL.split('#')[0] + '#s=' + tok) if URL.startswith('file:') else link
+    go(pg, open_url); pg.wait_for_selector('#sharedView .sv-table', timeout=10000)
     sv = pg.evaluate("({rows: document.querySelectorAll('#sharedView .sv-table tr').length, h1: document.querySelector('#sharedView h1').innerText, sw: document.documentElement.scrollWidth, mode: document.body.classList.contains('shared-mode'), sample: !!document.querySelector('#sharedView .sv-sample'), chips: document.querySelectorAll('#sharedView .al-chip').length, writes: window.__lsWrites, ls: Object.keys(localStorage)})")
     check('share phone view: opens read-only on a 390px phone with nothing stored, all rows, no sideways scroll', sv['rows'] == len(data['r']) and sv['h1'] == data['n'] and sv['sw'] <= 390 and sv['mode'] and sv['sample'], sv)
     check('share phone view: writes nothing to storage', not [k for k in sv['writes'] if k != 'plTest'] and not sv['ls'], (sv['writes'], sv['ls']))
     pg.locator('#sharedView .sv-tick input').first.tap()
     check('share phone view: tasks can be ticked on the phone (in memory only)', pg.locator('#sharedView .sv-tick input:checked').count() == 1 and not pg.evaluate("window.__lsWrites.length"))
     pg.screenshot(path=f'{SHOTS}/04-share-phone-view-390.png', full_page=False)
-    go(pg, link[:-25])
+    go(pg, open_url[:-25])
     pg.wait_for_selector('#sharedView', timeout=10000); pg.wait_for_timeout(500)
     check('share phone view: a cut-off link shows a friendly "can\'t be opened" message', "can't be opened" in pg.inner_text('#sharedView'))
     check('share phone view: no JS errors', not errs, errs)
@@ -374,24 +390,29 @@ with sync_playwright() as p:
 
     # ================= 6. feedback =================
     ctx = new_ctx(b); ctx.grant_permissions(['clipboard-read', 'clipboard-write']); pg, errs = page_with_errs(ctx); go(pg); load_sample(pg)
+    html_all = pg.content()
+    app_js = pg.evaluate("[...document.scripts].filter(s=>s.textContent.includes('function openFeedback')||s.textContent.includes('LICENSE_CONFIG = {')).map(s=>s.textContent).join('\\n')")
+    check('feedback: no support address anywhere in the page; no mailto in the app code or page links', 'autoprod.example' not in html_all and 'mailto:' not in app_js and len(app_js) > 100000 and pg.locator('a[href^="mailto:"]').count() == 0 and pg.evaluate("typeof FEEDBACK_CONFIG==='undefined' && typeof sendFeedbackEmail==='undefined' && !('supportEmail' in LICENSE_CONFIG)"), len(app_js))
     pg.click('#feedbackBtn'); pg.wait_for_selector('#feedbackModal')
-    check('feedback: button opens a dialog; "Include my current list" is unticked by default; placeholder address flagged', not pg.is_checked('#fbIncludeList') and 'placeholder' in pg.inner_text('#feedbackModal') and pg.evaluate("FEEDBACK_CONFIG.placeholder===true && FEEDBACK_CONFIG.email==='support@autoprod.example'"))
+    mtxt = pg.inner_text('#feedbackModal')
+    check('feedback: "Copy feedback text" is the main (only) action, with the "whoever shared Prepline with you" note', pg.locator('#feedbackModal button:has-text("Copy feedback text")').count() == 1 and pg.locator('#fbMailBtn').count() == 0 and 'whoever shared Prepline with you' in mtxt and '@' not in mtxt, mtxt[:200])
+    check('feedback: "Include my current list" is unticked by default', not pg.is_checked('#fbIncludeList'))
     pg.fill('#fbText', 'Order sheet idea')
-    pg.evaluate("window.__nav=[]; window.sendFeedbackEmail = (orig => function(){ const m = feedbackMailto(); window.__lastFeedbackMailto = m.url; })(window.sendFeedbackEmail)")
-    pg.click('#fbMailBtn'); mt = pg.evaluate("window.__lastFeedbackMailto")
-    body = unquote(mt.split('&body=')[1]); subj = unquote(mt.split('subject=')[1].split('&')[0])
-    check('feedback: mailto to support@autoprod.example, subject with version, body with message, app version, browser and screen', mt.startswith('mailto:support@autoprod.example?') and ver in subj and 'Order sheet idea' in body and f'Prepline v{ver}' in body and 'Browser:' in body and 'Screen:' in body, (subj, body[:200]))
-    check('feedback: no list data unless ticked (no dish or task names in the email)', not any(x in body for x in ['Sample:', 'Chicken supreme', 'Butter', 'Barramundi']), body)
-    pg.check('#fbIncludeList'); body2 = pg.evaluate("feedbackBody()"); m2 = pg.evaluate("feedbackMailto()")
-    check('feedback: ticking "Include my current list" adds the list', 'Chicken supreme' in body2 and 'Sample: Roast Chicken' in body2)
-    check('feedback: mailto length capped (long list cut, with a note to use Copy)', len(m2['url']) <= pg.evaluate("FEEDBACK_CONFIG.mailtoMax") + 200 and m2['cut'], len(m2['url']))
     pg.click('#fbCopyBtn'); pg.wait_for_timeout(300); clip = pg.evaluate("navigator.clipboard.readText()")
-    check('feedback: Copy to clipboard copies the full text (with list when ticked)', 'support@autoprod.example' in clip and 'Chicken supreme' in clip and 'Copied' in pg.inner_text('#fbStatus'))
-    pg.uncheck('#fbIncludeList'); pg.click('#fbCopyBtn'); pg.wait_for_timeout(300); clip = pg.evaluate("navigator.clipboard.readText()")
-    check('feedback: copied text has no list data when unticked', 'Chicken supreme' not in clip and 'Order sheet idea' in clip)
+    ed = 'team build' if TEAM else None
+    check('feedback: copied text has the message, app version, edition, browser and screen; no address', 'Order sheet idea' in clip and f'Prepline v{ver}' in clip and 'Browser:' in clip and 'Screen:' in clip and '@' not in clip.split('Browser:')[0] and (ed is None or ed in clip) and 'Copied' in pg.inner_text('#fbStatus'), clip[:220])
+    check('feedback: no list data unless ticked', not any(x in clip for x in ['Sample:', 'Chicken supreme', 'Barramundi']), clip)
+    pg.check('#fbIncludeList'); pg.click('#fbCopyBtn'); pg.wait_for_timeout(300); clip = pg.evaluate("navigator.clipboard.readText()")
+    check('feedback: ticking "Include my current list" adds the list to the copied text', 'Chicken supreme' in clip and 'Sample: Roast Chicken' in clip)
+    pg.evaluate("Object.defineProperty(navigator, 'clipboard', {value: {writeText: () => Promise.reject(new Error('blocked'))}, configurable: true})")
+    pg.click('#fbCopyBtn'); pg.wait_for_timeout(300)
+    pv = pg.evaluate("(()=>{const t=document.getElementById('fbPreview'); return [t.style.display, t.value.includes('Order sheet idea'), t.selectionEnd - t.selectionStart === t.value.length]})()")
+    check('feedback: if the clipboard is blocked, the text is shown and selected to copy by hand', pv == ['block', True, True] and 'Ctrl+C' in pg.inner_text('#fbStatus'), pv)
     pg.set_viewport_size({'width': 390, 'height': 800}); pg.wait_for_timeout(200)
     fbx = pg.evaluate("(()=>{const r=document.querySelector('#feedbackModal .share-card').getBoundingClientRect(); return [r.left>=0, r.right<=390, document.documentElement.scrollWidth];})()")
     check('feedback: dialog fits a 390px phone', fbx[0] and fbx[1] and fbx[2] <= 390, fbx)
+    help_txt = pg.evaluate("document.getElementById('helpTab').innerText")
+    check('feedback: Help text has no address and describes copying', '@' not in help_txt and 'whoever shared Prepline with you' in help_txt)
     check('feedback: no JS errors', not errs, errs)
     ctx.close()
 
@@ -399,8 +420,8 @@ with sync_playwright() as p:
     u = urlparse(URL)
     if not PWA:
         ctx = new_ctx(b); pg, errs = page_with_errs(ctx); go(pg); pg.wait_for_timeout(800)
-        st = pg.evaluate("navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(r=>r.length) : 0")
-        check('PWA: off outside /prepline-test/ (no manifest link, no service worker registered)', st == 0 and not pg.evaluate("!!document.querySelector('link[rel=manifest]')"), st)
+        st = pg.evaluate("(async()=>{ try{ return navigator.serviceWorker ? (await navigator.serviceWorker.getRegistrations()).length : 0; }catch(e){ return 0; } })()")
+        check('PWA: skipped silently here (' + (urlparse(URL).scheme == 'file' and 'file://' or 'not a site path') + '): no manifest link, no service worker, no errors', st == 0 and not pg.evaluate("!!document.querySelector('link[rel=manifest]')") and not pg.evaluate("!!(navigator.serviceWorker && navigator.serviceWorker.controller)") and not errs, (st, errs))
         ctx.close()
     else:
         base = URL.rsplit('/', 1)[0] + '/'
@@ -408,25 +429,33 @@ with sync_playwright() as p:
         reg = pg.evaluate("""async()=>{const r=await navigator.serviceWorker.ready;
             if (r.active && r.active.state!=='activated') await new Promise(res=>{ r.active.addEventListener('statechange', ()=>{ if (r.active.state==='activated') res(); }); setTimeout(res, 10000); });
             return {scope:r.scope, state:r.active&&r.active.state, script:r.active&&r.active.scriptURL}}""")
-        check('PWA: service worker active, scope exactly /prepline-test/', reg['state'] == 'activated' and urlparse(reg['scope']).path == '/prepline-test/' and reg['script'].endswith('/prepline-test/sw.js'), reg)
+        SC = urlparse(base).path
+        check(f'PWA: service worker active, scope exactly {SC}', reg['state'] == 'activated' and urlparse(reg['scope']).path == SC and reg['script'].endswith(SC + 'sw.js'), reg)
         pg.reload(); pg.wait_for_load_state('networkidle')
         check('PWA: page is controlled after a reload', pg.evaluate("!!navigator.serviceWorker.controller"))
         cdp = ctx.new_cdp_session(pg)
         inst = cdp.send('Page.getInstallabilityErrors'); man = cdp.send('Page.getAppManifest')
         check('PWA: Chromium installability errors: none', inst.get('installabilityErrors') == [], inst)
-        check('PWA: manifest parses with no errors', man.get('errors') == [] and man.get('url', '').endswith('/prepline-test/manifest.webmanifest'), man.get('errors'))
+        check('PWA: manifest parses with no errors', man.get('errors') == [] and man.get('url', '').endswith(SC + 'manifest.webmanifest'), man.get('errors'))
         mj = json.loads(pg.evaluate(f"fetch('{base}manifest.webmanifest').then(r=>r.text())"))
         sizes = {(i['sizes'], i.get('purpose', 'any')) for i in mj['icons']}
-        check('PWA: manifest fields: name, short_name, start_url and scope under /prepline-test/, standalone, theme colour, 192/512 + maskable icons',
-              mj['short_name'] == 'Prepline' and mj['scope'] == '/prepline-test/' and mj['start_url'].startswith('/prepline-test/') and mj['display'] == 'standalone' and mj['theme_color'] and {('192x192', 'any'), ('512x512', 'any'), ('512x512', 'maskable')} <= sizes, mj)
+        from urllib.parse import urljoin
+        murl = base + 'manifest.webmanifest'
+        check(f'PWA: manifest fields: name, short_name, start_url and scope resolving to {SC}, standalone, theme colour, 192/512 + maskable icons',
+              mj['short_name'] == 'Prepline' and urlparse(urljoin(murl, mj['scope'])).path == SC and urlparse(urljoin(murl, mj['start_url'])).path.startswith(SC) and mj['display'] == 'standalone' and mj['theme_color'] and {('192x192', 'any'), ('512x512', 'any'), ('512x512', 'maskable')} <= sizes, mj)
+        app_m = man.get('manifest') or {}
+        check('PWA: name says (TEST) only on the test site', ('(TEST)' in mj['name']) == (SC == '/prepline-test/'), mj['name'])
         icons_ok = pg.evaluate(f"Promise.all({json.dumps([i['src'] for i in mj['icons']] + ['icons/apple-touch-icon.png'])}.map(s=>fetch('{base}'+s).then(r=>r.ok && r.headers.get('content-type').includes('png'))))")
         check('PWA: all icons load (incl. apple-touch-icon)', all(icons_ok), icons_ok)
         ios = pg.evaluate("['apple-mobile-web-app-capable','apple-mobile-web-app-title','theme-color'].map(n=>!!document.querySelector('meta[name='+n+']')).concat([!!document.querySelector('link[rel=apple-touch-icon]')])")
         check('PWA: iOS add-to-home-screen tags present (apple-mobile-web-app-capable, title, touch icon)', all(ios), ios)
         swv = pg.evaluate("""()=>new Promise(r=>{const c=new MessageChannel(); c.port1.onmessage=e=>r(e.data); navigator.serviceWorker.controller.postMessage({type:'GET_VERSION'},[c.port2])})""")
-        check('PWA: cache is versioned with the app version', swv == {'version': ver, 'cache': 'prepline-test-' + ver}, swv)
-        cached = pg.evaluate("caches.open('prepline-test-'+document.querySelector('meta[name=prepline-version]').content).then(c=>c.keys()).then(k=>k.map(r=>r.url))")
-        check('PWA: app and CDN libraries cached (index, xlsx, pdf.js + worker)', any(x.endswith('/prepline-test/index.html') for x in cached) and sum('cdnjs.cloudflare.com' in x for x in cached) == 3, [x.split('/')[-1] for x in cached])
+        check('PWA: cache named after this site\'s scope and the app version (never shared with the other site)', swv == {'version': ver, 'cache': f'prepline:{SC}{ver}'}, swv)
+        cached = pg.evaluate(f"caches.open('prepline:{SC}{ver}').then(c=>c.keys()).then(k=>k.map(r=>r.url))")
+        if SITEONLY:
+            check('PWA: app and same-site libraries cached (index, lib/xlsx, lib/pdf.js + worker), nothing from a CDN', any(x.endswith(SC + 'index.html') for x in cached) and sum(SC + 'lib/' in x for x in cached) == 3 and all(urlparse(x).hostname == SITE_HOST for x in cached), [x.split('/')[-1] for x in cached])
+        else:
+            check('PWA: app and CDN libraries cached (index, xlsx, pdf.js + worker)', any(x.endswith(SC + 'index.html') for x in cached) and sum('cdnjs.cloudflare.com' in x for x in cached) == 3, [x.split('/')[-1] for x in cached])
         ctx.set_offline(True)
         pg.reload(); pg.wait_for_load_state('load'); pg.wait_for_timeout(1200)
         off = pg.evaluate("({ver: document.querySelector('meta[name=prepline-version]').content, xlsx: typeof XLSX, pdf: typeof window.pdfjsLib})")
@@ -440,8 +469,13 @@ with sync_playwright() as p:
         ctx.set_offline(False)
         if LIVE_URL:
             p2 = ctx.new_page(); p2.goto(LIVE_URL); p2.wait_for_load_state('networkidle'); p2.wait_for_timeout(800)
-            lv = p2.evaluate("(async()=>({controlled: !!navigator.serviceWorker.controller, regFor: !!(await navigator.serviceWorker.getRegistration(location.href)), manifest: !!document.querySelector('link[rel=manifest]')}))()")
-            check(f'PWA: no service worker controls the live path ({urlparse(LIVE_URL).path}) and no manifest there', lv == {'controlled': False, 'regFor': False, 'manifest': False}, lv)
+            OP = urlparse(LIVE_URL).path.rsplit('/', 1)[0] + '/' if not LIVE_URL.endswith('/') else urlparse(LIVE_URL).path
+            p2.wait_for_timeout(1500)
+            lv = p2.evaluate("(async()=>{ const r = await navigator.serviceWorker.getRegistration(location.href); const c = navigator.serviceWorker.controller; return {ctrl: c ? new URL(c.scriptURL).pathname : null, reg: r ? new URL(r.scope).pathname : null, manifest: (document.querySelector('link[rel=manifest]')||{}).href || null}; })()")
+            ok_other = (lv['ctrl'] in (None, OP + 'sw.js')) and (lv['reg'] in (None, OP)) and (lv['manifest'] is None or urlparse(lv['manifest']).path == OP + 'manifest.webmanifest')
+            check(f'PWA: this site\'s service worker never controls the other site ({OP}); anything there is its own', ok_other and not (lv['ctrl'] or '').startswith(SC), lv)
+            back = pg.evaluate("(async()=>{ const r = await navigator.serviceWorker.getRegistration(location.href); return {scope: r && new URL(r.scope).pathname, caches: await caches.keys()}; })()")
+            check(f'PWA: after visiting the other site, this site\'s worker and cache are still there (no clash)', back['scope'] == SC and f'prepline:{SC}{ver}' in back['caches'], back)
             p2.close()
         check('PWA: no JS errors', not errs, errs)
         ctx.close()
@@ -460,7 +494,7 @@ with sync_playwright() as p:
                 with pg.expect_navigation(timeout=15000): pg.click('#pwaReloadBtn')
                 pg.wait_for_load_state('networkidle')
                 ks = pg.evaluate("caches.keys()")
-                check('PWA: Reload activates the new worker, reloads once, old cache deleted', pg.evaluate("window.__mark===undefined") and ks == [f'prepline-test-{ver}-next'], ks)
+                check('PWA: Reload activates the new worker, reloads once, old cache deleted', pg.evaluate("window.__mark===undefined") and ks == [f'prepline:{urlparse(UPD_URL).path.rsplit("/", 1)[0]}/{ver}-next'], ks)
                 ctx.set_offline(True); pg.reload(); pg.wait_for_load_state('load')
                 check('PWA: offline after the update serves the newest cached index', pg.title().startswith('NEWINDEX'), pg.title())
                 ctx.set_offline(False)
@@ -479,6 +513,12 @@ with sync_playwright() as p:
     ctx.close()
     b.close()
 
+if SITEONLY:
+    results.append({'test': 'team site: zero requests to any other domain (all outside domains blocked)', 'ok': not net_attempts, 'info': str(net_attempts[:5])})
+    print(('PASS' if not net_attempts else 'FAIL') + ' team site: zero requests to any other domain', net_attempts[:5])
+if OFFLINE:
+    results.append({'test': 'offline: zero network requests (all network blocked)', 'ok': not net_attempts, 'info': str(net_attempts[:5])})
+    print(('PASS' if not net_attempts else 'FAIL') + ' offline: zero network requests (all network blocked)', net_attempts[:5])
 json.dump({'url': URL, 'version': ver, 'results': results, 'measures': measures}, open(os.path.join(OUT, 'results-v33.json'), 'w'), indent=1)
 print('\nMEASURES:', json.dumps(measures, indent=1))
 fails = [r for r in results if not r['ok']]

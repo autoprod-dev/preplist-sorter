@@ -8,8 +8,11 @@ URL = sys.argv[1]
 SHOTS = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith('--') else '/workspace/prepline-v2-shots'
 OUT = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith('--') else '/workspace/prepline-v3-test-out'
 EXPECT_VER = sys.argv[sys.argv.index('--expect-version')+1] if '--expect-version' in sys.argv else None
-OFFLINE = '--offline' in sys.argv   # file:// build, ALL network blocked; any request attempt fails the run
-LIVE = '--live' in sys.argv or OFFLINE   # public build: LICENSE_CONFIG mode 'off' (no Pro UI, no Lemon Squeezy)
+SITEONLY = '--team-site' in sys.argv   # team WEBSITE: every request to any other host is blocked and fails the run
+TEAM = '--team' in sys.argv or SITEONLY   # team build (edition 'team'): every tool unlocked, no licence UI
+OFFLINE = '--offline' in sys.argv or '--team' in sys.argv   # file:// build, ALL network blocked; any request attempt fails the run
+SITE_HOST = urlparse(URL).hostname; blocked = []
+LIVE = '--live' in sys.argv or '--offline' in sys.argv   # public build: LICENSE_CONFIG mode 'off' (no Pro UI, no Lemon Squeezy)
 S = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'samples') + '/'
 os.makedirs(SHOTS, exist_ok=True); os.makedirs(OUT, exist_ok=True)
 results = []; ext = {}; net_attempts = []
@@ -24,6 +27,8 @@ def track(ctx):
     ctx.on('request', on_req)
 def new_ctx(b, w=1280, h=900, **kw):
     ctx = b.new_context(viewport={'width': w, 'height': h}, accept_downloads=True, **kw); track(ctx)
+    if SITEONLY:   # corporate-network simulation: every outside domain blocked
+        ctx.route(lambda u: urlparse(u).scheme in ('http', 'https', 'ws', 'wss') and urlparse(u).hostname != SITE_HOST, lambda route: (blocked.append(route.request.url[:140]), route.abort()))
     if OFFLINE:
         ctx.set_offline(True)
         ctx.route(re.compile(r'^(https?|wss?|ftp)://.*'), lambda route: (net_attempts.append('ROUTED ' + route.request.url[:140]), route.abort()))
@@ -41,7 +46,7 @@ def wait_status(pg, pat, t=20000):
     pg.wait_for_function("p => new RegExp(p).test(document.getElementById('statusMsg').textContent)", arg=pat, timeout=t)
     return pg.inner_text('#statusMsg')
 def capture_print(pg, fn_js):
-    pg.evaluate("window.__prints=[]; window.printViaIframe = h => window.__prints.push(h);")
+    pg.evaluate("window.__origPIV = window.__origPIV || window.printViaIframe; window.__prints=[]; window.printViaIframe = h => window.__prints.push(h);")
     pg.evaluate(fn_js); pg.wait_for_function("window.__prints.length>0", timeout=10000)
     return pg.evaluate("window.__prints[window.__prints.length-1]")
 def export_view(pg, view, fname):
@@ -68,13 +73,23 @@ with sync_playwright() as p:
     ctx, ls = new_ctx(b); pg, errs = page_with_errs(ctx)
     pg.goto(URL); pg.wait_for_load_state('networkidle')
     ver = pg.get_attribute('meta[name="prepline-version"]', 'content')
-    if OFFLINE:
-        pg.wait_for_function('window.pdfjsLib', timeout=15000)
-        check('offline: pdf.js + worker loaded from the bundled copy', pg.evaluate('window.pdfjsWorkerMode') == 'worker' and pg.evaluate('typeof XLSX') == 'object', pg.evaluate('window.pdfjsWorkerMode'))
-        check('offline: no web fonts referenced (system fonts)', not pg.evaluate("[...document.querySelectorAll('link[href]')].some(l=>/^https?:/.test(l.href))"))
+    if OFFLINE or SITEONLY:
+        pg.wait_for_function('window.pdfjsLib && window.pdfjsWorkerMode', timeout=15000)
+        lib = pg.evaluate("[window.pdfjsWorkerMode, typeof XLSX]")
+        check('offline: pdf.js + worker loaded from the bundled copy', lib == ['worker', 'object'], lib)
+        check('offline: no web fonts referenced (system fonts)', not pg.evaluate("[...document.querySelectorAll('link[href]')].some(l=>/^https?:/.test(l.href) && new URL(l.href).host!==location.host)") and not pg.evaluate("/fonts\\.(googleapis|gstatic)/.test(document.documentElement.outerHTML)"))
     check('load: title is Prepline', pg.title().startswith('Prepline'), pg.title())
     check('load: version string present' + (f' = {EXPECT_VER}' if EXPECT_VER else ''), ver and (not EXPECT_VER or ver == EXPECT_VER) and ('v' + ver) in pg.inner_text('#appVersion'), ver)
-    if not LIVE:
+    if SITEONLY:
+        check('team site: noindex meta present', pg.locator('meta[name=robots][content*=noindex]').count() == 1)
+        check('team site: no <script>/<link> pointing off this site', not pg.evaluate("[...document.querySelectorAll('script[src],link[href],img[src]')].some(e=>{const u=new URL(e.src||e.href, location.href); return /^https?:/.test(u.protocol) && u.host!==location.host;})"))
+    if TEAM:
+        check('team: no TEST MODE badge', pg.locator('#plTestBadge').count() == 0 or not pg.is_visible('#plTestBadge'))
+        check('team: no Upgrade / Enter licence key buttons; tools panel shows (templates, stations, kitchens) as "Team edition"', not pg.is_visible('#proUpgradeBtn') and not pg.is_visible('#licenceKeyBtn') and pg.is_visible('#proPanel') and all(x in pg.inner_text('#proPanel') for x in ['Team edition', 'Saved templates', 'Custom stations', 'Kitchens']) and 'Offline Windows version' not in pg.inner_text('#proPanel'), pg.inner_text('#proPanel')[:200])
+        body = pg.inner_text('body')
+        check('team: page text has no TEST MODE, Upgrade, Buy, Lemon Squeezy, licence or test card wording', not re.search(r'TEST MODE|Upgrade|Buy (monthly|yearly|lifetime)|Lemon Squeezy|4242|licence', body, re.I), re.findall(r'.{30}(?:TEST MODE|Upgrade|Lemon Squeezy|4242|licence).{30}', body, re.I)[:3])
+        check('team: edition flag on, Pro tools active, licence module off', pg.evaluate("[LICENSE_CONFIG.edition, LICENSE_CONFIG.mode, teamEdition(), proActive(), AutoprodLicence.isPro()]") == ['team', 'off', True, True, False], pg.evaluate("[LICENSE_CONFIG.edition, LICENSE_CONFIG.mode, teamEdition(), proActive(), AutoprodLicence.isPro()]"))
+    elif not LIVE:
         check('load: TEST MODE badge visible', pg.is_visible('#plTestBadge') and 'TEST MODE' in pg.inner_text('#plTestBadge'), pg.inner_text('#plTestBadge'))
         check('load: Upgrade + Enter licence key buttons', pg.is_visible('#proUpgradeBtn') and pg.is_visible('#licenceKeyBtn'))
     else:
@@ -105,6 +120,20 @@ with sync_playwright() as p:
     for fn, lbl in [('printAllSections()', 'sections'), ('printAllDays()', 'days')]:
         h = capture_print(pg, fn); check(f'print all {lbl}: builds with method crops', 'Method reference' in h, len(h))
     labels = pg.locator('button:has-text("Print all")').all_inner_texts()
+    # real in-page print path (no stub): hidden iframe gets the print HTML and calls its own print(); no new tab/window
+    pg.evaluate("""(()=>{ window.printViaIframe = window.__origPIV; window.__realPrints=[]; window.__opens=0; const o=window.open; window.open=function(){ window.__opens++; return o.apply(this, arguments); };
+        new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{ if (n.tagName==='IFRAME'){ try{ n.contentWindow.print = ()=>window.__realPrints.push(n.contentDocument.documentElement.outerHTML); }catch(e){ window.__realPrints.push('ERR '+e); } } }))).observe(document.body,{childList:true}); })()""")
+    pages_before = len(ctx.pages)
+    rp = []
+    for fn in ["printDish(encodeURIComponent(Object.keys(methodCrops)[0]))", 'printAllSections()', 'printAllDays()']:
+        n0 = pg.evaluate('window.__realPrints.length'); pg.evaluate(fn)
+        try: pg.wait_for_function(f'window.__realPrints.length>{n0}', timeout=10000); rp.append(pg.evaluate('window.__realPrints[window.__realPrints.length-1]'))
+        except Exception as e: rp.append('TIMEOUT')
+    pg.wait_for_timeout(1800)
+    ok_rp = all(h.startswith('<html') and '<table' in h for h in rp) and 'page-break-after' in rp[1] and 'page-break-after' in rp[2]
+    check('print (real path): dish, all sections and all days (one page complete) each print from a hidden in-page iframe with the full HTML; no popup, no new tab, iframe removed after', ok_rp and pg.evaluate('window.__opens') == 0 and len(ctx.pages) == pages_before and pg.locator('iframe').count() == 0, [len(h) for h in rp])
+    if OFFLINE or SITEONLY:
+        check('print: print HTML references nothing outside this page (no web fonts, no CDN)', not any(re.search(r'(?:src|href)=["\']https?://', h) for h in rp), [re.findall(r'(?:src|href)=["\']https?://[^"\']+', h)[:2] for h in rp])
     check('tweak 1: print button labels', labels == ['🖨️ Print all sections (one page complete)', '🖨️ Print all prep days (one page complete)'], labels)
     # ---------- C. reload ----------
     errs.clear(); pg.wait_for_timeout(1000); pg.reload(); pg.wait_for_load_state('networkidle'); pg.wait_for_timeout(800)
@@ -121,7 +150,23 @@ with sync_playwright() as p:
     newreq = {h: v - before.get(h, set()) for h, v in ext.items() if v - before.get(h, set())}
     check('image inputs: no new outside requests', not newreq, newreq)
     # ---------- E. licence ----------
-    if not LIVE:
+    if TEAM:
+        up(pg, S + 'sample-recipes.pdf'); wait_status(pg, 'Sorted')
+        check('team: Append PDF row visible once a list is loaded (no Pro pill)', pg.is_visible('#appendPdfBtn') and not pg.is_visible('#appendPdfBtn .pro-pill'))
+        pg.evaluate("document.getElementById('statusMsg').textContent=''"); pg.set_input_files('#appendInput', S + 'sample-recipes.pdf'); st4 = wait_status(pg, 'Appended|Could not', 30000)
+        check('team: append another PDF keeps list + method crops', 'Appended' in st4 and pg.evaluate('ROWS.length') == 18 and len(pg.evaluate('Object.keys(methodCrops)')) == 4, st4[:160])
+        pg.fill('#proStationName', 'Pastry'); pg.fill('#proStationKw', 'tart, pastry'); pg.click('#proAddStationBtn'); pg.wait_for_timeout(300)
+        check('team: custom station can be added (Pastry)', 'Pastry' in pg.evaluate("customStations.map(s=>s.name).join(',')"))
+        pg.evaluate("removeCustomStation(encName('Pastry'))"); pg.wait_for_timeout(200)
+        check('team: custom station can be removed again (keeps the classifier checks below standard)', 'Pastry' not in pg.evaluate("customStations.map(s=>s.name).join(',')"))
+        pg.click('#proPanel summary:has-text("Kitchens")'); pg.wait_for_timeout(200)   # the Kitchens box starts folded
+        pg.fill('#proKitchenName', 'Second kitchen'); pg.click('#proAddKitchenBtn'); pg.wait_for_timeout(500)
+        check('team: kitchens: add and switch to a second kitchen', pg.evaluate("profilesState().active") == 'Second kitchen', pg.evaluate("profilesState()"))
+        pg.evaluate("switchKitchen(profilesState().list.find(n=>n!=='Second kitchen'))"); pg.wait_for_timeout(500)
+        pg.evaluate("AutoprodLicence.openUpgrade(); AutoprodLicence.openLicenceDialog(); AutoprodLicence.buy('yearly')"); pg.wait_for_timeout(500)
+        check('team: Upgrade / licence / Buy calls do nothing (no dialog, no checkout tab)', pg.locator('dialog[open]').count() == 0 and len(ctx.pages) == 1 and not ls)
+        pg.reload(); pg.wait_for_load_state('networkidle')
+    elif not LIVE:
         pg.click('#licenceKeyBtn'); pg.fill('#plKey', 'NOT-A-KEY'); pg.click('#plActivate'); pg.wait_for_timeout(1500)
         check('licence: made-up key refused', 'pl-msg err' in (pg.get_attribute('#plLicMsg', 'class') or ''), pg.inner_text('#plLicMsg'))
         pg.fill('#plKey', 'TEST-PRO-YEARLY'); pg.click('#plActivate'); pg.wait_for_timeout(800)
@@ -678,6 +723,8 @@ print('\nEXTERNAL REQUESTS:')
 for h in sorted(ext):
     print(' ', h); [print('    ', u) for u in sorted(ext[h])]
 bad = [h for h in ext if re.search(r'anthropic|openai|claude|generativelanguage|vision|ocr|tesseract|azure|aws|huggingface', h)]
+if SITEONLY:
+    check('team site: zero requests to any other domain (all outside domains blocked)', not blocked and set(ext) <= {SITE_HOST}, (blocked[:5], sorted(ext)))
 if OFFLINE:
     check('offline: zero network requests (all network blocked, file:// page)', not net_attempts and not ext, (net_attempts[:5], sorted(ext)))
 elif LIVE:
