@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="prepline-version" content="3.2.5">
+<meta name="theme-color" content="#1C1E1B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prepline">
 <title>Prepline: prep list sorter</title>
 <script>
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
@@ -865,6 +870,9 @@ var LICENSE_CONFIG = {
   .share-card button.secondary{background:#fff; color:var(--ink); border-color:var(--line); box-shadow:var(--shadow-sm);}
   .share-card button.ghost{background:transparent; color:var(--ink-soft); border-color:transparent; box-shadow:none;}
   .share-card textarea{font-family:'Inter',sans-serif; font-size:14px; border:1px solid var(--line); border-radius:8px; padding:8px;}
+  .pwa-update{position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:9500; background:#1C1E1B; color:#F6F1E7; border-radius:10px; padding:10px 14px; font:600 13px 'Inter',sans-serif; box-shadow:0 8px 24px rgba(0,0,0,.3); display:flex; gap:10px; align-items:center; max-width:calc(100vw - 24px); flex-wrap:wrap;}
+  .pwa-update button{font:700 13px 'Inter',sans-serif; background:#8A6A3D; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer;}
+  .pwa-update button.pwa-later{background:transparent; color:#cfc6b4;}
   .share-card{background:#fff; border-radius:12px; max-width:760px; width:100%; padding:16px 18px; box-shadow:0 10px 28px rgba(0,0,0,.25);}
   .share-top{display:flex; justify-content:space-between; align-items:center; gap:10px;} .share-top h3{margin:0; font-size:17px;}
   .share-lede{font-size:13px; color:#3a3c38;} .share-warn{color:#B5442E; font-size:12.5px;}
@@ -5840,6 +5848,53 @@ function copyFeedback(){
   window.__lastFeedbackCopy = text;
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail();
 }
+
+
+// ---------- 8. Installable app (PWA), TEST SITE ONLY ----------
+// Only switches on when served over http(s) from /prepline-test/. On the live path, a file:// copy
+// or anywhere else nothing is injected and no service worker is registered.
+const PWA_CONFIG = { basePath: '/prepline-test/', checkEveryMin: 60 };
+function pwaEnabled(){
+  return /^https?:$/.test(location.protocol) && location.pathname.startsWith(PWA_CONFIG.basePath);
+}
+function pwaInjectHead(){
+  const b = PWA_CONFIG.basePath, head = document.head;
+  const add = (tag, attrs) => { const e = document.createElement(tag); Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v)); e.setAttribute('data-pwa', '1'); head.appendChild(e); };
+  if (!head.querySelector('link[rel="manifest"]')) add('link', {rel:'manifest', href: b + 'manifest.webmanifest'});
+  add('link', {rel:'icon', type:'image/png', sizes:'32x32', href: b + 'icons/favicon-32.png'});
+  add('link', {rel:'apple-touch-icon', sizes:'180x180', href: b + 'icons/apple-touch-icon.png'});
+}
+function pwaShowUpdate(reg){
+  if (document.getElementById('pwaUpdateBar')) return;
+  const bar = document.createElement('div'); bar.id = 'pwaUpdateBar'; bar.className = 'pwa-update no-print';
+  bar.innerHTML = `<span>A new version of Prepline is available.</span> <button type="button" id="pwaReloadBtn">Reload</button> <button type="button" class="pwa-later" onclick="this.parentNode.remove()">Later</button>`;
+  document.body.appendChild(bar);
+  document.getElementById('pwaReloadBtn').onclick = () => {
+    const w = reg.waiting;
+    if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
+  };
+}
+function pwaInit(){
+  if (!pwaEnabled()) return;
+  pwaInjectHead();
+  if (!('serviceWorker' in navigator)) return;
+  let reloading = false;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;     // first install: no reload needed
+    reloading = true; location.reload();
+  });
+  navigator.serviceWorker.register(PWA_CONFIG.basePath + 'sw.js', {scope: PWA_CONFIG.basePath}).then(reg => {
+    window.__pwaReg = reg;
+    if (reg.waiting && navigator.serviceWorker.controller) pwaShowUpdate(reg);
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing; if (!nw) return;
+      nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) pwaShowUpdate(reg); });
+    });
+    setInterval(() => reg.update().catch(()=>{}), PWA_CONFIG.checkEveryMin * 60000);
+  }).catch(e => console.warn('Prepline offline support unavailable:', e));
+}
+if (document.readyState === 'complete') pwaInit(); else window.addEventListener('load', pwaInit);
 
 let INGINFO = loadIngInfo();
 const _v33BaseRender = render;
