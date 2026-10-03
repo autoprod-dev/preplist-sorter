@@ -851,6 +851,12 @@ var LICENSE_CONFIG = {
   .ing-sum{font-size:12px; color:var(--ink-soft); margin-top:6px;}
   .order-intro{font-size:12.5px; color:var(--ink-soft); margin:4px 0;}
   .sup-input{min-width:130px;}
+  .cost-line{font-size:12px; color:var(--ink); margin-top:4px; font-family:'IBM Plex Mono',monospace;}
+  .cost-miss{color:var(--prot); font-size:11.5px;}
+  .cost-summary{background:#fff; border:1px solid var(--line); border-radius:7px; padding:10px 12px; margin:0 0 14px; font-size:13px;}
+  .cost-hint{display:block; font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+  .price-input{width:64px;}
+  .price-cell{white-space:nowrap;}
   .dish-tags{margin-top:12px; font-size:12.5px;}
 </style>
 <style id="pro-css">
@@ -3810,7 +3816,7 @@ function render(){
     return;
   }
 
-  let html = pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml();
+  let html = pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
 
   html += `<div class="viewtoggle no-print">
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
@@ -3971,6 +3977,7 @@ function renderByDish(){
           <div class="meta">${rows.length} ingredients/tasks${prepSpan ? ' · Prep window: '+prepSpan : ''}${eventDateStr ? ' · Event date: '+escapeHtml(eventDateStr) : ''}</div>
           ${staffingLineHtml(dish) ? `<div class="staffing-line">${staffingLineHtml(dish)}</div>` : ''}
           ${dishAllergenLineHtml(dish)}
+          ${dishCostLineHtml(dish)}
         </div>
         <div class="section-actions">
           <label style="font-size:11px;color:var(--ink-soft);">Event day:</label>
@@ -5327,6 +5334,147 @@ function exportOrderToXlsx(){
   XLSX.writeFile(wb, 'Order_Sheet_'+new Date().toISOString().slice(0,10)+'.xlsx');
   setStatus('Exported the order sheet: '+groups.length+' supplier tab(s). Order qty is an editable number.', 'ok');
 }
+
+
+// ---------- 6. Cost per dish ----------
+// Ingredient prices are entered once (price per kg, L or each) and remembered with the
+// ingredient (INGINFO.items[key].price / .per). Cost of a row = its total converted to the
+// price unit x price; weights and volumes convert (g→kg, ml→L), "each" fits any count unit
+// (each, bunch, punnet...). A row with no price, or a unit that doesn't fit the price (e.g.
+// price per kg but the row is in bunches), is flagged as missing, never guessed.
+const COST_CONFIG = { symbol: '$', decimals: 2 };   // currency shown in the app; prices are as entered (ex or inc GST: user's choice)
+function money(n){ return Number.isFinite(n) ? COST_CONFIG.symbol + n.toFixed(COST_CONFIG.decimals) : '—'; }
+function parsePrice(v){ const t = String(v==null?'':v).replace(/[$\s,]/g,''); if (t==='') return {ok:true, n:undefined}; if (!/^(\d+\.?\d*|\.\d+)$/.test(t)) return {ok:false}; const n = Number(t); return (Number.isFinite(n) && n>=0 && n<1e7) ? {ok:true, n} : {ok:false}; }
+function setIngPrice(encTask, val){
+  const p = parsePrice(val); if (!p.ok){ setStatus('Price must be a number, e.g. 12.50', 'err'); render(); return; }
+  const e = ingEntry(decodeURIComponent(encTask), true);
+  if (p.n===undefined) delete e.price; else { e.price = p.n; if (!e.per) e.per = defaultPerFor(decodeURIComponent(encTask)); }
+  touchIng(e); saveIngInfo(); render();
+}
+function setIngPer(encTask, per){
+  if (!['kg','L','each'].includes(per)) return;
+  const e = ingEntry(decodeURIComponent(encTask), true); e.per = per; touchIng(e); saveIngInfo(); render();
+}
+function defaultPerFor(task){
+  const r = ROWS.find(x=>ingKey(x.task)===ingKey(task)); const k = r ? toBaseQty(1, r.unit).key : '';
+  return k==='g' ? 'kg' : (k==='ml' ? 'L' : 'each');
+}
+// multiplier from one unit of `unit` to one unit of the price (`per`), or null if they don't fit
+function priceFactor(unit, per){
+  const b = toBaseQty(1, unit);
+  if (per==='kg') return b.key==='g' ? b.n/1000 : null;
+  if (per==='L') return b.key==='ml' ? b.n/1000 : null;
+  if (per==='each') return (b.key==='g' || b.key==='ml') ? null : 1;
+  return null;
+}
+function costOfRow(r){
+  const e = INGINFO.items[ingKey(r.task)];
+  if (!e || !Number.isFinite(e.price)) return {status:'noprice'};
+  const per = e.per || 'each';
+  const f = priceFactor(r.unit, per);
+  if (f===null) return {status:'mismatch', per};
+  const t = computeTotal(r);
+  if (t===null || t===undefined || !Number.isFinite(t)) return {status:'nototal'};
+  return {status:'ok', cost: Math.round(t * f * e.price * 1e6)/1e6};
+}
+function costOfRows(rows){
+  let cost = 0, priced = 0; const missing = new Set(), mismatch = new Set(), nototal = new Set();
+  rows.forEach(r=>{ const c = costOfRow(r);
+    if (c.status==='ok'){ cost += c.cost; priced++; }
+    else if (c.status==='noprice') missing.add(ingKey(r.task));
+    else if (c.status==='mismatch') mismatch.add(ingKey(r.task));
+    else nototal.add(r.dish); });
+  return {cost: Math.round(cost*100)/100, priced, missing: missing.size, mismatch: mismatch.size, nototal: nototal.size};
+}
+function anyPrices(){ return Object.values(INGINFO.items).some(e=>Number.isFinite(e.price)); }
+function missingText(c){
+  const bits = [];
+  if (c.missing) bits.push(`${c.missing} missing price${c.missing===1?'':'s'}`);
+  if (c.mismatch) bits.push(`${c.mismatch} price unit${c.mismatch===1?'':'s'} don't match`);
+  if (c.nototal) bits.push('set pax for a full cost');
+  return bits.length ? ` · <span class="cost-miss">⚠ ${bits.join(', ')}</span>` : '';
+}
+function dishCostLineHtml(dish){
+  if (!anyPrices()) return '';
+  const rows = activeRows().filter(r=>r.dish===dish);
+  const c = costOfRows(rows), pax = paxByDish[dish];
+  const pp = (Number.isFinite(pax) && pax>0 && c.priced) ? c.cost/pax : null;
+  return `<div class="cost-line">Cost: <b>${money(c.cost)}</b>${pp!==null ? ` · <b>${money(pp)}</b> per pax` : ''}${missingText(c)}</div>`;
+}
+function costSummaryHtml(){
+  if (!anyPrices()) return '';
+  const rows = activeRows(); const c = costOfRows(rows);
+  const dishes = [...new Set(rows.map(r=>r.dish))];
+  return `<div class="cost-summary no-print" id="costSummary"><b>Food cost, ticked dishes: ${money(c.cost)}</b> across ${dishes.length} dish${dishes.length===1?'':'es'}${missingText(c)}
+    <span class="cost-hint">Prices are per kg, L or each, set in the Ingredients panel (4). Missing prices count as zero, so the total is a minimum until every price is in.</span></div>`;
+}
+// ingredient panel: price column, filter, summary
+function priceCellHtml(x){
+  const e = INGINFO.items[x.key] || {}, enc = encName(x.task), h = hashId(x.key);
+  const per = e.per || defaultPerFor(x.task);
+  const bad = Number.isFinite(e.price) && x.rows.some(r=>priceFactor(r.unit, per)===null);
+  return `<span class="price-cell">${COST_CONFIG.symbol}<input type="text" inputmode="decimal" class="price-input" id="price_${h}" value="${Number.isFinite(e.price)?e.price:''}" placeholder="price" onchange="setIngPrice('${enc}', this.value)">
+    / <select id="per_${h}" onchange="setIngPer('${enc}', this.value)">${['kg','L','each'].map(u=>`<option ${u===per?'selected':''}>${u}</option>`).join('')}</select></span>${bad ? `<div class="cost-miss">unit doesn't fit (${escapeHtml([...new Set(x.rows.map(r=>r.unit||'no unit'))].join(', '))})</div>` : ''}`;
+}
+ING_COLUMNS.push({th:'Price', td:priceCellHtml});
+ING_FILTERS.push({v:'noprice', label:'No price yet', test:x=>!Number.isFinite((INGINFO.items[x.key]||{}).price)});
+ING_SUMMARY.push(items=>{ const n = items.filter(x=>!Number.isFinite((INGINFO.items[x.key]||{}).price)).length; return n ? n+' without a price' : 'every ingredient has a price'; });
+// order sheet: order in the price's unit when priced, plus price and estimated cost
+orderUnitFor = function(L){
+  const e = INGINFO.items[L.key]; if (!e || !Number.isFinite(e.price)) return null;
+  const per = e.per || 'each';
+  if (per==='kg' && L.fam==='g') return {n: L.qty/1000, u:'kg'};
+  if (per==='L' && L.fam==='ml') return {n: L.qty/1000, u:'L'};
+  if (per==='each' && L.fam.startsWith('u:')) return {n: L.qty, u: L.baseUnit};
+  return null;
+};
+function orderPrice(L){
+  const e = INGINFO.items[L.key]; if (!e || !Number.isFinite(e.price)) return null;
+  const per = e.per || 'each';
+  const fits = L.hasQty && orderUnitFor(L) !== null;
+  return {price: e.price, per, fits, cost: fits ? Math.round(L.order.n * e.price * 100)/100 : null};
+}
+ORDER_EXTRA_COLS.push({th:'Price', td:L=>{ const p = orderPrice(L); return p ? `${money(p.price)}/${escapeHtml(p.per)}` : '<span class="cost-miss">no price</span>'; }});
+ORDER_EXTRA_COLS.push({th:'Est. cost', td:L=>{ const p = orderPrice(L); return p && p.fits ? money(p.cost) : (p && L.hasQty ? '<span class="cost-miss">unit doesn\'t fit</span>' : '—'); }});
+ORDER_GROUP_FOOT.push((g, forPrint)=>{
+  const ps = g.lines.map(orderPrice); const tot = ps.reduce((s,p)=>s+(p&&p.fits?p.cost:0),0); const miss = ps.filter(p=>!p||!p.fits).length;
+  if (!ps.some(p=>p&&p.fits)) return miss && !forPrint ? ` · ${miss} without a usable price` : '';
+  return ` · est. ${money(Math.round(tot*100)/100)}${miss ? ` (${miss} item${miss===1?'':'s'} not priced)` : ''}`;
+});
+ORDER_XLSX_EXTRA.push({header:'Price', value:L=>{ const p = orderPrice(L); return p ? p.price : ''; }, wch:9});
+ORDER_XLSX_EXTRA.push({header:'Price per', value:L=>{ const p = orderPrice(L); return p ? p.per : ''; }, wch:9});
+ORDER_XLSX_EXTRA.push({header:'Est. cost', value:()=> '', wch:11,
+  formula:(L, n)=>{ const p = orderPrice(L); return (p && p.fits) ? {f:'IF(AND(ISNUMBER(D'+n+'),ISNUMBER(H'+n+')),D'+n+'*H'+n+',"")', v:p.cost} : null; }});
+ORDER_XLSX_FOOT.push(ctx=>{
+  if (ctx.last < ctx.first) return;
+  ctx.aoa.push([]); const r = ctx.aoa.length + 1;   // 1-based row of the total
+  ctx.aoa.push(['', '', '', '', '', '', '', '', 'Total est. cost']);
+  ctx.fcells.push({addr: XLSX.utils.encode_cell({r:r-1, c:9}), f:{f:'SUM(J'+ctx.first+':J'+ctx.last+')', v: undefined}});
+});
+// main exports: Price | Price per | Price units per row unit | Cost (formula), plus dish cost and cost per pax
+function rowPriceInfo(r, unit){
+  const e = INGINFO.items[ingKey(r.task)];
+  if (!e || !Number.isFinite(e.price)) return null;
+  const per = e.per || 'each'; const f = priceFactor(unit, per);
+  return {price: e.price, per, factor: f};
+}
+EXPORT_EXTRA_COLS.push({header:'Price', value:(r,u)=>{ const p = rowPriceInfo(r,u); return p ? p.price : ''; }, wch:9});
+EXPORT_EXTRA_COLS.push({header:'Price per', value:(r,u)=>{ const p = rowPriceInfo(r,u); return p ? p.per : ''; }, wch:9});
+EXPORT_EXTRA_COLS.push({header:'Price units per Unit', value:(r,u)=>{ const p = rowPriceInfo(r,u); return p && p.factor!==null ? p.factor : ''; }, wch:12});
+EXPORT_EXTRA_COLS.push({header:'Cost', value:()=> '', wch:11,
+  formula:(r, n, u)=>{ const p = rowPriceInfo(r,u); if (!p || p.factor===null) return null;
+    const c = costOfRow(r);
+    return {f:'IF(AND(ISNUMBER(E'+n+'),ISNUMBER(K'+n+'),ISNUMBER(M'+n+')),E'+n+'*M'+n+'*K'+n+',"")', v: c.status==='ok' ? c.cost : ''}; }});
+EXPORT_BLOCK_HOOKS.push(ctx=>{
+  const first = ctx.dataStartRow + 1, last = ctx.dataStartRow + ctx.rows.length;
+  const c = costOfRows(ctx.rows);
+  const padTo = (row, n) => { while (row.length < n) row.push(''); return row; };
+  padTo(ctx.aoa[ctx.paxRowNum-1], 12)[12] = 'Cost (these rows)';
+  ctx.put(ctx.paxRowNum-1, 13, 'SUM(N'+first+':N'+last+')', c.cost);
+  padTo(ctx.aoa[ctx.titleRowIdx], 12)[12] = 'Cost per pax';
+  const pp = (ctx.paxSet && ctx.pax>0) ? Math.round(c.cost/ctx.pax*1e6)/1e6 : '';
+  ctx.put(ctx.titleRowIdx, 13, 'IF(ISNUMBER(B'+ctx.paxRowNum+'),IFERROR(N'+ctx.paxRowNum+'/B'+ctx.paxRowNum+',""),"")', pp);
+});
 
 let INGINFO = loadIngInfo();
 const _v33BaseRender = render;
