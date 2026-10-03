@@ -835,6 +835,21 @@ var LICENSE_CONFIG = {
   .print-sec{margin-bottom:22px;}
   .print-sec h3{font-size:15px; border-bottom:2px solid var(--ink); padding-bottom:4px; margin-bottom:8px;}
 
+
+  /* v3.3.0: allergen chips, ingredient panel */
+  .al-chip{display:inline-block; font:700 9.5px/1 'IBM Plex Mono',monospace; letter-spacing:.03em; padding:2px 5px; margin:0 0 0 4px; border-radius:4px; background:#FBE6D6; color:#8A3B12; border:1px solid #E9C3A3; vertical-align:middle;}
+  .al-chip.sug{background:#fff; border-style:dashed; color:#8A6A3D;}
+  .al-line{font-size:12px; color:#8A3B12; margin-top:4px;}
+  .al-note{font-size:10.5px; color:#5C5F58; margin:6px 0; font-style:italic;}
+  .al-disclaimer{font-size:12px; background:#FFF5E6; border:1px solid #E9C3A3; color:#6B4F28; padding:8px 10px; border-radius:7px; margin-top:10px;}
+  .al-none{font-size:11px; color:#8A8578;}
+  .al-btn{font-size:11px !important; padding:3px 8px !important; margin-left:4px;}
+  .al-editor label{display:inline-block; font-size:12px; margin:2px 10px 2px 0; white-space:nowrap;}
+  .al-editor input[type=text]{width:100%; margin:6px 0; box-sizing:border-box;}
+  .ing-table td{vertical-align:top; font-size:12.5px;}
+  .ing-table input[type=text], .ing-table select{font-size:12px; padding:4px 6px;}
+  .ing-sum{font-size:12px; color:var(--ink-soft); margin-top:6px;}
+  .dish-tags{margin-top:12px; font-size:12.5px;}
 </style>
 <style id="pro-css">
   /* Prepline Pro + Autoprod licence dialogs (kept out of the first <style>, which print windows copy) */
@@ -1024,6 +1039,8 @@ var LICENSE_CONFIG = {
       <div class="row" id="stageMultiplierRow"></div>
     </div>
   </div>
+
+  <div class="panel no-print" id="ingPanelWrap" style="display:none;"></div>
 
   <div id="resultsArea"></div>
 
@@ -1364,10 +1381,11 @@ function sanitizeDatabase(raw){
       if (Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0) clean.pdfBasePax = it.pdfBasePax;   // v3.2.2
       ['srcSheet','srcType'].forEach(k=>{ if (typeof it[k]==='string') clean[k] = it[k]; });
       if (Number.isFinite(it.srcSheetIdx)) clean.srcSheetIdx = it.srcSheetIdx;
+      if (Array.isArray(it.al)) clean.al = cleanTagList(it.al);   // v3.3: checked allergen tags
       items.push(clean);
     });
     if (!items.length) { skipped++; return; }
-    db[dish] = {items}; kept++;
+    db[dish] = {items, ...(Array.isArray(entry.al) ? {al: cleanTagList(entry.al)} : {})}; kept++;
   });
   return {db, kept, skipped};
 }
@@ -1481,9 +1499,10 @@ function commitRowsToDatabase(){
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
       baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
-      pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType
+      pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType,
+      ...(typeof alForTask==='function' && alForTask(r.task).confirmed ? {al: alForTask(r.task).tags.slice()} : {})   // v3.3: checked allergen tags
     }));
-    dishDatabase[dish] = {items};
+    dishDatabase[dish] = {items, ...(INGINFO.dishAl[dish] ? {al: INGINFO.dishAl[dish].slice()} : {})};
     if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
   });
   saveDatabase();
@@ -3637,7 +3656,7 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
   aoa.push(['PAX', paxSet ? pax : '']);
   const paxRowNum = aoa.length;               // 1-based Excel row of this dish's PAX cell
   const paxAbs = '$B$'+paxRowNum;
-  aoa.push(['Item','Quantity per pax','Unit','PAX (this row)','Total needed','Section','Prep day','Source tab']);
+  aoa.push(['Item','Quantity per pax','Unit','PAX (this row)','Total needed','Section','Prep day','Source tab', ...EXPORT_EXTRA_COLS.map(c=>c.header)]);   // v3.3: extra columns go after Source tab, so the importer and older layouts are unaffected
   const dataStartRow = aoa.length;
   const put = (rowIdx, c, formula, preview) => formulaCells.push({addr: XLSX.utils.encode_cell({r:rowIdx, c}), formula, preview});
   rows.forEach((r, ri)=>{
@@ -3663,10 +3682,12 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
       }
     }
     if (!paxSet && totalFormula && totalFormula.indexOf('IF(')!==0) totalFormula = 'IF(D'+n+'="","",'+totalFormula+')';
-    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day || '', srcName(r)]);   // v3.2: exact original tab / PDF title
+    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day || '', srcName(r), ...EXPORT_EXTRA_COLS.map(c=>c.value(r, unit))]);   // v3.2: exact original tab / PDF title
     if (paxFormula) put(rowIdx, 3, paxSet ? paxAbs : 'IF('+paxAbs+'="","",'+paxAbs+')', paxSet ? pax : '');
     if (totalFormula) put(rowIdx, 4, totalFormula, totalPreview);
+    EXPORT_EXTRA_COLS.forEach((c, ci)=>{ if (c.formula){ const f = c.formula(r, n, unit, paxRowNum); if (f) put(rowIdx, 8+ci, f.f, f.v); } });
   });
+  EXPORT_BLOCK_HOOKS.forEach(h=>h({aoa, put, dish, rows, paxRowNum, dataStartRow, titleRowIdx: paxRowNum-2, paxSet, pax}));
   // The app's own importer tolerates up to 6 blank rows in a row before it decides a
   // dish's block has ended — a single blank row isn't enough of a gap, so without this it
   // would just read straight into the next dish's title line as if it were more data for
@@ -3676,6 +3697,9 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
 // Shared engine behind all three "Export to Excel" buttons — By dish, By section, and By
 // prep day each just group the ticked rows differently before handing them to this.
 // groupFn(row) returns the group a row belongs to; tabNameFn(groupKey) names its sheet.
+// v3.3: extra export columns after Source tab: {header, value(row, unit), formula?(row, excelRow, unit, paxRow) -> {f, v}, wch}
+const EXPORT_EXTRA_COLS = [{header:'Allergens', value:(r)=>allergenText(r.task), wch:30}];
+const EXPORT_BLOCK_HOOKS = [];   // per dish block: ({aoa, put, dish, rows, paxRowNum, dataStartRow, titleRowIdx, paxSet, pax})
 let lastExportNameChanges = [];   // v3.2: the tab-name changes made by the most recent export (also shown in the status message)
 function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortFn){
   if (typeof XLSX === 'undefined' || !XLSX.utils || typeof XLSX.writeFile !== 'function'){
@@ -3711,7 +3735,7 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     formulaCells.forEach(fc=>{ ws[fc.addr] = (typeof fc.preview==='number') ? {t:'n', f: fc.formula, v: fc.preview} : {t:'s', f: fc.formula, v: ''}; });
-    ws['!cols'] = [{wch:38},{wch:16},{wch:8},{wch:14},{wch:13},{wch:24},{wch:12},{wch:34}];
+    ws['!cols'] = [{wch:38},{wch:16},{wch:8},{wch:14},{wch:13},{wch:24},{wch:12},{wch:34}, ...EXPORT_EXTRA_COLS.map(c=>({wch:c.wch||14}))];
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName(tabNameFn(key), usedNames, nameChanges));
   });
   const stamp = new Date().toISOString().slice(0,10);
@@ -3942,6 +3966,7 @@ function renderByDish(){
           <h3>${escapeHtml(cleanDishName(dish))}</h3>
           <div class="meta">${rows.length} ingredients/tasks${prepSpan ? ' · Prep window: '+prepSpan : ''}${eventDateStr ? ' · Event date: '+escapeHtml(eventDateStr) : ''}</div>
           ${staffingLineHtml(dish) ? `<div class="staffing-line">${staffingLineHtml(dish)}</div>` : ''}
+          ${dishAllergenLineHtml(dish)}
         </div>
         <div class="section-actions">
           <label style="font-size:11px;color:var(--ink-soft);">Event day:</label>
@@ -3976,7 +4001,7 @@ function renderByDish(){
       else totalCell = '<span class="needpax">set pax →</span>';
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td><input type="checkbox" class="rowcheck" ${selectedRowIdx.has(globalIdx)?'checked':''} onchange="toggleRowSelected(${globalIdx}, this.checked)"></td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty total-cell">${totalCell}</td>
         <td><select class="rowsel section-${key}" onchange="moveRow(${globalIdx}, this.value)">
@@ -3992,14 +4017,16 @@ function renderByDish(){
         <div class="print-head">
           <h2>${escapeHtml(cleanDishName(dish))}</h2>
           ${staffingLineHtml(dish) ? `<div class="meta">Estimated staffing: ${staffingLineHtml(dish)}</div>` : ''}
+          ${dishAllergenLineHtml(dish)}
         </div>
+        ${alPrintNote(rows)}
         <table><thead><tr><th>Ingredient / prep task</th><th>Per pax</th><th>Total to make</th><th>Section</th><th>Prep day</th></tr></thead><tbody>
         ${rows.map((r,i)=>{
           const total = computeTotal(r);
           const cont = meta[i].isContinuation;
           const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
           const totalTxt = total!==null ? `${qN(total,r.unit)} ${qU(total,r.unit)}` : (cont && noQty ? 'uses batch above' : '—');
-          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
+          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}${alChipsHtml(r)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
         }).join('')}
         </tbody></table>
         ${methodCropsPageHtml(rows)}
@@ -4109,7 +4136,7 @@ function renderByPriority(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)} ${findSimilarBtn(g.taskLabel)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td>${escapeHtml(g.section)}</td>
@@ -4139,7 +4166,7 @@ function renderByPriority(){
       const evDay = getEventDay(r.dish);
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${totalCell}</td>
         <td>${r.section}</td>
         <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
@@ -4156,7 +4183,7 @@ function renderByPriority(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td>${escapeHtml(g.section)}</td>
@@ -4175,7 +4202,7 @@ function renderByPriority(){
         const evDay = getEventDay(r.dish);
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
@@ -4191,6 +4218,7 @@ function renderByPriority(){
         <h2>${heading}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForDay.length+' tasks)' : rowsForDay.length+' tasks'} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)</div>
       </div>
+      ${alPrintNote(rowsForDay)}
       <table><thead>${consolidateOn
         ? '<tr><th style="width:32%">Task</th><th style="width:26%">Dishes</th><th style="width:12%">Total needed</th><th style="width:14%">Section</th><th style="width:10%">Lead</th></tr>'
         : '<tr><th style="width:13%">Dish</th><th>Task</th><th style="width:7%">Pax</th><th style="width:9%">Per pax</th><th style="width:10%">Total needed</th><th style="width:12%">Section</th><th style="width:9%">Lead</th></tr>'}</thead>
@@ -4295,7 +4323,7 @@ function renderBySection(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)} ${findSimilarBtn(g.taskLabel)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td>${escapeHtml(g.day||'not set')}</td>
@@ -4325,7 +4353,7 @@ function renderBySection(){
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(idx>0 && rowsForSection[idx-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty">${totalCell}</td>
@@ -4348,7 +4376,7 @@ function renderBySection(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td class="pf-day">${escapeHtml(g.day||'not set')}</td>
@@ -4365,7 +4393,7 @@ function renderBySection(){
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForSection[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
@@ -4381,6 +4409,7 @@ function renderBySection(){
         <h2>${s} — ${escapeHtml(leaderBySection[s] || 'Team Leader TBC')}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForSection.length+' tasks)' : rowsForSection.length+' tasks'}</div>
       </div>
+      ${alPrintNote(rowsForSection)}
       <table><thead>${consolidateOn
         ? '<tr><th style="width:34%">Task</th><th style="width:26%">Dishes</th><th style="width:14%">Total needed</th><th style="width:16%">Prep day</th></tr>'
         : '<tr><th style="width:16%">Dish</th><th>Task</th><th style="width:8%">Pax</th><th style="width:9%">Per pax</th><th style="width:11%">Total needed</th><th style="width:13%">Section</th><th style="width:16%">Prep day</th></tr>'}</thead>
@@ -4899,6 +4928,267 @@ function proAfterInit(){
   renderProChrome();
 }
 // ================= end Prepline Pro =================
+
+// ================= Prepline v3.3 features =================
+// v3.3.0 — kitchen data shared by allergens (4), ordering (5) and costing (6).
+// One new localStorage key, separate from the session, database and Pro keys:
+//   preplineIngredientInfo_v1 = { v:1, items: { <ingredient key>: {al?, sup?, price?, per?, smp?} },
+//                                 dishAl: { <dish name>: [tags] } }
+// <ingredient key> is the task text, lower-cased with spaces collapsed (norm()).
+// al = confirmed allergen tags (array; [] = checked, none). Missing al = not checked yet,
+// in which case keyword suggestions are shown, marked as suggestions.
+const ING_INFO_KEY = 'preplineIngredientInfo_v1';
+function loadIngInfo(){
+  const blank = {v:1, items:{}, dishAl:{}};
+  try{
+    const raw = localStorage.getItem(ING_INFO_KEY); if (!raw) return blank;
+    const s = JSON.parse(raw);
+    const isObj = v => v && typeof v==='object' && !Array.isArray(v);
+    if (!isObj(s)) return blank;
+    const out = {v:1, items:{}, dishAl:{}};
+    const bad = k => k==='__proto__' || k==='constructor' || k==='prototype';
+    if (isObj(s.items)) Object.keys(s.items).forEach(k=>{
+      if (bad(k)) return; const e = s.items[k]; if (!isObj(e)) return;
+      const c = {};
+      if (Array.isArray(e.al)) c.al = cleanTagList(e.al);
+      if (typeof e.sup==='string' && e.sup.trim()) c.sup = e.sup.trim().slice(0,60);
+      if (Number.isFinite(e.price) && e.price>=0) c.price = e.price;
+      if (['kg','L','each'].includes(e.per)) c.per = e.per;
+      if (e.smp) c.smp = 1;
+      if (Object.keys(c).length) out.items[k] = c;
+    });
+    if (isObj(s.dishAl)) Object.keys(s.dishAl).forEach(d=>{ if (!bad(d) && Array.isArray(s.dishAl[d])) out.dishAl[d] = cleanTagList(s.dishAl[d]); });
+    return out;
+  }catch(e){ return blank; }
+}
+function saveIngInfo(){ try{ localStorage.setItem(ING_INFO_KEY, JSON.stringify(INGINFO)); return true; }catch(e){ return false; } }
+function ingKey(task){ return norm(task); }
+function ingEntry(task, create){
+  const k = ingKey(task);
+  if (!INGINFO.items[k] && create) INGINFO.items[k] = {};
+  return INGINFO.items[k];
+}
+function touchIng(e){ if (e) delete e.smp; }   // a user edit makes a sample entry the user's own
+
+// ---------- 4. Allergen tags ----------
+const ALLERGENS = [
+  {id:'gluten',    label:'Gluten',              short:'GLU'},
+  {id:'dairy',     label:'Dairy',               short:'DAI'},
+  {id:'egg',       label:'Egg',                 short:'EGG'},
+  {id:'treenuts',  label:'Tree nuts',           short:'NUT'},
+  {id:'peanuts',   label:'Peanuts',             short:'PNT'},
+  {id:'sesame',    label:'Sesame',              short:'SES'},
+  {id:'soy',       label:'Soy',                 short:'SOY'},
+  {id:'fish',      label:'Fish',                short:'FSH'},
+  {id:'crustacea', label:'Shellfish (crustacea)', short:'CRU'},
+  {id:'molluscs',  label:'Shellfish (molluscs)',  short:'MOL'},
+  {id:'lupin',     label:'Lupin',               short:'LUP'},
+];
+const AL_BY_ID = Object.fromEntries(ALLERGENS.map(a=>[a.id, a]));
+const AL_SYNONYMS = {gluten:'gluten', wheat:'gluten', dairy:'dairy', milk:'dairy', lactose:'dairy', egg:'egg', eggs:'egg',
+  'tree nuts':'treenuts', 'tree nut':'treenuts', treenuts:'treenuts', nuts:'treenuts', nut:'treenuts', peanut:'peanuts', peanuts:'peanuts',
+  sesame:'sesame', soy:'soy', soya:'soy', fish:'fish', crustacea:'crustacea', crustaceans:'crustacea', crustacean:'crustacea',
+  'shellfish (crustacea)':'crustacea', molluscs:'molluscs', mollusc:'molluscs', mollusks:'molluscs', 'shellfish (molluscs)':'molluscs', lupin:'lupin', lupine:'lupin'};
+// Keyword list for suggestions. Whole words (plural s/es allowed); "excl" phrases are removed
+// first so e.g. "butternut", "peanut butter" and "coconut milk" don't suggest dairy.
+const AL_KW = {
+  gluten: {kw:['flour','wheat','bread','breadcrumb','breadcrumbs','crumb','panko','brioche','sourdough','focaccia','ciabatta','baguette','croissant','pastry','filo','phyllo','pasta','spaghetti','linguine','fettuccine','penne','rigatoni','lasagne','lasagna','macaroni','orzo','ravioli','tortellini','gnocchi','noodle','couscous','cous cous','barley','rye','semolina','spelt','farro','freekeh','bulgur','burghul','malt','beer','soy sauce','tortilla','wrap','biscuit','cake','sponge','crouton','seitan','teriyaki'],
+           excl:['rice flour','corn flour','cornflour','almond flour','chickpea flour','tapioca flour','potato flour','gluten free','gluten-free','gf','rice noodle','rice noodles','glass noodle','rice paper','buckwheat']},
+  dairy:  {kw:['milk','cream','butter','cheese','parmesan','parmigiano','pecorino','mozzarella','bocconcini','burrata','ricotta','feta','haloumi','halloumi','cheddar','gruyere','gruyère','brie','camembert','mascarpone','yoghurt','yogurt','labneh','creme fraiche','crème fraîche','sour cream','ghee','buttermilk','whey','custard','ice cream','gelato','bechamel','béchamel'],
+           excl:['butternut','peanut butter','almond butter','nut butter','cocoa butter','shea butter','coconut milk','coconut cream','almond milk','oat milk','soy milk','soya milk','rice milk','cream of tartar','dairy free','dairy-free']},
+  egg:    {kw:['egg','yolk','albumen','mayonnaise','mayo','aioli','meringue','hollandaise','bearnaise','béarnaise','custard','brioche','pavlova','frittata','omelette','quiche','carbonara','sabayon','zabaglione','souffle','soufflé'],
+           excl:['eggplant','egg free','egg-free']},
+  treenuts:{kw:['almond','cashew','walnut','pecan','hazelnut','pistachio','macadamia','brazil nut','pine nut','chestnut','praline','frangipane','marzipan','nut','nuts','dukkah','pesto','nutella','gianduja'],
+           excl:['nutmeg','coconut','butternut','peanut','peanuts','nut free','nut-free','doughnut','donut','water chestnut']},
+  peanuts:{kw:['peanut','satay','groundnut'], excl:[]},
+  sesame: {kw:['sesame','tahini','hummus','houmous','zaatar','za\'atar','dukkah','furikake','gomasio','halva'], excl:[]},
+  soy:    {kw:['soy','soya','tofu','edamame','miso','tamari','tempeh','soy sauce','teriyaki','hoisin'], excl:[]},
+  fish:   {kw:['fish','salmon','tuna','barramundi','cod','snapper','bream','whiting','flathead','hake','haddock','anchovy','anchovies','sardine','mackerel','trout','kingfish','swordfish','mahi','fish sauce','bonito','dashi','worcestershire','caesar','caviar','roe','tarama','taramasalata'],
+           excl:['fish free']},
+  crustacea:{kw:['prawn','shrimp','crab','lobster','crayfish','marron','yabby','yabbies','scampi','langoustine','balmain bug','moreton bay bug'], excl:[]},
+  molluscs:{kw:['oyster','mussel','clam','vongole','pipi','pipis','scallop','squid','calamari','octopus','cuttlefish','abalone','oyster sauce','snail','escargot'],
+           excl:['oyster mushroom','oyster mushrooms']},
+  lupin:  {kw:['lupin','lupine'], excl:[]},
+};
+const AL_RE = {};
+Object.keys(AL_KW).forEach(id=>{
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  AL_RE[id] = {
+    kw: new RegExp('(?:^|[^a-z\u00e0-\u00ff])(?:' + AL_KW[id].kw.map(esc).join('|') + ')(?:s|es)?(?![a-z\u00e0-\u00ff])', 'i'),
+    excl: AL_KW[id].excl.length ? new RegExp('(?:^|[^a-z])(?:' + AL_KW[id].excl.map(esc).join('|') + ')(?:s|es)?(?![a-z])', 'gi') : null };
+});
+function alSuggest(text){
+  const t = ' ' + String(text||'').toLowerCase() + ' ';
+  const out = [];
+  ALLERGENS.forEach(a=>{
+    const re = AL_RE[a.id]; if (!re) return;
+    const s = re.excl ? t.replace(re.excl, ' ') : t;
+    if (re.kw.test(s)) out.push(a.id);
+  });
+  return out;
+}
+function cleanTag(t){
+  const s = String(t==null?'':t).trim(); if (!s) return null;
+  const low = s.toLowerCase();
+  if (AL_BY_ID[low]) return low;
+  if (AL_SYNONYMS[low]) return AL_SYNONYMS[low];
+  const c = s.replace(/[<>"'`\\]/g,'').replace(/\s+/g,' ').slice(0,30).trim();
+  return c ? c : null;
+}
+function cleanTagList(arr){
+  const out = [];
+  (Array.isArray(arr)?arr:[]).forEach(t=>{ const c = cleanTag(t); if (c && !out.some(x=>x.toLowerCase()===c.toLowerCase())) out.push(c); });
+  return out.slice(0,20);
+}
+function parseTagText(text){ return cleanTagList(String(text||'').split(/[,;\n]/)); }
+function tagLabel(t){ return AL_BY_ID[t] ? AL_BY_ID[t].label : t; }
+function tagShort(t){ return AL_BY_ID[t] ? AL_BY_ID[t].short : String(t).toUpperCase().slice(0,12); }
+// Allergens saved with dishes in the recipe database (item.al) — used when this browser's
+// ingredient info has no entry yet (e.g. a database backup imported on a new device).
+function dbAllergenIndex(){
+  const idx = {};
+  Object.keys(dishDatabase||{}).forEach(d=>{ (dishDatabase[d].items||[]).forEach(it=>{
+    if (Array.isArray(it.al)){ const k = ingKey(it.task); if (!idx[k]) idx[k] = it.al; } }); });
+  return idx;
+}
+let _dbAlIdx = null, _dbAlIdxStamp = null;
+function alForTask(task){
+  const e = INGINFO.items[ingKey(task)];
+  if (e && Array.isArray(e.al)) return {tags:e.al, confirmed:true};
+  const stamp = Object.keys(dishDatabase||{}).length;
+  if (_dbAlIdx===null || _dbAlIdxStamp!==stamp){ _dbAlIdx = dbAllergenIndex(); _dbAlIdxStamp = stamp; }
+  const d = _dbAlIdx[ingKey(task)];
+  if (d) return {tags:d, confirmed:true};
+  return {tags:alSuggest(task), confirmed:false};
+}
+function alChipsFor(tags, confirmed){
+  return tags.map(t=>`<span class="al-chip${confirmed?'':' sug'}" title="${escapeHtml(tagLabel(t))}${confirmed?'':' — automatic suggestion, check it'}">${escapeHtml(tagShort(t))}${confirmed?'':'?'}</span>`).join('');
+}
+function alChipsHtml(r){
+  const a = alForTask(r.task);
+  return a.tags.length ? ' ' + alChipsFor(a.tags, a.confirmed) : '';
+}
+function alChipsRowsHtml(rows){
+  const conf = [], sug = [];
+  rows.forEach(r=>{ const a = alForTask(r.task); a.tags.forEach(t=>{ const L = a.confirmed ? conf : sug; if (!L.includes(t)) L.push(t); }); });
+  const sugOnly = sug.filter(t=>!conf.includes(t));
+  return (conf.length||sugOnly.length) ? ' ' + alChipsFor(conf, true) + alChipsFor(sugOnly, false) : '';
+}
+function dishAllergens(dish, rows){
+  const conf = [], sug = [];
+  (rows || activeRows().filter(r=>r.dish===dish)).forEach(r=>{ const a = alForTask(r.task); a.tags.forEach(t=>{ const L = a.confirmed ? conf : sug; if (!L.includes(t)) L.push(t); }); });
+  (INGINFO.dishAl[dish] || (dishDatabase[dish] && dishDatabase[dish].al) || []).forEach(t=>{ if (!conf.includes(t)) conf.push(t); });
+  return {conf, sug: sug.filter(t=>!conf.includes(t))};
+}
+function dishAllergenLineHtml(dish, rows){
+  const a = dishAllergens(dish, rows);
+  if (!a.conf.length && !a.sug.length) return '';
+  return `<div class="al-line">Allergens: ${a.conf.map(t=>`<b>${escapeHtml(tagLabel(t))}</b>`).join(', ')}${a.sug.length ? (a.conf.length?' · ':'') + 'suggested, check: ' + a.sug.map(t=>escapeHtml(tagLabel(t))+'?').join(', ') : ''}</div>`;
+}
+function allergenText(task){
+  const a = alForTask(task);
+  if (!a.tags.length) return a.confirmed ? 'None' : '';
+  const names = a.tags.map(tagLabel).join(', ');
+  return a.confirmed ? names : 'Suggested (check): ' + names;
+}
+const AL_DISCLAIMER = 'Allergen tags marked ? are automatic suggestions from ingredient names. They can be wrong or incomplete (brands, sub-recipes, cross-contact). Check every tag against supplier specifications before serving.';
+function alPrintNote(rows){
+  return rows.some(r=>{ const a = alForTask(r.task); return !a.confirmed && a.tags.length; }) ? `<div class="al-note">${escapeHtml(AL_DISCLAIMER)}</div>` : '';
+}
+// edits
+function setIngAllergens(encTask, tags){
+  const e = ingEntry(decodeURIComponent(encTask), true); e.al = cleanTagList(tags); touchIng(e); saveIngInfo(); render();
+}
+function confirmIngAllergens(encTask){
+  const task = decodeURIComponent(encTask); setIngAllergens(encTask, alForTask(task).tags);
+}
+function confirmAllSuggestions(){
+  const keys = ingRowsForPanel().filter(x=>!alForTask(x.task).confirmed);
+  if (!keys.length) return;
+  if (!confirm('Mark the suggested allergen tags on '+keys.length+' ingredient(s) as checked? Only do this once you have checked them.')) return;
+  keys.forEach(x=>{ const e = ingEntry(x.task, true); e.al = alForTask(x.task).tags.slice(); touchIng(e); });
+  saveIngInfo(); render();
+}
+let alEditKey = null;
+function openAlEditor(encTask){ alEditKey = ingKey(decodeURIComponent(encTask)); render(); }
+function closeAlEditor(){ alEditKey = null; render(); }
+function saveAlEditor(encTask){
+  const box = document.getElementById('alEditor'); if (!box) return;
+  const tags = [...box.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value).concat(parseTagText((box.querySelector('input[type=text]')||{}).value));
+  alEditKey = null; setIngAllergens(encTask, tags);
+}
+function setDishTags(encDish, text){
+  const dish = decodeURIComponent(encDish); const tags = parseTagText(text);
+  if (tags.length) INGINFO.dishAl[dish] = tags; else delete INGINFO.dishAl[dish];
+  saveIngInfo(); render();
+}
+// ---------- ingredient panel (allergens; suppliers and prices are added by 5 and 6) ----------
+function ingRowsForPanel(){
+  const seen = {}, out = [];
+  activeRows().forEach(r=>{
+    const k = ingKey(r.task); if (!k) return;
+    if (!seen[k]){ seen[k] = {key:k, task:r.task, dishes:[], rows:[]}; out.push(seen[k]); }
+    if (!seen[k].dishes.includes(r.dish)) seen[k].dishes.push(r.dish);
+    seen[k].rows.push(r);
+  });
+  return out;
+}
+let ingFilter = 'all';
+let ingPanelOpen = (function(){ try{ return localStorage.getItem('preplinePref_ingPanelOpen_v1')==='1'; }catch(e){ return false; } })();
+function setIngPanelOpen(on){ ingPanelOpen = !!on; try{ localStorage.setItem('preplinePref_ingPanelOpen_v1', on?'1':'0'); }catch(e){} renderIngPanel(); }
+function setIngFilter(v){ ingFilter = v; renderIngPanel(); }
+const ING_COLUMNS = [];   // extra columns registered by features 5 and 6: {th, td(x), filter?}
+const ING_FILTERS = [{v:'all', label:'All ingredients'}, {v:'al', label:'Allergens not checked yet', test:x=>!alForTask(x.task).confirmed}];
+function alCellHtml(x){
+  const a = alForTask(x.task), enc = encName(x.task);
+  if (alEditKey===x.key){
+    const cur = a.tags;
+    return `<div id="alEditor" class="al-editor">${ALLERGENS.map(al=>`<label><input type="checkbox" value="${al.id}" ${cur.includes(al.id)?'checked':''}> ${escapeHtml(al.label)}</label>`).join('')}
+      <input type="text" placeholder="Other tags, comma separated (e.g. celery, sulphites)" value="${escapeHtml(cur.filter(t=>!AL_BY_ID[t]).join(', '))}">
+      <div><button type="button" onclick="saveAlEditor('${enc}')">Save</button> <button type="button" class="ghost" onclick="closeAlEditor()">Cancel</button></div></div>`;
+  }
+  const chips = a.tags.length ? alChipsFor(a.tags, a.confirmed) : `<span class="al-none">${a.confirmed?'none':'no suggestion'}</span>`;
+  return `${chips} ${a.confirmed ? '' : `<button type="button" class="ghost al-btn" onclick="confirmIngAllergens('${enc}')" title="I have checked these tags">✓ Confirm</button>`}<button type="button" class="ghost al-btn" onclick="openAlEditor('${enc}')">Edit</button>`;
+}
+function renderIngPanel(){
+  const wrap = document.getElementById('ingPanelWrap'); if (!wrap) return;
+  const items = ingRowsForPanel();
+  if (!items.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  const act = document.activeElement, actId = act && wrap.contains(act) ? act.id : null;
+  const unconf = items.filter(x=>!alForTask(x.task).confirmed).length;
+  const summary = ING_SUMMARY.map(f=>f(items)).filter(Boolean).join(' · ');
+  let html = `<div class="row" style="justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">4 · Ingredients: allergens${ING_COLUMNS.length ? ', suppliers and prices' : ''}</h2>
+      <button class="ghost" id="ingPanelToggle" type="button" onclick="setIngPanelOpen(${ingPanelOpen?'false':'true'})">${ingPanelOpen?'Hide':'Show'}</button>
+    </div>
+    <div class="small ing-sum">${items.length} ingredients · ${unconf ? `<b>${unconf} with allergens not checked yet</b>` : 'all allergen tags checked'}${summary ? ' · '+summary : ''}</div>`;
+  if (ingPanelOpen){
+    const filt = ING_FILTERS.find(f=>f.v===ingFilter) || ING_FILTERS[0];
+    const shown = filt.test ? items.filter(filt.test) : items;
+    html += `<div class="al-disclaimer">⚠ ${escapeHtml(AL_DISCLAIMER)} Prepline does not guarantee allergen information.</div>
+      <div class="row" style="gap:8px; align-items:center; margin:8px 0;">
+        <select id="ingFilterSel" onchange="setIngFilter(this.value)">${ING_FILTERS.map(f=>`<option value="${f.v}" ${f.v===filt.v?'selected':''}>${escapeHtml(f.label)}</option>`).join('')}</select>
+        ${unconf ? `<button type="button" class="ghost" onclick="confirmAllSuggestions()">✓ Confirm all suggestions</button>` : ''}
+        ${ING_TOOLS.map(f=>f()).join('')}
+      </div>
+      <div class="section-table-wrap"><table class="ing-table"><thead><tr><th>Ingredient</th><th>Used in</th><th>Allergens</th>${ING_COLUMNS.map(c=>`<th>${c.th}</th>`).join('')}</tr></thead><tbody>
+      ${shown.map(x=>`<tr data-ing="${escapeHtml(x.key)}"><td class="task">${escapeHtml(x.task)}</td><td class="dish">${x.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td><td class="al-cell">${alCellHtml(x)}</td>${ING_COLUMNS.map(c=>`<td>${c.td(x)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${3+ING_COLUMNS.length}">Nothing here with this filter.</td></tr>`}
+      </tbody></table></div>
+      <details class="dish-tags"><summary>Dish-level allergen tags (e.g. "may contain nuts", celery)</summary>
+        ${[...new Set(items.flatMap(x=>x.dishes))].map(d=>`<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 220px;">${escapeHtml(cleanDishName(d))}</span><input type="text" style="flex:1 1 240px;" placeholder="tags, comma separated" value="${escapeHtml((INGINFO.dishAl[d]||[]).map(tagLabel).join(', '))}" onchange="setDishTags('${encName(d)}', this.value)"></div>`).join('')}
+      </details>`;
+  }
+  wrap.innerHTML = html;
+  if (actId){ const el = document.getElementById(actId); if (el) el.focus(); }
+}
+const ING_SUMMARY = [];   // summary bits added by features 5/6
+const ING_TOOLS = [];     // toolbar buttons added by features 5/6
+let INGINFO = loadIngInfo();
+const _v33BaseRender = render;
+render = function(){ _v33BaseRender(); renderIngPanel(); };
+
+// ================= end Prepline v3.3 features =================
 
 proBeforeInit();
 loadDatabase();
