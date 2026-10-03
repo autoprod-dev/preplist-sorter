@@ -3,7 +3,436 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Preplist Sorter</title>
+<meta name="prepline-version" content="3.2.4">
+<title>Prepline: prep list sorter</title>
+<script>
+/* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
+ * mode 'test':    no network calls, only the TEST- keys below unlock Pro, a TEST MODE badge shows,
+ *                 Buy buttons show a notice instead of opening checkout.
+ * mode 'ls-test': CURRENT. Lemon Squeezy TEST-MODE store (autoprod-dev, store 485739; ids below are
+ *                 test-mode ids, see monetise/LS_TEST_IDS.md). Buy opens the real test checkout
+ *                 (test card, nothing charged); its keys are checked with the License API like
+ *                 live. TEST- keys still work offline. TEST MODE badge stays visible.
+ * mode 'live':    keys are checked with Lemon Squeezy's public License API. Before switching, replace
+ *                 the ids and checkout URLs with the LIVE-mode ones (test-mode keys are refused).
+ * mode 'off':     Pro switched off (public site while the store is not approved for real money):
+ *                 no TEST badge, no Upgrade / licence / Buy UI, no Lemon Squeezy calls, no Pro panel or
+ *                 Pro-only tools (append PDF, templates, custom stations, kitchens). The code stays here.
+ * Activation limit (3 devices per key) is set on the Lemon Squeezy product, not here.
+ */
+var LICENSE_CONFIG = {
+  mode: 'off',                                   // LIVE SITE: Pro off (store not approved for real money). 'off' | 'test' | 'ls-test' | 'live'  ('off' = Pro switched off: no licence UI, no network, everything free stays free)
+  edition: 'web',
+  // v3: free-plan limits from the v2 Pro build, OFF so the v3 baseline behaviour is unchanged
+  // (several PDFs at once are free; free prints have no footer). Set true to bring them back.
+  freeLimits: { onePdfPerSort: false, printFooter: false },                                // 'web' | 'offline-pro' (set by build_offline.py --edition pro)
+  storeName: 'Autoprod',
+  appName: 'Prepline',
+  productName: 'Prepline Pro',
+  supportEmail: 'support@autoprod.example',      // TODO: real support address before launch
+  storageKey: 'autoprod.licence.prepline.v1',
+  revalidateDays: 7,                             // re-check with Lemon Squeezy at most once a week
+  offlineGraceDays: 14,                          // keep Pro working this long past a missed check (offline)
+  maxActivations: 3,                             // informational: enforce via the LS product's activation limit
+  apiBase: 'https://api.lemonsqueezy.com/v1/licenses',
+  lemonSqueezy: {
+    storeId: '485739',                             // autoprod-dev.lemonsqueezy.com (TEST MODE)
+    productIds: ['1395962', '1395968'],            // Prepline Pro (monthly+yearly), Prepline Pro Lifetime
+    variants: {                                    // variant id -> plan id (any other variant is refused)
+      '2179964': 'monthly',                        // A$7/mo
+      '2179971': 'yearly',                         // A$59/yr
+      '2179974': 'lifetime'                        // A$79 once (A$49 with LAUNCH50)
+    }
+  },
+  checkout: {
+    monthly:  'https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e?enabled=2179964',
+    yearly:   'https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c?enabled=2179971',
+    lifetime: 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314?checkout%5Bdiscount_code%5D=LAUNCH50'
+  },
+  offlineDownloadUrl: 'TODO-offline-download-url', // e.g. Lemon Squeezy "My Orders" page / product file
+  plans: [
+    { id: 'monthly',  label: 'Monthly',  short: 'monthly',  price: 'A$7',  per: 'per month, cancel any time' },
+    { id: 'yearly',   label: 'Yearly',   short: 'yearly',   price: 'A$59', per: 'per year (about 30% off monthly)', best: true, tag: 'BEST VALUE' },
+    { id: 'lifetime', label: 'Lifetime', short: 'lifetime', price: 'A$79', per: 'one-off payment', note: 'A$49 with code LAUNCH50 (first 50 buyers)', tag: 'LAUNCH DEAL' }
+  ],
+  upgrade: {
+    title: 'Upgrade to Prepline Pro',
+    intro: 'The free version stays free: sort, print and export to Excel. Pro is for kitchens that live in it.',
+    features: [
+      'Append more PDFs to the current list (items merge into one list)',
+      'Saved templates and your own custom stations',
+      'Multiple kitchens: separate named profiles on one device',
+      'The offline Windows version (works with no internet)'
+    ],
+    gstNote: 'GST handled at checkout',
+    refund: '14-day no-questions refund.'
+  },
+  testKeys: {                                    // 'test' and 'ls-test' modes only. Ignored in live mode.
+    'TEST-PRO-MONTHLY':  { plan: 'monthly' },
+    'TEST-PRO-YEARLY':   { plan: 'yearly' },
+    'TEST-PRO-LIFETIME': { plan: 'lifetime' },
+    'TEST-UNIFILE-PRO':  { reject: 'That key is for Unifile Pro, not Prepline Pro.' },
+    'TEST-LIMIT-REACHED':{ reject: 'This license key has reached the activation limit. (Simulated: deactivate it on another device first.)' },
+    'TEST-EXPIRED':      { reject: 'This license key has expired. (Simulated expired subscription.)' }
+  }
+};
+</script>
+<!-- AUTOPROD-LICENCE:BEGIN -->
+<script>
+/* ==== Autoprod licence module v1 (shared; inlined into each single-file app) ====
+ * Canonical source: monetise/shared/autoprod-licence.js. Each app inlines this file right
+ * after its own LICENSE_CONFIG object (see monetise/shared/sync_licence.py).
+ *
+ * Modes
+ *   test    : no network at all. Only the documented TEST-* keys in LICENSE_CONFIG.testKeys work.
+ *             A "TEST MODE" badge is always visible and Buy buttons show a notice instead of
+ *             opening checkout.
+ *   ls-test : Lemon Squeezy TEST-MODE store. Buy buttons open the real test-mode checkouts
+ *             (test card, nothing charged); keys from those checkouts are checked with the
+ *             License API exactly like live. The offline TEST-* keys also still work (no network).
+ *             The "TEST MODE" badge stays visible.
+ *   live    : Lemon Squeezy public License API (no API key; CORS allows browsers):
+ *          POST https://api.lemonsqueezy.com/v1/licenses/activate   license_key, instance_name
+ *          POST https://api.lemonsqueezy.com/v1/licenses/validate   license_key, instance_id
+ *          POST https://api.lemonsqueezy.com/v1/licenses/deactivate license_key, instance_id
+ *          Body: application/x-www-form-urlencoded, header Accept: application/json.
+ *          The response meta.store_id / meta.product_id / meta.variant_id must match
+ *          LICENSE_CONFIG (variant id -> plan via lemonSqueezy.variants). In live mode keys
+ *          whose license_key.test_mode is true are refused; TEST-* keys are ignored.
+ *          The 3-device limit is the "activation limit" set on the Lemon Squeezy product;
+ *          this code just reports LS's "activation limit reached" error.
+ * Only the licence key (and the instance id / a generic device label) is ever sent. Files,
+ * prep lists and settings never leave the browser.
+ * Stored in localStorage (LICENSE_CONFIG.storageKey): key, instance id, plan, timestamps.
+ * Revalidation: at most once every LICENSE_CONFIG.revalidateDays (7). If the check can't reach
+ * Lemon Squeezy (offline), Pro keeps working for LICENSE_CONFIG.offlineGraceDays after the last
+ * successful check. An explicit "invalid/expired/disabled" answer removes Pro on this device.
+ */
+(function () {
+  'use strict';
+  var C = window.LICENSE_CONFIG || {};
+  var DAY = 86400000;
+  var listeners = [];
+  var S = null;           // stored licence state or null
+  var status = 'free';    // 'free' | 'pro' | 'grace' | 'lapsed'
+  var api = {};
+  api._now = function () { return Date.now(); };
+  function offlineTestKeys() { return C.mode !== 'live'; }          // TEST-* keys: test + ls-test only
+  function isLocal() { return C.mode === 'test' || !!(S && S.testKey); } // no network for this licence
+  api.isTestMode = function () { return C.mode !== 'live'; };
+
+  function el(tag, attrs, html) {
+    var e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]);
+    });
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function load() {
+    try { var raw = localStorage.getItem(C.storageKey); S = raw ? JSON.parse(raw) : null; } catch (e) { S = null; }
+    if (S && (typeof S.key !== 'string' || !S.key || S.mode !== C.mode)) S = null; // test keys never survive a switch to live
+  }
+  function save() { try { if (S) localStorage.setItem(C.storageKey, JSON.stringify(S)); else localStorage.removeItem(C.storageKey); } catch (e) {} }
+  function computeStatus() {
+    if (!S) return 'free';
+    if (isLocal()) return 'pro';
+    var age = api._now() - (S.lastValidatedAt || 0);
+    if (age <= (C.revalidateDays || 7) * DAY) return 'pro';
+    if (age <= ((C.revalidateDays || 7) + (C.offlineGraceDays || 14)) * DAY) return 'grace';
+    return 'lapsed';
+  }
+  function emit() {
+    var prev = status; status = computeStatus();
+    paintBadge();
+    listeners.forEach(function (fn) { try { fn(api.isPro(), status, prev); } catch (e) { console.error(e); } });
+  }
+  function maskKey(k) { return k.length <= 8 ? k : k.slice(0, 4) + '\u2026' + k.slice(-4); }
+  function planLabel(id) { var p = (C.plans || []).find(function (x) { return x.id === id; }); return p ? p.label : (id || 'Pro'); }
+  function deviceLabel() {
+    var ua = navigator.userAgent || '', os = /Windows/.test(ua) ? 'Windows' : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Device';
+    var br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
+    return (C.appName || 'App') + ' - ' + os + ' ' + br + ' - ' + new Date(api._now()).toISOString().slice(0, 10);
+  }
+
+  // ---------- Lemon Squeezy License API (live mode only) ----------
+  function lsPost(path, params) {
+    var body = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    return fetch((C.apiBase || 'https://api.lemonsqueezy.com/v1/licenses') + '/' + path, {
+      method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: body
+    }).then(function (res) {
+      return res.json().then(function (j) { return j; }, function () { throw new Error('network'); });
+    }, function () { throw new Error('network'); });   // offline / DNS / blocked
+  }
+  function configured() {
+    var ls = C.lemonSqueezy || {}, ids = ls.productIds || [], vs = Object.keys(ls.variants || {});
+    var todo = function (x) { return /TODO/i.test(String(x)); };
+    return !!ids.length && !ids.some(todo) && !vs.some(todo) && !todo(ls.storeId || 'TODO');
+  }
+  // Plan for a variant id. With a variants map configured, an unknown variant is refused (null);
+  // with no map at all every variant of the listed products counts as plain 'pro'.
+  function planFromVariant(meta) {
+    var v = (C.lemonSqueezy && C.lemonSqueezy.variants) || {};
+    if (!Object.keys(v).length) return 'pro';
+    return v[String(meta && meta.variant_id)] || null;
+  }
+  function productMatches(meta) {
+    if (!meta) return false;
+    var ls = C.lemonSqueezy || {};
+    if (String(meta.store_id) !== String(ls.storeId)) return false;
+    if ((ls.productIds || []).map(String).indexOf(String(meta.product_id)) < 0) return false;
+    return !!planFromVariant(meta);
+  }
+  api._planFromVariant = planFromVariant; api._productMatches = productMatches;   // exposed for tests
+
+  api.activate = function (rawKey) {
+    var key = String(rawKey || '').trim();
+    if (!key) return Promise.resolve({ ok: false, error: 'Paste your licence key first.' });
+    var t = offlineTestKeys() ? (C.testKeys || {})[key.toUpperCase()] : null;
+    if (C.mode === 'test' || t) {
+      if (!t) return Promise.resolve({ ok: false, error: 'That licence key isn\u2019t valid. (Test mode: use one of the documented TEST- keys.)' });
+      if (t.reject) return Promise.resolve({ ok: false, error: t.reject });
+      S = { mode: C.mode, testKey: true, key: key.toUpperCase(), instanceId: 'test-' + Math.random().toString(36).slice(2, 10), plan: t.plan,
+            productName: C.productName, activatedAt: api._now(), lastValidatedAt: api._now(), lastAttemptAt: api._now() };
+      save(); emit();
+      return Promise.resolve({ ok: true });
+    }
+    if (!configured()) return Promise.resolve({ ok: false, error: 'The store isn\u2019t set up yet (LICENSE_CONFIG still has TODO ids).' });
+    return lsPost('activate', { license_key: key, instance_name: deviceLabel() }).then(function (j) {
+      if (!j.activated) return { ok: false, error: j.error || 'That licence key couldn\u2019t be activated.' };
+      var testKeyInLive = C.mode === 'live' && j.license_key && j.license_key.test_mode === true;
+      if (!productMatches(j.meta) || testKeyInLive) {
+        // Wrong product/plan (or a test-mode key in the live app): give the activation straight back
+        // so it doesn't use up a device slot.
+        lsPost('deactivate', { license_key: key, instance_id: j.instance && j.instance.id }).catch(function () {});
+        return { ok: false, error: !productMatches(j.meta) ? 'That key is for a different product, not ' + C.productName + '.'
+          : 'That is a test-mode key from the Lemon Squeezy test store; it doesn\u2019t work in the live app.' };
+      }
+      S = { mode: C.mode, key: key, instanceId: j.instance.id, plan: planFromVariant(j.meta), productName: j.meta.product_name,
+            activatedAt: api._now(), lastValidatedAt: api._now(), lastAttemptAt: api._now(), expiresAt: j.license_key && j.license_key.expires_at };
+      save(); emit();
+      return { ok: true };
+    }, function () { return { ok: false, error: 'Couldn\u2019t reach the licence server. Check your internet connection and try again.' }; });
+  };
+
+  api.revalidate = function (force) {
+    if (!S) return Promise.resolve(status);
+    var now = api._now();
+    if (isLocal()) {
+      if (force || now - S.lastValidatedAt >= (C.revalidateDays || 7) * DAY) { S.lastValidatedAt = now; S.lastAttemptAt = now; save(); }
+      emit(); return Promise.resolve(status);
+    }
+    var due = now - (S.lastValidatedAt || 0) >= (C.revalidateDays || 7) * DAY;
+    var retryOk = now - (S.lastAttemptAt || 0) >= 6 * 3600000;   // don't hammer the API while offline
+    if (!force && (!due || !retryOk)) { emit(); return Promise.resolve(status); }
+    S.lastAttemptAt = now; save();
+    return lsPost('validate', { license_key: S.key, instance_id: S.instanceId }).then(function (j) {
+      var st = j.license_key && j.license_key.status;
+      if (j.valid && productMatches(j.meta) && st !== 'expired' && st !== 'disabled') {
+        S.lastValidatedAt = api._now(); S.plan = planFromVariant(j.meta); S.expiresAt = j.license_key.expires_at; save(); emit();
+      } else {
+        var why = st === 'expired' ? 'has expired' : st === 'disabled' ? 'was disabled' : 'is no longer valid on this device';
+        S = null; save(); emit(); api.toast('Your ' + C.productName + ' licence ' + why + '. Pro features are off.');
+      }
+      return status;
+    }, function () { emit(); return status; });
+  };
+
+  api.deactivate = function () {
+    if (!S) return Promise.resolve({ ok: true });
+    if (isLocal()) { S = null; save(); emit(); return Promise.resolve({ ok: true }); }
+    var cur = S;
+    return lsPost('deactivate', { license_key: cur.key, instance_id: cur.instanceId }).then(function (j) {
+      if (j.deactivated || /not found/i.test(j.error || '')) { S = null; save(); emit(); return { ok: true }; }
+      return { ok: false, error: j.error || 'Couldn\u2019t deactivate. Try again.' };
+    }, function () { return { ok: false, error: 'You need to be online to free up this device slot. Try again when connected.' }; });
+  };
+
+  api.isPro = function () { return status === 'pro' || status === 'grace'; };
+  api.status = function () { return status; };
+  api.plan = function () { return S ? S.plan : null; };
+  api.state = function () { return S ? JSON.parse(JSON.stringify(S)) : null; };
+  api.onChange = function (fn) { listeners.push(fn); };
+  api.config = C;
+
+  // ---------- UI ----------
+  var css = [
+    '.pl-badge{position:fixed;left:12px;bottom:12px;z-index:9999;background:#E0701B;color:#fff;font:800 11px/1 system-ui,sans-serif;letter-spacing:.08em;padding:7px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;border:2px solid #fff}',
+    '.pl-badge small{font-weight:600;letter-spacing:0;margin-left:6px;opacity:.9}',
+    '@media print{.pl-badge,.pl-toast{display:none!important}}',
+    'dialog.pl-dlg{border:var(--pl-border,1px solid #ccc);border-radius:var(--pl-radius,14px);padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--pl-bg,#fff);color:var(--pl-ink,#222);font-family:var(--pl-font,system-ui,sans-serif);box-shadow:var(--pl-shadow,0 12px 40px rgba(0,0,0,.25))}',
+    'dialog.pl-dlg::backdrop{background:rgba(15,15,20,.55)}',
+    '.pl-in{padding:22px 22px 18px}',
+    '.pl-in h3{margin:0 0 6px;font-family:var(--pl-display,inherit);font-size:1.45em;line-height:1.15}',
+    '.pl-in p{margin:6px 0;line-height:1.5}',
+    '.pl-soft{color:var(--pl-soft,#666);font-size:.92em}',
+    '.pl-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}',
+    '.pl-row.end{justify-content:flex-end}',
+    '.pl-input{flex:1 1 220px;font:600 15px/1.2 ui-monospace,Menlo,Consolas,monospace;padding:11px 12px;border:var(--pl-border,1px solid #bbb);border-radius:10px;background:var(--pl-field,#fff);color:var(--pl-ink,#222);min-width:0}',
+    '.pl-btn{font:700 14px/1 var(--pl-font,system-ui,sans-serif);padding:11px 16px;border-radius:var(--pl-btn-radius,10px);border:var(--pl-btn-border,1px solid transparent);background:var(--pl-accent,#333);color:var(--pl-on-accent,#fff);cursor:pointer;box-shadow:var(--pl-btn-shadow,none)}',
+    '.pl-btn.alt{background:transparent;color:var(--pl-ink,#222);border:var(--pl-border,1px solid #bbb)}',
+    '.pl-btn.link{background:none;border:0;box-shadow:none;color:var(--pl-soft,#666);text-decoration:underline;padding:6px}',
+    '.pl-btn[disabled]{opacity:.5;cursor:wait}',
+    '.pl-msg{min-height:1.2em;margin-top:10px;font-weight:600;font-size:.93em}',
+    '.pl-msg.err{color:#C0392B}.pl-msg.ok{color:#2E7D4F}',
+    '.pl-test{background:#FFF1E0;color:#7A3E00;border:1px dashed #E0701B;border-radius:10px;padding:9px 11px;font-size:.86em;margin-top:12px}',
+    '.pl-test code{font-weight:700}',
+    '.pl-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:14px 0 6px}',
+    '.pl-plan{border:var(--pl-border,1px solid #ccc);border-radius:12px;padding:14px 12px;display:flex;flex-direction:column;gap:6px;background:var(--pl-card,transparent);position:relative}',
+    '.pl-plan.best{outline:3px solid var(--pl-accent,#333)}',
+    '.pl-plan .pl-tag{position:absolute;top:-10px;right:10px;background:var(--pl-accent,#333);color:var(--pl-on-accent,#fff);font:800 10.5px/1 system-ui,sans-serif;padding:4px 8px;border-radius:99px;letter-spacing:.03em}',
+    '.pl-plan b{font-size:1em}.pl-price{font:800 1.9em/1 var(--pl-display,inherit)}.pl-per{font-size:.85em;color:var(--pl-soft,#666)}',
+    '.pl-plan .pl-btn{margin-top:auto}',
+    '.pl-feats{margin:10px 0 0;padding-left:1.1em;line-height:1.55}',
+    '.pl-kv{font:13px/1.6 ui-monospace,Menlo,Consolas,monospace;background:var(--pl-card,#f5f5f5);border-radius:10px;padding:10px 12px;margin-top:10px;word-break:break-all}',
+    '.pl-toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#222;color:#fff;padding:11px 16px;border-radius:12px;font:600 14px/1.35 system-ui,sans-serif;z-index:10000;max-width:calc(100% - 30px);box-shadow:0 6px 20px rgba(0,0,0,.3)}'
+  ].join('\n');
+
+  var badge, licDlg, upDlg, toastEl, toastT;
+  api.toast = function (msg) {
+    if (!toastEl) { toastEl = el('div', { class: 'pl-toast', role: 'status', id: 'plToast' }); document.body.appendChild(toastEl); }
+    toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT);
+    toastT = setTimeout(function () { toastEl.hidden = true; }, 4200);
+  };
+  function paintBadge() {
+    if (!badge) return;
+    badge.hidden = C.mode === 'live';
+    var pl = planLabel(S && S.plan);
+    badge.innerHTML = 'TEST MODE<small>' + (api.isPro() ? esc(C.productName) + (pl === C.productName ? '' : ' (' + esc(pl) + ')') : 'free') + '</small>';
+  }
+  function showDialog(d) { if (typeof d.showModal === 'function') { if (!d.open) d.showModal(); } else d.setAttribute('open', ''); }
+  function closeDialog(d) { if (typeof d.close === 'function' && d.open) d.close(); else d.removeAttribute('open'); }
+
+  function renderLicence(msg, cls) {
+    var h;
+    var tk = Object.keys(C.testKeys || {}).filter(function (k) { return !C.testKeys[k].reject; }).map(function (k) { return '<code>' + esc(k) + '</code>'; }).join(', ');
+    var testHint = C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: no payments, no network calls. Keys that work here: ' + tk + '.</div>'
+      : C.mode === 'ls-test' ? '<div class="pl-test"><b>TEST MODE</b>: Lemon Squeezy test store, no real payments. Keys from a test checkout are checked with Lemon Squeezy; offline test keys also work: ' + tk + '.</div>' : '';
+    if (S) {
+      var st = status === 'grace' ? 'Active (offline grace: will re-check with ' + esc(C.storeName) + ' when you\u2019re online)' : status === 'lapsed' ? 'Paused: couldn\u2019t re-check the licence for a while. Go online and press Re-check.' : 'Active';
+      h = '<h3>' + esc(C.productName) + ' is on</h3>' +
+        '<p class="pl-soft">This device is using one of your ' + (C.maxActivations || 3) + ' activations.</p>' +
+        '<div class="pl-kv">Plan: ' + esc(planLabel(S.plan)) + '<br>Key: ' + esc(maskKey(S.key)) + '<br>Status: ' + st +
+        '<br>Last checked: ' + new Date(S.lastValidatedAt).toLocaleString() + '</div>' +
+        '<div class="pl-msg ' + (cls || '') + '" id="plLicMsg">' + esc(msg || '') + '</div>' + testHint +
+        '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="recheck">Re-check now</button>' +
+        '<button class="pl-btn alt" type="button" data-pl="deactivate" id="plDeactivate">Deactivate on this device</button>' +
+        '<button class="pl-btn" type="button" data-pl="close">Close</button></div>';
+    } else {
+      h = '<h3>Enter licence key</h3>' +
+        '<p class="pl-soft">Paste the key from your ' + esc(C.storeName) + ' receipt email. Each key works on up to ' + (C.maxActivations || 3) + ' devices; use \u201cDeactivate on this device\u201d to move it.</p>' +
+        '<form class="pl-row" data-pl="form"><label for="plKey" style="position:absolute;left:-9999px">Licence key</label>' +
+        '<input class="pl-input" id="plKey" autocomplete="off" spellcheck="false" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX">' +
+        '<button class="pl-btn" type="submit" id="plActivate">Activate</button></form>' +
+        '<div class="pl-msg ' + (cls || '') + '" id="plLicMsg">' + esc(msg || '') + '</div>' + testHint +
+        '<p class="pl-soft" style="margin-top:12px">Only the key is sent to ' + ((C.mode === 'test' || (S && S.testKey)) ? 'nobody (test mode)' : 'Lemon Squeezy, our payment provider, to check it') + '. Your files never leave this browser.</p>' +
+        '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="buy">Don\u2019t have a key? See Pro</button><button class="pl-btn alt" type="button" data-pl="close">Close</button></div>';
+    }
+    licDlg.querySelector('.pl-in').innerHTML = h;
+  }
+  api.openLicenceDialog = function () { renderLicence(); showDialog(licDlg); var i = licDlg.querySelector('#plKey'); if (i) i.focus(); };
+
+  function renderUpgrade(reason) {
+    var u = C.upgrade || {};
+    var plans = (C.plans || []).map(function (p) {
+      return '<div class="pl-plan' + (p.best ? ' best' : '') + '">' + (p.tag ? '<span class="pl-tag">' + esc(p.tag) + '</span>' : '') +
+        '<b>' + esc(p.label) + '</b><div class="pl-price">' + esc(p.price) + '</div><div class="pl-per">' + esc(p.per || '') + '</div>' +
+        (p.note ? '<div class="pl-per">' + esc(p.note) + '</div>' : '') +
+        '<button class="pl-btn" type="button" data-pl="checkout" data-plan="' + esc(p.id) + '">Buy ' + esc(p.short || p.label) + '</button></div>';
+    }).join('');
+    var h = '<h3>' + esc(u.title || ('Upgrade to ' + C.productName)) + '</h3>' +
+      (reason ? '<p style="font-weight:700">' + esc(reason) + '</p>' : '') +
+      (u.intro ? '<p class="pl-soft">' + esc(u.intro) + '</p>' : '') +
+      (u.features ? '<ul class="pl-feats">' + u.features.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' : '') +
+      '<div class="pl-plans">' + plans + '</div>' +
+      '<p class="pl-soft">Prices in AUD' + (u.gstNote ? ', ' + esc(u.gstNote) : '') + '. Secure checkout by Lemon Squeezy (merchant of record). ' + esc(u.refund || '') + '</p>' +
+      '<div class="pl-msg" id="plUpMsg"></div>' +
+      (C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy buttons don\u2019t open checkout and nothing is charged.</div>'
+        : C.mode === 'ls-test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy opens a Lemon Squeezy <b>test</b> checkout. Nothing is charged (use test card 4242 4242 4242 4242).</div>' : '') +
+      '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="enterkey">Already bought? Enter licence key</button><button class="pl-btn alt" type="button" data-pl="close">Not now</button></div>';
+    upDlg.querySelector('.pl-in').innerHTML = h;
+  }
+  api.openUpgrade = function (reason) { renderUpgrade(reason); showDialog(upDlg); };
+  api.buy = function (planId) {
+    var url = (C.checkout || {})[planId];
+    if (C.mode === 'test' || !url || /TODO/.test(url)) {
+      var m = 'TEST MODE: checkout is disabled. In live mode this button opens ' + (url || '(no URL set)') + '. Use a TEST- key to try Pro.';
+      var box = upDlg && upDlg.querySelector('#plUpMsg'); if (box && upDlg.open) { box.className = 'pl-msg err'; box.textContent = m; }
+      api.toast(m); return false;
+    }
+    window.open(url, '_blank', 'noopener');
+    return true;
+  };
+
+  function onDialogClick(e) {
+    var b = e.target.closest('[data-pl]'); if (!b) return;
+    var act = b.getAttribute('data-pl');
+    if (act === 'close') closeDialog(b.closest('dialog'));
+    if (act === 'buy') { closeDialog(licDlg); api.openUpgrade(); }
+    if (act === 'enterkey') { closeDialog(upDlg); api.openLicenceDialog(); }
+    if (act === 'checkout') api.buy(b.getAttribute('data-plan'));
+    if (act === 'deactivate') {
+      b.disabled = true;
+      api.deactivate().then(function (r) {
+        if (r.ok) { renderLicence('Deactivated. This device slot is free again.', 'ok'); api.toast(C.productName + ' deactivated on this device.'); }
+        else renderLicence(r.error, 'err');
+      });
+    }
+    if (act === 'recheck') { b.disabled = true; api.revalidate(true).then(function () { renderLicence(S ? 'Checked.' : '', 'ok'); }); }
+  }
+  function onSubmit(e) {
+    if (!e.target.matches('[data-pl="form"]')) return;
+    e.preventDefault();
+    var input = licDlg.querySelector('#plKey'), btn = licDlg.querySelector('#plActivate'), msg = licDlg.querySelector('#plLicMsg');
+    btn.disabled = true; msg.className = 'pl-msg'; msg.textContent = 'Checking\u2026';
+    api.activate(input.value).then(function (r) {
+      if (r.ok) { renderLicence('Activated. Thanks for supporting ' + C.storeName + '!', 'ok'); api.toast(C.productName + ' unlocked.'); }
+      else { btn.disabled = false; msg.className = 'pl-msg err'; msg.textContent = r.error; input.select(); }
+    });
+  }
+
+  api.init = function () {
+    if (api._inited) return; api._inited = true;
+    var st = el('style', { id: 'pl-licence-css' }); st.textContent = css; document.head.appendChild(st);
+    badge = el('button', { class: 'pl-badge', type: 'button', id: 'plTestBadge', title: 'Test mode: no real payments. Click to enter a licence key.' });
+    badge.addEventListener('click', function () { api.openLicenceDialog(); });
+    document.body.appendChild(badge);
+    licDlg = el('dialog', { class: 'pl-dlg', id: 'plLicenceDialog', 'aria-label': 'Licence key' }, '<div class="pl-in"></div>');
+    upDlg = el('dialog', { class: 'pl-dlg', id: 'plUpgradeDialog', 'aria-label': 'Upgrade' }, '<div class="pl-in"></div>');
+    [licDlg, upDlg].forEach(function (d) {
+      d.addEventListener('click', onDialogClick); d.addEventListener('submit', onSubmit);
+      d.addEventListener('click', function (e) { if (e.target === d) closeDialog(d); });   // backdrop click
+      document.body.appendChild(d);
+    });
+    emit();
+    api.revalidate(false);
+  };
+
+  if (C.mode === 'off') {
+    // Pro switched off: this module stays in the file but does nothing. Always free, no badge,
+    // no dialogs, no checkout, no network; a licence saved by another build is ignored.
+    var noop = function () {};
+    api.activate = function () { return Promise.resolve({ ok: false, error: 'Pro is not available.' }); };
+    api.revalidate = function () { return Promise.resolve('free'); };
+    api.deactivate = function () { return Promise.resolve({ ok: true }); };
+    api.isPro = function () { return false; };
+    api.status = function () { return 'free'; };
+    api.plan = function () { return null; };
+    api.state = function () { return null; };
+    api.isTestMode = function () { return false; };
+    api.openLicenceDialog = noop; api.openUpgrade = noop; api.buy = noop;
+    api.init = function () { api._inited = true; };
+    window.AutoprodLicence = api;
+    return;
+  }
+  load(); status = computeStatus();
+  window.AutoprodLicence = api;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', api.init); else api.init();
+})();
+/* ==== end Autoprod licence module ==== */
+</script>
+<!-- AUTOPROD-LICENCE:END -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -17,7 +446,7 @@
 </script>
 <style>
 
-  /* ---- shell: tab shell for Preplist Sorter ---- */
+  /* ---- shell: tab shell for Prepline ---- */
   html, body { margin:0; padding:0; background:#EDEAE2; font-family:'Inter', sans-serif; }
   .shell-masthead{
     display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
@@ -270,6 +699,15 @@
     font-size:13.5px; background:var(--accent-bg); color:var(--accent-dark); padding:3px 9px; border-radius:6px; display:inline-block;
   }
   #preplistTab .needpax{color:var(--prot); font-size:11.5px; font-style:italic;}
+  #preplistTab .print-method-toggle{display:inline-flex; align-items:center; gap:0; border:1.5px solid var(--ink); border-radius:6px; overflow:hidden; background:#fff;}
+  #preplistTab .print-method-toggle .pmt-label{font-size:12.5px; font-weight:600; padding:7px 10px; border-right:1.5px solid var(--ink);}
+  #preplistTab .print-method-toggle .pmt-btn{border:0; border-radius:0; margin:0; padding:7px 14px; background:#fff; color:var(--ink); font-weight:600; cursor:pointer; box-shadow:none;}
+  #preplistTab .print-method-toggle .pmt-btn + .pmt-btn{border-left:1px solid var(--line);}
+  #preplistTab .print-method-toggle .pmt-btn.on{background:var(--ink); color:#fff;}
+  #preplistTab .pmt-note{font-size:12px; color:var(--ink-soft); margin:-12px 0 16px;}
+  #preplistTab input.pax-invalid{border-color:var(--prot) !important; background:#fff3f1; outline:1px solid var(--prot);}
+  #preplistTab tr.dish-excluded td{opacity:0.45; text-decoration:line-through;}
+  #preplistTab tr.dish-excluded td:first-child{text-decoration:none;}
   #preplistTab .findsimilar-btn {
     display:inline-block; margin-left:6px; font-family:'IBM Plex Mono',monospace; font-size:10px;
     color:var(--ink-soft); background:transparent; border:1px solid var(--line); border-radius:20px;
@@ -307,6 +745,19 @@
     .print-only .dish{font-size:6.5px;}
     .print-only .pf-section, .print-only .pf-day{font-size:10.4px;}
     .print-only tbody td{border-bottom:1.5px solid #999;}
+    .orig-pages-grid{
+      page-break-before:always; padding-top:14px;
+      display:flex; flex-wrap:wrap; gap:14px;
+    }
+    .method-crops-title{
+      flex-basis:100%; font-family:'Fraunces',serif; font-weight:600; font-size:12px;
+      color:#1C1E1B; margin-bottom:4px;
+    }
+    .orig-page-item{flex:0 0 calc(33.33% - 10px); break-inside:avoid;}
+    .orig-page-print-label{
+      font-family:'IBM Plex Mono',monospace; font-size:9px; color:#5C5F58; margin-bottom:4px;
+    }
+    .orig-page-item img{max-width:100%; height:auto; border:1px solid #D6D2C4; display:block;}
   }
   .print-only{display:none;}
   .print-head{margin-bottom:16px;}
@@ -385,12 +836,52 @@
   .print-sec h3{font-size:15px; border-bottom:2px solid var(--ink); padding-bottom:4px; margin-bottom:8px;}
 
 </style>
+<style id="pro-css">
+  /* Prepline Pro + Autoprod licence dialogs (kept out of the first <style>, which print windows copy) */
+  :root{ --pl-accent:#8A6A3D; --pl-on-accent:#fff; --pl-ink:#1C1E1B; --pl-soft:#5C5F58; --pl-bg:#F5F3EC; --pl-card:#fff;
+    --pl-border:1px solid #D6D2C4; --pl-radius:10px; --pl-font:'Inter',sans-serif; --pl-display:'Fraunces',serif;
+    --pl-btn-shadow:0 2px 0 #6B4F28; --pl-btn-border:1px solid #6B4F28; }
+  .shell-tab-btn.pro-cta{background:#8A6A3D; border-color:#8A6A3D;}
+  .shell-tab-btn[hidden]{display:none;}
+  .made-with-footer[hidden]{display:none !important;}
+  .pro-pill{display:inline-block; font:700 10px/1 'IBM Plex Mono',monospace; letter-spacing:.06em; background:var(--accent-bg,#F1E6D2); color:var(--accent-dark,#6B4F28); border:1px solid #D9C7A6; padding:3px 7px; border-radius:20px; vertical-align:middle;}
+  .pro-pill[hidden]{display:none;}
+  #preplistTab .pro-panel{border-left:4px solid var(--accent);}
+  #preplistTab .pro-plans{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;}
+  #preplistTab .pro-plan{position:relative; background:#fff; border:1px solid var(--line); border-radius:9px; padding:14px; display:flex; flex-direction:column; gap:5px;}
+  #preplistTab .pro-plan.best{outline:2px solid var(--accent);}
+  #preplistTab .pro-plan button{margin-top:auto;}
+  #preplistTab .pro-tag{position:absolute; top:-9px; right:10px; background:var(--accent); color:#fff; font:700 9.5px/1 'IBM Plex Mono',monospace; padding:4px 7px; border-radius:20px; letter-spacing:.05em;}
+  #preplistTab .pro-plan-name{font-weight:700; font-size:13px;}
+  #preplistTab .pro-price{font-family:'Fraunces',serif; font-weight:700; font-size:28px; line-height:1;}
+  #preplistTab .pro-per{font-size:11.5px; color:var(--ink-soft);}
+  #preplistTab .pro-feats{margin:12px 0 4px; padding-left:18px; font-size:13px; line-height:1.6;}
+  #preplistTab .pro-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px;}
+  #preplistTab .pro-box{background:#fff; border:1px solid var(--line); border-radius:9px; padding:10px 12px;}
+  #preplistTab .pro-box summary{cursor:pointer; font-weight:700; font-size:13.5px;}
+  #preplistTab .pro-table{width:100%; border-collapse:collapse; margin-top:6px;}
+  #preplistTab .pro-table td{padding:6px 4px; border-bottom:1px solid var(--line); font-size:12.5px; vertical-align:middle;}
+  #preplistTab .pro-table button{padding:6px 10px; font-size:12px;}
+  :root{ --cust0:#1F7A8C; --cust0-bg:#DDEFF2; --cust1:#9C4F7A; --cust1-bg:#F3E1EB; --cust2:#5E7A1F; --cust2-bg:#E9F0DA; --cust3:#8C5A1F; --cust3-bg:#F2E6D8;
+    --cust4:#3F4FA0; --cust4-bg:#E1E4F4; --cust5:#A03F3F; --cust5-bg:#F4E0E0; --cust6:#2F7A5B; --cust6-bg:#DCEFE6; --cust7:#6B6B2F; --cust7-bg:#EEEEDC; }
+  .sumcard.cust0{background:var(--cust0-bg);} .sumcard.cust0 .n,.sumcard.cust0 .lbl{color:var(--cust0);}
+  .sumcard.cust1{background:var(--cust1-bg);} .sumcard.cust1 .n,.sumcard.cust1 .lbl{color:var(--cust1);}
+  .sumcard.cust2{background:var(--cust2-bg);} .sumcard.cust2 .n,.sumcard.cust2 .lbl{color:var(--cust2);}
+  .sumcard.cust3{background:var(--cust3-bg);} .sumcard.cust3 .n,.sumcard.cust3 .lbl{color:var(--cust3);}
+  .sumcard.cust4{background:var(--cust4-bg);} .sumcard.cust4 .n,.sumcard.cust4 .lbl{color:var(--cust4);}
+  .sumcard.cust5{background:var(--cust5-bg);} .sumcard.cust5 .n,.sumcard.cust5 .lbl{color:var(--cust5);}
+  .sumcard.cust6{background:var(--cust6-bg);} .sumcard.cust6 .n,.sumcard.cust6 .lbl{color:var(--cust6);}
+  .sumcard.cust7{background:var(--cust7-bg);} .sumcard.cust7 .n,.sumcard.cust7 .lbl{color:var(--cust7);}
+  @media (max-width:600px){ .shell-tabs{flex-wrap:wrap;} .shell-tab-btn{padding:8px 12px;} }
+</style>
 </head>
 <body>
 
 <div class="shell-masthead no-print">
-  <h1>Preplist Sorter</h1>
+  <h1>Prepline</h1>
   <div class="shell-tabs">
+    <button class="shell-tab-btn pro-cta" id="proUpgradeBtn" onclick="AutoprodLicence.openUpgrade()" type="button">★ Upgrade to Pro</button>
+    <button class="shell-tab-btn" id="licenceKeyBtn" onclick="AutoprodLicence.openLicenceDialog()" type="button">Enter licence key</button>
     <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
   </div>
@@ -402,13 +893,15 @@
 
   <div class="masthead no-print">
     <div>
-      <h1>Preplist Sorter</h1>
+      <h1>Prepline</h1>
       <div class="sub" id="mastheadSub">Sort a preplist once, or build a recipe database you reuse every week — your choice below.</div>
     </div>
     <div class="tag" id="fileTag">no file loaded</div>
   </div>
 
   <div class="viewtoggle no-print" id="toolModeToggle" style="margin-bottom:20px;"></div>
+
+  <div class="panel no-print pro-panel" id="proPanel"></div>
 
   <div class="panel no-print" id="dbPanel">
     <div class="row no-print" style="justify-content:space-between; align-items:center;">
@@ -417,8 +910,13 @@
     </div>
     <div class="dropzone" id="dropzone">
       <div class="big">Drop an .xlsx preplist, or one or more production tool PDFs, here — or click to browse</div>
-      <div class="small" id="dropzoneHint">Every tab in a workbook is read as one dish. A production tool PDF is read for its raw ingredients — sub-recipes (batter, sauces, purees etc.) are automatically exploded into their own raw ingredients, each tagged with the sub-recipe's cooked yield.</div>
+      <div class="small" id="dropzoneHint">Every tab in a workbook is read as one dish. A production tool PDF is read from each dish's front page only: quantities are as printed there (finished/cooked weights for sub-recipes such as sauces and purees), not raw weights.</div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.pdf" multiple>
+    </div>
+    <div class="row no-print" id="appendRow" style="margin-top:10px; display:none; align-items:center;">
+      <button class="secondary" id="appendPdfBtn" type="button">+ Append another PDF to this list <span class="pro-pill">PRO</span></button>
+      <span class="small" style="font-size:12px;color:var(--ink-soft);">Adds its items to the current list instead of replacing it.</span>
+      <input type="file" id="appendInput" accept=".pdf" multiple>
     </div>
     <div class="or-divider">or paste rows</div>
     <textarea id="pasteBox" placeholder="Paste rows copied from Excel — one task per line, columns separated by tabs:&#10;Dish name&#9;Task&#9;Qty per person&#9;Unit&#10;&#10;(Dish name column is optional — leave it out and everything pastes under &quot;Pasted list&quot;.)"></textarea>
@@ -457,7 +955,7 @@
     <div class="row" style="align-items:flex-end; margin-bottom:14px;">
       <div class="field" style="flex:0 0 160px;">
         <label>Set every dish to</label>
-        <input type="text" inputmode="numeric" id="bulkPax" placeholder="e.g. 350">
+        <input type="text" inputmode="decimal" id="bulkPax" placeholder="e.g. 350">
       </div>
       <div class="field" style="flex:0 0 auto;">
         <button class="secondary" id="bulkPaxBtn" type="button">Apply to all</button>
@@ -530,6 +1028,7 @@
   <div id="resultsArea"></div>
 
   <footer class="no-print">
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.2.4</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -548,6 +1047,29 @@
     lose them — this week's pax/date selections in Recipe database mode are the one exception and reset each week
     by design. Export or print if you want a copy outside this browser.
   </footer>
+  <div class="print-only made-with-footer" id="madeWithFooter" hidden style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px 'Inter',sans-serif; color:#777; text-align:center;">Made with Prepline</div>
+</div>
+
+<div class="orig-viewer-overlay hidden" id="origViewerOverlay" onclick="if(event.target===this) closeOriginalViewer()">
+  <div class="orig-viewer-card">
+    <div class="orig-viewer-head">
+      <div>
+        <div class="orig-viewer-title" id="origViewerTitle"></div>
+        <div class="orig-viewer-sub" id="origViewerSub"></div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" type="button" onclick="printOriginalViewer()">Print</button>
+        <button class="ghost" type="button" onclick="closeOriginalViewer()">Close ✕</button>
+      </div>
+    </div>
+    <div class="orig-viewer-body">
+      <img id="origViewerImg" alt="Original production tool page">
+    </div>
+    <div class="orig-viewer-nav" id="origViewerNav">
+      <button class="ghost" type="button" id="origViewerPrevBtn" onclick="prevOriginalPage()">← Previous page</button>
+      <button class="ghost" type="button" id="origViewerNextBtn" onclick="nextOriginalPage()">Next page →</button>
+    </div>
+  </div>
 </div>
 
 </div>
@@ -584,22 +1106,39 @@
     <div class="help-num">01</div>
     <div class="help-body">
       <h3>Load a preplist</h3>
-      <p>Drop an .xlsx preplist, or one or more production tool PDFs, into the dropzone. Every tab in a workbook is read as one dish; a PDF is read for its raw ingredients, with sub-recipes automatically broken out.</p>
+      <p>Drop an .xlsx preplist, or one or more production tool PDFs, into the dropzone. Every tab in a workbook is read as one dish; a PDF is read from each dish's front page, so its quantities are finished/cooked weights (check the production tool for raw weights).</p>
       <p class="note">Choose "recipe database" mode if you want to build a reusable library you'll draw on every week, or "one-time sort" for a single preplist you won't reuse. Either way, your work saves automatically to this browser as you go.</p>
     </div>
   </div>
   <div class="help-step">
     <div class="help-num">02</div>
     <div class="help-body">
-      <h3>Review the sorted categories</h3>
-      <p>The tool splits every task into Vegetables, Proteins, Sauces/Purees/Gels, Garnishes, Big Jobs, and Box off — assign a team leader to each and switch to the "By prep day" view to see tasks grouped by real weekday.</p>
+      <h3>Method, captured as a real image — no parsing to get wrong</h3>
+      <p>The printed sheet — by dish, by section, or by prep day — ends with a consolidated page showing just the Method section cropped straight from each dish's and sub-recipe's own production tool page, from "Method:" down through the Batch number row. It's the real pixels, not re-typed text, packed together so a dish with several sub-recipes doesn't need a separate page per one.</p>
+      <p>A "📖 View original" button also appears next to each dish on screen, for paging through its full production tool pages (not just the Method crop) with Previous/Next and a Print button any time.</p>
+      <p class="note">Both of these are PDF-only — a spreadsheet has no production tool page to capture from.</p>
     </div>
   </div>
   <div class="help-step">
     <div class="help-num">03</div>
     <div class="help-body">
+      <h3>Review the sorted categories</h3>
+      <p>The tool splits every task into Vegetables, Proteins, Sauces/Purees/Gels, Garnishes, Big Jobs, and Box off — assign a team leader to each and switch to the "By prep day" view to see tasks grouped by real weekday.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">04</div>
+    <div class="help-body">
       <h3>Print or export</h3>
       <p>Section moves and team leader names save automatically to this browser as you go — a refresh or accidental close won't lose them. Print or export when you're ready for a copy outside the browser.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">05</div>
+    <div class="help-body">
+      <h3>Export to Excel — an editable, re-uploadable copy</h3>
+      <p>Each view has its own "📊 Export to Excel" button, laid out to match how you're looking at it — By dish gives one sheet per dish, By team section one sheet per section, By prep day one sheet per day (several dishes can share a sheet when grouped this way). Open it in Excel or Google Sheets to update quantities, sections or prep days as the function changes, then upload that same file back into the tool later and it reads straight back in.</p>
+      <p class="note">By dish uses the original tab names: the workbook's own tab names in the same order, or for a PDF each recipe's title as printed. By team section and By prep day name each tab after the section or day. Every export has a Source tab column with the exact original name of the tab (or PDF recipe) each row came from. Names are made Excel-safe: at most 31 characters, no [ ] : * ? / \, and no two tabs the same; any name Excel forces us to change is listed in the message after the export. For the By-dish export specifically, a dish name longer than that comes back under its truncated tab name on re-upload, rather than its full original title — the By-section and By-day exports don't have this limit, since several dishes sharing one tab always keep their full names.</p>
     </div>
   </div>
 </div>
@@ -626,7 +1165,26 @@ const SECTION_KEY = {
   'Box off/ Trolley organising team':'box'
 };
 
-const WORDBOUND_KW = new Set(['ragu','oil','roe','pea','crate']);
+const WORDBOUND_KW = new Set(['ragu','oil','roe','pea','crate','butter',  // 'butter' whole-word so "butternut pumpkin" isn't filed as a sauce
+  // v3.2.1: whole words only, so these stop matching inside other words:
+  'flower',   // not "cauliflower" (was filed as a garnish)
+  'rump',     // not "trumpet mushroom" (was filed as a protein)
+  'gel',      // not "gelato" / "angel" (was filed as a sauce)
+  'jus',      // not "adjust seasoning" (was filed as a sauce)
+  'pave',     // not "pavlova"
+  'rice','bread','tart','cake','sable']);  // new starch/dessert words: not "price", "breadcrumb", "tartare", "pancake", "disable"
+// v3.2.1: there is no pastry or starch station in the six built-in sections, so desserts/pastry
+// and rice/grain/starch prep go to Big Jobs, where this list already files batch starch work
+// (polenta, mash, rosti, gnocchi-style dumplings). A Pro custom station (e.g. "Pastry") is
+// checked before all of these, so a kitchen that runs one gets those items there instead.
+const DESSERT_KW = ['meringue','pavlova','pastry','tart','tarts','tartlet','sponge','cake','cheesecake','cupcake',
+  'brownie','biscuit','shortbread','cookie','choux','eclair','éclair','profiterole','macaron','sable','sablé',
+  'financier','madeleine','friand','panna cotta','pannacotta','mousse','souffle','soufflé','parfait','sorbet',
+  'gelato','ice cream','semifreddo','brulee','brûlée','tiramisu','frangipane','praline','nougat','fudge',
+  'petit four','petits fours','tuile','pudding','pancake','crepe','crêpe','waffle','crème pâtissière','creme patissiere','sweet dough'];
+const STARCH_KW = ['rice','risotto','arancini','couscous','cous cous','quinoa','freekeh','farro','barley','bulgur',
+  'burghul','semolina','pasta','gnocchi','noodle','orzo','bread','brioche','focaccia','sourdough','dough',
+  'flatbread','roti','naan','bao bun','grain','wonton'];
 const BOX_OFF_KW = ['breadcrate','logistics team','portioning pre event','sanitise all items','vacuumbag whatever',
   'dolleys for transport','dolley','trolley','box off','crate','wrap and label','dispatch','load out',
   'send to event','pack for event','packing list','coolroom transport'];
@@ -634,7 +1192,7 @@ const BIG_JOB_PHRASES = ['pave','terrine','scallop','hasselback','hassleback','r
   'croquette','roulade','mosaic','brik','moussaka','mousakka','mandu','dumpling',
   'pithivier','boudin','agnolotti','ravioli','polenta','cigar','pangrattato',
   'overnight','beef cheek','short rib','lamb shoulder','pork shoulder','pork belly','mash','tempura batter'];
-const GARNISH_KW = ['oil','crumb','soil','microherb','micro herb','micro basil','micro','cress','edible flower',
+const GARNISH_KW = ['flowers','oil','crumb','soil','microherb','micro herb','micro basil','micro','cress','edible flower',
   'finger lime','fingerlime','salmon roe','roe','vinegar pearl','caviar','cavier','powder','dust','pearls',
   'preserved lemon','preserve lemon','chives','thyme','parsley','gremolata','bronze fennel','nasturtium',
   'sultana','sorrel','caper','pine nut','pickled','radicchio','radiccio','herbs','herb','viola','amaranth',
@@ -643,7 +1201,7 @@ const SAUCE_KW = ['jus','puree','sauce','glaze','dressing','gel','emulsion','red
   'romesco','ragu','ragout','compote','fondue','labneh','yoghurt','yogurt','ghanoush','miso','dashi','feta',
   'fetta','parmesan','ricotta','grana padano','cheese','butter','stock','cream','vincotto','agrodolce',
   'infused milk','mirepoix','cashew nut','salsa','mayo','mayonnaise','aioli','relish','chutney','pesto',
-  'coulis','custard','curd','ganache','marinade','brine','roux'];
+  'coulis','custard','curd','ganache','marinade','brine','roux','gels','horseradish','caramel','vinegar','mirin'];
 const PROTEIN_KW = ['chicken','beef','lamb','pork','duck','salmon','barramundi','bara','prawn','fish','fillet',
   'breast','rump','cutlet','wing','veal','venison','quail','turkey','rabbit','goat','kangaroo','crab',
   'lobster','oyster','squid','calamari','octopus','mussel','clam','pipi','yabby','scampi','crayfish',
@@ -658,7 +1216,10 @@ const VEGETABLE_KW = ['carrot','asparagus','leek','broccolini','broccoli','spina
   'saltbush','shimeji','pencil leek','kingbrown','king brown','potato','poatato','avocado','mushroom',
   'capsicum','beetroot','beet','pumpkin','squash','sweetcorn','celeriac','celery','garlic',
   'eschallot','shallot','parsnip','swede','turnip','witlof','endive','lettuce','rocket','watercress',
-  'silverbeet','bok choy','choy sum','daikon','okra','artichoke'];
+  'silverbeet','bok choy','choy sum','daikon','okra','artichoke','cauliflower','romanesco','sweet corn','corn cob',
+  'green bean','broad bean','snow pea','sugar snap'];
+// checked before the garnish list: "brussels sprouts" would otherwise hit the garnish word "sprout"
+const VEG_FIRST_KW = ['brussels sprout','brussel sprout'];
 const SHEET_BIG_JOB_OVERRIDE = ['mosaic','roulade','roulard'];
 
 // encodeURIComponent leaves ' ! ( ) * untouched, and an apostrophe would break the quoted
@@ -666,6 +1227,55 @@ const SHEET_BIG_JOB_OVERRIDE = ['mosaic','roulade','roulard'];
 function encName(str){
   return encodeURIComponent(str).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 }
+let origViewerImages = []; // the current dish's images, so Prev/Next can step through them
+let origViewerIndex = 0;
+let origViewerDishClean = '';
+function openOriginalViewer(encDish){
+  const dish = decodeURIComponent(encDish);
+  const imgs = originalPageImages[dish];
+  if (!imgs || !imgs.length) return;
+  origViewerImages = imgs;
+  origViewerIndex = 0;
+  origViewerDishClean = cleanDishName(dish);
+  renderOriginalViewer();
+  document.getElementById('origViewerOverlay').classList.remove('hidden');
+}
+function renderOriginalViewer(){
+  const total = origViewerImages.length;
+  const cur = origViewerImages[origViewerIndex];
+  document.getElementById('origViewerTitle').textContent = origViewerDishClean;
+  document.getElementById('origViewerSub').textContent = (total>1 ? 'Page '+(origViewerIndex+1)+' of '+total+' — ' : '') + (cur.pageLabel || '');
+  document.getElementById('origViewerImg').src = cur.dataUrl;
+  const nav = document.getElementById('origViewerNav');
+  nav.style.display = total>1 ? '' : 'none';
+  document.getElementById('origViewerPrevBtn').disabled = origViewerIndex===0;
+  document.getElementById('origViewerNextBtn').disabled = origViewerIndex>=total-1;
+}
+function prevOriginalPage(){ if (origViewerIndex>0){ origViewerIndex--; renderOriginalViewer(); } }
+function nextOriginalPage(){ if (origViewerIndex<origViewerImages.length-1){ origViewerIndex++; renderOriginalViewer(); } }
+function closeOriginalViewer(){
+  document.getElementById('origViewerOverlay').classList.add('hidden');
+}
+function printOriginalViewer(){
+  const title = origViewerDishClean;
+  const imgsHtml = origViewerImages.map(im=>`<div class="pg"><img src="${im.dataUrl}"><div class="lbl">${escapeHtml(im.pageLabel||'')}</div></div>`).join('');
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
+    <style>
+      body{margin:0;}
+      .pg{page-break-after:always; display:flex; flex-direction:column; align-items:center; padding:16px 0;}
+      .pg:last-child{page-break-after:auto;}
+      img{max-width:100%; height:auto;}
+      .lbl{font:12px sans-serif; color:#555; margin-top:6px;}
+    </style>
+    </head><body>${imgsHtml}</body></html>`;
+  printViaIframe(fullHtml);
+}
+document.addEventListener('keydown', e => {
+  if (document.getElementById('origViewerOverlay').classList.contains('hidden')) return;
+  if (e.key==='Escape') closeOriginalViewer();
+  if (e.key==='ArrowLeft') prevOriginalPage();
+  if (e.key==='ArrowRight') nextOriginalPage();
+});
 function norm(s){ return (s||'').toString().replace(/\s+/g,' ').trim().toLowerCase(); }
 function isNote(t){
   return t.length > 250; // genuinely oversized instruction blocks only — logistics-style
@@ -691,8 +1301,14 @@ function categorize(itemText, sheetTitle){
   // Eggplant "eye fillet"/"eye fillets" is the vegetarian dish's centrepiece, not a meat
   // cut — check this before PROTEIN_KW, since "fillet" would otherwise wrongly win.
   if (t.includes('eggplant') || t.includes('aubergine')) return 'Vegetables';
+  if (kwHit(t, VEG_FIRST_KW)) return 'Vegetables';
   if (kwHit(t, GARNISH_KW)) return 'Garnishes, Herbs, Powders, Oils Etc.';
+  // v3.2.1: desserts/pastry before sauces ("ice cream", "lemon curd tart" aren't sauces), but a
+  // savoury item ("chicken liver parfait", "salmon mousse", "beef wellington pastry") stays a protein.
+  if (kwHit(t, DESSERT_KW) && !kwHit(t, PROTEIN_KW)) return 'Big Jobs';
   if (kwHit(t, SAUCE_KW)) return 'Sauce, Purees and Gels';
+  // v3.2.1: rice, grains and starch prep (not "rice wine/vinegar", which are condiments)
+  if (kwHit(t, STARCH_KW) && !/\brice (wine|vinegar)\b/.test(t)) return 'Big Jobs';
   if (kwHit(t, PROTEIN_KW)) return SHEET_BIG_JOB_OVERRIDE.some(k=>st.includes(k)) ? 'Big Jobs' : 'Proteins';
   if (kwHit(t, VEGETABLE_KW)) return 'Vegetables';
   return 'REVIEW';
@@ -704,6 +1320,12 @@ let leaderBySection = {};
 SECTIONS.forEach(s=>{ leaderBySection[s] = ''; });
 let activeFilter = 'all';
 let paxByDish = {}; // dish name -> number (pax count for that dish)
+// PDF only: a snapshot image of each dish's original production-tool front page (the
+// method, plating notes, everything a parsed ingredient list leaves out), so the team
+// can check it here instead of tracking someone down who still has the original file.
+let originalPageImages = {}; // dish name -> [{dataUrl, pageLabel}, ...] — main page first, then each sub-recipe's own page
+let methodCrops = {}; // dish name -> [{dataUrl, pageLabel}, ...] — just the cropped Method: region of each of those same pages
+let originalImagesTruncated = false; // true once a save had to drop images to fit storage
 let viewMode = 'dish'; // 'dish' | 'section' | 'priority'
 
 // ---------- persistent recipe database ----------
@@ -713,6 +1335,9 @@ let viewMode = 'dish'; // 'dish' | 'section' | 'priority'
 const DB_STORAGE_KEY = 'preplistDishDatabase_v1';
 let dishDatabase = {};      // { dishTitle: { items: [{task,qty,unit,section,baseCategory,flagged,stageNum}] } }
 let weeklySelection = {};   // { dishTitle: {include, pax, date} } — this week's picks, not persisted
+let blockedDays = new Set();   // weekday names the kitchen is closed (public holiday etc.) — prep auto-shifts off these
+let selectedRowIdx = new Set();   // ROWS indices currently ticked for a bulk "move to day" action
+let dishIncluded = {};   // dish name -> false if unticked in the preplist summary — excluded from every view/print/export
 let appMode = 'database';   // 'database' (upload/manage) | 'weekly' (pick dishes + generate)
 let toolMode = 'onetime';   // 'onetime' (classic — upload, sort, done, nothing saved) | 'database' (persistent, weekly reuse)
 let dbStorageOk = true;     // false if localStorage isn't available at all in this browser
@@ -736,6 +1361,9 @@ function sanitizeDatabase(raw){
         section, baseCategory: SECTIONS.includes(it.baseCategory) ? it.baseCategory : section,
         flagged: known ? !!it.flagged : true, stageNum: Number.isFinite(it.stageNum) ? it.stageNum : 1};
       if (Number.isFinite(it.pdfFixedTotal)) clean.pdfFixedTotal = it.pdfFixedTotal;
+      if (Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0) clean.pdfBasePax = it.pdfBasePax;   // v3.2.2
+      ['srcSheet','srcType'].forEach(k=>{ if (typeof it[k]==='string') clean[k] = it[k]; });
+      if (Number.isFinite(it.srcSheetIdx)) clean.srcSheetIdx = it.srcSheetIdx;
       items.push(clean);
     });
     if (!items.length) { skipped++; return; }
@@ -764,11 +1392,19 @@ const ONETIME_STORAGE_KEY = 'preplistOnetimeSession_v1';
 let onetimeSaveTimer = null;
 function saveOnetimeSession(){
   if(!ROWS || ROWS.length === 0) return; // nothing real to back up yet — don't clobber a prior save
+  const base = {ROWS, leaderBySection, paxByDish, activeFilter, viewMode,
+    eventDayOverride, eventDateByDish, rosteredChefs, sourceInfo};
   try{
-    const snapshot = {ROWS, leaderBySection, paxByDish, activeFilter, viewMode,
-      eventDayOverride, eventDateByDish, rosteredChefs, sourceInfo};
-    localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify(snapshot));
-  }catch(e){ /* storage full/unavailable — silently skip, nothing else in the app changes */ }
+    // Try with the original-page images included first — they're the whole point of
+    // this feature, so only drop them if they genuinely don't fit.
+    localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify({...base, originalPageImages, methodCrops}));
+    originalImagesTruncated = false;
+  }catch(e){
+    try{
+      localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify(base));
+      originalImagesTruncated = true; // images still show for this browser tab, just won't survive a reload
+    }catch(e2){ /* storage completely full/unavailable — silently skip, nothing else in the app changes */ }
+  }
 }
 function scheduleOnetimeSave(){
   clearTimeout(onetimeSaveTimer);
@@ -781,19 +1417,54 @@ function loadOnetimeSession(){
     const s = JSON.parse(raw);
     const isObj = v => v && typeof v==='object' && !Array.isArray(v);
     const rowOk = r => r && typeof r==='object' && typeof r.dish==='string' && typeof r.task==='string'
-      && typeof r.section==='string' && SECTIONS.includes(r.section);
+      && typeof r.section==='string';
+    // A list saved by another build may use a station this build doesn't have (e.g. a Pro custom
+    // station while Pro is off): keep the row, in its base section (or Vegetables), flagged.
+    const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:r.section, baseCategory:r.baseCategory||r.section, flagged:!!r.flagged, day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1}));
+        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
+        // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
+        ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
+        // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
+        ...(Number.isFinite(r.pdfBasePax) && r.pdfBasePax>0 ? {pdfBasePax:r.pdfBasePax} : {}),
+        // v3.2: the original tab / PDF title each row came from (used to name Excel export tabs)
+        ...(typeof r.srcSheet==='string' ? {srcSheet:r.srcSheet} : {}),
+        ...(Number.isFinite(r.srcSheetIdx) ? {srcSheetIdx:r.srcSheetIdx} : {}),
+        ...(typeof r.srcType==='string' ? {srcType:r.srcType} : {})}));
       leaderBySection = isObj(s.leaderBySection) ? s.leaderBySection : {};
       SECTIONS.forEach(x=>{ if(typeof leaderBySection[x]!=='string') leaderBySection[x]=''; });
-      paxByDish = isObj(s.paxByDish) ? s.paxByDish : {};
+      paxByDish = cleanPaxMap(s.paxByDish);
+      migratePdfBasePax(ROWS, paxByDish);
       activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
       viewMode = ['dish','section','priority'].includes(s.viewMode) ? s.viewMode : 'dish';
       eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
       eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
       rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
       sourceInfo = isObj(s.sourceInfo) ? s.sourceInfo : sourceInfo;
+      originalPageImages = {};
+      if (isObj(s.originalPageImages)){
+        const validDish = new Set(ROWS.map(r=>r.dish));
+        const okImg = v => isObj(v) && typeof v.dataUrl==='string' && v.dataUrl.startsWith('data:image/');
+        Object.keys(s.originalPageImages).forEach(dish=>{
+          if (!validDish.has(dish)) return;
+          const v = s.originalPageImages[dish];
+          const arr = Array.isArray(v) ? v : (okImg(v) ? [v] : []);   // tolerate an old single-image save from before this was a list
+          const clean = arr.filter(okImg).map(x=>({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}));
+          if (clean.length) originalPageImages[dish] = clean;
+        });
+      }
+      methodCrops = {};
+      if (isObj(s.methodCrops)){
+        const validDish = new Set(ROWS.map(r=>r.dish));
+        const okImg = v => isObj(v) && typeof v.dataUrl==='string' && v.dataUrl.startsWith('data:image/');
+        Object.keys(s.methodCrops).forEach(dish=>{
+          if (!validDish.has(dish)) return;
+          const arr = Array.isArray(s.methodCrops[dish]) ? s.methodCrops[dish] : [];
+          const clean = arr.filter(okImg).map(x=>({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}));
+          if (clean.length) methodCrops[dish] = clean;
+        });
+      }
     }
   }catch(e){ /* corrupted or unavailable — start fresh rather than crash */ }
 }
@@ -810,7 +1481,7 @@ function commitRowsToDatabase(){
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
       baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
-      pdfFixedTotal:r.pdfFixedTotal
+      pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType
     }));
     dishDatabase[dish] = {items};
     if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
@@ -868,7 +1539,7 @@ function setWeeklyStatus(msg, cls){
   if (el){ el.textContent = msg; el.className = 'status' + (cls ? ' '+cls : ''); }
 }
 function generateWeekly(){
-  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {};
+  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
   let includedCount = 0;
   Object.keys(dishDatabase).forEach(dish=>{
     const sel = weeklySelection[dish];
@@ -883,14 +1554,21 @@ function generateWeekly(){
       const [yy,mm,dd] = sel.date.split('-');
       eventDateByDish[dish] = `${dd}/${mm}/${yy}`;
     }
-    if (sel.pax) paxByDish[dish] = parseFloat(sel.pax);
+    const selPax = parsePaxInput(sel.pax);
+    if (selPax.ok && selPax.n!==undefined) paxByDish[dish] = selPax.n;
     const eventDay = getEventDay(dish);
     dishDatabase[dish].items.forEach(it=>{
       const day = eventDay ? calendarDayForPrepNum(eventDay, it.stageNum) : '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
         baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum,
-        pdfFixedTotal:it.pdfFixedTotal});
+        pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType,
+        ...(Number.isFinite(it.pdfBasePax) ? {pdfBasePax:it.pdfBasePax} : {})});
     });
+    // v3.2.2: a PDF dish with no pax picked this week starts at its printed yield
+    if (paxByDish[dish]===undefined){
+      const b = dishDatabase[dish].items.find(it=>Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0);
+      if (b) paxByDish[dish] = b.pdfBasePax;
+    }
   });
   if (includedCount===0){ setWeeklyStatus('Tick at least one dish to generate this week\'s preplist.', 'err'); return; }
   sourceInfo = {name: 'Recipe database — '+includedCount+' dish(es) selected this week', loadedAt: new Date()};
@@ -899,10 +1577,15 @@ function generateWeekly(){
   renderApp();
 }
 
-function setWeeklyPax(encodedDish, val){
+function setWeeklyPax(encodedDish, val, el){
   const dish = decodeURIComponent(encodedDish);
   if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
-  weeklySelection[dish].pax = val;
+  const p = parsePaxInput(val);
+  if (el) el.classList.toggle('pax-invalid', !p.ok);
+  if (!p.ok) return;
+  weeklySelection[dish].pax = p.n===undefined ? '' : String(p.n);
+  // v3.2.2: already generated this week? rescale the live list straight away
+  if (ROWS.some(r=>r.dish===dish)){ storePax(dish, p.n); render(); }
 }
 function setWeeklyDate(encodedDish, val){
   const dish = decodeURIComponent(encodedDish);
@@ -936,7 +1619,7 @@ function renderWeeklyPanel(){
       return `<tr>
         <td><input type="checkbox" ${sel.include?'checked':''} onchange="toggleWeeklyInclude('${enc}', this.checked)"></td>
         <td class="task">${escapeHtml(cleanDishName(dish))}<div class="dish" style="margin-top:2px;">${taskCount} tasks saved</div></td>
-        <td><input type="text" inputmode="numeric" class="leader-input" style="width:90px;" placeholder="pax" value="${escapeHtml(String(sel.pax||''))}" onchange="setWeeklyPax('${enc}', this.value)"></td>
+        <td><input type="text" inputmode="decimal" class="leader-input" style="width:90px;" placeholder="pax" value="${escapeHtml(String(sel.pax||''))}" oninput="setWeeklyPax('${enc}', this.value, this)"></td>
         <td><input type="date" class="leader-input" value="${sel.date||''}" onchange="setWeeklyDate('${enc}', this.value)"></td>
         <td><button class="ghost" onclick="removeDishFromDatabase('${enc}')" type="button" style="color:var(--prot);">Remove</button></td>
       </tr>`;
@@ -1217,8 +1900,17 @@ function getEventDateStr(dish){
 function calendarDayForPrepNum(eventDay, prepNum){
   const idx = WEEKDAYS.indexOf(eventDay);
   if (idx<0 || !prepNum) return null;
-  const offset = 4 - prepNum; // Stage1->-3, Stage2->-2, Stage3->-1, Stage4->0
-  return WEEKDAYS[(idx - offset + 7) % 7];
+  let offset = 4 - prepNum; // Stage1->-3, Stage2->-2, Stage3->-1, Stage4->0
+  // If the day this stage would normally land on is blocked (a public holiday, the
+  // kitchen's closed, etc.), push the task one day earlier and check again — repeat
+  // until an open day is found. If every candidate in the window is somehow blocked,
+  // fall back to the original, unshifted day rather than returning nothing.
+  for (let tries=0; tries<7; tries++){
+    const day = WEEKDAYS[(idx - offset + 7) % 7];
+    if (!blockedDays.has(day)) return day;
+    offset++;
+  }
+  return WEEKDAYS[(idx - (4-prepNum) + 7) % 7];
 }
 // Setting/changing a dish's event day automatically recalculates the actual weekday
 // for every one of its tasks from their stage — this is the "automate 4-day prep day
@@ -1248,14 +1940,14 @@ function eventDaySelect(encodedDish, current){
 const DAY1_KW = ['collect','trim','wash','count','top up order','topup order','top-up order','order top up','order',
   'peel','devein','de-vein','unpack','receive delivery','receiving','stocktake','par level','tally','defrost',
   'thaw','pat dry','squeeze','drain'];
-const DAY2_KW = ['cook','steam','blanch','chargrill','char-grill','char grill','roast','grill','sear','saute','sauté',
+const DAY2_KW = ['cook','charred','steam','blanch','chargrill','char-grill','char grill','roast','grill','sear','saute','sauté',
   'braise','sous vide','deep fry','smoke','poach','simmer','reduce','bake','ferment','infuse','char','griddle',
   'pan-fry','panfry','confit','render','caramelise','caramelize','toast','dehydrate','vac cook','melt','glaze'];
 const DAY3_KW = ['portion','tray up','trolley card','trolley','organise','organize','box off','plate up',
   'divide into','allocate','arrange on tray','set up tray','label and store','wrap individually','crumb'];
 const DAY4_KW = ['continuation','production tool','fill up cambro','fill cambro','restock','top up trolley',
   'replenish','fill up','pack extra','spare stock','buffer stock','contingency'];
-const DAY_WORDBOUND = new Set(['order','count']);
+const DAY_WORDBOUND = new Set(['order','count','char','melt']);   // v3.2.1: 'char' not "swiss chard"/"charcuterie", 'melt' not "smelt"
 
 // Fallback default per base category when no day-keyword is found in the task text —
 // reflects the general shape of each station's work (from the prep-flow guide).
@@ -1329,7 +2021,7 @@ function classifyPrepStage(taskText, baseCategory, contextStage){
   const t = norm(taskText);
 
   if (/\bmash\b/.test(t)) return 1; // non-negotiable
-  if (t.includes('pave') || t.includes('terrine')){
+  if (/\bpave\b/.test(t) || t.includes('terrine')){   // v3.2.1: whole word, so "pavlova" isn't treated as a pave
     const d = paveDayOverride(t);
     if (d) return d; // non-negotiable
   }
@@ -1354,6 +2046,70 @@ function classifyPrepStage(taskText, baseCategory, contextStage){
   return 1;
 }
 
+// Mark a weekday as closed (a public holiday, the kitchen's shut, whatever the reason) —
+// every prep task that would normally land there automatically shifts one day earlier
+// instead (see calendarDayForPrepNum). Purely a per-session setting, same as everything
+// else here — reopen a day any time by unticking it again.
+function blockedDaysPanelHtml(){
+  return `<div class="panel no-print" style="padding:12px 16px; margin-bottom:16px;">
+    <div style="font-weight:700; font-size:12.5px; margin-bottom:8px;">Kitchen closed on (public holiday etc.) — prep auto-shifts off these days</div>
+    <div class="row" style="gap:14px; flex-wrap:wrap;">
+      ${WEEKDAYS.map(w=>`<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;">
+        <input type="checkbox" ${blockedDays.has(w)?'checked':''} onchange="toggleBlockedDay('${w}', this.checked)">${w}
+      </label>`).join('')}
+    </div>
+  </div>`;
+}
+function toggleBlockedDay(day, checked){
+  if (checked) blockedDays.add(day); else blockedDays.delete(day);
+  // Recalculate every already-generated row's prep day right now, not just future
+  // uploads — that's the whole point of blocking a day for a holiday. Only rows with a
+  // known prep stage and a known event day are touched; anything else (no event day set
+  // yet) is left exactly as it was.
+  ROWS.forEach(r=>{
+    if (!r.stageNum) return;
+    const eventDay = getEventDay(r.dish);
+    if (!eventDay) return;
+    r.day = calendarDayForPrepNum(eventDay, r.stageNum);
+  });
+  render();
+}
+// A small toolbar above a table of rows: tick specific ones (or all of them), then move
+// every ticked row to one chosen prep day in a single action — for when a function's
+// pax changes or a day needs clearing, rather than clicking through each row's own
+// dropdown one at a time.
+function bulkMoveToolbarHtml(rowsInThisTable){
+  const idxList = rowsInThisTable.map(r=>ROWS.indexOf(r));
+  const anySelectedHere = idxList.some(i=>selectedRowIdx.has(i));
+  const selectedCount = idxList.filter(i=>selectedRowIdx.has(i)).length;
+  return `<div class="row no-print" style="gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap;">
+    <span class="meta" style="font-size:12px;">${selectedCount} ticked</span>
+    <select id="bulkMoveDaySelect" style="width:auto;">
+      <option value="">— move ticked rows to —</option>
+      ${WEEKDAYS.map(w=>`<option value="${w}" ${blockedDays.has(w)?'disabled':''}>${w}${blockedDays.has(w)?' (closed)':''}</option>`).join('')}
+    </select>
+    <button class="secondary" type="button" ${anySelectedHere?'':'disabled'} onclick="bulkMoveSelectedToDay(document.getElementById('bulkMoveDaySelect').value)">Move ticked rows</button>
+    <button class="ghost" type="button" onclick="clearRowSelection()">Clear ticks</button>
+  </div>`;
+}
+function toggleRowSelected(globalIdx, checked){
+  if (checked) selectedRowIdx.add(globalIdx); else selectedRowIdx.delete(globalIdx);
+  render();
+}
+function toggleSelectAll(checked, idxArray){
+  idxArray.forEach(i=>{ if (checked) selectedRowIdx.add(i); else selectedRowIdx.delete(i); });
+  render();
+}
+function clearRowSelection(){ selectedRowIdx.clear(); render(); }
+function bulkMoveSelectedToDay(day){
+  if (!day){ setStatus('Pick a day to move the ticked rows to first.', 'err'); return; }
+  if (!selectedRowIdx.size){ setStatus('Nothing ticked yet — tick at least one row.', 'err'); return; }
+  let moved = 0;
+  selectedRowIdx.forEach(idx=>{ if (ROWS[idx]){ ROWS[idx].day = day; moved++; } });
+  selectedRowIdx.clear();
+  render();
+  setStatus('Moved '+moved+' row(s) to '+day+'.', 'ok');
+}
 function daySelect(globalIdx, currentVal){
   return `<select class="rowsel" onchange="setDay(${globalIdx}, this.value)">
     <option value="" ${!currentVal?'selected':''}>— set day —</option>
@@ -1369,16 +2125,97 @@ function parseQty(q){
   const n = parseFloat(String(q).replace(/,/g,''));
   return n;
 }
-function computeTotal(r){
-  // PDF production-tool rows carry an already-scaled batch total — never a per-pax
-  // figure — so pax (whatever it's set to) never multiplies these.
-  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null) return r.pdfFixedTotal;
-  const pax = paxByDish[r.dish];
-  const q = parseQty(r.qty);
-  if (!pax || isNaN(q)) return null;
-  const t = q * pax;
-  return Math.round(t*100)/100;
+// v3.2.2: pax is a plain number from 0 to PAX_MAX. Blank = "not set". Anything else
+// (letters, negatives, "1e9") is refused rather than half-read (parseFloat("12abc") = 12).
+const PAX_MAX = 1000000;
+function parsePaxInput(val){
+  if (typeof val==='number') return (Number.isFinite(val) && val>=0 && val<=PAX_MAX) ? {ok:true, n:val} : {ok:false};
+  const t = String(val==null?'':val).trim().replace(/[\s,]/g,'');
+  if (t==='') return {ok:true, n:undefined};
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(t)) return {ok:false};
+  const n = Number(t);
+  if (!Number.isFinite(n) || n<0 || n>PAX_MAX) return {ok:false};
+  return {ok:true, n};
 }
+// Keeps only valid pax numbers (old saves, templates and backups may hold strings or junk).
+function cleanPaxMap(obj){
+  const out = {};
+  if (!obj || typeof obj!=='object' || Array.isArray(obj)) return out;
+  Object.keys(obj).forEach(k=>{
+    if (k==='__proto__' || k==='constructor' || k==='prototype') return;
+    const p = parsePaxInput(obj[k]); if (p.ok && p.n!==undefined) out[k] = p.n;
+  });
+  return out;
+}
+// v3.2.2: rows saved before v3.2.2 have a PDF batch total but no record of the pax it was
+// printed for. At import that pax was always the front-page yield, so use the saved pax.
+function migratePdfBasePax(rows, paxMap){
+  rows.forEach(r=>{
+    if (r.pdfFixedTotal===undefined || r.pdfFixedTotal===null) return;
+    if (Number.isFinite(r.pdfBasePax) && r.pdfBasePax>0) return;
+    delete r.pdfBasePax;
+    const p = paxMap[r.dish];
+    if (Number.isFinite(p) && p>0) r.pdfBasePax = p;
+  });
+  return rows;
+}
+function computeTotal(r){
+  const pax = paxByDish[r.dish];
+  const hasPax = typeof pax==='number' && Number.isFinite(pax) && pax>=0;
+  // PDF production-tool rows carry the batch total as printed, for the batch's own yield
+  // (pdfBasePax, read off the front page's "Yield: N ... *Each" line). v3.2.2: changing
+  // pax now scales that total by pax ÷ yield; before, it ignored pax completely. With no
+  // pax set, or a PDF with no readable yield, the printed total is shown unchanged.
+  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
+    const base = r.pdfBasePax;
+    if (!hasPax || !(Number.isFinite(base) && base>0)) return r.pdfFixedTotal;
+    return Math.round(r.pdfFixedTotal * pax / base * 1e9)/1e9;   // v3.2.3: only float noise removed, so it matches Excel's per-pax × PAX exactly (display rounds)
+  }
+  const q = parseQty(r.qty);
+  if (!hasPax || isNaN(q)) return null;
+  return Math.round(q * pax * 1e9)/1e9;
+}
+// Totals of 1000 g or more display as kg (and 1000 ml+ as L): "10 kg", never "10000 g".
+const G_UNITS = new Set(['g','gm','gms','gram','grams']), KG_UNITS = new Set(['kg','kgs','kilo','kilos','kilogram','kilograms']);
+const ML_UNITS = new Set(['ml','millilitre','millilitres','milliliter','milliliters']), L_UNITS = new Set(['l','lt','ltr','litre','litres','liter','liters']);
+function toBaseQty(n, unit){
+  const u = String(unit||'').toLowerCase().trim();
+  if (n===null || n===undefined || isNaN(n)) return {n, u:unit||'', key:u};
+  if (G_UNITS.has(u)) return {n, u:'g', key:'g'};
+  if (KG_UNITS.has(u)) return {n:n*1000, u:'g', key:'g'};
+  if (ML_UNITS.has(u)) return {n, u:'ml', key:'ml'};
+  if (L_UNITS.has(u)) return {n:n*1000, u:'ml', key:'ml'};
+  return {n, u:unit||'', key:u};
+}
+function dispQty(n, unit){
+  if (n===null || n===undefined || isNaN(n)) return {n, u:unit||''};
+  const b = toBaseQty(n, unit);
+  if (b.key==='g') return Math.abs(b.n)>=1000 ? {n:Math.round(b.n)/1000, u:'kg'} : {n:Math.round(b.n*100)/100, u:'g'};
+  if (b.key==='ml') return Math.abs(b.n)>=1000 ? {n:Math.round(b.n)/1000, u:'L'} : {n:Math.round(b.n*100)/100, u:'ml'};
+  return {n, u:unit||''};
+}
+function qN(n, unit){ return fmtNum(dispQty(n, unit).n); }
+// v3.2.3: the per-pax amount for the Per pax columns. Spreadsheet rows show their own figure
+// as imported; PDF rows show printed total ÷ Yield in g/ml (kg/L from 1000), rounded to
+// 3 significant figures below 10 and 1 decimal place from 10 (41.7 g, 0.0167 bunch).
+function fmtPerPax(n){
+  if (n===null || n===undefined || !Number.isFinite(n)) return '—';
+  if (n===0) return '0';
+  const a = Math.abs(n);
+  const v = a>=10 ? Math.round(n*10)/10 : Number(n.toPrecision(3));
+  return String(v);
+}
+function perPaxText(r){
+  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
+    const pp = exportPerPax(r);
+    if (!pp) return '—';
+    const d = dispQty(pp.n, pp.unit);
+    return fmtPerPax(d.n)+' '+(d.u||'');
+  }
+  const has = r.qty!==undefined && r.qty!==null && r.qty!=='';
+  return (has ? String(r.qty) : '—') + (r.unit ? ' '+String(r.unit) : '');
+}
+function qU(n, unit){ return String(dispQty(n, unit).u||''); }
 function fmtNum(n){
   if (n===null || n===undefined) return '—';
   if (Number.isInteger(n)) return String(n);
@@ -1394,7 +2231,11 @@ function addRows(dish, items){
     if (!it || it.item===undefined || it.item===null) continue;
     it.item = String(it.item);
     if (!it.item.trim()) continue;
-    let cat = categorize(it.item, dish);
+    // A Section column in the file (e.g. this tool's own Excel export, re-uploaded with
+    // values edited or untouched) wins over auto-categorization — it's what the person
+    // actually set, not a guess from the task's wording.
+    const sectionOverride = (typeof it.section==='string' && SECTIONS.includes(it.section)) ? it.section : null;
+    let cat = sectionOverride || categorize(it.item, dish);
     if (cat === null) continue;
     let flagged = false;
     if (cat === 'REVIEW'){
@@ -1409,8 +2250,10 @@ function addRows(dish, items){
     const stageNum = classifyPrepStage(taskText, cat, sameJob ? lastStage : null);
     lastStage = stageNum;
     lastCore = core || lastCore;
-    const day = eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '';
-    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum});
+    // A Prep day column in the file wins over auto-calculation too, for the same reason.
+    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '');
+    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum,
+      ...(typeof it.srcSheet==='string' ? {srcSheet: it.srcSheet} : {})});
   }
 }
 
@@ -1433,15 +2276,18 @@ function isBlankCell(v){ return v===undefined || v===null || (typeof v==='string
 // a row (e.g. two "PAX" cells side by side in the same row for two different dishes).
 // Header wording other kitchens use for the same columns.
 const ITEM_HEADERS = new Set(['item','items','ingredient','ingredients','product','products','prep item','prep items','component','components','description']);
-const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight']);
+const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight','qty (per pax)','quantity per pax']);   // v3.2.3 export header
 const UNIT_HEADERS = new Set(['unit','units','uom','unit of measure','measure']);
+const DAY_HEADERS  = new Set(['prep day','day','prepday']);
+const SECTION_HEADERS = new Set(['section','category','team']);
+const SOURCE_HEADERS = new Set(['source tab']);   // v3.2: written by this tool's own Excel export
 function extractAllBlocks(aoa){
   const nRows = aoa.length;
   const claimedRects = []; // {r1,r2,c1,c2}
   const blocks = [];
   const isClaimed = (r,c) => claimedRects.some(x => r>=x.r1 && r<=x.r2 && c>=x.c1 && c<=x.c2);
 
-  function readItemsDownward(itemCol, qtyCol, unitCol, startRow){
+  function readItemsDownward(itemCol, qtyCol, unitCol, startRow, dayCol, sectionCol, sourceCol){
     const items = [];
     let blank = 0, endRow = startRow;
     for (let r=startRow; r<nRows; r++){
@@ -1449,7 +2295,11 @@ function extractAllBlocks(aoa){
       const item = row[itemCol];
       if (isBlankCell(item)){ blank++; if (blank>6){ endRow=r; break; } continue; }
       blank = 0; endRow = r;
-      items.push({item:String(item), qty:row[qtyCol], unit:row[unitCol]});
+      const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
+      if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim();
+      if (sectionCol!=null && !isBlankCell(row[sectionCol])) entry.section = String(row[sectionCol]).trim();
+      if (sourceCol!=null && !isBlankCell(row[sourceCol])) entry.srcSheet = String(row[sourceCol]);   // exact, not trimmed
+      items.push(entry);
     }
     return {items, endRow};
   }
@@ -1483,12 +2333,14 @@ function extractAllBlocks(aoa){
         // otherwise fall back to the classic layout: Qty right of Item, Unit right of Qty.
         let qtyCol=c+1, unitCol=c+2;
         const hdr = row.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
-        const near = (set)=>{ for (let d=1; d<=6; d++){ for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; } } return -1; };
+        const near = (set)=>{ for (let d=1; d<=8; d++){   // v3.2.3: export has 8 columns (Source tab is 7 right of Item)
+           for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; } } return -1; };
         const qf = near(QTY_HEADERS), uf = near(UNIT_HEADERS);
         if (qf>=0 && !QTY_HEADERS.has(hdr[c+1]||'')) qtyCol = qf;
         if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
         else if (qf>=0 && uf<0) unitCol = qtyCol+1;
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1);
+        const dayCol = near(DAY_HEADERS), sectionColFound = near(SECTION_HEADERS), sourceColFound = near(SOURCE_HEADERS);
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 4);
         let pax = null;
@@ -1608,8 +2460,16 @@ function processWorkbook(wbObj){
         // generic sheets (which may hold several dishes) use the dish's own title instead.
         const dishTitle = isGeneric ? rawTitle : (blocks.length>1 ? rawTitle : name);
         sheetsUsed++; itemsFound += block.items.length;
-        if (block.pax!=null && paxByDish[dishTitle]===undefined) paxByDish[dishTitle] = block.pax;
+        if (block.pax!=null && paxByDish[dishTitle]===undefined){ const bp = parsePaxInput(block.pax); if (bp.ok && bp.n!==undefined) paxByDish[dishTitle] = bp.n; }
+        const rowsBefore = ROWS.length;
         addRows(dishTitle, block.items);
+        // v3.1: remember the workbook tab each row came from, so every Excel export can
+        // name its tabs after the imported file's own tabs (see exportDishesToXlsx).
+        const srcIdx = wbObj.SheetNames.indexOf(name);
+        for (let i=rowsBefore; i<ROWS.length; i++){
+          ROWS[i].srcType = 'xlsx';
+          if (typeof ROWS[i].srcSheet!=='string'){ ROWS[i].srcSheet = name; ROWS[i].srcSheetIdx = srcIdx; }   // a Source tab column (re-upload) wins
+        }
       });
     } catch(err){
       errored.push(name + ' (' + err.message + ')');
@@ -1618,11 +2478,23 @@ function processWorkbook(wbObj){
   return {sheetsUsed, itemsFound, skipped, errored};
 }
 
-function routeFiles(fileList){
+function routeFiles(fileList, opts){
+  opts = opts || {};
   const files = Array.from(fileList||[]);
   if (!files.length) return;
   const pdfs = files.filter(f=>f.name.toLowerCase().endsWith('.pdf'));
-  if (pdfs.length){ handlePdfFiles(pdfs); return; }
+  if (opts.append && !pdfs.length){ setStatus('Append works with production tool PDFs only.', 'err'); return; }
+  if (pdfs.length){
+    let use = pdfs, extra = '';
+    if (pdfs.length>1 && LICENSE_CONFIG.freeLimits && LICENSE_CONFIG.freeLimits.onePdfPerSort && !proActive()){
+      // v2 Pro build rule (off in v3, see LICENSE_CONFIG.freeLimits): free plan sorts one PDF at a time.
+      use = [pdfs[0]];
+      extra = ' Only "'+pdfs[0].name+'" was loaded: the free version sorts one PDF at a time. Pro can combine several PDFs into one list.';
+      setTimeout(()=>AutoprodLicence.openUpgrade('Combining several PDFs into one list is a Pro feature.'), 50);
+    }
+    handlePdfFiles(use, opts).then(()=>{ if (extra){ const el = document.getElementById('statusMsg'); el.textContent += extra; } });
+    return;
+  }
   handleFile(files[0]);
 }
 // ---------- production tool PDF parsing ----------
@@ -1639,6 +2511,97 @@ const PDF_UNIT_TO_GRAMS = {
 };
 function pdfRoundTo(n,d){ const p=Math.pow(10,d); return Math.round(n*p)/p; }
 
+// Renders one PDF page to a compressed JPEG data URL — the "original copy" of a dish's
+// production-tool front page (method, plating notes, everything the ingredient parser
+// doesn't capture), kept so the team can check it here instead of hunting for the file.
+// Scale/quality are tuned to stay legible while keeping localStorage usage reasonable.
+let pdfRenderErrors = []; // collected across a whole upload so the status message can report what actually happened
+async function pdfRenderPageImage(page, label){
+  try{
+    const viewport = page.getViewport({scale:1.35});
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx2d = canvas.getContext('2d');
+    if (!ctx2d) throw new Error('canvas 2D context unavailable');
+    await page.render({canvasContext: ctx2d, viewport}).promise;
+    const url = canvas.toDataURL('image/jpeg', 0.72);
+    if (!url || url === 'data:,') throw new Error('canvas produced an empty image');
+    return {url, canvas, scale:1.35};
+  }catch(e){
+    const msg = (e && e.message) ? e.message : String(e);
+    console.warn('Original-page render failed for', label, ':', msg);
+    pdfRenderErrors.push(label+': '+msg);
+    return null;   // a page that fails to rasterize just has no "view original" button — never blocks parsing
+  }
+}
+// Finds just the Method section's own region on the page — reuses the exact same label +
+// stop-detection logic as the text extraction (so whatever that already gets right about
+// where a method starts and ends, the crop agrees with) — but returns a pixel box instead
+// of the text itself, in scale-1 PDF coordinate units (caller multiplies by render scale).
+function pdfFindMethodRegion(items){
+  const label = items.find(w => pdfIsMethodLabel((w.str||'').trim()));
+  if (!label) return null;
+  const rest = items.filter(w => w.top > label.top + 2 && w.x0 >= label.x0 - 15 && norm(w.str));
+  const buckets = new Map();
+  rest.forEach(w=>{ const k = Math.round(w.top/4); if (!buckets.has(k)) buckets.set(k,[]); buckets.get(k).push(w); });
+  const keys = [...buckets.keys()].sort((a,b)=>a-b);
+  let bottom = label.top + 40; // a sane minimum crop height even if nothing follows the label
+  for (let i=0; i<keys.length; i++){
+    const wds = buckets.get(keys[i]).sort((a,b)=>a.x0-b.x0);
+    if (wds.length >= 2){
+      // Reached the "Batch number / Produced by / Date / Temperature" row — real pages
+      // wrap those labels onto a second line ("Batch" then "number" just below it, a few
+      // points lower), which a flat single-row margin can clip. So keep extending through
+      // every immediately-following row that's ALSO multi-item (the wrapped continuation)
+      // instead of stopping at the first one, capped at a few rows as a safety limit.
+      let lastTop = wds[0].top, lastSize = Math.max(...wds.map(w=>w.size||8));
+      let j = i;
+      while (j < keys.length){
+        const wds2 = buckets.get(keys[j]).sort((a,b)=>a.x0-b.x0);
+        if (wds2.length < 2) break;
+        lastTop = wds2[0].top; lastSize = Math.max(...wds2.map(w=>w.size||8));
+        j++;
+        if (j - i > 4) break; // safety cap — never sweep up more than a handful of rows here
+      }
+      bottom = Math.max(bottom, lastTop + lastSize + 6);
+      break;
+    }
+    const text = wds.map(w=>w.str).join(' ').trim();
+    if (!text) continue;
+    if (METHOD_STOP.test(text)) break;
+    bottom = Math.max(bottom, wds[0].top + 14);
+  }
+  // Real pages have proven to vary enough in layout that trying to land right on the exact
+  // edge keeps clipping real content — so instead of a tight fit, the captured height is
+  // deliberately generous: 2.5x the distance actually measured from "Method:" down to
+  // where the batch table was found. Extra blank space below is a far smaller problem than
+  // a cut-off line of method text. The crop function itself clamps this to the real page
+  // height, so it never asks for more than what's actually on the page.
+  bottom = label.top + (bottom - label.top) * 2.5;
+  return {top: Math.max(0, label.top-6), left: Math.max(0, label.x0-15), bottom};
+}
+// Crops a rendered page canvas down to just its Method region — the actual pixels, so
+// whatever's on the page is shown exactly as printed, with none of the text-reading
+// fragility of trying to re-type it out. Returns null if there's nothing to crop.
+function cropMethodRegion(canvas, scale, region){
+  if (!region) return null;
+  try{
+    const sx = Math.max(0, region.left*scale);
+    const sy = Math.max(0, region.top*scale);
+    const sw = canvas.width - sx;  // go all the way to the right edge — method text can
+                                    // run wide, better to include too much than clip a line
+    const sh = Math.min(canvas.height-sy, (region.bottom-region.top)*scale);
+    if (sw<=4 || sh<=4) return null;
+    const crop = document.createElement('canvas');
+    crop.width = sw; crop.height = sh;
+    const cctx = crop.getContext('2d');
+    if (!cctx) return null;
+    cctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+    const url = crop.toDataURL('image/jpeg', 0.82);
+    return (url && url!=='data:,') ? url : null;
+  }catch(e){ return null; }
+}
 async function pdfExtractPageItems(page){
   const viewport = page.getViewport({scale:1});
   const content = await page.getTextContent();
@@ -1777,12 +2740,13 @@ function pdfParseQtyString(qtyStr){
     if (m) return {each:parseFloat(m[1]), grams:null, unitLabel:'each'};
   }
   const re = /([\d.]+)\s*(Kilograms|Kilogram|Grams|Gram|Liters|Liter|Litres|Litre|Milliliters|Milliliter)/gi;
-  let m, totalG=0, found=false;
+  let m, totalG=0, found=false, allVolume=true;
   while ((m = re.exec(qtyStr))){
     const mult = PDF_UNIT_TO_GRAMS[m[2].toLowerCase()];
-    if (mult){ totalG += parseFloat(m[1])*mult; found=true; }
+    if (mult){ totalG += parseFloat(m[1])*mult; found=true; if (!/^(lit|lite|mil)/i.test(m[2])) allVolume=false; }
   }
-  if (found) return {each:null, grams:totalG, unitLabel:null};
+  // Litres/millilitres stay a volume (shown as L/ml), rather than being displayed as kg/g.
+  if (found) return {each:null, grams:totalG, unitLabel:null, volume:allVolume};
   // Fallback: an unrecognized count-style unit (Punnet, Tray, Bunch, etc.) is still a
   // real countable quantity — keep the number and its own word as the unit label
   // rather than reporting it as unparsed.
@@ -1824,6 +2788,33 @@ function pdfBatDateToWeekday(dateStr){
   const jsDay = d.getDay();
   return WEEKDAYS[(jsDay+6)%7];
 }
+// Extracts the free-text Method/plating instructions from a dish's front page — the
+// cooking temperatures, cut sizes, and technique notes the ingredient table never carries.
+// Finds the Method section's own region on the page (used by pdfFindMethodRegion below)
+// using the same content column as the "Method:" label itself (indentation is not
+// consistent across dishes), stopping once it reaches the batch/date/temperature stamp
+// table that always follows on the real page (recognised structurally: that table is the
+// only place several separate text items share the same line, so a real method
+// paragraph, which is one item per line, never crosses that threshold falsely).
+const METHOD_STOP = /^(recipe source|all rights reserved|yield:|caution: recipe has been scaled|quantity\.|cost per serving|scaled recipe cost|recipe selling price|allergens:|critical details:|recipe categories:)/i;
+// Matches "Method:", "Method :", or bare "Method" as their own run, AND a run where the
+// label is merged with the start of the actual content in the same text item (some pages'
+// text extraction doesn't split them) — e.g. "Method: 1. Peel the potatoes." as one run.
+function pdfIsMethodLabel(t){ return /^method\s*:?\s*$/i.test(t) || /^method\s*:\s*\S/i.test(t); }
+// A sub-recipe page's title is the parent dish's whole title with the sub's own name
+// tacked on (e.g. "...Warrigal Greens V-Green Oil (SUB)") — for a heading inside the
+// parent dish's own consolidated notes, that repetition just makes the list long for no
+// reason. This strips the parent's title and the "(SUB)" tag, leaving just the ingredient
+// name itself.
+function subRecipeShortName(mainTitle, subTitle){
+  let s = subTitle || '';
+  const mt = (mainTitle||'').trim();
+  if (mt && s.startsWith(mt)) s = s.slice(mt.length);
+  s = s.replace(/^[\s\-–—]+/, '');
+  s = s.replace(/\(\s*sub\s*\)/gi, '');
+  s = s.replace(/\s+/g,' ').trim();
+  return cleanDishName(s) || cleanDishName(subTitle);
+}
 function pdfParseAllPages(pagesItems){
   const rawPages = pagesItems.map((items,i)=>({page:i, items, title:pdfGetTitle(items)}));
   const units = [];
@@ -1857,6 +2848,13 @@ function pdfParseAllPages(pagesItems){
   for (const u of finalUnits){
     if (!u.isSubRecipe){ if (curDish) dishes.push(curDish); curDish = {main:u, subs:[]}; }
     else if (curDish){ curDish.subs.push(u); }
+    else {
+      // A sub-recipe page with no main dish recognized yet to attach it to (e.g. the
+      // very first page in the file is itself a "(SUB)" page) — never silently drop it;
+      // surface it as its own standalone entry so its ingredients and method still make
+      // it through rather than vanishing with no trace.
+      dishes.push({main:u, subs:[]});
+    }
   }
   if (curDish) dishes.push(curDish);
   return {finalUnits, dishes};
@@ -1888,8 +2886,8 @@ function pdfCookedBannerHtml(rows){
 }
 function pdfQtyToDisplay(parsedQty){
   if (parsedQty.grams!==null && parsedQty.grams!==undefined){
-    if (parsedQty.grams>=1000) return {value: pdfRoundTo(parsedQty.grams/1000,2), unit:'kg'};
-    return {value: pdfRoundTo(parsedQty.grams,1), unit:'g'};
+    if (parsedQty.grams>=1000) return {value: pdfRoundTo(parsedQty.grams/1000,2), unit: parsedQty.volume ? 'L' : 'kg'};
+    return {value: pdfRoundTo(parsedQty.grams,1), unit: parsedQty.volume ? 'ml' : 'g'};
   }
   if (parsedQty.each!==null && parsedQty.each!==undefined) return {value:parsedQty.each, unit: parsedQty.unitLabel || 'each'};
   return {value:null, unit:''};
@@ -1943,14 +2941,22 @@ async function ensurePdfJsLoaded(){
   }
   return false;
 }
-async function handlePdfFiles(fileList){
+async function handlePdfFiles(fileList, opts){
+  opts = opts || {};
   setStatus('Reading '+fileList.length+' PDF'+(fileList.length>1?'s':'')+' — production tool parsing can take a moment…');
   if (!(await ensurePdfJsLoaded())){
     setStatus('PDF reader failed to load — check your internet connection and try again.', 'err');
     return;
   }
-  const prevPdf = {ROWS, paxByDish, eventDayOverride, eventDateByDish};   // restored if nothing usable is found
-  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {};
+  const prevPdf = {ROWS, paxByDish, eventDayOverride, eventDateByDish, originalPageImages, methodCrops};   // restored if nothing usable is found
+  const prevSource = sourceInfo && sourceInfo.name;
+  if (opts.append){
+    // Pro: keep the current list (and its page images / method crops) and add this PDF's dishes to it (copies, so a failed read restores cleanly).
+    ROWS = ROWS.slice(); paxByDish = {...paxByDish}; eventDayOverride = {...eventDayOverride}; eventDateByDish = {...eventDateByDish};
+    originalPageImages = {...originalPageImages}; methodCrops = {...methodCrops};
+  } else {
+    ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
+  }
   let totalTasks = 0;
   const dishNames = [];
   const skippedRows = [];   // raw text of every PDF row that couldn't be listed
@@ -1959,13 +2965,18 @@ async function handlePdfFiles(fileList){
                                      // same recipe on different days) — each run is a distinct
                                      // job with its own pax and prep days, so it must not
                                      // silently collapse into one dish bucket.
+  if (opts.append) ROWS.forEach(r=>usedDishTitles.add(r.dish));
   try{
+    const pdfSnapshots = [];   // {dishTitle, pageIndex, pages, fileName, pageLabel} — one entry per page (main + each sub) across every file
+    pdfRenderErrors = [];
     for (const file of fileList){
       const buf = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
       const pagesItems = [];
+      const pageObjs = [];
       for (let i=1; i<=pdf.numPages; i++){
         const page = await pdf.getPage(i);
+        pageObjs.push(page);
         pagesItems.push(await pdfExtractPageItems(page));
       }
       const {dishes} = pdfParseAllPages(pagesItems);
@@ -1982,32 +2993,75 @@ async function handlePdfFiles(fileList){
         const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
         if (eventDay) eventDayOverride[dishTitle] = eventDay;
         if (d.main.batDate) eventDateByDish[dishTitle] = d.main.batDate;
+        const pdfRowsBefore = ROWS.length;
         addPdfRows(dishTitle, tasks, eventDay).forEach(raw=>skippedRows.push(raw));
+        // v3.2: a PDF's closest thing to a tab name is the recipe title as printed on its
+        // front page (before any "— for <date>" de-duplication suffix added to the dish key).
+        for (let i=pdfRowsBefore; i<ROWS.length; i++){ ROWS[i].srcSheet = d.main.title; ROWS[i].srcType = 'pdf'; }
         totalTasks += tasks.length;
         dishNames.push(cleanDishName(dishTitle));
         // The Yield line's *Each figure is this batch's actual covers/pax count (confirmed
         // against real production tool exports) — record it for reference (e.g. the pax
         // panel), even though PDF-derived quantities are already fixed batch totals and
         // never get multiplied by it (see computeTotal()).
-        if (d.main.yield && /each/i.test(d.main.yield.unit||'') && paxByDish[dishTitle]===undefined){
-          paxByDish[dishTitle] = d.main.yield.totalQty;
+        // v3.2.2: that yield is also the base every PDF total is scaled from when pax
+        // changes (see computeTotal()). A yield in another unit (e.g. 5 kg at 0.1 kg per
+        // serving) still gives a servings count: total ÷ per serving.
+        let basePax = null;
+        const y = d.main.yield;
+        if (y && Number.isFinite(y.totalQty) && y.totalQty>0){
+          if (/each/i.test(y.unit||'')) basePax = y.totalQty;
+          else if (Number.isFinite(y.perServingQty) && y.perServingQty>0) basePax = Math.round(y.totalQty / y.perServingQty * 100)/100;
         }
+        if (basePax){
+          for (let i=pdfRowsBefore; i<ROWS.length; i++) ROWS[i].pdfBasePax = basePax;
+          if (paxByDish[dishTitle]===undefined) paxByDish[dishTitle] = basePax;
+        }
+        // One image per page belonging to this dish: its own front page, plus every
+        // sub-recipe's own page — so the whole production tool for this dish is on hand.
+        pdfSnapshots.push({dishTitle, pageIndex: d.main.startPage, pages: pageObjs, items: pagesItems, fileName: file.name, pageLabel: 'Main page'});
+        d.subs.forEach(sub=>{
+          pdfSnapshots.push({dishTitle, pageIndex: sub.startPage, pages: pageObjs, items: pagesItems, fileName: file.name, pageLabel: subRecipeShortName(d.main.title, sub.title)});
+        });
       });
     }
-    document.getElementById('fileTag').textContent = fileList.length===1 ? fileList[0].name : fileList.length+' production tool PDFs';
+    // Render every surviving dish's pages AFTER we know which dishes actually produced
+    // tasks — rendering is the slow part, so never spend it on rejected pages.
+    for (const snap of pdfSnapshots){
+      const rendered = await pdfRenderPageImage(snap.pages[snap.pageIndex], snap.dishTitle+' — '+snap.pageLabel);
+      if (rendered){
+        if (!originalPageImages[snap.dishTitle]) originalPageImages[snap.dishTitle] = [];
+        originalPageImages[snap.dishTitle].push({dataUrl: rendered.url, pageLabel: snap.pageLabel+' ('+snap.fileName+', page '+(snap.pageIndex+1)+')'});
+        const region = pdfFindMethodRegion(snap.items[snap.pageIndex]);
+        const cropUrl = cropMethodRegion(rendered.canvas, rendered.scale, region);
+        if (cropUrl){
+          if (!methodCrops[snap.dishTitle]) methodCrops[snap.dishTitle] = [];
+          methodCrops[snap.dishTitle].push({dataUrl: cropUrl, pageLabel: snap.pageLabel});
+        }
+      }
+    }
+    const loadedName = fileList.length===1 ? fileList[0].name : fileList.length+' production tool PDFs';
+    const tagName = (opts.append && prevSource) ? prevSource+' + '+loadedName : loadedName;
+    document.getElementById('fileTag').textContent = tagName;
     const skipTxt = s=>(s.length>80 ? s.slice(0,77)+'…' : s);
     const skipWarn = skippedRows.length
       ? '⚠ '+skippedRows.length+' row'+(skippedRows.length>1?'s':'')+' skipped: check the PDF — '+skippedRows.slice(0,5).map(s=>'"'+skipTxt(s)+'"').join(', ')+(skippedRows.length>5?' and '+(skippedRows.length-5)+' more':'')+'. '
       : '';
     if (totalTasks===0){
-      ({ROWS, paxByDish, eventDayOverride, eventDateByDish} = prevPdf);
+      ({ROWS, paxByDish, eventDayOverride, eventDateByDish, originalPageImages, methodCrops} = prevPdf);
       setStatus(skipWarn+'Could not find any ingredient rows in that PDF. PDF import reads production tool exports (a page per recipe with an "Ingredients:" table); for other layouts, upload the spreadsheet version or use the paste box. Your previous list has been kept.', 'err');
       return;
     }
-    const noteMsg = ' Raw ingredient weights only, with each sub-recipe\'s cooked yield noted alongside it — check the task text on each row.';
+    const dishesWithSnaps = new Set(pdfSnapshots.map(s=>s.dishTitle));
+    const dishesGotAnyImg = [...dishesWithSnaps].filter(d=>originalPageImages[d] && originalPageImages[d].length).length;
+    const imgMsg = dishesWithSnaps.size===0 ? '' :
+      (dishesGotAnyImg===dishesWithSnaps.size ? ' Original page images: available for all '+dishesGotAnyImg+' dish(es).'
+        : dishesGotAnyImg===0 ? ' Original page images: none could be captured this time (open your browser console for details) — the sorted list above is unaffected.'
+        : ' Original page images: available for '+dishesGotAnyImg+' of '+dishesWithSnaps.size+' dish(es).');
+    const noteMsg = ' Quantities are as printed on each dish\'s front page, i.e. COOKED/finished weights for sub-recipes: refer to the production tool for raw weights.'+imgMsg;
     if (toolMode==='onetime'){
-      sourceInfo = {name: fileList.length===1?fileList[0].name:(fileList.length+' production tool PDFs'), loadedAt: new Date()};
-      setStatus(skipWarn+'Sorted '+totalTasks+' raw ingredients from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+noteMsg, skipWarn?'warn':'ok');
+      sourceInfo = {name: tagName, loadedAt: new Date()};
+      setStatus(skipWarn+(opts.append?'Appended ':'Sorted ')+totalTasks+' items from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+(opts.append?' The list now has '+ROWS.length+' items.':'')+noteMsg, skipWarn?'warn':'ok');
       renderApp();
       return;
     }
@@ -2016,7 +3070,7 @@ async function handlePdfFiles(fileList){
     appMode = 'weekly';
     renderApp();
   } catch(err){
-    ({ROWS, paxByDish, eventDayOverride, eventDateByDish} = prevPdf);
+    ({ROWS, paxByDish, eventDayOverride, eventDateByDish, originalPageImages, methodCrops} = prevPdf);
     setStatus('Could not read that PDF ('+(err && err.message ? err.message : 'unknown error')+'). It may be scanned, password-protected or damaged. Your previous list has been kept.', 'err');
   }
 }
@@ -2045,7 +3099,7 @@ function handleFile(file){
       const data = new Uint8Array(ev.target.result);
       const wbObj = XLSX.read(data, {type:'array', cellDates:false, sheetStubs:false});
       const prev = {ROWS, paxByDish, eventDateByDish};   // restored if this file turns out unreadable
-      ROWS = []; paxByDish = {}; eventDateByDish = {};
+      ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};  // a spreadsheet has no page image or method text to keep
       const {sheetsUsed, itemsFound, skipped, errored} = processWorkbook(wbObj);
       if (itemsFound===0){
         ({ROWS, paxByDish, eventDateByDish} = prev);
@@ -2086,7 +3140,7 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
   if (!raw.trim()){ setStatus('Paste some rows first.', 'err'); return; }
   const lines = raw.split(/\r?\n/).filter(l=>l.trim());
   const prevPaste = {ROWS, paxByDish, eventDateByDish};
-  ROWS = []; paxByDish = {}; eventDateByDish = {};
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
   const items = [];
   const numLike = v => /^\s*\d+([.,]\d+)?(\s*\/\s*\d+)?\s*[a-zA-Z]*\s*$/.test(v||'');
   lines.forEach(line=>{
@@ -2098,6 +3152,7 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
     else items.push({item: parts[0], qty:'', unit:''});
   });
   addRows('Pasted list', items);
+  ROWS.forEach(r=>{ r.srcSheet = 'Pasted list'; r.srcType = 'paste'; });
   if (ROWS.length===0){
     ({ROWS, paxByDish, eventDateByDish} = prevPaste);
     setStatus('Nothing usable in the pasted text. Paste rows copied from a spreadsheet: item, quantity, unit.', 'err');
@@ -2119,7 +3174,7 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('clearBtn').addEventListener('click', ()=>{
-  ROWS = []; paxByDish = {}; eventDateByDish = {}; document.getElementById('pasteBox').value=''; document.getElementById('fileInput').value='';
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {}; document.getElementById('pasteBox').value=''; document.getElementById('fileInput').value='';
   document.getElementById('fileTag').textContent='no file loaded';
   sourceInfo = {name: null, loadedAt: null};
   setStatus(''); renderApp();
@@ -2130,9 +3185,9 @@ document.getElementById('dbImportInput').addEventListener('change', e=>{
 });
 
 document.getElementById('bulkPaxBtn').addEventListener('click', ()=>{
-  const val = parseFloat(document.getElementById('bulkPax').value);
-  if (isNaN(val)) return;
-  Object.keys(dishList()).forEach(d=>{ paxByDish[d]=val; });
+  const p = parsePaxInput(document.getElementById('bulkPax').value);
+  if (!p.ok || p.n===undefined){ setStatus('Enter a pax number from 0 to '+PAX_MAX.toLocaleString('en-AU')+' to apply to every dish.', 'warn'); return; }
+  Object.keys(dishList()).forEach(d=>storePax(d, p.n));
   render();
 });
 
@@ -2140,6 +3195,13 @@ function dishList(){
   const seen = {};
   ROWS.forEach(r=>{ seen[r.dish]=true; });
   return seen;
+}
+// The rows that actually make it into any view, print, or export — every row from a
+// dish still ticked in the Preplist Summary. dishList() above deliberately stays
+// unfiltered (it has to keep listing an unticked dish so its checkbox can be ticked
+// again later); this is the one everything else should read from instead of raw ROWS.
+function activeRows(){
+  return ROWS.filter(r => dishIncluded[r.dish] !== false);
 }
 
 function renderPaxPanel(){
@@ -2151,17 +3213,72 @@ function renderPaxPanel(){
   list.innerHTML = dishes.map(d=>{
     const val = paxByDish[d]!==undefined ? paxByDish[d] : '';
     const safe = d.replace(/"/g,'&quot;');
+    const evDate = eventDateByDish[d];
+    const evDay = getEventDay(d);
+    const dateLabel = evDate ? escapeHtml(String(evDate)) : (evDay ? escapeHtml(evDay) : '');
     return `<div class="field" style="flex:1 1 220px;">
-      <label title="${safe}">${escapeHtml(cleanDishName(d))}</label>
-      <input type="text" inputmode="numeric" value="${val}" onchange="setPax('${encName(d)}', this.value)">
+      <label title="${safe}">${escapeHtml(dishKeyword(d))}${dateLabel ? ` <span style="font-weight:400; color:var(--ink-soft);">— ${dateLabel}</span>` : ''}</label>
+      ${paxInputHtml(d, 'panel', '')}
+      ${pdfNoYieldNote(d)}
     </div>`;
   }).join('');
 }
+// v3.2.2: one pax box markup everywhere. oninput = live rescale while typing; onchange
+// (blur/Enter) tidies the box to the stored value.
+function paxInputHtml(dish, loc, extra){
+  const val = paxByDish[dish]!==undefined ? paxByDish[dish] : '';
+  return `<input type="text" inputmode="decimal" autocomplete="off" data-pax-dish="${encName(dish)}" data-pax-loc="${loc}" ${extra||''}
+    value="${val}" oninput="onPaxInput(this)" onchange="onPaxChange(this)" title="Pax (covers) for this dish: 0 to ${PAX_MAX.toLocaleString('en-AU')}. Blank = not set.">`;
+}
+function pdfNoYieldNote(dish){
+  const rows = ROWS.filter(r=>r.dish===dish);
+  if (!rows.length || !rows.some(r=>r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null)) return '';
+  if (rows.some(r=>Number.isFinite(r.pdfBasePax) && r.pdfBasePax>0)) return '';
+  return '<div class="needpax pax-noyield">This PDF has no readable Yield line, so its totals stay as printed.</div>';
+}
+function storePax(dish, n){
+  if (n===undefined) delete paxByDish[dish]; else paxByDish[dish] = n;
+  // keep this week's Recipe database pick in step, so Generate again doesn't undo the edit
+  if (toolMode==='database' && weeklySelection[dish]) weeklySelection[dish].pax = n===undefined ? '' : String(n);
+}
+// Re-renders every view (and so every print block and the data each export reads), then
+// puts the cursor back in the box being typed in, with exactly what was typed (e.g. "12.").
+function rerenderKeepingPaxFocus(el){
+  const loc = el && el.dataset ? el.dataset.paxLoc : null, enc = el && el.dataset ? el.dataset.paxDish : null;
+  const raw = el ? el.value : '';
+  let ss = null, se = null;
+  try{ ss = el.selectionStart; se = el.selectionEnd; }catch(e){}
+  render();
+  if (!loc || !enc) return;
+  const again = [...document.querySelectorAll('input[data-pax-loc]')].find(x=>x.dataset.paxLoc===loc && x.dataset.paxDish===enc);
+  if (!again) return;
+  again.value = raw;
+  try{ again.focus({preventScroll:true}); }catch(e){ again.focus(); }
+  try{ if (ss!==null) again.setSelectionRange(ss, se); }catch(e){}
+}
+function onPaxInput(el){
+  const dish = decodeURIComponent(el.dataset.paxDish);
+  const p = parsePaxInput(el.value);
+  if (!p.ok){ el.classList.add('pax-invalid'); return; }   // keep the last good pax until it's a number again
+  el.classList.remove('pax-invalid');
+  storePax(dish, p.n);
+  rerenderKeepingPaxFocus(el);
+}
+function onPaxChange(el){
+  const p = parsePaxInput(el.value);
+  if (!p.ok){
+    const dish = decodeURIComponent(el.dataset.paxDish);
+    setStatus('Pax for '+cleanDishName(dish)+' must be a number from 0 to '+PAX_MAX.toLocaleString('en-AU')+'. Kept '+(paxByDish[dish]!==undefined?paxByDish[dish]:'not set')+'.', 'warn');
+  }
+  render();
+}
 function setPax(encodedDish, val){
   const dish = decodeURIComponent(encodedDish);
-  const n = parseFloat(val);
-  paxByDish[dish] = isNaN(n) ? undefined : n;
+  const p = parsePaxInput(val);
+  if (!p.ok) return false;
+  storePax(dish, p.n);
   render();
+  return true;
 }
 
 document.getElementById('toggleStaffingBtn').addEventListener('click', ()=>{
@@ -2267,12 +3384,22 @@ function renderMasterSummary(){
   const totalTasks = ROWS.length;
   const paxKnown = sorted.filter(d=>paxByDish[d]!==undefined);
   const paxSum = paxKnown.reduce((s,d)=>s+Number(paxByDish[d]),0);
-  const rowsHtml = sorted.map(d=>{
+  // Only dishes still ticked make it into the printed summary — an unticked one is kept
+  // visible on screen (so it can be re-ticked later) but genuinely leaves the print/export.
+  const sortedForPrint = sorted.filter(d=>dishIncluded[d]!==false);
+  const totalTasksIncluded = ROWS.filter(r=>dishIncluded[r.dish]!==false).length;
+  const paxSumIncluded = sortedForPrint.filter(d=>paxByDish[d]!==undefined).reduce((s,d)=>s+Number(paxByDish[d]),0);
+  const dishRowHtml = (d, withCheckbox) => {
     const pax = paxByDish[d];
     const ev = getEventDay(d);
     const evDate = getEventDateStr(d);
-    return `<tr><td>${ev?escapeHtml(ev):'<span class="needpax">no event day</span>'}</td><td>${evDate?escapeHtml(evDate):'—'}</td><td>${escapeHtml(cleanDishName(d))}</td><td>${pax!==undefined?pax:'<span class="needpax">not set</span>'}</td></tr>`;
-  }).join('');
+    const included = dishIncluded[d] !== false;
+    const checkboxCell = withCheckbox ? `<td class="no-print"><input type="checkbox" ${included?'checked':''} onchange="setDishIncluded('${encName(d)}', this.checked)" title="Include this dish in the preplist"></td>` : '';
+    return `<tr class="${included?'':'dish-excluded'}">${checkboxCell}<td>${ev?escapeHtml(ev):'<span class="needpax">no event day</span>'}</td><td>${evDate?escapeHtml(evDate):'—'}</td><td>${escapeHtml(cleanDishName(d))}</td><td>${pax!==undefined?pax:'<span class="needpax">not set</span>'}</td></tr>`;
+  };
+  const rowsHtml = sorted.map(d=>dishRowHtml(d, true)).join('');
+  const printRowsHtml = sortedForPrint.map(d=>dishRowHtml(d, false)).join('');
+  const includedCount = sortedForPrint.length;
   const sourceLine = sourceInfo.name
     ? `Sourced from: <b>${escapeHtml(sourceInfo.name)}</b> — loaded ${fmtDateTime(sourceInfo.loadedAt)}`
     : 'Source: pasted rows';
@@ -2283,11 +3410,15 @@ function renderMasterSummary(){
       <button class="secondary" onclick="printMasterSummary()" type="button">Print summary sheet</button>
     </div>
     <div class="meta" style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin:8px 0 14px;">
-      ${sourceLine} &nbsp;·&nbsp; ${sorted.length} dishes &nbsp;·&nbsp; ${totalTasks} total prep tasks
+      ${sourceLine} &nbsp;·&nbsp; ${includedCount} of ${sorted.length} dishes included &nbsp;·&nbsp; ${totalTasks} total prep tasks
       ${paxSum ? ' &nbsp;·&nbsp; ' + paxSum + ' total pax across dishes with pax set' : ''}
     </div>
+    <div class="row no-print" style="gap:8px; margin-bottom:8px;">
+      <button class="ghost" type="button" onclick="setAllDishesIncluded(true)">Tick all</button>
+      <button class="ghost" type="button" onclick="setAllDishesIncluded(false)">Untick all</button>
+    </div>
     <div class="no-print" style="border:1px solid var(--line); border-radius:6px;">
-      <table><thead><tr><th style="width:14%">Day</th><th style="width:14%">Date</th><th style="width:52%">Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+      <table><thead><tr><th style="width:5%"></th><th style="width:13%">Day</th><th style="width:13%">Date</th><th style="width:49%">Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
     </div>
   </div>
   <div class="print-only" id="print-master-summary">
@@ -2295,10 +3426,18 @@ function renderMasterSummary(){
     <div class="pax-topbar" style="font-size:15px;">${sourceLine}</div>
     <div class="print-head">
       <h2>Preplist Summary — All Dishes &amp; Pax</h2>
-      <div class="meta">${sorted.length} dishes &nbsp;·&nbsp; ${totalTasks} total prep tasks${paxSum ? ' · '+paxSum+' total pax' : ''}</div>
+      <div class="meta">${includedCount} dishes${includedCount<sorted.length?' ('+(sorted.length-includedCount)+' unticked and left out)':''} &nbsp;·&nbsp; ${totalTasksIncluded} total prep tasks${paxSumIncluded ? ' · '+paxSumIncluded+' total pax' : ''}</div>
     </div>
-    <table><thead><tr><th>Day</th><th>Date</th><th>Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+    <table><thead><tr><th>Day</th><th>Date</th><th>Dish</th><th>Pax</th></tr></thead><tbody>${printRowsHtml}</tbody></table>
   </div>`;
+}
+function setDishIncluded(encodedDish, checked){
+  dishIncluded[decodeURIComponent(encodedDish)] = !!checked;
+  render();
+}
+function setAllDishesIncluded(checked){
+  Object.keys(dishList()).forEach(d=>{ dishIncluded[d] = !!checked; });
+  render();
 }
 
 // Printing a specific view (one dish / one section / one prep day / the master summary)
@@ -2340,7 +3479,7 @@ function buildPrintDocHtml(target){
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     ${styleHtml}
     <style>body{padding:24px;} .print-only{display:block !important;}</style>
-    </head><body>${target.outerHTML}</body></html>`;
+    </head><body>${target.outerHTML}${printFooterHtml()}</body></html>`;
 }
 // Printing a specific view (one dish / one section / one prep day / the master summary).
 // A page shared as a hosted link runs inside a wrapper where neither calling window.print()
@@ -2352,7 +3491,41 @@ function buildPrintDocHtml(target){
 // ordinary browser tab at that point, so printing there is never in question. Only when
 // that capability genuinely isn't available here does this fall back to the new-tab
 // attempt, for a plain downloaded copy of this file opened directly (no wrapper at all).
+// Printing has to work the same in Chrome, Firefox, Safari and Edge, with nothing that a
+// browser might flag as a popup. A hidden iframe is the standard way to do that: it never
+// opens a new window (so there is nothing for a popup blocker to catch), and every major
+// browser lets a same-document iframe call its own contentWindow.print(). If, for some
+// reason, print() genuinely can't be reached (a handful of older WebViews restrict it),
+// this falls back to a plain "press Ctrl+P" instruction rather than silently doing nothing.
+function printViaIframe(fullHtml){
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
+  document.body.appendChild(iframe);
+  const cleanup = () => setTimeout(()=>{ if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1500);
+  let printed = false;
+  const doPrint = () => {
+    if (printed) return; printed = true;
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }catch(e){
+      setStatus('Could not open the print dialog automatically — open the downloaded copy and press Ctrl+P (Cmd+P on Mac).', 'err');
+    }
+    cleanup();
+  };
+  try{
+    const idoc = iframe.contentDocument || iframe.contentWindow.document;
+    idoc.open(); idoc.write(fullHtml); idoc.close();
+  }catch(e){
+    setStatus('Could not prepare the printout in this browser — open the downloaded copy and press Ctrl+P (Cmd+P on Mac).', 'err');
+    cleanup();
+    return;
+  }
+  iframe.onload = doPrint;
+  setTimeout(doPrint, 500); // covers browsers where a same-document iframe's load event doesn't reliably fire
+}
 async function printReadyHtml(fullHtml, filename){
+  fullHtml = stripMethodImages(fullHtml);   // v3.2.4
   setStatus('Preparing your printout…');
   const downloads = await getDownloadsCapability();
   if (downloads){
@@ -2365,18 +3538,7 @@ async function printReadyHtml(fullHtml, filename){
       // any other rejection (capability not really usable here, etc.) — fall through below
     }
   }
-  let w;
-  try{ w = window.open('', '_blank'); }catch(e){ w = null; }
-  if (!w){
-    setStatus('Could not open a print window — allow pop-ups for this page and try again.', 'err');
-    return;
-  }
-  w.document.open();
-  w.document.write(fullHtml);
-  w.document.close();
-  const doPrint = ()=>{ try{ w.focus(); w.print(); }catch(e){} };
-  w.onload = doPrint;
-  setTimeout(doPrint, 400); // fallback if onload doesn't fire promptly
+  printViaIframe(fullHtml);
 }
 async function openPrintWindow(elementId){
   const target = document.getElementById(elementId);
@@ -2405,8 +3567,203 @@ async function printAllOfView(targetView, filename){
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     ${styleHtml}
     <style>body{padding:24px;} .print-only{display:block !important;}</style>
-    </head><body>${bodyHtml}</body></html>`;
+    </head><body>${bodyHtml}${printFooterHtml()}</body></html>`;
   await printReadyHtml(fullHtml, filename);
+}
+// Exports the current preplist as an .xlsx workbook — one sheet per dish, each laid out
+// with the same "Item | Qty | Unit" header the app itself already reads, plus a PAX cell
+// and Section/Prep day columns. That's deliberate: open it in Excel or Google Sheets to
+// update quantities as the function changes, then re-upload that same file here later —
+// it reads back in through the normal workbook upload, no special format needed.
+// Excel sheet names: max 31 chars, and \ / ? * [ ] are never allowed. Used for every
+// export below so a tab is always named after something real — the dish, the section,
+// or the day it actually represents — never a generic placeholder.
+// v3.2: changes a name ONLY where Excel forces it, and reports every change: the 7
+// characters Excel bans (\ / ? * [ ] :) become "-", a leading/trailing apostrophe is
+// dropped, names are cut to 31 characters, "History" is reserved, a blank name becomes
+// "Sheet", and a name Excel would see as a duplicate (it ignores capitals) gets "-2", "-3"...
+// Spaces, capitals and every other character are kept exactly.
+function safeSheetName(raw, usedNames, changes){
+  const orig = (raw===undefined || raw===null) ? '' : String(raw);
+  const why = [];
+  let base = orig.replace(/[\\/?*[\]:]/g, '-');
+  if (base!==orig) why.push('Excel does not allow \\ / ? * [ ] : in tab names');
+  const noApos = base.replace(/^'+|'+$/g, '');
+  if (noApos!==base){ why.push('Excel does not allow an apostrophe at the start or end'); base = noApos; }
+  const cut31 = s => { let t = s.slice(0,31); if (/[\ud800-\udbff]$/.test(t)) t = t.slice(0,-1); return t; };
+  if (base.length>31){ why.push('Excel tab names are at most 31 characters'); base = cut31(base); }
+  if (base.trim()===''){ why.push('Excel tab names cannot be blank'); base = 'Sheet'; }
+  if (base.toLowerCase()==='history'){ why.push('"History" is reserved by Excel'); base = 'History-1'; }
+  let finalName = base, n = 2;
+  while (usedNames.has(finalName.toLowerCase())){ const suf = '-'+n; finalName = cut31(base.slice(0, 31-suf.length))+suf; n++; }
+  if (finalName!==base) why.push('Excel treats tab names that differ only in capitals as the same tab');
+  usedNames.add(finalName.toLowerCase());
+  if (changes && finalName!==orig) changes.push({from: orig, to: finalName, why});
+  return finalName;
+}
+// Builds one dish's block within a sheet — its own title row, its PAX row, the header,
+// then its task rows — and appends it directly onto an existing aoa/formulaCells pair (so
+// several dishes can share one sheet, stacked one block after another, which is exactly
+// what the By-section and By-day exports need — several dishes' tasks in the same tab).
+// v3.2.3 layout, the same in all three exports:
+//   Item | Quantity per pax | Unit | PAX (this row) | Total needed | Section | Prep day | Source tab
+// - Every block has its own "PAX" row (B = that dish's pax; blank if not set yet).
+// - "PAX (this row)" on each task row is =$B$<PAX row>, so editing the block's PAX updates
+//   every row of that dish, and typing a number over one row's cell changes just that row.
+// - "Total needed" is =B<row>*D<row>: cell references only, no numbers inside formulas.
+// - Units: one Unit column per row, shared by the per-pax amount AND the total, so the
+//   formula never needs a conversion and kg/g can't get mixed. Spreadsheet rows keep the
+//   unit they were imported in (0.18 kg per pax → total in kg); PDF rows use g or ml
+//   (per-pax amounts are small), counts keep their own unit (bunch, each...).
+// - PDF row with no Yield line: no per-pax can be worked out, so B and D are blank and the
+//   printed total is a plain value in its own unit.
+function exportPerPax(r){
+  // {n, unit} written to the sheet, or null. Full precision, so B×D gives the app's total.
+  if (r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null){
+    const base = r.pdfBasePax;
+    if (!(Number.isFinite(base) && base>0)) return null;
+    const b = toBaseQty(r.pdfFixedTotal, r.unit);
+    return {n: b.n / base, unit: b.u};
+  }
+  return null;
+}
+function appendDishBlock(aoa, formulaCells, dish, rows){
+  const pax = paxByDish[dish];
+  const paxSet = typeof pax==='number' && Number.isFinite(pax);
+  // v3.1: a dish that came from a spreadsheet keeps its exact imported title (cleanDishName
+  // would drop words like "Braised" or "Mains"), so a re-upload finds the same dish.
+  const fromSheet = rows.some(r=>r.srcSheet);
+  aoa.push([fromSheet ? dish : (cleanDishName(dish) || dish)]);
+  aoa.push(['PAX', paxSet ? pax : '']);
+  const paxRowNum = aoa.length;               // 1-based Excel row of this dish's PAX cell
+  const paxAbs = '$B$'+paxRowNum;
+  aoa.push(['Item','Quantity per pax','Unit','PAX (this row)','Total needed','Section','Prep day','Source tab']);
+  const dataStartRow = aoa.length;
+  const put = (rowIdx, c, formula, preview) => formulaCells.push({addr: XLSX.utils.encode_cell({r:rowIdx, c}), formula, preview});
+  rows.forEach((r, ri)=>{
+    const rowIdx = dataStartRow + ri, n = rowIdx + 1;
+    const isPdf = r.pdfFixedTotal!==undefined && r.pdfFixedTotal!==null;
+    let perPax = '', unit = r.unit || '', totalCell = '';
+    let paxFormula = true, totalFormula = null, totalPreview = '';
+    if (isPdf){
+      const pp = exportPerPax(r);
+      if (pp){
+        perPax = pp.n; unit = pp.unit;
+        totalFormula = 'B'+n+'*D'+n; totalPreview = paxSet ? Math.round(pp.n*pax*1e9)/1e9 : '';
+      } else {
+        totalCell = r.pdfFixedTotal; paxFormula = false;   // no Yield: printed total, plain value
+      }
+    } else {
+      const q = parseQty(r.qty);
+      if (typeof r.qty==='number' || (r.qty!=='' && r.qty!=null && !isNaN(q) && /^\s*[\d.,]+\s*$/.test(String(r.qty)))){
+        perPax = q; totalFormula = 'B'+n+'*D'+n; totalPreview = paxSet ? Math.round(q*pax*1e9)/1e9 : '';
+      } else {
+        perPax = (r.qty===undefined || r.qty===null) ? '' : r.qty;   // e.g. blank, "to taste": kept as written
+        totalFormula = 'IF(ISNUMBER(B'+n+'),B'+n+'*D'+n+',"")'; totalPreview = '';
+      }
+    }
+    if (!paxSet && totalFormula && totalFormula.indexOf('IF(')!==0) totalFormula = 'IF(D'+n+'="","",'+totalFormula+')';
+    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day || '', srcName(r)]);   // v3.2: exact original tab / PDF title
+    if (paxFormula) put(rowIdx, 3, paxSet ? paxAbs : 'IF('+paxAbs+'="","",'+paxAbs+')', paxSet ? pax : '');
+    if (totalFormula) put(rowIdx, 4, totalFormula, totalPreview);
+  });
+  // The app's own importer tolerates up to 6 blank rows in a row before it decides a
+  // dish's block has ended — a single blank row isn't enough of a gap, so without this it
+  // would just read straight into the next dish's title line as if it were more data for
+  // THIS dish. 8 blank rows guarantees a clean break before the next block starts.
+  for (let i=0; i<8; i++) aoa.push([]);
+}
+// Shared engine behind all three "Export to Excel" buttons — By dish, By section, and By
+// prep day each just group the ticked rows differently before handing them to this.
+// groupFn(row) returns the group a row belongs to; tabNameFn(groupKey) names its sheet.
+let lastExportNameChanges = [];   // v3.2: the tab-name changes made by the most recent export (also shown in the status message)
+function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortFn){
+  if (typeof XLSX === 'undefined' || !XLSX.utils || typeof XLSX.writeFile !== 'function'){
+    setStatus('The spreadsheet export could not load. This tool needs an internet connection when it opens — connect, reload the page, and try again.', 'err');
+    return;
+  }
+  const exportRows = activeRows();
+  if (!exportRows.length){
+    setStatus('Nothing to export yet — load a preplist first (or tick at least one dish in the summary above).', 'err');
+    return;
+  }
+  const groupOrder = []; const groupRows = {};
+  exportRows.forEach(r=>{
+    const key = groupFn(r);
+    if (!groupRows[key]){ groupRows[key]=[]; groupOrder.push(key); }
+    groupRows[key].push(r);
+  });
+  if (!groupOrder.length){
+    setStatus(emptyMsg || 'Nothing to export yet.', 'err');
+    return;
+  }
+  if (sortFn) groupOrder.sort(sortFn);
+  const wb = XLSX.utils.book_new();
+  const usedNames = new Set();
+  const nameChanges = [];
+  groupOrder.forEach(key=>{
+    const rowsInGroup = groupRows[key];
+    const aoa = []; const formulaCells = [];
+    const dishesHere = [];
+    rowsInGroup.forEach(r=>{ if (!dishesHere.includes(r.dish)) dishesHere.push(r.dish); });
+    dishesHere.forEach(dish=>{
+      appendDishBlock(aoa, formulaCells, dish, rowsInGroup.filter(r=>r.dish===dish));
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    formulaCells.forEach(fc=>{ ws[fc.addr] = (typeof fc.preview==='number') ? {t:'n', f: fc.formula, v: fc.preview} : {t:'s', f: fc.formula, v: ''}; });
+    ws['!cols'] = [{wch:38},{wch:16},{wch:8},{wch:14},{wch:13},{wch:24},{wch:12},{wch:34}];
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(tabNameFn(key), usedNames, nameChanges));
+  });
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, filenamePrefix+'_'+stamp+'.xlsx');
+  lastExportNameChanges = nameChanges;
+  const renameNote = nameChanges.length ? '⚠ '+nameChanges.length+' tab name'+(nameChanges.length>1?'s':'')+' changed because Excel requires it: '
+    + nameChanges.map(c=>'"'+c.from+'" → "'+c.to+'" ('+c.why.join('; ')+')').join(', ')
+    + '. The exact original name is kept in each row\'s Source tab column. ' : '';
+  setStatus(renameNote+'Exported '+groupOrder.length+' tab(s) to Excel, with Total needed included — edit it in Excel or Google Sheets, then re-upload that same file here later to update the preplist.', nameChanges.length?'warn':'ok');
+}
+// By dish — one sheet per dish, tab named after that dish (not a generic placeholder).
+// By dish: one tab per original source tab (several dishes that shared one source tab share
+// it again), in the source workbook's own tab order where known.
+// v3.2: one rule for every source: the tab is the row's original source name (srcName):
+// a workbook's own tab name, or a PDF recipe's title as printed. Older saved rows with no
+// recorded source fall back to the dish name as it was imported.
+function srcName(r){ return (typeof r.srcSheet==='string' && r.srcSheet!=='') ? r.srcSheet : r.dish; }
+function exportDishesToXlsx(){
+  const firstSeen = {};
+  activeRows().forEach((r,i)=>{ const k = srcName(r); if (firstSeen[k]===undefined) firstSeen[k] = i; });
+  const idxOf = {};
+  activeRows().forEach(r=>{ const k = srcName(r); if (idxOf[k]===undefined && r.srcType==='xlsx' && Number.isFinite(r.srcSheetIdx) && r.srcSheetIdx>=0) idxOf[k] = r.srcSheetIdx; });
+  exportGroupedToXlsx(
+    r => srcName(r),
+    key => key,
+    'Preplist_By_Dish',
+    'Nothing to export yet — load a preplist first.',
+    (a,b) => ((idxOf[a] ?? 10000) - (idxOf[b] ?? 10000)) || (firstSeen[a] - firstSeen[b])
+  );
+}
+// By team section — one sheet per section (Vegetables, Proteins, etc.), tab named after
+// the section itself; several dishes' tasks can share one tab, each in its own block.
+function exportSectionsToXlsx(){
+  exportGroupedToXlsx(
+    r => r.section,
+    key => key,
+    'Preplist_By_Section',
+    'Nothing to export yet — load a preplist first.',
+    (a,b) => SECTIONS.indexOf(a) - SECTIONS.indexOf(b)
+  );
+}
+// By prep day — one sheet per weekday actually in use (plus "Unscheduled" for anything
+// with no day set), tab named after the day.
+function exportDaysToXlsx(){
+  const order = [...WEEKDAYS, 'Unscheduled'];
+  exportGroupedToXlsx(
+    r => r.day || 'Unscheduled',
+    key => key,
+    'Preplist_By_Day',
+    'Nothing to export yet — load a preplist first.',
+    (a,b) => order.indexOf(a) - order.indexOf(b)
+  );
 }
 function printAllSections(){ printAllOfView('section', 'all-sections-preplist.html'); }
 function printAllDays(){ printAllOfView('priority', 'all-days-preplist.html'); }
@@ -2416,6 +3773,7 @@ function printMasterSummary(){
 
 function render(){
   const area = document.getElementById('resultsArea');
+  scheduleOnetimeSave();   // v3.2.2: every change that re-renders is saved (pax edits were lost on reload)
   renderPaxPanel();
   renderStaffingPanel();
   if (ROWS.length===0){
@@ -2426,17 +3784,24 @@ function render(){
     return;
   }
 
-  let html = pdfCookedBannerHtml(ROWS) + renderMasterSummary();
+  let html = pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml();
 
   html += `<div class="viewtoggle no-print">
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
     <button class="${viewMode==='section'?'':'secondary'}" onclick="setView('section')" type="button">By team section</button>
     <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
   </div>
-  <div class="row no-print" style="margin-bottom:20px; gap:8px;">
-    <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one job)</button>
-    <button class="secondary" onclick="printAllDays()" type="button">🖨️ Print all prep days (one job)</button>
-  </div>`;
+  <div class="row no-print" style="margin-bottom:10px; gap:8px;">
+    ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="Exports this view (By dish) as an editable .xlsx">📊 Export to Excel (editable)</button>`
+      : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
+      : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
+  </div>
+  <div class="row no-print print-row" style="margin-bottom:20px; gap:8px; align-items:center;">
+    <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one page complete)</button>
+    <button class="secondary" onclick="printAllDays()" type="button">🖨️ Print all prep days (one page complete)</button>
+    ${printMethodToggleHtml()}
+  </div>
+  ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
   html += searchBarHtml();
   html += printOrderControlHtml();
@@ -2476,14 +3841,15 @@ function rowMatchesSearch(r){
     (r.day||'').toLowerCase().includes(q);
 }
 function searchBarHtml(){
-  const matchCount = searchQuery.trim() ? ROWS.filter(rowMatchesSearch).length : ROWS.length;
+  const visibleRows = activeRows();
+  const matchCount = searchQuery.trim() ? visibleRows.filter(rowMatchesSearch).length : visibleRows.length;
   return `<div class="row no-print" style="margin-bottom:16px; align-items:center;">
     <div class="field" style="flex:0 1 360px;">
       <input type="text" id="globalSearch" placeholder="Search tasks, dishes, sections, leads, days…" value="${escapeHtml(searchQuery)}"
         oninput="setSearch(this.value)" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:13px;">
     </div>
     ${searchQuery.trim() ? `<button class="ghost" onclick="clearSearch()" type="button">Clear</button>` : ''}
-    <div class="meta" style="font-size:12px; color:var(--ink-soft);">${searchQuery.trim() ? matchCount+' of '+ROWS.length+' tasks match' : ROWS.length+' tasks total'}</div>
+    <div class="meta" style="font-size:12px; color:var(--ink-soft);">${searchQuery.trim() ? matchCount+' of '+visibleRows.length+' tasks match' : visibleRows.length+' tasks total'}</div>
   </div>`;
 }
 // Small inline control appended after a task's text — clicking it filters to every
@@ -2495,13 +3861,62 @@ function findSimilarBtn(task){
 }
 
 // ---------- BY DISH VIEW ----------
+// Renders a dish's consolidated Method text (main page + every sub-recipe's own Method)
+// as a boxed reference section — shown both on screen and in the printed sheet, right
+// under the ingredients table, so cooking temps/cut sizes/technique notes are handy
+// The actual pixels of just the Method: region from every relevant page, packed onto one
+// consolidated page — not the whole production tool page, and not re-typed text either.
+// v3.2.4: "Include method in printout" (Yes/No). A device preference, kept in its own
+// localStorage key (not the session, database, template or Pro-kitchen keys), default Yes.
+const PRINT_METHOD_KEY = 'preplinePref_printIncludeMethod_v1';
+let includeMethodInPrint = (function(){ try{ return localStorage.getItem(PRINT_METHOD_KEY)!=='no'; }catch(e){ return true; } })();
+function setIncludeMethodInPrint(on){
+  includeMethodInPrint = !!on;
+  try{ localStorage.setItem(PRINT_METHOD_KEY, includeMethodInPrint ? 'yes' : 'no'); }catch(e){}
+  render();
+}
+function printMethodToggleHtml(){
+  const yes = includeMethodInPrint;
+  return `<div class="print-method-toggle" role="group" aria-label="Include method in printout" id="printMethodToggle">
+    <span class="pmt-label">Include method in printout</span>
+    <button type="button" class="pmt-btn ${yes?'on':''}" aria-pressed="${yes}" data-pmt="yes" onclick="setIncludeMethodInPrint(true)">Yes</button>
+    <button type="button" class="pmt-btn ${!yes?'on':''}" aria-pressed="${!yes}" data-pmt="no" onclick="setIncludeMethodInPrint(false)">No</button>
+  </div>`;
+}
+// Belt and braces for "No": every printout goes through printReadyHtml(), which also drops
+// any method/page image block or stray <img> before the print page is built.
+function stripMethodImages(fullHtml){
+  if (includeMethodInPrint) return fullHtml;
+  try{
+    const doc = new DOMParser().parseFromString(fullHtml, 'text/html');
+    doc.querySelectorAll('.orig-pages-grid, .method-crops-title, .orig-page-item, img').forEach(el=>el.remove());
+    return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+  }catch(e){ return fullHtml; }
+}
+function methodCropsPageHtml(rows){
+  if (!includeMethodInPrint) return '';   // v3.2.4: "Include method in printout: No" — nothing, not even the heading
+  const seen = new Set(); const order = [];
+  rows.forEach(r=>{ if (!seen.has(r.dish)){ seen.add(r.dish); order.push(r.dish); } });
+  const withCrops = order.filter(d=>methodCrops[d] && methodCrops[d].length);
+  if (!withCrops.length) return '';
+  const items = withCrops.flatMap(d=>
+    methodCrops[d].map(im=>`<div class="orig-page-item">
+      <div class="orig-page-print-label">${escapeHtml(dishKeyword(d))} — ${escapeHtml(im.pageLabel||'')}</div>
+      <img src="${im.dataUrl}" alt="Method section">
+    </div>`)
+  ).join('');
+  return `<div class="orig-pages-grid">
+    <div class="method-crops-title">Method reference — all dishes on this sheet</div>
+    ${items}
+  </div>`;
+}
 function renderByDish(){
   let dishes = [];
-  ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
+  activeRows().forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
   dishes.sort((a,b)=> cleanDishName(a).localeCompare(cleanDishName(b)));
   const totalDishCount = dishes.length;
   if (searchQuery.trim()){
-    dishes = dishes.filter(d => ROWS.some(r=>r.dish===d && rowMatchesSearch(r)));
+    dishes = dishes.filter(d => activeRows().some(r=>r.dish===d && rowMatchesSearch(r)));
   }
   let html = '';
   if (dishes.length===0){
@@ -2512,7 +3927,7 @@ function renderByDish(){
     html += `<div class="meta" style="font-size:12px; color:var(--ink-soft); margin-bottom:12px;">${dishes.length} of ${totalDishCount} dishes have a match</div>`;
   }
   dishes.forEach(dish=>{
-    const rows = applySort(ROWS.filter(r=>r.dish===dish && rowMatchesSearch(r)), 'dish');
+    const rows = applySort(activeRows().filter(r=>r.dish===dish && rowMatchesSearch(r)), 'dish');
     const pax = paxByDish[dish];
     const dkey = dish.replace(/[^a-z0-9]/gi,'_');
     const encDish = encName(dish);
@@ -2530,20 +3945,21 @@ function renderByDish(){
           <label style="font-size:11px;color:var(--ink-soft);">Event day:</label>
           ${eventDaySelect(encDish, eventDay)}
           <label style="font-size:11px;color:var(--ink-soft);">Pax:</label>
-          <input type="text" inputmode="numeric" style="width:70px;" class="leader-input"
-            value="${pax!==undefined?pax:''}" placeholder="—"
-            onchange="setPax('${encDish}', this.value)">
+          ${paxInputHtml(dish, 'dish', 'style="width:70px;" class="leader-input" placeholder="—"')}
           <button class="secondary" onclick="printDish('${encDish}')" type="button">Print</button>
           <button class="ghost" onclick="copyDish('${encDish}')" type="button">Copy as text</button>
+          ${originalPageImages[dish] ? `<button class="ghost" onclick="openOriginalViewer('${encDish}')" type="button">📖 View original${originalPageImages[dish].length>1?' ('+originalPageImages[dish].length+' pages)':''}</button>` : ''}
         </div>
       </div>
+      ${bulkMoveToolbarHtml(rows)}
       <div class="section-table-wrap no-print">
         <table><thead><tr>
-          ${sortableTh('dish','task','Ingredient / prep task','width:36%')}
-          <th style="width:12%">Per pax</th>
-          ${sortableTh('dish','total','Total to make','width:16%')}
-          ${sortableTh('dish','section','Section','width:16%')}
-          ${sortableTh('dish','day','Prep day','width:20%')}
+          <th style="width:4%"><input type="checkbox" onchange="toggleSelectAll(this.checked, [${rows.map(r=>ROWS.indexOf(r)).join(',')}])" title="Select all"></th>
+          ${sortableTh('dish','task','Ingredient / prep task','width:33%')}
+          <th style="width:11%">Per pax</th>
+          ${sortableTh('dish','total','Total to make','width:15%')}
+          ${sortableTh('dish','section','Section','width:15%')}
+          ${sortableTh('dish','day','Prep day','width:19%')}
         </tr></thead><tbody>`;
     const meta = computeJobMeta(rows);
     rows.forEach((r,i)=>{
@@ -2553,12 +3969,13 @@ function renderByDish(){
       const {isContinuation, band} = meta[i];
       const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
       let totalCell;
-      if (total!==null) totalCell = `<b>${fmtNum(total)} ${escapeHtml(String(r.unit||''))}</b>`;
+      if (total!==null) totalCell = `<b>${qN(total,r.unit)} ${escapeHtml(qU(total,r.unit))}</b>`;
       else if (isContinuation && noQty) totalCell = '<span class="contnote">uses batch above</span>';
       else totalCell = '<span class="needpax">set pax →</span>';
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
+        <td><input type="checkbox" class="rowcheck" ${selectedRowIdx.has(globalIdx)?'checked':''} onchange="toggleRowSelected(${globalIdx}, this.checked)"></td>
         <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
-        <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+        <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty total-cell">${totalCell}</td>
         <td><select class="rowsel section-${key}" onchange="moveRow(${globalIdx}, this.value)">
           ${SECTIONS.map(sec=>`<option ${sec===r.section?'selected':''}>${sec}</option>`).join('')}
@@ -2579,10 +3996,11 @@ function renderByDish(){
           const total = computeTotal(r);
           const cont = meta[i].isContinuation;
           const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-          const totalTxt = total!==null ? `${fmtNum(total)} ${r.unit||''}` : (cont && noQty ? 'uses batch above' : '—');
-          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${r.qty||'—'} ${r.unit||''}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
+          const totalTxt = total!==null ? `${qN(total,r.unit)} ${qU(total,r.unit)}` : (cont && noQty ? 'uses batch above' : '—');
+          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
         }).join('')}
         </tbody></table>
+        ${methodCropsPageHtml(rows)}
       </div>
     </div>`;
   });
@@ -2606,7 +4024,7 @@ function copyDish(encodedDish){
   text += `\n`;
   rows.forEach(r=>{
     const total = computeTotal(r);
-    text += `  [ ] ${r.task} — ${total!==null?fmtNum(total)+' '+(r.unit||''):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.section} · ${r.day||'day not set'}\n`;
+    text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'(set pax for total)'} [${perPaxText(r)} per pax] · ${r.section} · ${r.day||'day not set'}\n`;
   });
   navigator.clipboard.writeText(text).then(()=>{
     setStatus('Copied '+dish+' list to clipboard.', 'ok');
@@ -2624,7 +4042,7 @@ function renderByPriority(){
   const dayKeyMap = {'Monday':'day1','Tuesday':'day2','Wednesday':'day3','Thursday':'day4',
     'Friday':'day1','Saturday':'day2','Sunday':'day3','Unscheduled':'review'};
   const rowsByDay = {}; order.forEach(d=>rowsByDay[d]=[]);
-  ROWS.filter(rowMatchesSearch).forEach(r=>{ rowsByDay[r.day || 'Unscheduled'].push(r); });
+  activeRows().filter(rowMatchesSearch).forEach(r=>{ rowsByDay[r.day || 'Unscheduled'].push(r); });
 
   let html = '<div class="summary no-print">';
   order.forEach(d=>{
@@ -2686,7 +4104,7 @@ function renderByPriority(){
       </tr></thead><tbody>`;
       groups.forEach(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
@@ -2714,11 +4132,11 @@ function renderByPriority(){
       const total = computeTotal(r);
       const {isContinuation, band} = meta[i];
       const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-      const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+      const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       const evDay = getEventDay(r.dish);
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
-        <td class="dish">${escapeHtml(cleanDishName(r.dish))}${evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:''}</td>
+        <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
         <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${totalCell}</td>
         <td>${r.section}</td>
@@ -2733,7 +4151,7 @@ function renderByPriority(){
     if (consolidateOn){
       printRowsHtml2 = groups.map(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
@@ -2747,16 +4165,19 @@ function renderByPriority(){
       const pMeta = computeJobMeta(rowsForDay);
       printRowsHtml2 = rowsForDay.map((r,i)=>{
         const total = computeTotal(r);
+        const pax = paxByDish[r.dish];
         const {isContinuation, band} = pMeta[i];
         const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-        const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+        const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         const evDay = getEventDay(r.dish);
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
-          <td class="dish">${escapeHtml(cleanDishName(r.dish))}${evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:''}</td>
+          <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
           <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
+          <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
+          <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
-          <td>${escapeHtml(r.section)}</td>
+          <td class="pf-section">${escapeHtml(r.section)}</td>
           <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
         </tr>`;
       }).join('');
@@ -2770,10 +4191,11 @@ function renderByPriority(){
       </div>
       <table><thead>${consolidateOn
         ? '<tr><th style="width:32%">Task</th><th style="width:26%">Dishes</th><th style="width:12%">Total needed</th><th style="width:14%">Section</th><th style="width:10%">Lead</th></tr>'
-        : '<tr><th style="width:15%">Dish</th><th>Task</th><th style="width:10%">Total needed</th><th style="width:13%">Section</th><th style="width:10%">Lead</th></tr>'}</thead>
+        : '<tr><th style="width:13%">Dish</th><th>Task</th><th style="width:7%">Pax</th><th style="width:9%">Per pax</th><th style="width:10%">Total needed</th><th style="width:12%">Section</th><th style="width:9%">Lead</th></tr>'}</thead>
       <tbody>
       ${printRowsHtml2}
       </tbody></table>
+      ${methodCropsPageHtml(rowsForDay)}
     </div>`;
   });
   return html;
@@ -2791,7 +4213,7 @@ function copyPriority(label, key){
   if (consolidateOn){
     const groups = buildConsolidatedGroups(rowsForDay);
     groups.forEach(g=>{
-      const totalTxt = g.hasTotal ? `${fmtNum(g.total)} ${g.unit||''}` : '(set pax for total)';
+      const totalTxt = g.hasTotal ? `${qN(g.total,g.unit)} ${qU(g.total,g.unit)}` : '(set pax for total)';
       text += `  [ ] ${g.taskLabel} — ${totalTxt} · ${g.section} · ${leaderBySection[g.section] || 'lead TBC'}${g.rows.length>1 ? ' — for: '+g.dishes.map(cleanDishName).join(', ') : ''}\n`;
     });
   } else {
@@ -2802,7 +4224,7 @@ function copyPriority(label, key){
       text += cleanDishName(dish) + (evDay ? ` (event: ${evDay})` : '') + '\n';
       byDish[dish].forEach(r=>{
         const total = computeTotal(r);
-        text += `  [ ] ${r.task} — ${fmtNum(total)} ${total!==null?(r.unit||''):'(set pax for total)'} · ${r.section} · ${leaderBySection[r.section] || 'lead TBC'}\n`;
+        text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'— (set pax for total)'} · ${r.section} · ${leaderBySection[r.section] || 'lead TBC'}\n`;
       });
       text += '\n';
     });
@@ -2818,7 +4240,7 @@ function copyPriority(label, key){
 function renderBySection(){
   const counts = {}; SECTIONS.forEach(s=>counts[s]=0);
   let flaggedCount=0;
-  ROWS.filter(rowMatchesSearch).forEach(r=>{ counts[r.section]++; if (r.flagged) flaggedCount++; });
+  activeRows().filter(rowMatchesSearch).forEach(r=>{ counts[r.section]++; if (r.flagged) flaggedCount++; });
 
   let html = '<div class="summary no-print">';
   SECTIONS.forEach(s=>{
@@ -2842,7 +4264,7 @@ function renderBySection(){
 
   sectionsToShow.forEach(s=>{
     const key = SECTION_KEY[s];
-    const rowsForSection = applySort(ROWS.filter(r=> r.section===s && (activeFilter!=='REVIEW' || r.flagged) && rowMatchesSearch(r)), 'section');
+    const rowsForSection = applySort(activeRows().filter(r=> r.section===s && (activeFilter!=='REVIEW' || r.flagged) && rowMatchesSearch(r)), 'section');
     if (rowsForSection.length===0) return;
     const groups = consolidateOn ? buildConsolidatedGroups(rowsForSection) : null;
     const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForSection.length} tasks)` : `${rowsForSection.length} tasks`;
@@ -2868,7 +4290,7 @@ function renderBySection(){
       </tr></thead><tbody>`;
       groups.forEach(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
@@ -2897,13 +4319,13 @@ function renderBySection(){
       const pax = paxByDish[r.dish];
       const {isContinuation, band} = meta[idx];
       const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-      const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+      const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
-        <td class="dish">${escapeHtml(cleanDishName(r.dish))}</td>
+        <td class="dish">${(idx>0 && rowsForSection[idx-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
         <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
-        <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+        <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty">${totalCell}</td>
         <td><select class="rowsel" onchange="moveRow(${globalIdx}, this.value)">
           ${SECTIONS.map(sec=>`<option ${sec===r.section?'selected':''}>${sec}</option>`).join('')}
@@ -2921,7 +4343,7 @@ function renderBySection(){
     if (consolidateOn){
       printRowsHtml = groups.map(g=>{
         const isMerged = g.rows.length>1;
-        const totalCell = g.hasTotal ? `<b>${fmtNum(g.total)}</b> ${g.unit?escapeHtml(String(g.unit)):''}` : '<span class="needpax">set pax</span>';
+        const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
@@ -2937,13 +4359,13 @@ function renderBySection(){
         const pax = paxByDish[r.dish];
         const {isContinuation, band} = printMeta[i];
         const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
-        const totalCell = total!==null ? `<b>${fmtNum(total)}</b> ${r.unit?escapeHtml(String(r.unit)):''}`
+        const totalCell = total!==null ? `<b>${qN(total,r.unit)}</b> ${escapeHtml(qU(total,r.unit))}`
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
-          <td class="dish">${escapeHtml(cleanDishName(r.dish))}</td>
+          <td class="dish">${(i>0 && rowsForSection[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
           <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
-          <td class="qty">${r.qty!==undefined && r.qty!==null && r.qty!=='' ? escapeHtml(String(r.qty)) : '—'} ${r.unit?escapeHtml(String(r.unit)):''}</td>
+          <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
           <td class="pf-section">${escapeHtml(r.section)}</td>
           <td class="pf-day">${escapeHtml(r.day||'not set')}</td>
@@ -2963,6 +4385,7 @@ function renderBySection(){
       <tbody>
       ${printRowsHtml}
       </tbody></table>
+      ${methodCropsPageHtml(rowsForSection)}
     </div>`;
   });
   return html;
@@ -2980,7 +4403,7 @@ function paxReferenceBlock(rowsSubset){
         const eventDateStr = getEventDateStr(d);
         const pax = paxByDish[d]!==undefined ? paxByDish[d] : 'not set';
         const dateBits = [eventDay, eventDateStr].filter(Boolean).join(' ');
-        return `<tr><td>${escapeHtml(cleanDishName(d))}</td><td>${pax}${dateBits?' · '+escapeHtml(dateBits):''}</td></tr>`;
+        return `<tr><td>${escapeHtml(dishKeyword(d))}</td><td>${pax}${dateBits?' · '+escapeHtml(dateBits):''}</td></tr>`;
       }).join('')}
     </tbody></table>
   </div>`;
@@ -3036,12 +4459,14 @@ function cleanTaskLabel(task){
 function buildConsolidatedGroups(rows){
   const groups = {}; const order = [];
   rows.forEach(r=>{
-    const total = computeTotal(r);
-    const unitKey = (r.unit||'').toLowerCase().trim();
+    const rawTotal = computeTotal(r);
+    const based = toBaseQty(rawTotal, r.unit);
+    const total = rawTotal===null ? null : based.n;
+    const unitKey = based.key;
     const sig = taskSignature(r.task);
     const key = (total===null || !sig) ? 'single-'+order.length+'-'+Math.random() : sig+'|'+(r.day||'')+'|'+r.section+'|'+unitKey;
     if (!groups[key]){
-      groups[key] = {taskLabel: cleanTaskLabel(r.task), unit:r.unit, total:0, hasTotal:false,
+      groups[key] = {taskLabel: cleanTaskLabel(r.task), unit: rawTotal===null ? r.unit : based.u, total:0, hasTotal:false,
         day:r.day, section:r.section, rows:[], dishes:[]};
       order.push(key);
     }
@@ -3119,6 +4544,26 @@ function cleanDishName(raw){
   t = t.replace(/\(\s*/g,'(').replace(/\s*\)/g,')').replace(/\s+/g,' ').trim();
   return t || raw;
 }
+// A much shorter, keyword-only version of a dish name — for places like the pax panel
+// and method crop labels, where the full descriptive title (section label, every
+// component, every dietary tag) is more clutter than help. Takes the LAST segment after
+// any hyphen/colon (the most specific part — this is also what correctly turns a
+// sub-recipe's full concatenated title, e.g. "...barramundi-spanner crab croquette SUB",
+// into just "spanner crab croquette"), then keeps only the first clause before a comma,
+// then strips trailing dietary tags.
+function dishKeyword(raw){
+  let t = (raw||'').toString().trim();
+  if (!t) return '';
+  const parts = t.split(/\s*[-:]\s*/).filter(Boolean);
+  let core = (parts.length ? parts[parts.length-1] : t).trim();
+  core = core.replace(/\(sub\)/gi, '').trim();
+  core = core.split(',')[0].trim();
+  while (/\b(GF|VE|VEG|DF|NF|V)\b\.?\s*$/i.test(core)){
+    core = core.replace(/\s*\b(GF|VE|VEG|DF|NF|V)\b\.?\s*$/i, '').trim();
+  }
+  core = core.replace(/\s+SUB$/i, '').trim();
+  return core || cleanDishName(raw) || raw;
+}
 function setFilter(s){ activeFilter = s; render(); }
 function setLeader(section, name){ leaderBySection[section] = (name||'').trim(); render(); }
 function moveRow(idx, newSection){ ROWS[idx].section = newSection; ROWS[idx].flagged=false; render(); }
@@ -3137,7 +4582,7 @@ function copySection(section){
   if (consolidateOn){
     const groups = buildConsolidatedGroups(rows);
     groups.forEach(g=>{
-      const totalTxt = g.hasTotal ? `${fmtNum(g.total)} ${g.unit||''}` : '(set pax for total)';
+      const totalTxt = g.hasTotal ? `${qN(g.total,g.unit)} ${qU(g.total,g.unit)}` : '(set pax for total)';
       text += `  [ ] ${g.taskLabel} — ${totalTxt} · ${g.day||'day not set'}${g.rows.length>1 ? ' — for: '+g.dishes.map(cleanDishName).join(', ') : ''}\n`;
     });
   } else {
@@ -3148,7 +4593,7 @@ function copySection(section){
       text += cleanDishName(dish) + (pax!==undefined ? ` (${pax} pax)` : ' (pax not set)') + '\n';
       byDish[dish].forEach(r=>{
         const total = computeTotal(r);
-        text += `  [ ] ${r.task} — ${fmtNum(total)} ${total!==null?(r.unit||''):'(set pax for total)'} [${r.qty||'—'} ${r.unit||''} per pax] · ${r.day||'day not set'}\n`;
+        text += `  [ ] ${r.task} — ${total!==null?qN(total,r.unit)+' '+qU(total,r.unit):'— (set pax for total)'} [${perPaxText(r)} per pax] · ${r.day||'day not set'}\n`;
       });
       text += '\n';
     });
@@ -3160,12 +4605,307 @@ function copySection(section){
   });
 }
 
+// ================= Prepline Pro: licence-gated features =================
+// Licence handling lives in the shared Autoprod licence module (<head>, window.AutoprodLicence).
+// Everything here is stored in this browser's localStorage only; nothing is uploaded.
+function proActive(){
+  if (LICENSE_CONFIG.edition === 'offline-pro') return true;        // offline Pro build ships unlocked
+  return !!(window.AutoprodLicence && AutoprodLicence.isPro());
+}
+function proGate(reason){ if (proActive()) return true; AutoprodLicence.openUpgrade(reason); return false; }
+const PRO_KEYS = {templates:'prepPro_templates_v1', stations:'prepPro_stations_v1', profiles:'prepPro_profiles_v1', profilePrefix:'prepPro_profile_'};
+const PROFILE_DATA_KEYS = [DB_STORAGE_KEY, ONETIME_STORAGE_KEY, PRO_KEYS.templates, PRO_KEYS.stations];
+function proGet(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } }
+function proSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+function proEsc(s){ return escapeHtml(String(s==null?'':s)).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function proCleanName(s, max){ return String(s||'').replace(/[^A-Za-z0-9 &\/,.+()-]/g,'').replace(/\s+/g,' ').trim().slice(0, max||40); }
+
+// ---- print footer: free printouts carry a small footer, Pro prints are clean ----
+function freeFooterOn(){ return !!(LICENSE_CONFIG.freeLimits && LICENSE_CONFIG.freeLimits.printFooter); }
+function printFooterHtml(){
+  return (proActive() || !freeFooterOn()) ? '' : `<div class="made-with-footer" style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px 'Inter',sans-serif; color:#777; text-align:center;">Made with Prepline</div>`;
+}
+
+// ---- custom stations (Pro): extra sections with their own keywords, checked before the built-in ones ----
+const BUILTIN_SECTIONS = SECTIONS.slice();
+const CUSTOM_KEYS = ['cust0','cust1','cust2','cust3','cust4','cust5','cust6','cust7'];
+let customStations = [];   // [{name, keywords:[...]}]
+function loadCustomStations(){
+  const raw = proGet(PRO_KEYS.stations, []);
+  customStations = (Array.isArray(raw) ? raw : []).map(s=>({name: proCleanName(s && s.name), keywords: (Array.isArray(s && s.keywords) ? s.keywords : []).map(k=>String(k).toLowerCase().trim()).filter(Boolean).slice(0,40)}))
+    .filter(s=>s.name && !BUILTIN_SECTIONS.includes(s.name)).slice(0, CUSTOM_KEYS.length);
+}
+// Saved stations stay registered even if the licence lapses, so a saved list that uses them still loads;
+// only adding/removing stations needs Pro.
+function registerCustomStations(){
+  for (let i=SECTIONS.length-1; i>=0; i--) if (!BUILTIN_SECTIONS.includes(SECTIONS[i])) SECTIONS.splice(i,1);
+  customStations.forEach((st,i)=>{
+    SECTIONS.push(st.name); SECTION_KEY[st.name] = CUSTOM_KEYS[i];
+    if (typeof leaderBySection[st.name] !== 'string') leaderBySection[st.name] = '';
+    if (MINUTES_PER_TASK[st.name] === undefined) MINUTES_PER_TASK[st.name] = 10;
+  });
+}
+const _builtinCategorize = categorize;
+categorize = function(itemText, sheetTitle){
+  const t = norm(itemText);
+  if (!isNote(t)) for (const st of customStations){ if (st.keywords.length && kwHit(t, st.keywords)) return st.name; }
+  return _builtinCategorize(itemText, sheetTitle);
+};
+const _builtinApplyStaffingPreset = applyStaffingPreset;
+applyStaffingPreset = function(key){
+  _builtinApplyStaffingPreset(key);
+  const p = STAFFING_PRESETS[key];
+  if (p){ customStations.forEach(st=>{ MINUTES_PER_TASK[st.name] = Math.round(10*p.mult*10)/10; }); render(); }
+};
+function addCustomStation(){
+  if (!proGate('Custom stations are a Pro feature.')) return;
+  const name = proCleanName(document.getElementById('proStationName').value);
+  const kws = document.getElementById('proStationKw').value.split(',').map(s=>s.toLowerCase().trim()).filter(Boolean);
+  if (!name){ proStatus('Give the station a name.', 'err'); return; }
+  if (SECTIONS.includes(name)){ proStatus('There is already a station called "'+name+'".', 'err'); return; }
+  if (customStations.length >= CUSTOM_KEYS.length){ proStatus('Up to '+CUSTOM_KEYS.length+' custom stations.', 'err'); return; }
+  customStations.push({name, keywords:kws});
+  proSet(PRO_KEYS.stations, customStations); registerCustomStations();
+  // re-sort rows that were auto-placed (not moved by hand) so the new keywords take effect now
+  let moved = 0;
+  ROWS.forEach(r=>{ if (r.section===r.baseCategory && kws.length && kwHit(norm(r.task), kws)){ r.section = name; r.baseCategory = name; r.flagged = false; moved++; } });
+  proStatus('Added station "'+name+'"'+(moved?' and moved '+moved+' matching item(s) into it':'')+'.', 'ok');
+  renderApp();
+}
+function removeCustomStation(enc){
+  if (!proGate('Custom stations are a Pro feature.')) return;
+  const name = decodeURIComponent(enc);
+  customStations = customStations.filter(s=>s.name!==name);
+  proSet(PRO_KEYS.stations, customStations);
+  ROWS.forEach(r=>{ if (r.section===name || r.baseCategory===name){ let c = _builtinCategorize(r.task, r.dish); if (!c || c==='REVIEW'){ c='Vegetables'; r.flagged=true; } r.section=c; r.baseCategory=c; } });
+  registerCustomStations();
+  if (activeFilter===name) activeFilter='all';
+  proStatus('Removed station "'+name+'"; its items went back to the built-in stations.', 'ok');
+  renderApp();
+}
+
+// ---- saved templates (Pro): named snapshots of a sorted list, reloadable any time ----
+function getTemplates(){ const t = proGet(PRO_KEYS.templates, {}); return (t && typeof t==='object' && !Array.isArray(t)) ? t : {}; }
+function saveTemplate(){
+  if (!proGate('Saved templates are a Pro feature.')) return;
+  if (!ROWS.length){ proStatus('Load or sort a list first, then save it as a template.', 'err'); return; }
+  const name = proCleanName(document.getElementById('proTemplateName').value, 60);
+  if (!name){ proStatus('Give the template a name, e.g. "Friday banquet".', 'err'); return; }
+  const t = getTemplates();
+  t[name] = {savedAt: new Date().toISOString(), ROWS, leaderBySection, paxByDish, eventDayOverride, eventDateByDish};
+  if (!proSet(PRO_KEYS.templates, t)){ proStatus('Could not save: this browser\'s storage is full.', 'err'); return; }
+  proStatus('Saved template "'+name+'" ('+ROWS.length+' items).', 'ok');
+  renderProPanel();
+}
+function loadTemplate(enc){
+  if (!proGate('Saved templates are a Pro feature.')) return;
+  const name = decodeURIComponent(enc); const t = getTemplates()[name];
+  if (!t || !Array.isArray(t.ROWS)){ proStatus('That template could not be read.', 'err'); return; }
+  const isObj = v => v && typeof v==='object' && !Array.isArray(v);
+  originalPageImages = {}; methodCrops = {};   // v3: a template keeps the list only, not page images
+  ROWS = t.ROWS.filter(r=>r && typeof r.task==='string' && typeof r.dish==='string').map(r=>{
+    const ok = SECTIONS.includes(r.section);
+    return {...r, section: ok ? r.section : 'Vegetables', baseCategory: SECTIONS.includes(r.baseCategory) ? r.baseCategory : (ok ? r.section : 'Vegetables'), flagged: ok ? !!r.flagged : true};
+  });
+  leaderBySection = isObj(t.leaderBySection) ? {...t.leaderBySection} : {};
+  SECTIONS.forEach(s=>{ if (typeof leaderBySection[s]!=='string') leaderBySection[s]=''; });
+  paxByDish = cleanPaxMap(t.paxByDish);
+  migratePdfBasePax(ROWS, paxByDish);
+  eventDayOverride = isObj(t.eventDayOverride) ? {...t.eventDayOverride} : {};
+  eventDateByDish = isObj(t.eventDateByDish) ? {...t.eventDateByDish} : {};
+  sourceInfo = {name: 'Template: '+name, loadedAt: new Date()};
+  document.getElementById('fileTag').textContent = 'template: '+name;
+  toolMode = 'onetime';
+  setStatus('Loaded template "'+name+'" ('+ROWS.length+' items).', 'ok');
+  renderApp();
+}
+function deleteTemplate(enc){
+  const name = decodeURIComponent(enc);
+  if (!confirm('Delete the template "'+name+'"?')) return;
+  const t = getTemplates(); delete t[name]; proSet(PRO_KEYS.templates, t); renderProPanel();
+}
+
+// ---- multiple kitchens (Pro): each named profile has its own recipe database, list, templates, stations ----
+function profilesState(){
+  const p = proGet(PRO_KEYS.profiles, null);
+  if (p && typeof p.active==='string' && Array.isArray(p.list) && p.list.includes(p.active)) return p;
+  return {active:'Main kitchen', list:['Main kitchen']};
+}
+function snapshotProfile(name){
+  const snap = {};
+  PROFILE_DATA_KEYS.forEach(k=>{ try{ const v = localStorage.getItem(k); if (v!==null) snap[k] = v; }catch(e){} });
+  return proSet(PRO_KEYS.profilePrefix+name, snap);
+}
+function restoreProfile(name){
+  const snap = proGet(PRO_KEYS.profilePrefix+name, {}) || {};
+  PROFILE_DATA_KEYS.forEach(k=>{ try{ if (typeof snap[k]==='string') localStorage.setItem(k, snap[k]); else localStorage.removeItem(k); }catch(e){} });
+}
+function switchKitchen(name){
+  if (!proGate('Multiple kitchens are a Pro feature.')) return;
+  const ps = profilesState();
+  if (!ps.list.includes(name) || name===ps.active) return;
+  clearTimeout(onetimeSaveTimer); saveOnetimeSession();
+  if (!snapshotProfile(ps.active)){ proStatus('Could not save the current kitchen (storage full).', 'err'); return; }
+  restoreProfile(name);
+  ps.active = name; proSet(PRO_KEYS.profiles, ps);
+  location.reload();
+}
+function addKitchen(){
+  if (!proGate('Multiple kitchens are a Pro feature.')) return;
+  const name = proCleanName(document.getElementById('proKitchenName').value);
+  const ps = profilesState();
+  if (!name){ proStatus('Name the kitchen, e.g. "Banquets" or "Cafe".', 'err'); return; }
+  if (ps.list.includes(name)){ proStatus('You already have a kitchen called "'+name+'".', 'err'); return; }
+  ps.list.push(name); proSet(PRO_KEYS.profiles, ps);
+  proSet(PRO_KEYS.profilePrefix+name, {});
+  switchKitchen(name);
+}
+function deleteKitchen(){
+  if (!proGate('Multiple kitchens are a Pro feature.')) return;
+  const sel = document.getElementById('proKitchenDelete'); const name = sel && sel.value;
+  const ps = profilesState();
+  if (!name || name===ps.active) return;
+  if (!confirm('Delete the kitchen "'+name+'" and everything saved in it on this device? Export a backup first if unsure.')) return;
+  ps.list = ps.list.filter(n=>n!==name); proSet(PRO_KEYS.profiles, ps);
+  try{ localStorage.removeItem(PRO_KEYS.profilePrefix+name); }catch(e){}
+  proStatus('Deleted kitchen "'+name+'".', 'ok'); renderProPanel();
+}
+
+// ---- offline Windows version (Pro download) ----
+function downloadOffline(){
+  if (!proGate('The offline Windows version is included with Pro.')) return;
+  const url = LICENSE_CONFIG.offlineDownloadUrl;
+  if (LICENSE_CONFIG.mode==='test' || !url || /TODO/.test(url)){
+    AutoprodLicence.toast('TEST MODE: the offline download link is a placeholder ('+url+'). In live mode this opens the Pro download (Prepline-Pro-Windows.zip).');
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
+// ---- Pro panel UI ----
+let proPanelMsg = {text:'', cls:''};
+function proStatus(text, cls){ proPanelMsg = {text, cls}; const el = document.getElementById('proPanelStatus'); if (el){ el.textContent = text; el.className = 'status'+(cls?' '+cls:''); } }
+let proPanelCollapsed = false;
+function freePlanLine(){
+  const fl = LICENSE_CONFIG.freeLimits || {};
+  return (fl.onePdfPerSort ? 'upload one PDF' : 'upload PDFs or a spreadsheet') + ', sort by station, print' + (fl.printFooter ? ' (with a small "Made with Prepline" footer)' : '') + ' and export to Excel.';
+}
+function renderProPanel(){
+  const el = document.getElementById('proPanel'); if (!el) return;
+  const C = LICENSE_CONFIG;
+  if (!proActive()){
+    if (proPanelCollapsed){
+      el.innerHTML = `<div class="row" style="align-items:center; justify-content:space-between;"><div class="small" style="font-size:12.5px;color:var(--ink-soft);">${freePlanLine()}</div><button class="ghost" type="button" onclick="proPanelCollapsed=false; renderProPanel();">Show Pro options</button></div>`;
+      return;
+    }
+    el.innerHTML = `<div class="row" style="justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <h2 style="margin:0;">Upgrade to Prepline Pro</h2>
+        <button class="ghost" type="button" onclick="proPanelCollapsed=true; renderProPanel();">Hide</button>
+      </div>
+      <div class="small" style="font-size:12.5px;color:var(--ink-soft); margin-bottom:12px;">You're on the free plan: ${freePlanLine()} It stays free.</div>
+      <div class="pro-plans">${C.plans.map(p=>`<div class="pro-plan${p.best?' best':''}">${p.tag?`<span class="pro-tag">${proEsc(p.tag)}</span>`:''}
+          <div class="pro-plan-name">${proEsc(p.label)}</div><div class="pro-price">${proEsc(p.price)}</div>
+          <div class="pro-per">${proEsc(p.per)}</div>${p.note?`<div class="pro-per"><b>${proEsc(p.note)}</b></div>`:''}
+          <button type="button" data-buy="${proEsc(p.id)}" onclick="AutoprodLicence.buy('${proEsc(p.id)}')">Buy ${proEsc(p.short)}</button></div>`).join('')}
+      </div>
+      <ul class="pro-feats">${C.upgrade.features.map(f=>`<li>${proEsc(f)}</li>`).join('')}</ul>
+      <div class="row" style="align-items:center; margin-top:8px;">
+        <button class="secondary" type="button" onclick="AutoprodLicence.openLicenceDialog()">Enter licence key</button>
+        <span class="small" style="font-size:12px;color:var(--ink-soft);">Prices in AUD. Secure checkout by Lemon Squeezy (merchant of record, handles GST). 14-day no-questions refund.</span>
+      </div>`;
+    return;
+  }
+  const ps = profilesState();
+  const tpl = getTemplates(); const tplNames = Object.keys(tpl).sort((a,b)=>a.localeCompare(b));
+  const offline = C.edition==='offline-pro';
+  const plan = offline ? 'Offline edition' : ((C.plans.find(p=>p.id===AutoprodLicence.plan())||{}).label || 'Pro');
+  el.innerHTML = `<div class="row" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <h2 style="margin:0;">Prepline Pro <span class="pro-pill">${proEsc(plan)}</span></h2>
+      <div class="row" style="gap:6px; align-items:center;">
+        <label class="small" for="proKitchenSel" style="font-size:12px;color:var(--ink-soft);">Kitchen</label>
+        <select id="proKitchenSel" class="rowsel" onchange="switchKitchen(this.value)">${ps.list.map(n=>`<option ${n===ps.active?'selected':''} value="${proEsc(n)}">${proEsc(n)}</option>`).join('')}</select>
+        ${offline?'':`<button class="ghost" type="button" onclick="AutoprodLicence.openLicenceDialog()">Manage licence</button>`}
+      </div>
+    </div>
+    <div class="pro-grid">
+      <details class="pro-box" open><summary>Saved templates (${tplNames.length})</summary>
+        <div class="row" style="gap:6px; margin:8px 0;"><div class="field" style="flex:1 1 160px;"><input type="text" id="proTemplateName" placeholder="Template name, e.g. Friday banquet" maxlength="60"></div>
+          <button class="secondary" type="button" id="proSaveTemplateBtn" onclick="saveTemplate()">Save current list</button></div>
+        ${tplNames.length ? `<table class="pro-table"><tbody>${tplNames.map(n=>`<tr><td>${proEsc(n)}<div class="pro-per">${(tpl[n].ROWS||[]).length} items · ${proEsc(String(tpl[n].savedAt||'').slice(0,10))}</div></td>
+          <td style="text-align:right; white-space:nowrap;"><button class="secondary" type="button" onclick="loadTemplate('${encName(n)}')">Load</button> <button class="ghost" type="button" onclick="deleteTemplate('${encName(n)}')">Delete</button></td></tr>`).join('')}</tbody></table>`
+          : '<div class="pro-per">No templates yet. Sort a list, then save it here to reuse next time.</div>'}
+      </details>
+      <details class="pro-box" open><summary>Custom stations (${customStations.length})</summary>
+        ${customStations.length ? `<table class="pro-table"><tbody>${customStations.map(s=>`<tr><td><b>${proEsc(s.name)}</b><div class="pro-per">${s.keywords.length?proEsc(s.keywords.join(', ')):'no keywords (move items here by hand)'}</div></td>
+          <td style="text-align:right;"><button class="ghost" type="button" onclick="removeCustomStation('${encName(s.name)}')">Remove</button></td></tr>`).join('')}</tbody></table>` : '<div class="pro-per" style="margin:6px 0;">Add stations your kitchen actually runs (e.g. Pastry, Grill). Items matching the keywords go there first.</div>'}
+        <div class="row" style="gap:6px; margin-top:8px;"><div class="field" style="flex:1 1 120px;"><input type="text" id="proStationName" placeholder="Station name" maxlength="40"></div>
+          <div class="field" style="flex:2 1 180px;"><input type="text" id="proStationKw" placeholder="keywords, comma separated"></div>
+          <button class="secondary" type="button" id="proAddStationBtn" onclick="addCustomStation()">Add station</button></div>
+      </details>
+      <details class="pro-box"><summary>Kitchens (${ps.list.length})</summary>
+        <div class="pro-per" style="margin:6px 0;">Each kitchen keeps its own recipe database, current list, templates and stations on this device. Current: <b>${proEsc(ps.active)}</b></div>
+        <div class="row" style="gap:6px;"><div class="field" style="flex:1 1 150px;"><input type="text" id="proKitchenName" placeholder="New kitchen name" maxlength="40"></div>
+          <button class="secondary" type="button" id="proAddKitchenBtn" onclick="addKitchen()">Add and switch</button></div>
+        ${ps.list.length>1 ? `<div class="row" style="gap:6px; margin-top:8px;"><select id="proKitchenDelete" class="rowsel">${ps.list.filter(n=>n!==ps.active).map(n=>`<option value="${proEsc(n)}">${proEsc(n)}</option>`).join('')}</select><button class="ghost" type="button" onclick="deleteKitchen()" style="color:var(--prot);">Delete kitchen</button></div>` : ''}
+      </details>
+      <details class="pro-box"><summary>Offline Windows version</summary>
+        <div class="pro-per" style="margin:6px 0;">${offline ? 'You are using the offline Pro edition: it works with no internet.' : 'A single file that runs in Edge or Chrome with no internet connection. Unzip, double-click, done.'}</div>
+        ${offline ? '' : `<button class="secondary" type="button" id="proOfflineBtn" onclick="downloadOffline()">Download Prepline-Pro-Windows.zip</button>`}
+      </details>
+    </div>
+    <div class="status ${proPanelMsg.cls}" id="proPanelStatus">${proEsc(proPanelMsg.text)}</div>
+    ${freeFooterOn() ? '<div class="pro-per">Clean prints are on: no footer on your printouts.</div>' : ''}`;
+}
+function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro'; }
+function renderProChrome(){
+  if (proUiOff()){
+    // Pro switched off: no Upgrade / licence buttons, no Pro panel, no append-PDF row, no footer.
+    ['proUpgradeBtn','licenceKeyBtn'].forEach(id=>{ const b = document.getElementById(id); if (b){ b.hidden = true; b.style.display = 'none'; } });
+    const pp = document.getElementById('proPanel'); if (pp){ pp.innerHTML = ''; pp.style.display = 'none'; }
+    const ar = document.getElementById('appendRow'); if (ar) ar.style.display = 'none';
+    const f = document.getElementById('madeWithFooter'); if (f) f.hidden = !freeFooterOn();
+    return;
+  }
+  const pro = proActive();
+  const up = document.getElementById('proUpgradeBtn');
+  if (up){ up.textContent = pro ? '★ Pro' : '★ Upgrade to Pro'; up.classList.toggle('active', pro);
+    up.onclick = ()=> pro ? (LICENSE_CONFIG.edition==='offline-pro' ? null : AutoprodLicence.openLicenceDialog()) : AutoprodLicence.openUpgrade(); }
+  const lk = document.getElementById('licenceKeyBtn'); if (lk) lk.hidden = pro;
+  const f = document.getElementById('madeWithFooter'); if (f) f.hidden = pro || !freeFooterOn();
+  const ar = document.getElementById('appendRow');
+  if (ar) ar.style.display = (toolMode==='onetime' && ROWS.length>0) ? 'flex' : 'none';
+  const pill = document.querySelector('#appendPdfBtn .pro-pill'); if (pill) pill.hidden = pro;
+  renderProPanel();
+}
+const _builtinRenderApp = renderApp;
+renderApp = function(){ _builtinRenderApp(); renderProChrome(); };
+
+function proBeforeInit(){
+  if (proUiOff()){ customStations = []; return; }   // Pro off: built-in stations only
+  loadCustomStations();
+  registerCustomStations();
+}
+function proAfterInit(){
+  document.getElementById('appendPdfBtn').addEventListener('click', ()=>{
+    if (!proGate('Appending another PDF to the current list is a Pro feature.')) return;
+    document.getElementById('appendInput').click();
+  });
+  document.getElementById('appendInput').addEventListener('change', e=>{
+    const files = e.target.files; if (files && files.length) routeFiles(files, {append:true}); e.target.value = '';
+  });
+  if (window.AutoprodLicence) AutoprodLicence.onChange(()=>{ renderProChrome(); });
+  renderProChrome();
+}
+// ================= end Prepline Pro =================
+
+proBeforeInit();
 loadDatabase();
 loadOnetimeSession();
 const hasExistingDb = Object.keys(dishDatabase).length>0;
 toolMode = (ROWS && ROWS.length>0) ? 'onetime' : (hasExistingDb ? 'database' : 'onetime');
 appMode = hasExistingDb ? 'weekly' : 'database';
 renderApp();
+proAfterInit();
 
 
 
