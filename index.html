@@ -849,6 +849,8 @@ var LICENSE_CONFIG = {
   .ing-table td{vertical-align:top; font-size:12.5px;}
   .ing-table input[type=text], .ing-table select{font-size:12px; padding:4px 6px;}
   .ing-sum{font-size:12px; color:var(--ink-soft); margin-top:6px;}
+  .order-intro{font-size:12.5px; color:var(--ink-soft); margin:4px 0;}
+  .sup-input{min-width:130px;}
   .dish-tags{margin-top:12px; font-size:12.5px;}
 </style>
 <style id="pro-css">
@@ -1455,7 +1457,7 @@ function loadOnetimeSession(){
       paxByDish = cleanPaxMap(s.paxByDish);
       migratePdfBasePax(ROWS, paxByDish);
       activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
-      viewMode = ['dish','section','priority'].includes(s.viewMode) ? s.viewMode : 'dish';
+      viewMode = ['dish','section','priority','order'].includes(s.viewMode) ? s.viewMode : 'dish';
       eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
       eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
       rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
@@ -3814,10 +3816,12 @@ function render(){
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
     <button class="${viewMode==='section'?'':'secondary'}" onclick="setView('section')" type="button">By team section</button>
     <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
+    <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet (by supplier)</button>
   </div>
   <div class="row no-print" style="margin-bottom:10px; gap:8px;">
     ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="Exports this view (By dish) as an editable .xlsx">📊 Export to Excel (editable)</button>`
       : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
+      : viewMode==='order' ? ''
       : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
   </div>
   <div class="row no-print print-row" style="margin-bottom:20px; gap:8px; align-items:center;">
@@ -3828,8 +3832,8 @@ function render(){
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
   html += searchBarHtml();
-  html += printOrderControlHtml();
-  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : renderByPriority());
+  html += viewMode==='order' ? '' : printOrderControlHtml();
+  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : renderByPriority()));
   area.innerHTML = html;
 }
 
@@ -5184,6 +5188,146 @@ function renderIngPanel(){
 }
 const ING_SUMMARY = [];   // summary bits added by features 5/6
 const ING_TOOLS = [];     // toolbar buttons added by features 5/6
+
+// ---------- 5. Ordering list: supplier order sheet ----------
+// Suppliers are remembered per ingredient (INGINFO.items[key].sup), across lists.
+// The "Order sheet" view adds up every ticked dish's totals per ingredient (same name, same
+// unit family: weight, volume or a count unit), groups them by supplier, rolls g→kg and
+// ml→L, and rounds the order quantity up to a sensible step. Ingredients without a total
+// yet (no pax) are listed with "set pax"; ingredients with no supplier are listed last.
+function hashId(s){ let h = 5381; s = String(s); for (let i=0;i<s.length;i++) h = ((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+function knownSuppliers(){
+  const set = new Set(); Object.values(INGINFO.items).forEach(e=>{ if (e.sup) set.add(e.sup); });
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
+function setIngSupplier(encTask, val){
+  const e = ingEntry(decodeURIComponent(encTask), true);
+  const v = String(val||'').replace(/[<>"`\\]/g,'').replace(/\s+/g,' ').trim().slice(0,60);
+  if (v) e.sup = v; else delete e.sup;
+  touchIng(e); saveIngInfo(); render();
+}
+function supplierInputHtml(task, idPrefix){
+  const e = INGINFO.items[ingKey(task)] || {};
+  return `<input type="text" class="sup-input" id="${idPrefix}_${hashId(ingKey(task))}" list="supplierList" placeholder="supplier" value="${escapeHtml(e.sup||'')}" onchange="setIngSupplier('${encName(task)}', this.value)">`;
+}
+function supplierDatalistHtml(){ return `<datalist id="supplierList">${knownSuppliers().map(s=>`<option value="${escapeHtml(s)}">`).join('')}</datalist>`; }
+ING_COLUMNS.push({th:'Supplier', td:x=>supplierInputHtml(x.task, 'sup')});
+ING_FILTERS.push({v:'nosup', label:'No supplier yet', test:x=>!(INGINFO.items[x.key]||{}).sup});
+ING_SUMMARY.push(items=>{ const n = items.filter(x=>!(INGINFO.items[x.key]||{}).sup).length; return n ? n+' without a supplier' : 'every ingredient has a supplier'; });
+ING_TOOLS.push(()=>supplierDatalistHtml());
+EXPORT_EXTRA_COLS.push({header:'Supplier', value:(r)=>(INGINFO.items[ingKey(r.task)]||{}).sup||'', wch:20});   // main exports, after Allergens
+
+const ORDER_COUNT_STEP = 1;
+function roundUpOrder(n, u){
+  if (!Number.isFinite(n)) return null;
+  const up = (x, step) => Math.ceil(x/step - 1e-9) * step;
+  const r = v => Math.round(v*1000)/1000;
+  if (u==='kg' || u==='L') return r(up(n, n>=10 ? 0.5 : 0.1));
+  if (u==='g' || u==='ml') return r(up(n, n>=100 ? 50 : 10));
+  return r(up(n, n>=1 ? ORDER_COUNT_STEP : 0.5));
+}
+// Hook for 6 (prices): may return {n, u} in the price's unit, or null to keep the roll-up.
+let orderUnitFor = null;
+function orderLines(){
+  const map = {}, list = [];
+  activeRows().forEach(r=>{
+    const key = ingKey(r.task); if (!key) return;
+    const t = computeTotal(r);
+    const b = toBaseQty(t, r.unit);
+    const fam = (t===null || t===undefined) ? 'none' : (b.key==='g' ? 'g' : (b.key==='ml' ? 'ml' : 'u:'+String(r.unit||'').trim().toLowerCase()));
+    const id = key+'|'+fam;
+    let L = map[id];
+    if (!L){ L = map[id] = {id, key, task:r.task, fam, baseUnit: fam==='g' ? 'g' : (fam==='ml' ? 'ml' : String(r.unit||'').trim()), qty:0, hasQty:false, dishes:[], rows:[]}; list.push(L); }
+    L.rows.push(r);
+    if (!L.dishes.includes(r.dish)) L.dishes.push(r.dish);
+    if (fam!=='none' && Number.isFinite(b.n)){ L.qty += b.n; L.hasQty = true; }
+  });
+  list.forEach(L=>{
+    L.supplier = (INGINFO.items[L.key]||{}).sup || '';
+    if (L.hasQty){
+      L.qty = Math.round(L.qty*1e9)/1e9;
+      const d = dispQty(L.qty, L.baseUnit);
+      L.need = {n:d.n, u:d.u||''};
+      const conv = orderUnitFor ? orderUnitFor(L) : null;
+      const o = conv || L.need;
+      L.order = {n: roundUpOrder(o.n, o.u), u: o.u, exact: o.n};
+    }
+  });
+  return list;
+}
+function orderGroups(){
+  const lines = orderLines(), groups = {}, names = [];
+  lines.forEach(L=>{ const k = L.supplier || ''; if (!groups[k]){ groups[k] = []; names.push(k); } groups[k].push(L); });
+  names.sort((a,b)=> (a==='') - (b==='') || a.localeCompare(b));
+  names.forEach(k=>groups[k].sort((a,b)=>a.task.localeCompare(b.task)));
+  return names.map(k=>({supplier:k, lines:groups[k]}));
+}
+const ORDER_EXTRA_COLS = [];   // feature 6 adds price / cost columns: {th, td(L), print(L)}
+const ORDER_GROUP_FOOT = [];   // feature 6 adds a cost total line: (group) => html
+function orderQtyText(L){ return L.hasQty ? `${fmtNum(L.order.n)} ${escapeHtml(L.order.u)}` : '<span class="needpax">set pax</span>'; }
+function needQtyText(L){ return L.hasQty ? `${fmtNum(L.need.n)} ${escapeHtml(L.need.u)}` : '<span class="needpax">set pax</span>'; }
+function renderOrderSheet(){
+  const groups = orderGroups();
+  if (!groups.length) return '<div class="empty"><div class="big">Nothing to order yet</div>Load a list first.</div>';
+  const unassigned = groups.find(g=>!g.supplier);
+  let html = `<div class="order-intro no-print">Order sheet: every ticked dish's totals added up per ingredient and grouped by supplier.
+    Weights roll up to kg and volumes to L; order quantities are rounded up (0.1 kg / 10 g steps, whole units for counts) — edit them in the Excel file.
+    Assign suppliers below or in the Ingredients panel; they are remembered for next time.</div>
+    <div class="row no-print" style="gap:8px; margin:8px 0 14px;">
+      <button class="secondary" type="button" onclick="exportOrderToXlsx()" data-export="exportOrderToXlsx">📊 Export order sheet to Excel (editable order qty)</button>
+      <button class="secondary" type="button" onclick="printAllOfView('order', 'order-sheets.html')">🖨️ Print all order sheets</button>
+      ${unassigned ? `<span class="needpax">${unassigned.lines.length} item(s) with no supplier yet (listed last)</span>` : ''}
+    </div>${supplierDatalistHtml()}`;
+  groups.forEach(g=>{
+    const title = g.supplier || 'No supplier yet';
+    const gid = 'order-' + hashId(g.supplier || '~none');
+    const extraTh = ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('');
+    html += `<div class="section-head no-print" style="background:var(--${g.supplier?'accent-bg':'review-bg'});">
+      <div><h3 style="color:var(--${g.supplier?'accent-dark':'prot'})">${escapeHtml(title)}</h3><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'}${ORDER_GROUP_FOOT.map(f=>f(g, false)).join('')}</div></div>
+      <div class="section-actions"><button class="secondary" type="button" onclick="openPrintWindow('print-${gid}')">Print order sheet</button></div>
+    </div>
+    <div class="section-table-wrap no-print"><table class="order-table"><thead><tr><th>Item</th><th>Needed</th><th>Order qty</th><th>Used in</th>${extraTh}${g.supplier?'':'<th>Supplier</th>'}</tr></thead><tbody>
+    ${g.lines.map(L=>`<tr data-line="${escapeHtml(L.id)}"><td class="task">${escapeHtml(L.task)}${alChipsRowsHtml(L.rows)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.td(L)}</td>`).join('')}${g.supplier?'':`<td>${supplierInputHtml(L.task, 'osup')}</td>`}</tr>`).join('')}
+    </tbody></table></div>
+    <div class="print-only" id="print-${gid}">
+      <div class="print-head"><h2>Order sheet — ${escapeHtml(title)}</h2><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'} · printed ${escapeHtml(new Date().toLocaleDateString())}${ORDER_GROUP_FOOT.map(f=>f(g, true)).join('')}</div></div>
+      <table><thead><tr><th>Item</th><th>Needed</th><th>Order qty</th><th>Used in</th>${ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('')}<th style="width:8%">✓</th></tr></thead><tbody>
+      ${g.lines.map(L=>`<tr><td class="task">${escapeHtml(L.task)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.print ? c.print(L) : c.td(L)}</td>`).join('')}<td></td></tr>`).join('')}
+      </tbody></table>
+    </div>`;
+  });
+  return html;
+}
+// Excel: one tab per supplier (and "No supplier yet"). Order qty is a plain number to edit.
+const ORDER_XLSX_EXTRA = [];   // feature 6: {header, value(L), formula?(L, excelRow) -> {f, v}, wch}
+const ORDER_XLSX_FOOT = [];    // feature 6: (ctx) -> adds a total row
+function exportOrderToXlsx(){
+  if (typeof XLSX === 'undefined' || !XLSX.utils){ setStatus('The spreadsheet export could not load. Reload the page and try again.', 'err'); return; }
+  const groups = orderGroups();
+  if (!groups.length){ setStatus('Nothing to export yet — load a list first.', 'err'); return; }
+  const wb = XLSX.utils.book_new(), used = new Set(), changes = [];
+  groups.forEach(g=>{
+    const title = g.supplier || 'No supplier yet';
+    const aoa = [['Order sheet: '+title], ['Generated '+new Date().toLocaleDateString()+' with Prepline. Order qty is rounded up; edit it as needed.'], [],
+      ['Item','Needed','Unit','Order qty','Order unit','Supplier','Used in', ...ORDER_XLSX_EXTRA.map(c=>c.header)]];
+    const hdrRow = aoa.length;   // 1-based row of the header
+    const fcells = [];
+    g.lines.forEach((L, i)=>{
+      const n = hdrRow + 1 + i;
+      aoa.push([L.task, L.hasQty ? L.need.n : '', L.hasQty ? L.need.u : '', L.hasQty ? L.order.n : '', L.hasQty ? L.order.u : '', g.supplier, L.dishes.map(cleanDishName).join(', '),
+        ...ORDER_XLSX_EXTRA.map(c=>c.value(L))]);
+      ORDER_XLSX_EXTRA.forEach((c, ci)=>{ if (c.formula){ const f = c.formula(L, n); if (f) fcells.push({addr: XLSX.utils.encode_cell({r:n-1, c:7+ci}), f}); } });
+    });
+    ORDER_XLSX_FOOT.forEach(fn=>fn({aoa, fcells, first: hdrRow+1, last: hdrRow+g.lines.length}));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    fcells.forEach(fc=>{ ws[fc.addr] = (typeof fc.f.v==='number') ? {t:'n', f:fc.f.f, v:fc.f.v} : {t:'s', f:fc.f.f, v:''}; });
+    ws['!cols'] = [{wch:34},{wch:10},{wch:7},{wch:10},{wch:10},{wch:22},{wch:40}, ...ORDER_XLSX_EXTRA.map(c=>({wch:c.wch||12}))];
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(title, used, changes));
+  });
+  XLSX.writeFile(wb, 'Order_Sheet_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  setStatus('Exported the order sheet: '+groups.length+' supplier tab(s). Order qty is an editable number.', 'ok');
+}
+
 let INGINFO = loadIngInfo();
 const _v33BaseRender = render;
 render = function(){ _v33BaseRender(); renderIngPanel(); };
