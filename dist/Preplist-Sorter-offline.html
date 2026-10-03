@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.2.5">
+<meta name="prepline-version" content="3.3.1">
+<meta name="theme-color" content="#1C1E1B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prepline">
 <title>Prepline: prep list sorter</title>
 <script>
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
@@ -25,11 +30,10 @@ var LICENSE_CONFIG = {
   edition: 'web',
   // v3: free-plan limits from the v2 Pro build, OFF so the v3 baseline behaviour is unchanged
   // (several PDFs at once are free; free prints have no footer). Set true to bring them back.
-  freeLimits: { onePdfPerSort: false, printFooter: false },                                // 'web' | 'offline-pro' (set by build_offline.py --edition pro)
+  freeLimits: { onePdfPerSort: false, printFooter: false },                                // edition: 'web' | 'offline-pro' | 'team' (team = team build: every tool unlocked, no licence; only honoured on file://, localhost or /prepline-team/)
   storeName: 'Autoprod',
   appName: 'Prepline',
   productName: 'Prepline Pro',
-  supportEmail: 'support@autoprod.example',      // TODO: real support address before launch
   storageKey: 'autoprod.licence.prepline.v1',
   revalidateDays: 7,                             // re-check with Lemon Squeezy at most once a week
   offlineGraceDays: 14,                          // keep Pro working this long past a missed check (offline)
@@ -749,7 +753,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   }
   #preplistTab .section-head select:hover, #preplistTab .section-head .leader-input:hover{border-color:var(--accent);}
 
-  #preplistTab .section-actions{display:flex; gap:8px; align-items:center;}
+  #preplistTab .section-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
 
   #preplistTab table{width:100%; border-collapse:collapse; background:#fff;}
   #preplistTab thead th {
@@ -944,6 +948,59 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   .print-sec{margin-bottom:22px;}
   .print-sec h3{font-size:15px; border-bottom:2px solid var(--ink); padding-bottom:4px; margin-bottom:8px;}
 
+
+  /* v3.3.0: allergen chips, ingredient panel */
+  .al-chip{display:inline-block; font:700 9.5px/1 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; letter-spacing:.03em; padding:2px 5px; margin:0 0 0 4px; border-radius:4px; background:#FBE6D6; color:#8A3B12; border:1px solid #E9C3A3; vertical-align:middle;}
+  .al-chip.sug{background:#fff; border-style:dashed; color:#8A6A3D;}
+  .al-line{font-size:12px; color:#8A3B12; margin-top:4px;}
+  .al-note{font-size:10.5px; color:#5C5F58; margin:6px 0; font-style:italic;}
+  .al-disclaimer{font-size:12px; background:#FFF5E6; border:1px solid #E9C3A3; color:#6B4F28; padding:8px 10px; border-radius:7px; margin-top:10px;}
+  .al-none{font-size:11px; color:#8A8578;}
+  .al-btn{font-size:11px !important; padding:3px 8px !important; margin-left:4px;}
+  .al-editor label{display:inline-block; font-size:12px; margin:2px 10px 2px 0; white-space:nowrap;}
+  .al-editor input[type=text]{width:100%; margin:6px 0; box-sizing:border-box;}
+  .ing-table td{vertical-align:top; font-size:12.5px;}
+  .ing-table input[type=text], .ing-table select{font-size:12px; padding:4px 6px;}
+  .ing-sum{font-size:12px; color:var(--ink-soft); margin-top:6px;}
+  .order-intro{font-size:12.5px; color:var(--ink-soft); margin:4px 0;}
+  .sup-input{min-width:130px;}
+  .cost-line{font-size:12px; color:var(--ink); margin-top:4px; font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace;}
+  .cost-miss{color:var(--prot); font-size:11.5px;}
+  .cost-summary{background:#fff; border:1px solid var(--line); border-radius:7px; padding:10px 12px; margin:0 0 14px; font-size:13px;}
+  .cost-hint{display:block; font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+  .price-input{width:64px;}
+  .price-cell{white-space:nowrap;}
+  .sample-row{margin-top:10px; align-items:center; gap:10px;}
+  .sample-row .small{font-size:12px; color:var(--ink-soft); flex:1 1 260px;}
+  .sample-banner{background:#FFF1D6; border:2px dashed #C97A2E; color:#6B4F28; border-radius:8px; padding:10px 12px; margin:0 0 14px; font-size:13px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .share-modal{position:fixed; inset:0; background:rgba(28,30,27,.55); z-index:9000; display:flex; align-items:flex-start; justify-content:center; overflow:auto; padding:24px 10px;}
+  .share-card button{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-weight:700; font-size:13px; border:1px solid var(--accent-dark); background:var(--accent); color:#fff; padding:8px 14px; border-radius:9px; cursor:pointer; box-shadow:0 2px 0 var(--accent-dark);}
+  .share-card button.secondary{background:#fff; color:var(--ink); border-color:var(--line); box-shadow:var(--shadow-sm);}
+  .share-card button.ghost{background:transparent; color:var(--ink-soft); border-color:transparent; box-shadow:none;}
+  .share-card textarea{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:14px; border:1px solid var(--line); border-radius:8px; padding:8px;}
+  .pwa-update{position:fixed; left:50%; transform:translateX(-50%); bottom:16px; z-index:9500; background:#1C1E1B; color:#F6F1E7; border-radius:10px; padding:10px 14px; font:600 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; box-shadow:0 8px 24px rgba(0,0,0,.3); display:flex; gap:10px; align-items:center; max-width:calc(100vw - 24px); flex-wrap:wrap;}
+  .pwa-update button{font:700 13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#8A6A3D; color:#fff; border:none; border-radius:8px; padding:7px 14px; cursor:pointer;}
+  .pwa-update button.pwa-later{background:transparent; color:#cfc6b4;}
+  .share-card{background:#fff; border-radius:12px; max-width:760px; width:100%; padding:16px 18px; box-shadow:0 10px 28px rgba(0,0,0,.25);}
+  .share-top{display:flex; justify-content:space-between; align-items:center; gap:10px;} .share-top h3{margin:0; font-size:17px;}
+  .share-lede{font-size:13px; color:#3a3c38;} .share-warn{color:#B5442E; font-size:12.5px;}
+  .share-qrs{display:flex; flex-wrap:wrap; gap:14px; justify-content:center;}
+  .share-qr{margin:0; text-align:center; flex:0 1 300px;} .share-qr .qr-svg{width:100%; max-width:300px; height:auto; border:1px solid #ddd;}
+  .share-qr figcaption{font-size:11.5px; color:#5C5F58; margin-top:4px;}
+  .share-link{display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap;} .share-link input{flex:1 1 260px; font-size:12px; padding:6px;}
+  .share-size{font-size:11.5px; color:#5C5F58; margin-top:4px;}
+  body.shared-mode > *:not(#sharedView){display:none !important;}
+  #sharedView{background:#F5F3EC; min-height:100vh;}
+  .sv-wrap{max-width:720px; margin:0 auto; padding:16px 14px 40px; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#1C1E1B;}
+  .sv-brand{font:600 11px ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; color:#8A6A3D; text-transform:uppercase; letter-spacing:.05em;}
+  .sv-head h1{font-family:Georgia,Cambria,Times New Roman,serif; font-size:26px; margin:4px 0;} .sv-meta{font-size:13px; color:#5C5F58;}
+  .sv-sample{display:inline-block; margin-top:6px; font:700 11px monospace; color:#B5442E; border:1px dashed #C97A2E; padding:3px 6px; border-radius:5px;}
+  .sv-day{font-size:16px; margin:18px 0 6px; border-bottom:2px solid #1C1E1B; padding-bottom:3px;}
+  .sv-table{width:100%; border-collapse:collapse; background:#fff;} .sv-table td{border-bottom:1px solid #E3DFD3; padding:9px 6px; vertical-align:top; font-size:14px;}
+  .sv-tick{width:32px;} .sv-tick input{width:22px; height:22px;}
+  .sv-task{font-weight:600;} .sv-dish{font-size:12px; color:#5C5F58; margin-top:2px;} .sv-qty{text-align:right; white-space:nowrap; font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-weight:600;}
+  .sv-foot{font-size:12px; color:#5C5F58; margin-top:18px;}
+  .dish-tags{margin-top:12px; font-size:12.5px;}
 </style>
 <style id="pro-css">
   /* Prepline Pro + Autoprod licence dialogs (kept out of the first <style>, which print windows copy) */
@@ -993,6 +1050,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
     <button class="shell-tab-btn" id="licenceKeyBtn" onclick="AutoprodLicence.openLicenceDialog()" type="button">Enter licence key</button>
     <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
+    <button class="shell-tab-btn" id="feedbackBtn" onclick="openFeedback()" type="button" title="Send feedback (opens your email app or copies the text)">Feedback</button>
   </div>
 </div>
 
@@ -1021,6 +1079,10 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
       <div class="big">Drop an .xlsx preplist, or one or more production tool PDFs, here — or click to browse</div>
       <div class="small" id="dropzoneHint">Every tab in a workbook is read as one dish. A production tool PDF is read from each dish's front page only: quantities are as printed there (finished/cooked weights for sub-recipes such as sauces and purees), not raw weights.</div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.pdf" multiple>
+    </div>
+    <div class="row no-print sample-row" id="sampleRow">
+      <button class="secondary" id="sampleMenuBtn" type="button" onclick="loadSampleMenu()">✨ Try with sample menu</button>
+      <span class="small">No file handy? Load a made-up kitchen menu (5 dishes) and see a full prep list in seconds. Clearly marked as sample data; clear it any time.</span>
     </div>
     <div class="row no-print" id="appendRow" style="margin-top:10px; display:none; align-items:center;">
       <button class="secondary" id="appendPdfBtn" type="button">+ Append another PDF to this list <span class="pro-pill">PRO</span></button>
@@ -1134,10 +1196,12 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
     </div>
   </div>
 
+  <div class="panel no-print" id="ingPanelWrap" style="display:none;"></div>
+
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.2.5</div>
+    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.1</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -1250,9 +1314,89 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
       <p class="note">By dish uses the original tab names: the workbook's own tab names in the same order, or for a PDF each recipe's title as printed. By team section and By prep day name each tab after the section or day. Every export has a Source tab column with the exact original name of the tab (or PDF recipe) each row came from. Names are made Excel-safe: at most 31 characters, no [ ] : * ? / \, and no two tabs the same; any name Excel forces us to change is listed in the message after the export. For the By-dish export specifically, a dish name longer than that comes back under its truncated tab name on re-upload, rather than its full original title — the By-section and By-day exports don't have this limit, since several dishes sharing one tab always keep their full names.</p>
     </div>
   </div>
+
+  <div class="help-section-title">Kitchen tools (new in 3.3)</div>
+
+  <div class="help-step">
+    <div class="help-num">06</div>
+    <div class="help-body">
+      <h3>Try it with the sample menu</h3>
+      <p>No file handy? Press “Try with sample menu” under the dropzone. A made-up five-dish menu loads with days, pax, sections, allergens, suppliers and prices, so every view, print and export can be tried in seconds.</p>
+      <p class="note">It is clearly marked SAMPLE DATA on screen and in prints. “Clear sample” removes it, and any sample suppliers or prices, in one click.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">07</div>
+    <div class="help-body">
+      <h3>Allergen tags</h3>
+      <p>Open “4 · Ingredients” under the list. Each ingredient gets suggested tags from its name (gluten, dairy, egg, tree nuts, peanuts, sesame, soy, fish, crustacea, molluscs, lupin), shown with a ? until you confirm or edit them. Add your own tags (e.g. celery, sulphites) and dish-level tags. Confirmed tags are remembered on this device and saved with dishes in the recipe database.</p>
+      <p>Tags show in every view, every printout and an Allergens column in all three Excel exports.</p>
+      <p class="note">Suggestions come from a keyword list and can be wrong or incomplete. Always check them against supplier specifications. Prepline does not guarantee allergen information.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">08</div>
+    <div class="help-body">
+      <h3>Order sheet by supplier</h3>
+      <p>Give each ingredient a supplier in the Ingredients panel (remembered for next time), then press “Order sheet (by supplier)”. Totals from every ticked dish are added up per ingredient, rolled up to kg or L and rounded up to a sensible order quantity. Items with no supplier are listed last.</p>
+      <p>Print one supplier’s sheet or all of them, or export to Excel with an editable Order qty column.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">09</div>
+    <div class="help-body">
+      <h3>Cost per dish</h3>
+      <p>Enter each ingredient’s price once, per kg, L or each. Prepline shows the cost of each dish, the cost per pax and the total for the ticked dishes, and flags missing prices or units that don’t fit (e.g. a price per kg for an item counted in bunches).</p>
+      <p>The Excel exports get Price and Cost columns. Cost, dish cost and cost per pax are formulas, so they recalculate when you change pax in Excel.</p>
+      <p class="note">Prices are used as you enter them (ex or inc GST is your choice). Missing prices count as zero, so a total with missing prices is a minimum.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">10</div>
+    <div class="help-body">
+      <h3>Share a section to phones</h3>
+      <p>In the By team section view, press “📱 Share to phone” on a section. A QR code and a link open that section’s list read-only on any phone, with no app, account or server: the list travels inside the link itself.</p>
+      <p>One QR code holds a link of up to 2,953 characters: about 200 typical tasks, though under about 60 tasks the code is much easier to scan. Bigger lists are split into parts (Part 1 of 2 …); a very big list offers the link only, to send by email, Teams or text.</p>
+      <p class="note">The shared list is a snapshot. Share again after changes.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">11</div>
+    <div class="help-body">
+      <h3>Install Prepline on a phone or computer</h3>
+      <p>On the website, Prepline can be installed like an app: “Install” in Chrome or Edge, or Share → “Add to Home Screen” on an iPhone. Once opened, it works offline.</p>
+      <p>When a new version is published, a bar offers “Reload” to switch to it.</p>
+    </div>
+  </div>
+  <div class="help-step">
+    <div class="help-num">12</div>
+    <div class="help-body">
+      <h3>Feedback</h3>
+      <p>The Feedback button (top right) builds a short message and copies it, to paste into an email, Teams or a text to whoever shared Prepline with you. It includes the app version and browser only; your list is added only if you tick “Include my current list”.</p>
+    </div>
+  </div>
 </div>
 </div>
 
+<!-- qrcode-generator 2.0.4 (MIT), bundled for team share QR codes: no QR web service is used -->
+<script>
+/*! qrcode-generator 2.0.4 (QR Code Generator for JavaScript) - bundled for Prepline team share, unmodified apart from minification.
+ * Copyright (c) 2009 Kazuhiko Arase. URL: http://www.d-project.com/
+ * Licensed under the MIT license:
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * The word "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.
+ */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,(function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1}))},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(o*r,n*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}((function(){return qrcode}));
+</script>
 <script>
 
 
@@ -1473,10 +1617,11 @@ function sanitizeDatabase(raw){
       if (Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0) clean.pdfBasePax = it.pdfBasePax;   // v3.2.2
       ['srcSheet','srcType'].forEach(k=>{ if (typeof it[k]==='string') clean[k] = it[k]; });
       if (Number.isFinite(it.srcSheetIdx)) clean.srcSheetIdx = it.srcSheetIdx;
+      if (Array.isArray(it.al)) clean.al = cleanTagList(it.al);   // v3.3: checked allergen tags
       items.push(clean);
     });
     if (!items.length) { skipped++; return; }
-    db[dish] = {items}; kept++;
+    db[dish] = {items, ...(Array.isArray(entry.al) ? {al: cleanTagList(entry.al)} : {})}; kept++;
   });
   return {db, kept, skipped};
 }
@@ -1546,7 +1691,7 @@ function loadOnetimeSession(){
       paxByDish = cleanPaxMap(s.paxByDish);
       migratePdfBasePax(ROWS, paxByDish);
       activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
-      viewMode = ['dish','section','priority'].includes(s.viewMode) ? s.viewMode : 'dish';
+      viewMode = ['dish','section','priority','order'].includes(s.viewMode) ? s.viewMode : 'dish';
       eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
       eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
       rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
@@ -1590,9 +1735,10 @@ function commitRowsToDatabase(){
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
       baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
-      pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType
+      pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType,
+      ...(typeof alForTask==='function' && alForTask(r.task).confirmed ? {al: alForTask(r.task).tags.slice()} : {})   // v3.3: checked allergen tags
     }));
-    dishDatabase[dish] = {items};
+    dishDatabase[dish] = {items, ...(INGINFO.dishAl[dish] ? {al: INGINFO.dishAl[dish].slice()} : {})};
     if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
   });
   saveDatabase();
@@ -3044,7 +3190,8 @@ function addPdfRows(dish, tasks, eventDay){
 // rather than failing outright on the rare chance the module is still loading.
 async function ensurePdfJsLoaded(){
   if (window.pdfjsLib) return true;
-  for (let i=0; i<50; i++){
+  // up to 20 s: on a slow work PC or network the library (and its worker start-up) can take a while
+  for (let i=0; i<200; i++){
     await new Promise(r=>setTimeout(r,100));
     if (window.pdfjsLib) return true;
   }
@@ -3054,7 +3201,7 @@ async function handlePdfFiles(fileList, opts){
   opts = opts || {};
   setStatus('Reading '+fileList.length+' PDF'+(fileList.length>1?'s':'')+' — production tool parsing can take a moment…');
   if (!(await ensurePdfJsLoaded())){
-    setStatus('PDF reader failed to load — check your internet connection and try again.', 'err');
+    setStatus('The PDF reader has not loaded yet. Wait a moment, or reload the page, then try again.', 'err');
     return;
   }
   const prevPdf = {ROWS, paxByDish, eventDayOverride, eventDateByDish, originalPageImages, methodCrops};   // restored if nothing usable is found
@@ -3742,7 +3889,7 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
   aoa.push(['PAX', paxSet ? pax : '']);
   const paxRowNum = aoa.length;               // 1-based Excel row of this dish's PAX cell
   const paxAbs = '$B$'+paxRowNum;
-  aoa.push(['Item','Quantity per pax','Unit','PAX (this row)','Total needed','Section','Prep day','Source tab']);
+  aoa.push(['Item','Quantity per pax','Unit','PAX (this row)','Total needed','Section','Prep day','Source tab', ...EXPORT_EXTRA_COLS.map(c=>c.header)]);   // v3.3: extra columns go after Source tab, so the importer and older layouts are unaffected
   const dataStartRow = aoa.length;
   const put = (rowIdx, c, formula, preview) => formulaCells.push({addr: XLSX.utils.encode_cell({r:rowIdx, c}), formula, preview});
   rows.forEach((r, ri)=>{
@@ -3768,10 +3915,12 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
       }
     }
     if (!paxSet && totalFormula && totalFormula.indexOf('IF(')!==0) totalFormula = 'IF(D'+n+'="","",'+totalFormula+')';
-    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day || '', srcName(r)]);   // v3.2: exact original tab / PDF title
+    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day || '', srcName(r), ...EXPORT_EXTRA_COLS.map(c=>c.value(r, unit))]);   // v3.2: exact original tab / PDF title
     if (paxFormula) put(rowIdx, 3, paxSet ? paxAbs : 'IF('+paxAbs+'="","",'+paxAbs+')', paxSet ? pax : '');
     if (totalFormula) put(rowIdx, 4, totalFormula, totalPreview);
+    EXPORT_EXTRA_COLS.forEach((c, ci)=>{ if (c.formula){ const f = c.formula(r, n, unit, paxRowNum); if (f) put(rowIdx, 8+ci, f.f, f.v); } });
   });
+  EXPORT_BLOCK_HOOKS.forEach(h=>h({aoa, put, dish, rows, paxRowNum, dataStartRow, titleRowIdx: paxRowNum-2, paxSet, pax}));
   // The app's own importer tolerates up to 6 blank rows in a row before it decides a
   // dish's block has ended — a single blank row isn't enough of a gap, so without this it
   // would just read straight into the next dish's title line as if it were more data for
@@ -3781,6 +3930,9 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
 // Shared engine behind all three "Export to Excel" buttons — By dish, By section, and By
 // prep day each just group the ticked rows differently before handing them to this.
 // groupFn(row) returns the group a row belongs to; tabNameFn(groupKey) names its sheet.
+// v3.3: extra export columns after Source tab: {header, value(row, unit), formula?(row, excelRow, unit, paxRow) -> {f, v}, wch}
+const EXPORT_EXTRA_COLS = [{header:'Allergens', value:(r)=>allergenText(r.task), wch:30}];
+const EXPORT_BLOCK_HOOKS = [];   // per dish block: ({aoa, put, dish, rows, paxRowNum, dataStartRow, titleRowIdx, paxSet, pax})
 let lastExportNameChanges = [];   // v3.2: the tab-name changes made by the most recent export (also shown in the status message)
 function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortFn){
   if (typeof XLSX === 'undefined' || !XLSX.utils || typeof XLSX.writeFile !== 'function'){
@@ -3816,7 +3968,7 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     formulaCells.forEach(fc=>{ ws[fc.addr] = (typeof fc.preview==='number') ? {t:'n', f: fc.formula, v: fc.preview} : {t:'s', f: fc.formula, v: ''}; });
-    ws['!cols'] = [{wch:38},{wch:16},{wch:8},{wch:14},{wch:13},{wch:24},{wch:12},{wch:34}];
+    ws['!cols'] = [{wch:38},{wch:16},{wch:8},{wch:14},{wch:13},{wch:24},{wch:12},{wch:34}, ...EXPORT_EXTRA_COLS.map(c=>({wch:c.wch||14}))];
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName(tabNameFn(key), usedNames, nameChanges));
   });
   const stamp = new Date().toISOString().slice(0,10);
@@ -3889,16 +4041,18 @@ function render(){
     return;
   }
 
-  let html = pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml();
+  let html = sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
 
   html += `<div class="viewtoggle no-print">
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
     <button class="${viewMode==='section'?'':'secondary'}" onclick="setView('section')" type="button">By team section</button>
     <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
+    <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet (by supplier)</button>
   </div>
   <div class="row no-print" style="margin-bottom:10px; gap:8px;">
     ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="Exports this view (By dish) as an editable .xlsx">📊 Export to Excel (editable)</button>`
       : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
+      : viewMode==='order' ? ''
       : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
   </div>
   <div class="row no-print print-row" style="margin-bottom:20px; gap:8px; align-items:center;">
@@ -3909,8 +4063,8 @@ function render(){
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
   html += searchBarHtml();
-  html += printOrderControlHtml();
-  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : renderByPriority());
+  html += viewMode==='order' ? '' : printOrderControlHtml();
+  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : renderByPriority()));
   area.innerHTML = html;
 }
 
@@ -4047,6 +4201,8 @@ function renderByDish(){
           <h3>${escapeHtml(cleanDishName(dish))}</h3>
           <div class="meta">${rows.length} ingredients/tasks${prepSpan ? ' · Prep window: '+prepSpan : ''}${eventDateStr ? ' · Event date: '+escapeHtml(eventDateStr) : ''}</div>
           ${staffingLineHtml(dish) ? `<div class="staffing-line">${staffingLineHtml(dish)}</div>` : ''}
+          ${dishAllergenLineHtml(dish)}
+          ${dishCostLineHtml(dish)}
         </div>
         <div class="section-actions">
           <label style="font-size:11px;color:var(--ink-soft);">Event day:</label>
@@ -4081,7 +4237,7 @@ function renderByDish(){
       else totalCell = '<span class="needpax">set pax →</span>';
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td><input type="checkbox" class="rowcheck" ${selectedRowIdx.has(globalIdx)?'checked':''} onchange="toggleRowSelected(${globalIdx}, this.checked)"></td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty total-cell">${totalCell}</td>
         <td><select class="rowsel section-${key}" onchange="moveRow(${globalIdx}, this.value)">
@@ -4097,14 +4253,16 @@ function renderByDish(){
         <div class="print-head">
           <h2>${escapeHtml(cleanDishName(dish))}</h2>
           ${staffingLineHtml(dish) ? `<div class="meta">Estimated staffing: ${staffingLineHtml(dish)}</div>` : ''}
+          ${dishAllergenLineHtml(dish)}
         </div>
+        ${alPrintNote(rows)}
         <table><thead><tr><th>Ingredient / prep task</th><th>Per pax</th><th>Total to make</th><th>Section</th><th>Prep day</th></tr></thead><tbody>
         ${rows.map((r,i)=>{
           const total = computeTotal(r);
           const cont = meta[i].isContinuation;
           const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
           const totalTxt = total!==null ? `${qN(total,r.unit)} ${qU(total,r.unit)}` : (cont && noQty ? 'uses batch above' : '—');
-          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
+          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}${alChipsHtml(r)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
         }).join('')}
         </tbody></table>
         ${methodCropsPageHtml(rows)}
@@ -4214,7 +4372,7 @@ function renderByPriority(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)} ${findSimilarBtn(g.taskLabel)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td>${escapeHtml(g.section)}</td>
@@ -4244,7 +4402,7 @@ function renderByPriority(){
       const evDay = getEventDay(r.dish);
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${totalCell}</td>
         <td>${r.section}</td>
         <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
@@ -4261,7 +4419,7 @@ function renderByPriority(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td>${escapeHtml(g.section)}</td>
@@ -4280,7 +4438,7 @@ function renderByPriority(){
         const evDay = getEventDay(r.dish);
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
@@ -4296,6 +4454,7 @@ function renderByPriority(){
         <h2>${heading}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForDay.length+' tasks)' : rowsForDay.length+' tasks'} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)</div>
       </div>
+      ${alPrintNote(rowsForDay)}
       <table><thead>${consolidateOn
         ? '<tr><th style="width:32%">Task</th><th style="width:26%">Dishes</th><th style="width:12%">Total needed</th><th style="width:14%">Section</th><th style="width:10%">Lead</th></tr>'
         : '<tr><th style="width:13%">Dish</th><th>Task</th><th style="width:7%">Pax</th><th style="width:9%">Per pax</th><th style="width:10%">Total needed</th><th style="width:12%">Section</th><th style="width:9%">Lead</th></tr>'}</thead>
@@ -4383,6 +4542,7 @@ function renderBySection(){
           style="padding:7px 10px; border:1px solid var(--line); border-radius:var(--radius); font-size:12.5px; min-width:150px; background:#fff;">
         <button class="secondary" onclick="printSection('${s}')" type="button">Print handout</button>
         <button class="ghost" onclick="copySection('${s}')" type="button">Copy as text</button>
+        <button class="ghost share-btn" onclick="openShareSection('${s}')" type="button" title="QR code and link that open this list read-only on a phone">📱 Share to phone</button>
       </div>
     </div>
     <div class="section-table-wrap no-print">`;
@@ -4400,7 +4560,7 @@ function renderBySection(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         html += `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''} ${findSimilarBtn(g.taskLabel)}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)} ${findSimilarBtn(g.taskLabel)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td>${escapeHtml(g.day||'not set')}</td>
@@ -4430,7 +4590,7 @@ function renderBySection(){
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(idx>0 && rowsForSection[idx-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty">${totalCell}</td>
@@ -4453,7 +4613,7 @@ function renderBySection(){
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
         const dishList = g.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ');
         return `<tr class="${isMerged?'job-band-1':''}">
-          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}</td>
+          <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
           <td class="pf-day">${escapeHtml(g.day||'not set')}</td>
@@ -4470,7 +4630,7 @@ function renderBySection(){
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForSection[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
@@ -4486,6 +4646,7 @@ function renderBySection(){
         <h2>${s} — ${escapeHtml(leaderBySection[s] || 'Team Leader TBC')}</h2>
         <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForSection.length+' tasks)' : rowsForSection.length+' tasks'}</div>
       </div>
+      ${alPrintNote(rowsForSection)}
       <table><thead>${consolidateOn
         ? '<tr><th style="width:34%">Task</th><th style="width:26%">Dishes</th><th style="width:14%">Total needed</th><th style="width:16%">Prep day</th></tr>'
         : '<tr><th style="width:16%">Dish</th><th>Task</th><th style="width:8%">Pax</th><th style="width:9%">Per pax</th><th style="width:11%">Total needed</th><th style="width:13%">Section</th><th style="width:16%">Prep day</th></tr>'}</thead>
@@ -4715,7 +4876,15 @@ function copySection(section){
 // ================= Prepline Pro: licence-gated features =================
 // Licence handling lives in the shared Autoprod licence module (<head>, window.AutoprodLicence).
 // Everything here is stored in this browser's localStorage only; nothing is uploaded.
+// Team edition: the team build (file:// copy, or the team website under /prepline-team/), with
+// every tool unlocked and no licence, upgrade or Buy UI. Only honoured on file://, localhost or
+// the /prepline-team/ path, so the flag can't unlock anything on the public site
+// (/preplist-sorter/), which ships with edition 'web' anyway.
+function teamEdition(){
+  return LICENSE_CONFIG.edition === 'team' && (location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || location.pathname.startsWith('/prepline-team/'));
+}
 function proActive(){
+  if (teamEdition()) return true;
   if (LICENSE_CONFIG.edition === 'offline-pro') return true;        // offline Pro build ships unlocked
   return !!(window.AutoprodLicence && AutoprodLicence.isPro());
 }
@@ -4729,8 +4898,9 @@ function proCleanName(s, max){ return String(s||'').replace(/[^A-Za-z0-9 &\/,.+(
 
 // ---- print footer: free printouts carry a small footer, Pro prints are clean ----
 function freeFooterOn(){ return !!(LICENSE_CONFIG.freeLimits && LICENSE_CONFIG.freeLimits.printFooter); }
+function sampleMarkHtml(){ return (typeof sampleActive==='function' && sampleActive()) ? '<div style="text-align:center; font:700 11px monospace; color:#B5442E; margin-top:10px;">SAMPLE DATA — made-up menu</div>' : ''; }
 function printFooterHtml(){
-  return (proActive() || !freeFooterOn()) ? '' : `<div class="made-with-footer" style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#777; text-align:center;">Made with Prepline</div>`;
+  return sampleMarkHtml() + ((proActive() || !freeFooterOn()) ? '' : `<div class="made-with-footer" style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:#777; text-align:center;">Made with Prepline</div>`);
 }
 
 // ---- custom stations (Pro): extra sections with their own keywords, checked before the built-in ones ----
@@ -4924,10 +5094,11 @@ function renderProPanel(){
   }
   const ps = profilesState();
   const tpl = getTemplates(); const tplNames = Object.keys(tpl).sort((a,b)=>a.localeCompare(b));
-  const offline = C.edition==='offline-pro';
-  const plan = offline ? 'Offline edition' : ((C.plans.find(p=>p.id===AutoprodLicence.plan())||{}).label || 'Pro');
+  const team = teamEdition();
+  const offline = C.edition==='offline-pro' || team;
+  const plan = team ? 'Team edition' : (offline ? 'Offline edition' : ((C.plans.find(p=>p.id===AutoprodLicence.plan())||{}).label || 'Pro'));
   el.innerHTML = `<div class="row" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <h2 style="margin:0;">Prepline Pro <span class="pro-pill">${proEsc(plan)}</span></h2>
+      <h2 style="margin:0;">${team ? 'Kitchen tools' : 'Prepline Pro'} <span class="pro-pill">${proEsc(plan)}</span></h2>
       <div class="row" style="gap:6px; align-items:center;">
         <label class="small" for="proKitchenSel" style="font-size:12px;color:var(--ink-soft);">Kitchen</label>
         <select id="proKitchenSel" class="rowsel" onchange="switchKitchen(this.value)">${ps.list.map(n=>`<option ${n===ps.active?'selected':''} value="${proEsc(n)}">${proEsc(n)}</option>`).join('')}</select>
@@ -4955,16 +5126,26 @@ function renderProPanel(){
           <button class="secondary" type="button" id="proAddKitchenBtn" onclick="addKitchen()">Add and switch</button></div>
         ${ps.list.length>1 ? `<div class="row" style="gap:6px; margin-top:8px;"><select id="proKitchenDelete" class="rowsel">${ps.list.filter(n=>n!==ps.active).map(n=>`<option value="${proEsc(n)}">${proEsc(n)}</option>`).join('')}</select><button class="ghost" type="button" onclick="deleteKitchen()" style="color:var(--prot);">Delete kitchen</button></div>` : ''}
       </details>
-      <details class="pro-box"><summary>Offline Windows version</summary>
+      ${team ? '' : `<details class="pro-box"><summary>Offline Windows version</summary>
         <div class="pro-per" style="margin:6px 0;">${offline ? 'You are using the offline Pro edition: it works with no internet.' : 'A single file that runs in Edge or Chrome with no internet connection. Unzip, double-click, done.'}</div>
         ${offline ? '' : `<button class="secondary" type="button" id="proOfflineBtn" onclick="downloadOffline()">Download Prepline-Pro-Windows.zip</button>`}
-      </details>
+      </details>`}
     </div>
     <div class="status ${proPanelMsg.cls}" id="proPanelStatus">${proEsc(proPanelMsg.text)}</div>
     ${freeFooterOn() ? '<div class="pro-per">Clean prints are on: no footer on your printouts.</div>' : ''}`;
 }
-function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro'; }
+function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro' && !teamEdition(); }
 function renderProChrome(){
+  if (teamEdition()){
+    // Team edition: all tools on, no Upgrade / licence buttons, no footer, append row like Pro.
+    ['proUpgradeBtn','licenceKeyBtn'].forEach(id=>{ const b = document.getElementById(id); if (b){ b.hidden = true; b.style.display = 'none'; } });
+    const f = document.getElementById('madeWithFooter'); if (f) f.hidden = true;
+    const ar = document.getElementById('appendRow'); if (ar) ar.style.display = (toolMode==='onetime' && ROWS.length>0) ? 'flex' : 'none';
+    const pill = document.querySelector('#appendPdfBtn .pro-pill'); if (pill) pill.hidden = true;
+    const pp = document.getElementById('proPanel'); if (pp) pp.style.display = '';
+    renderProPanel();
+    return;
+  }
   if (proUiOff()){
     // Pro switched off: no Upgrade / licence buttons, no Pro panel, no append-PDF row, no footer.
     ['proUpgradeBtn','licenceKeyBtn'].forEach(id=>{ const b = document.getElementById(id); if (b){ b.hidden = true; b.style.display = 'none'; } });
@@ -5005,6 +5186,898 @@ function proAfterInit(){
 }
 // ================= end Prepline Pro =================
 
+// ================= Prepline v3.3 features =================
+// v3.3.0 — kitchen data shared by allergens (4), ordering (5) and costing (6).
+// One new localStorage key, separate from the session, database and Pro keys:
+//   preplineIngredientInfo_v1 = { v:1, items: { <ingredient key>: {al?, sup?, price?, per?, smp?} },
+//                                 dishAl: { <dish name>: [tags] } }
+// <ingredient key> is the task text, lower-cased with spaces collapsed (norm()).
+// al = confirmed allergen tags (array; [] = checked, none). Missing al = not checked yet,
+// in which case keyword suggestions are shown, marked as suggestions.
+const ING_INFO_KEY = 'preplineIngredientInfo_v1';
+function loadIngInfo(){
+  const blank = {v:1, items:{}, dishAl:{}};
+  try{
+    const raw = localStorage.getItem(ING_INFO_KEY); if (!raw) return blank;
+    const s = JSON.parse(raw);
+    const isObj = v => v && typeof v==='object' && !Array.isArray(v);
+    if (!isObj(s)) return blank;
+    const out = {v:1, items:{}, dishAl:{}};
+    const bad = k => k==='__proto__' || k==='constructor' || k==='prototype';
+    if (isObj(s.items)) Object.keys(s.items).forEach(k=>{
+      if (bad(k)) return; const e = s.items[k]; if (!isObj(e)) return;
+      const c = {};
+      if (Array.isArray(e.al)) c.al = cleanTagList(e.al);
+      if (typeof e.sup==='string' && e.sup.trim()) c.sup = e.sup.trim().slice(0,60);
+      if (Number.isFinite(e.price) && e.price>=0) c.price = e.price;
+      if (['kg','L','each'].includes(e.per)) c.per = e.per;
+      if (e.smp) c.smp = 1;
+      if (Object.keys(c).length) out.items[k] = c;
+    });
+    if (isObj(s.dishAl)) Object.keys(s.dishAl).forEach(d=>{ if (!bad(d) && Array.isArray(s.dishAl[d])) out.dishAl[d] = cleanTagList(s.dishAl[d]); });
+    return out;
+  }catch(e){ return blank; }
+}
+function saveIngInfo(){ try{ localStorage.setItem(ING_INFO_KEY, JSON.stringify(INGINFO)); return true; }catch(e){ return false; } }
+function ingKey(task){ return norm(task); }
+function ingEntry(task, create){
+  const k = ingKey(task);
+  if (!INGINFO.items[k] && create) INGINFO.items[k] = {};
+  return INGINFO.items[k];
+}
+function touchIng(e){ if (e) delete e.smp; }   // a user edit makes a sample entry the user's own
+
+// ---------- 4. Allergen tags ----------
+const ALLERGENS = [
+  {id:'gluten',    label:'Gluten',              short:'GLU'},
+  {id:'dairy',     label:'Dairy',               short:'DAI'},
+  {id:'egg',       label:'Egg',                 short:'EGG'},
+  {id:'treenuts',  label:'Tree nuts',           short:'NUT'},
+  {id:'peanuts',   label:'Peanuts',             short:'PNT'},
+  {id:'sesame',    label:'Sesame',              short:'SES'},
+  {id:'soy',       label:'Soy',                 short:'SOY'},
+  {id:'fish',      label:'Fish',                short:'FSH'},
+  {id:'crustacea', label:'Shellfish (crustacea)', short:'CRU'},
+  {id:'molluscs',  label:'Shellfish (molluscs)',  short:'MOL'},
+  {id:'lupin',     label:'Lupin',               short:'LUP'},
+];
+const AL_BY_ID = Object.fromEntries(ALLERGENS.map(a=>[a.id, a]));
+const AL_SYNONYMS = {gluten:'gluten', wheat:'gluten', dairy:'dairy', milk:'dairy', lactose:'dairy', egg:'egg', eggs:'egg',
+  'tree nuts':'treenuts', 'tree nut':'treenuts', treenuts:'treenuts', nuts:'treenuts', nut:'treenuts', peanut:'peanuts', peanuts:'peanuts',
+  sesame:'sesame', soy:'soy', soya:'soy', fish:'fish', crustacea:'crustacea', crustaceans:'crustacea', crustacean:'crustacea',
+  'shellfish (crustacea)':'crustacea', molluscs:'molluscs', mollusc:'molluscs', mollusks:'molluscs', 'shellfish (molluscs)':'molluscs', lupin:'lupin', lupine:'lupin'};
+// Keyword list for suggestions. Whole words (plural s/es allowed); "excl" phrases are removed
+// first so e.g. "butternut", "peanut butter" and "coconut milk" don't suggest dairy.
+const AL_KW = {
+  gluten: {kw:['flour','wheat','bread','breadcrumb','breadcrumbs','crumb','panko','brioche','sourdough','focaccia','ciabatta','baguette','croissant','pastry','filo','phyllo','pasta','spaghetti','linguine','fettuccine','penne','rigatoni','lasagne','lasagna','macaroni','orzo','ravioli','tortellini','gnocchi','noodle','couscous','cous cous','barley','rye','semolina','spelt','farro','freekeh','bulgur','burghul','malt','beer','soy sauce','tortilla','wrap','biscuit','cake','sponge','crouton','seitan','teriyaki'],
+           excl:['rice flour','corn flour','cornflour','almond flour','chickpea flour','tapioca flour','potato flour','gluten free','gluten-free','gf','rice noodle','rice noodles','glass noodle','rice paper','buckwheat']},
+  dairy:  {kw:['milk','cream','butter','cheese','parmesan','parmigiano','pecorino','mozzarella','bocconcini','burrata','ricotta','feta','haloumi','halloumi','cheddar','gruyere','gruyère','brie','camembert','mascarpone','yoghurt','yogurt','labneh','creme fraiche','crème fraîche','sour cream','ghee','buttermilk','whey','custard','ice cream','gelato','bechamel','béchamel'],
+           excl:['butternut','peanut butter','almond butter','nut butter','cocoa butter','shea butter','coconut milk','coconut cream','almond milk','oat milk','soy milk','soya milk','rice milk','cream of tartar','dairy free','dairy-free']},
+  egg:    {kw:['egg','yolk','albumen','mayonnaise','mayo','aioli','meringue','hollandaise','bearnaise','béarnaise','custard','brioche','pavlova','frittata','omelette','quiche','carbonara','sabayon','zabaglione','souffle','soufflé'],
+           excl:['eggplant','egg free','egg-free']},
+  treenuts:{kw:['almond','cashew','walnut','pecan','hazelnut','pistachio','macadamia','brazil nut','pine nut','chestnut','praline','frangipane','marzipan','nut','nuts','dukkah','pesto','nutella','gianduja'],
+           excl:['nutmeg','coconut','butternut','peanut','peanuts','nut free','nut-free','doughnut','donut','water chestnut']},
+  peanuts:{kw:['peanut','satay','groundnut'], excl:[]},
+  sesame: {kw:['sesame','tahini','hummus','houmous','zaatar','za\'atar','dukkah','furikake','gomasio','halva'], excl:[]},
+  soy:    {kw:['soy','soya','tofu','edamame','miso','tamari','tempeh','soy sauce','teriyaki','hoisin'], excl:[]},
+  fish:   {kw:['fish','salmon','tuna','barramundi','cod','snapper','bream','whiting','flathead','hake','haddock','anchovy','anchovies','sardine','mackerel','trout','kingfish','swordfish','mahi','fish sauce','bonito','dashi','worcestershire','caesar','caviar','roe','tarama','taramasalata'],
+           excl:['fish free']},
+  crustacea:{kw:['prawn','shrimp','crab','lobster','crayfish','marron','yabby','yabbies','scampi','langoustine','balmain bug','moreton bay bug'], excl:[]},
+  molluscs:{kw:['oyster','mussel','clam','vongole','pipi','pipis','scallop','squid','calamari','octopus','cuttlefish','abalone','oyster sauce','snail','escargot'],
+           excl:['oyster mushroom','oyster mushrooms']},
+  lupin:  {kw:['lupin','lupine'], excl:[]},
+};
+const AL_RE = {};
+Object.keys(AL_KW).forEach(id=>{
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  AL_RE[id] = {
+    kw: new RegExp('(?:^|[^a-z\u00e0-\u00ff])(?:' + AL_KW[id].kw.map(esc).join('|') + ')(?:s|es)?(?![a-z\u00e0-\u00ff])', 'i'),
+    excl: AL_KW[id].excl.length ? new RegExp('(?:^|[^a-z])(?:' + AL_KW[id].excl.map(esc).join('|') + ')(?:s|es)?(?![a-z])', 'gi') : null };
+});
+function alSuggest(text){
+  const t = ' ' + String(text||'').toLowerCase() + ' ';
+  const out = [];
+  ALLERGENS.forEach(a=>{
+    const re = AL_RE[a.id]; if (!re) return;
+    const s = re.excl ? t.replace(re.excl, ' ') : t;
+    if (re.kw.test(s)) out.push(a.id);
+  });
+  return out;
+}
+function cleanTag(t){
+  const s = String(t==null?'':t).trim(); if (!s) return null;
+  const low = s.toLowerCase();
+  if (AL_BY_ID[low]) return low;
+  if (AL_SYNONYMS[low]) return AL_SYNONYMS[low];
+  const c = s.replace(/[<>"'`\\]/g,'').replace(/\s+/g,' ').slice(0,30).trim();
+  return c ? c : null;
+}
+function cleanTagList(arr){
+  const out = [];
+  (Array.isArray(arr)?arr:[]).forEach(t=>{ const c = cleanTag(t); if (c && !out.some(x=>x.toLowerCase()===c.toLowerCase())) out.push(c); });
+  return out.slice(0,20);
+}
+function parseTagText(text){ return cleanTagList(String(text||'').split(/[,;\n]/)); }
+function tagLabel(t){ return AL_BY_ID[t] ? AL_BY_ID[t].label : t; }
+function tagShort(t){ return AL_BY_ID[t] ? AL_BY_ID[t].short : String(t).toUpperCase().slice(0,12); }
+// Allergens saved with dishes in the recipe database (item.al) — used when this browser's
+// ingredient info has no entry yet (e.g. a database backup imported on a new device).
+function dbAllergenIndex(){
+  const idx = {};
+  Object.keys(dishDatabase||{}).forEach(d=>{ (dishDatabase[d].items||[]).forEach(it=>{
+    if (Array.isArray(it.al)){ const k = ingKey(it.task); if (!idx[k]) idx[k] = it.al; } }); });
+  return idx;
+}
+let _dbAlIdx = null, _dbAlIdxStamp = null;
+function alForTask(task){
+  const e = INGINFO.items[ingKey(task)];
+  if (e && Array.isArray(e.al)) return {tags:e.al, confirmed:true};
+  const stamp = Object.keys(dishDatabase||{}).length;
+  if (_dbAlIdx===null || _dbAlIdxStamp!==stamp){ _dbAlIdx = dbAllergenIndex(); _dbAlIdxStamp = stamp; }
+  const d = _dbAlIdx[ingKey(task)];
+  if (d) return {tags:d, confirmed:true};
+  return {tags:alSuggest(task), confirmed:false};
+}
+function alChipsFor(tags, confirmed){
+  return tags.map(t=>`<span class="al-chip${confirmed?'':' sug'}" title="${escapeHtml(tagLabel(t))}${confirmed?'':' — automatic suggestion, check it'}">${escapeHtml(tagShort(t))}${confirmed?'':'?'}</span>`).join('');
+}
+function alChipsHtml(r){
+  const a = alForTask(r.task);
+  return a.tags.length ? ' ' + alChipsFor(a.tags, a.confirmed) : '';
+}
+function alChipsRowsHtml(rows){
+  const conf = [], sug = [];
+  rows.forEach(r=>{ const a = alForTask(r.task); a.tags.forEach(t=>{ const L = a.confirmed ? conf : sug; if (!L.includes(t)) L.push(t); }); });
+  const sugOnly = sug.filter(t=>!conf.includes(t));
+  return (conf.length||sugOnly.length) ? ' ' + alChipsFor(conf, true) + alChipsFor(sugOnly, false) : '';
+}
+function dishAllergens(dish, rows){
+  const conf = [], sug = [];
+  (rows || activeRows().filter(r=>r.dish===dish)).forEach(r=>{ const a = alForTask(r.task); a.tags.forEach(t=>{ const L = a.confirmed ? conf : sug; if (!L.includes(t)) L.push(t); }); });
+  (INGINFO.dishAl[dish] || (dishDatabase[dish] && dishDatabase[dish].al) || []).forEach(t=>{ if (!conf.includes(t)) conf.push(t); });
+  return {conf, sug: sug.filter(t=>!conf.includes(t))};
+}
+function dishAllergenLineHtml(dish, rows){
+  const a = dishAllergens(dish, rows);
+  if (!a.conf.length && !a.sug.length) return '';
+  return `<div class="al-line">Allergens: ${a.conf.map(t=>`<b>${escapeHtml(tagLabel(t))}</b>`).join(', ')}${a.sug.length ? (a.conf.length?' · ':'') + 'suggested, check: ' + a.sug.map(t=>escapeHtml(tagLabel(t))+'?').join(', ') : ''}</div>`;
+}
+function allergenText(task){
+  const a = alForTask(task);
+  if (!a.tags.length) return a.confirmed ? 'None' : '';
+  const names = a.tags.map(tagLabel).join(', ');
+  return a.confirmed ? names : 'Suggested (check): ' + names;
+}
+const AL_DISCLAIMER = 'Allergen tags marked ? are automatic suggestions from ingredient names. They can be wrong or incomplete (brands, sub-recipes, cross-contact). Check every tag against supplier specifications before serving.';
+function alPrintNote(rows){
+  return rows.some(r=>{ const a = alForTask(r.task); return !a.confirmed && a.tags.length; }) ? `<div class="al-note">${escapeHtml(AL_DISCLAIMER)}</div>` : '';
+}
+// edits
+function setIngAllergens(encTask, tags){
+  const e = ingEntry(decodeURIComponent(encTask), true); e.al = cleanTagList(tags); touchIng(e); saveIngInfo(); render();
+}
+function confirmIngAllergens(encTask){
+  const task = decodeURIComponent(encTask); setIngAllergens(encTask, alForTask(task).tags);
+}
+function confirmAllSuggestions(){
+  const keys = ingRowsForPanel().filter(x=>!alForTask(x.task).confirmed);
+  if (!keys.length) return;
+  if (!confirm('Mark the suggested allergen tags on '+keys.length+' ingredient(s) as checked? Only do this once you have checked them.')) return;
+  keys.forEach(x=>{ const e = ingEntry(x.task, true); e.al = alForTask(x.task).tags.slice(); touchIng(e); });
+  saveIngInfo(); render();
+}
+let alEditKey = null;
+function openAlEditor(encTask){ alEditKey = ingKey(decodeURIComponent(encTask)); render(); }
+function closeAlEditor(){ alEditKey = null; render(); }
+function saveAlEditor(encTask){
+  const box = document.getElementById('alEditor'); if (!box) return;
+  const tags = [...box.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value).concat(parseTagText((box.querySelector('input[type=text]')||{}).value));
+  alEditKey = null; setIngAllergens(encTask, tags);
+}
+function setDishTags(encDish, text){
+  const dish = decodeURIComponent(encDish); const tags = parseTagText(text);
+  if (tags.length) INGINFO.dishAl[dish] = tags; else delete INGINFO.dishAl[dish];
+  saveIngInfo(); render();
+}
+// ---------- ingredient panel (allergens; suppliers and prices are added by 5 and 6) ----------
+function ingRowsForPanel(){
+  const seen = {}, out = [];
+  activeRows().forEach(r=>{
+    const k = ingKey(r.task); if (!k) return;
+    if (!seen[k]){ seen[k] = {key:k, task:r.task, dishes:[], rows:[]}; out.push(seen[k]); }
+    if (!seen[k].dishes.includes(r.dish)) seen[k].dishes.push(r.dish);
+    seen[k].rows.push(r);
+  });
+  return out;
+}
+let ingFilter = 'all';
+let ingPanelOpen = (function(){ try{ return localStorage.getItem('preplinePref_ingPanelOpen_v1')==='1'; }catch(e){ return false; } })();
+function setIngPanelOpen(on){ ingPanelOpen = !!on; try{ localStorage.setItem('preplinePref_ingPanelOpen_v1', on?'1':'0'); }catch(e){} renderIngPanel(); }
+function setIngFilter(v){ ingFilter = v; renderIngPanel(); }
+const ING_COLUMNS = [];   // extra columns registered by features 5 and 6: {th, td(x), filter?}
+const ING_FILTERS = [{v:'all', label:'All ingredients'}, {v:'al', label:'Allergens not checked yet', test:x=>!alForTask(x.task).confirmed}];
+function alCellHtml(x){
+  const a = alForTask(x.task), enc = encName(x.task);
+  if (alEditKey===x.key){
+    const cur = a.tags;
+    return `<div id="alEditor" class="al-editor">${ALLERGENS.map(al=>`<label><input type="checkbox" value="${al.id}" ${cur.includes(al.id)?'checked':''}> ${escapeHtml(al.label)}</label>`).join('')}
+      <input type="text" placeholder="Other tags, comma separated (e.g. celery, sulphites)" value="${escapeHtml(cur.filter(t=>!AL_BY_ID[t]).join(', '))}">
+      <div><button type="button" onclick="saveAlEditor('${enc}')">Save</button> <button type="button" class="ghost" onclick="closeAlEditor()">Cancel</button></div></div>`;
+  }
+  const chips = a.tags.length ? alChipsFor(a.tags, a.confirmed) : `<span class="al-none">${a.confirmed?'none':'no suggestion'}</span>`;
+  return `${chips} ${a.confirmed ? '' : `<button type="button" class="ghost al-btn" onclick="confirmIngAllergens('${enc}')" title="I have checked these tags">✓ Confirm</button>`}<button type="button" class="ghost al-btn" onclick="openAlEditor('${enc}')">Edit</button>`;
+}
+function renderIngPanel(){
+  const wrap = document.getElementById('ingPanelWrap'); if (!wrap) return;
+  const items = ingRowsForPanel();
+  if (!items.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  const act = document.activeElement, actId = act && wrap.contains(act) ? act.id : null;
+  const unconf = items.filter(x=>!alForTask(x.task).confirmed).length;
+  const summary = ING_SUMMARY.map(f=>f(items)).filter(Boolean).join(' · ');
+  let html = `<div class="row" style="justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">4 · Ingredients: allergens${ING_COLUMNS.length ? ', suppliers and prices' : ''}</h2>
+      <button class="ghost" id="ingPanelToggle" type="button" onclick="setIngPanelOpen(${ingPanelOpen?'false':'true'})">${ingPanelOpen?'Hide':'Show'}</button>
+    </div>
+    <div class="small ing-sum">${items.length} ingredients · ${unconf ? `<b>${unconf} with allergens not checked yet</b>` : 'all allergen tags checked'}${summary ? ' · '+summary : ''}</div>`;
+  if (ingPanelOpen){
+    const filt = ING_FILTERS.find(f=>f.v===ingFilter) || ING_FILTERS[0];
+    const shown = filt.test ? items.filter(filt.test) : items;
+    html += `<div class="al-disclaimer">⚠ ${escapeHtml(AL_DISCLAIMER)} Prepline does not guarantee allergen information.</div>
+      <div class="row" style="gap:8px; align-items:center; margin:8px 0;">
+        <select id="ingFilterSel" onchange="setIngFilter(this.value)">${ING_FILTERS.map(f=>`<option value="${f.v}" ${f.v===filt.v?'selected':''}>${escapeHtml(f.label)}</option>`).join('')}</select>
+        ${unconf ? `<button type="button" class="ghost" onclick="confirmAllSuggestions()">✓ Confirm all suggestions</button>` : ''}
+        ${ING_TOOLS.map(f=>f()).join('')}
+      </div>
+      <div class="section-table-wrap"><table class="ing-table"><thead><tr><th>Ingredient</th><th>Used in</th><th>Allergens</th>${ING_COLUMNS.map(c=>`<th>${c.th}</th>`).join('')}</tr></thead><tbody>
+      ${shown.map(x=>`<tr data-ing="${escapeHtml(x.key)}"><td class="task">${escapeHtml(x.task)}</td><td class="dish">${x.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td><td class="al-cell">${alCellHtml(x)}</td>${ING_COLUMNS.map(c=>`<td>${c.td(x)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${3+ING_COLUMNS.length}">Nothing here with this filter.</td></tr>`}
+      </tbody></table></div>
+      <details class="dish-tags"><summary>Dish-level allergen tags (e.g. "may contain nuts", celery)</summary>
+        ${[...new Set(items.flatMap(x=>x.dishes))].map(d=>`<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 220px;">${escapeHtml(cleanDishName(d))}</span><input type="text" style="flex:1 1 240px;" placeholder="tags, comma separated" value="${escapeHtml((INGINFO.dishAl[d]||[]).map(tagLabel).join(', '))}" onchange="setDishTags('${encName(d)}', this.value)"></div>`).join('')}
+      </details>`;
+  }
+  wrap.innerHTML = html;
+  if (actId){ const el = document.getElementById(actId); if (el) el.focus(); }
+}
+const ING_SUMMARY = [];   // summary bits added by features 5/6
+const ING_TOOLS = [];     // toolbar buttons added by features 5/6
+
+// ---------- 5. Ordering list: supplier order sheet ----------
+// Suppliers are remembered per ingredient (INGINFO.items[key].sup), across lists.
+// The "Order sheet" view adds up every ticked dish's totals per ingredient (same name, same
+// unit family: weight, volume or a count unit), groups them by supplier, rolls g→kg and
+// ml→L, and rounds the order quantity up to a sensible step. Ingredients without a total
+// yet (no pax) are listed with "set pax"; ingredients with no supplier are listed last.
+function hashId(s){ let h = 5381; s = String(s); for (let i=0;i<s.length;i++) h = ((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+function knownSuppliers(){
+  const set = new Set(); Object.values(INGINFO.items).forEach(e=>{ if (e.sup) set.add(e.sup); });
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
+function setIngSupplier(encTask, val){
+  const e = ingEntry(decodeURIComponent(encTask), true);
+  const v = String(val||'').replace(/[<>"`\\]/g,'').replace(/\s+/g,' ').trim().slice(0,60);
+  if (v) e.sup = v; else delete e.sup;
+  touchIng(e); saveIngInfo(); render();
+}
+function supplierInputHtml(task, idPrefix){
+  const e = INGINFO.items[ingKey(task)] || {};
+  return `<input type="text" class="sup-input" id="${idPrefix}_${hashId(ingKey(task))}" list="supplierList" placeholder="supplier" value="${escapeHtml(e.sup||'')}" onchange="setIngSupplier('${encName(task)}', this.value)">`;
+}
+function supplierDatalistHtml(){ return `<datalist id="supplierList">${knownSuppliers().map(s=>`<option value="${escapeHtml(s)}">`).join('')}</datalist>`; }
+ING_COLUMNS.push({th:'Supplier', td:x=>supplierInputHtml(x.task, 'sup')});
+ING_FILTERS.push({v:'nosup', label:'No supplier yet', test:x=>!(INGINFO.items[x.key]||{}).sup});
+ING_SUMMARY.push(items=>{ const n = items.filter(x=>!(INGINFO.items[x.key]||{}).sup).length; return n ? n+' without a supplier' : 'every ingredient has a supplier'; });
+ING_TOOLS.push(()=>supplierDatalistHtml());
+EXPORT_EXTRA_COLS.push({header:'Supplier', value:(r)=>(INGINFO.items[ingKey(r.task)]||{}).sup||'', wch:20});   // main exports, after Allergens
+
+const ORDER_COUNT_STEP = 1;
+function roundUpOrder(n, u){
+  if (!Number.isFinite(n)) return null;
+  const up = (x, step) => Math.ceil(x/step - 1e-9) * step;
+  const r = v => Math.round(v*1000)/1000;
+  if (u==='kg' || u==='L') return r(up(n, n>=10 ? 0.5 : 0.1));
+  if (u==='g' || u==='ml') return r(up(n, n>=100 ? 50 : 10));
+  return r(up(n, n>=1 ? ORDER_COUNT_STEP : 0.5));
+}
+// Hook for 6 (prices): may return {n, u} in the price's unit, or null to keep the roll-up.
+let orderUnitFor = null;
+function orderLines(){
+  const map = {}, list = [];
+  activeRows().forEach(r=>{
+    const key = ingKey(r.task); if (!key) return;
+    const t = computeTotal(r);
+    const b = toBaseQty(t, r.unit);
+    const fam = (t===null || t===undefined) ? 'none' : (b.key==='g' ? 'g' : (b.key==='ml' ? 'ml' : 'u:'+String(r.unit||'').trim().toLowerCase()));
+    const id = key+'|'+fam;
+    let L = map[id];
+    if (!L){ L = map[id] = {id, key, task:r.task, fam, baseUnit: fam==='g' ? 'g' : (fam==='ml' ? 'ml' : String(r.unit||'').trim()), qty:0, hasQty:false, dishes:[], rows:[]}; list.push(L); }
+    L.rows.push(r);
+    if (!L.dishes.includes(r.dish)) L.dishes.push(r.dish);
+    if (fam!=='none' && Number.isFinite(b.n)){ L.qty += b.n; L.hasQty = true; }
+  });
+  list.forEach(L=>{
+    L.supplier = (INGINFO.items[L.key]||{}).sup || '';
+    if (L.hasQty){
+      L.qty = Math.round(L.qty*1e9)/1e9;
+      const d = dispQty(L.qty, L.baseUnit);
+      L.need = {n:d.n, u:d.u||''};
+      const conv = orderUnitFor ? orderUnitFor(L) : null;
+      const o = conv || L.need;
+      L.order = {n: roundUpOrder(o.n, o.u), u: o.u, exact: o.n};
+    }
+  });
+  return list;
+}
+function orderGroups(){
+  const lines = orderLines(), groups = {}, names = [];
+  lines.forEach(L=>{ const k = L.supplier || ''; if (!groups[k]){ groups[k] = []; names.push(k); } groups[k].push(L); });
+  names.sort((a,b)=> (a==='') - (b==='') || a.localeCompare(b));
+  names.forEach(k=>groups[k].sort((a,b)=>a.task.localeCompare(b.task)));
+  return names.map(k=>({supplier:k, lines:groups[k]}));
+}
+const ORDER_EXTRA_COLS = [];   // feature 6 adds price / cost columns: {th, td(L), print(L)}
+const ORDER_GROUP_FOOT = [];   // feature 6 adds a cost total line: (group) => html
+function orderQtyText(L){ return L.hasQty ? `${fmtNum(L.order.n)} ${escapeHtml(L.order.u)}` : '<span class="needpax">set pax</span>'; }
+function needQtyText(L){ return L.hasQty ? `${fmtNum(L.need.n)} ${escapeHtml(L.need.u)}` : '<span class="needpax">set pax</span>'; }
+function renderOrderSheet(){
+  const groups = orderGroups();
+  if (!groups.length) return '<div class="empty"><div class="big">Nothing to order yet</div>Load a list first.</div>';
+  const unassigned = groups.find(g=>!g.supplier);
+  let html = `<div class="order-intro no-print">Order sheet: every ticked dish's totals added up per ingredient and grouped by supplier.
+    Weights roll up to kg and volumes to L; order quantities are rounded up (0.1 kg / 10 g steps, whole units for counts) — edit them in the Excel file.
+    Assign suppliers below or in the Ingredients panel; they are remembered for next time.</div>
+    <div class="row no-print" style="gap:8px; margin:8px 0 14px;">
+      <button class="secondary" type="button" onclick="exportOrderToXlsx()" data-export="exportOrderToXlsx">📊 Export order sheet to Excel (editable order qty)</button>
+      <button class="secondary" type="button" onclick="printAllOfView('order', 'order-sheets.html')">🖨️ Print all order sheets</button>
+      ${unassigned ? `<span class="needpax">${unassigned.lines.length} item(s) with no supplier yet (listed last)</span>` : ''}
+    </div>${supplierDatalistHtml()}`;
+  groups.forEach(g=>{
+    const title = g.supplier || 'No supplier yet';
+    const gid = 'order-' + hashId(g.supplier || '~none');
+    const extraTh = ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('');
+    html += `<div class="section-head no-print" style="background:var(--${g.supplier?'accent-bg':'review-bg'});">
+      <div><h3 style="color:var(--${g.supplier?'accent-dark':'prot'})">${escapeHtml(title)}</h3><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'}${ORDER_GROUP_FOOT.map(f=>f(g, false)).join('')}</div></div>
+      <div class="section-actions"><button class="secondary" type="button" onclick="openPrintWindow('print-${gid}')">Print order sheet</button></div>
+    </div>
+    <div class="section-table-wrap no-print"><table class="order-table"><thead><tr><th>Item</th><th>Needed</th><th>Order qty</th><th>Used in</th>${extraTh}${g.supplier?'':'<th>Supplier</th>'}</tr></thead><tbody>
+    ${g.lines.map(L=>`<tr data-line="${escapeHtml(L.id)}"><td class="task">${escapeHtml(L.task)}${alChipsRowsHtml(L.rows)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.td(L)}</td>`).join('')}${g.supplier?'':`<td>${supplierInputHtml(L.task, 'osup')}</td>`}</tr>`).join('')}
+    </tbody></table></div>
+    <div class="print-only" id="print-${gid}">
+      <div class="print-head"><h2>Order sheet — ${escapeHtml(title)}</h2><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'} · printed ${escapeHtml(new Date().toLocaleDateString())}${ORDER_GROUP_FOOT.map(f=>f(g, true)).join('')}</div></div>
+      <table><thead><tr><th>Item</th><th>Needed</th><th>Order qty</th><th>Used in</th>${ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('')}<th style="width:8%">✓</th></tr></thead><tbody>
+      ${g.lines.map(L=>`<tr><td class="task">${escapeHtml(L.task)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.print ? c.print(L) : c.td(L)}</td>`).join('')}<td></td></tr>`).join('')}
+      </tbody></table>
+    </div>`;
+  });
+  return html;
+}
+// Excel: one tab per supplier (and "No supplier yet"). Order qty is a plain number to edit.
+const ORDER_XLSX_EXTRA = [];   // feature 6: {header, value(L), formula?(L, excelRow) -> {f, v}, wch}
+const ORDER_XLSX_FOOT = [];    // feature 6: (ctx) -> adds a total row
+function exportOrderToXlsx(){
+  if (typeof XLSX === 'undefined' || !XLSX.utils){ setStatus('The spreadsheet export could not load. Reload the page and try again.', 'err'); return; }
+  const groups = orderGroups();
+  if (!groups.length){ setStatus('Nothing to export yet — load a list first.', 'err'); return; }
+  const wb = XLSX.utils.book_new(), used = new Set(), changes = [];
+  groups.forEach(g=>{
+    const title = g.supplier || 'No supplier yet';
+    const aoa = [['Order sheet: '+title], ['Generated '+new Date().toLocaleDateString()+' with Prepline. Order qty is rounded up; edit it as needed.'], [],
+      ['Item','Needed','Unit','Order qty','Order unit','Supplier','Used in', ...ORDER_XLSX_EXTRA.map(c=>c.header)]];
+    const hdrRow = aoa.length;   // 1-based row of the header
+    const fcells = [];
+    g.lines.forEach((L, i)=>{
+      const n = hdrRow + 1 + i;
+      aoa.push([L.task, L.hasQty ? L.need.n : '', L.hasQty ? L.need.u : '', L.hasQty ? L.order.n : '', L.hasQty ? L.order.u : '', g.supplier, L.dishes.map(cleanDishName).join(', '),
+        ...ORDER_XLSX_EXTRA.map(c=>c.value(L))]);
+      ORDER_XLSX_EXTRA.forEach((c, ci)=>{ if (c.formula){ const f = c.formula(L, n); if (f) fcells.push({addr: XLSX.utils.encode_cell({r:n-1, c:7+ci}), f}); } });
+    });
+    ORDER_XLSX_FOOT.forEach(fn=>fn({aoa, fcells, first: hdrRow+1, last: hdrRow+g.lines.length}));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    fcells.forEach(fc=>{ ws[fc.addr] = (typeof fc.f.v==='number') ? {t:'n', f:fc.f.f, v:fc.f.v} : {t:'s', f:fc.f.f, v:''}; });
+    ws['!cols'] = [{wch:34},{wch:10},{wch:7},{wch:10},{wch:10},{wch:22},{wch:40}, ...ORDER_XLSX_EXTRA.map(c=>({wch:c.wch||12}))];
+    XLSX.utils.book_append_sheet(wb, ws, safeSheetName(title, used, changes));
+  });
+  XLSX.writeFile(wb, 'Order_Sheet_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  setStatus('Exported the order sheet: '+groups.length+' supplier tab(s). Order qty is an editable number.', 'ok');
+}
+
+
+// ---------- 6. Cost per dish ----------
+// Ingredient prices are entered once (price per kg, L or each) and remembered with the
+// ingredient (INGINFO.items[key].price / .per). Cost of a row = its total converted to the
+// price unit x price; weights and volumes convert (g→kg, ml→L), "each" fits any count unit
+// (each, bunch, punnet...). A row with no price, or a unit that doesn't fit the price (e.g.
+// price per kg but the row is in bunches), is flagged as missing, never guessed.
+const COST_CONFIG = { symbol: '$', decimals: 2 };   // currency shown in the app; prices are as entered (ex or inc GST: user's choice)
+function money(n){ return Number.isFinite(n) ? COST_CONFIG.symbol + n.toFixed(COST_CONFIG.decimals) : '—'; }
+function parsePrice(v){ const t = String(v==null?'':v).replace(/[$\s,]/g,''); if (t==='') return {ok:true, n:undefined}; if (!/^(\d+\.?\d*|\.\d+)$/.test(t)) return {ok:false}; const n = Number(t); return (Number.isFinite(n) && n>=0 && n<1e7) ? {ok:true, n} : {ok:false}; }
+function setIngPrice(encTask, val){
+  const p = parsePrice(val); if (!p.ok){ setStatus('Price must be a number, e.g. 12.50', 'err'); render(); return; }
+  const e = ingEntry(decodeURIComponent(encTask), true);
+  if (p.n===undefined) delete e.price; else { e.price = p.n; if (!e.per) e.per = defaultPerFor(decodeURIComponent(encTask)); }
+  touchIng(e); saveIngInfo(); render();
+}
+function setIngPer(encTask, per){
+  if (!['kg','L','each'].includes(per)) return;
+  const e = ingEntry(decodeURIComponent(encTask), true); e.per = per; touchIng(e); saveIngInfo(); render();
+}
+function defaultPerFor(task){
+  const r = ROWS.find(x=>ingKey(x.task)===ingKey(task)); const k = r ? toBaseQty(1, r.unit).key : '';
+  return k==='g' ? 'kg' : (k==='ml' ? 'L' : 'each');
+}
+// multiplier from one unit of `unit` to one unit of the price (`per`), or null if they don't fit
+function priceFactor(unit, per){
+  const b = toBaseQty(1, unit);
+  if (per==='kg') return b.key==='g' ? b.n/1000 : null;
+  if (per==='L') return b.key==='ml' ? b.n/1000 : null;
+  if (per==='each') return (b.key==='g' || b.key==='ml') ? null : 1;
+  return null;
+}
+function costOfRow(r){
+  const e = INGINFO.items[ingKey(r.task)];
+  if (!e || !Number.isFinite(e.price)) return {status:'noprice'};
+  const per = e.per || 'each';
+  const f = priceFactor(r.unit, per);
+  if (f===null) return {status:'mismatch', per};
+  const t = computeTotal(r);
+  if (t===null || t===undefined || !Number.isFinite(t)) return {status:'nototal'};
+  return {status:'ok', cost: Math.round(t * f * e.price * 1e6)/1e6};
+}
+function costOfRows(rows){
+  let cost = 0, priced = 0; const missing = new Set(), mismatch = new Set(), nototal = new Set();
+  rows.forEach(r=>{ const c = costOfRow(r);
+    if (c.status==='ok'){ cost += c.cost; priced++; }
+    else if (c.status==='noprice') missing.add(ingKey(r.task));
+    else if (c.status==='mismatch') mismatch.add(ingKey(r.task));
+    else nototal.add(r.dish); });
+  return {cost: Math.round(cost*100)/100, priced, missing: missing.size, mismatch: mismatch.size, nototal: nototal.size};
+}
+function anyPrices(){ return Object.values(INGINFO.items).some(e=>Number.isFinite(e.price)); }
+function missingText(c){
+  const bits = [];
+  if (c.missing) bits.push(`${c.missing} missing price${c.missing===1?'':'s'}`);
+  if (c.mismatch) bits.push(`${c.mismatch} price unit${c.mismatch===1?'':'s'} don't match`);
+  if (c.nototal) bits.push('set pax for a full cost');
+  return bits.length ? ` · <span class="cost-miss">⚠ ${bits.join(', ')}</span>` : '';
+}
+function dishCostLineHtml(dish){
+  if (!anyPrices()) return '';
+  const rows = activeRows().filter(r=>r.dish===dish);
+  const c = costOfRows(rows), pax = paxByDish[dish];
+  const pp = (Number.isFinite(pax) && pax>0 && c.priced) ? c.cost/pax : null;
+  return `<div class="cost-line">Cost: <b>${money(c.cost)}</b>${pp!==null ? ` · <b>${money(pp)}</b> per pax` : ''}${missingText(c)}</div>`;
+}
+function costSummaryHtml(){
+  if (!anyPrices()) return '';
+  const rows = activeRows(); const c = costOfRows(rows);
+  const dishes = [...new Set(rows.map(r=>r.dish))];
+  return `<div class="cost-summary no-print" id="costSummary"><b>Food cost, ticked dishes: ${money(c.cost)}</b> across ${dishes.length} dish${dishes.length===1?'':'es'}${missingText(c)}
+    <span class="cost-hint">Prices are per kg, L or each, set in the Ingredients panel (4). Missing prices count as zero, so the total is a minimum until every price is in.</span></div>`;
+}
+// ingredient panel: price column, filter, summary
+function priceCellHtml(x){
+  const e = INGINFO.items[x.key] || {}, enc = encName(x.task), h = hashId(x.key);
+  const per = e.per || defaultPerFor(x.task);
+  const bad = Number.isFinite(e.price) && x.rows.some(r=>priceFactor(r.unit, per)===null);
+  return `<span class="price-cell">${COST_CONFIG.symbol}<input type="text" inputmode="decimal" class="price-input" id="price_${h}" value="${Number.isFinite(e.price)?e.price:''}" placeholder="price" onchange="setIngPrice('${enc}', this.value)">
+    / <select id="per_${h}" onchange="setIngPer('${enc}', this.value)">${['kg','L','each'].map(u=>`<option ${u===per?'selected':''}>${u}</option>`).join('')}</select></span>${bad ? `<div class="cost-miss">unit doesn't fit (${escapeHtml([...new Set(x.rows.map(r=>r.unit||'no unit'))].join(', '))})</div>` : ''}`;
+}
+ING_COLUMNS.push({th:'Price', td:priceCellHtml});
+ING_FILTERS.push({v:'noprice', label:'No price yet', test:x=>!Number.isFinite((INGINFO.items[x.key]||{}).price)});
+ING_SUMMARY.push(items=>{ const n = items.filter(x=>!Number.isFinite((INGINFO.items[x.key]||{}).price)).length; return n ? n+' without a price' : 'every ingredient has a price'; });
+// order sheet: order in the price's unit when priced, plus price and estimated cost
+orderUnitFor = function(L){
+  const e = INGINFO.items[L.key]; if (!e || !Number.isFinite(e.price)) return null;
+  const per = e.per || 'each';
+  if (per==='kg' && L.fam==='g') return {n: L.qty/1000, u:'kg'};
+  if (per==='L' && L.fam==='ml') return {n: L.qty/1000, u:'L'};
+  if (per==='each' && L.fam.startsWith('u:')) return {n: L.qty, u: L.baseUnit};
+  return null;
+};
+function orderPrice(L){
+  const e = INGINFO.items[L.key]; if (!e || !Number.isFinite(e.price)) return null;
+  const per = e.per || 'each';
+  const fits = L.hasQty && orderUnitFor(L) !== null;
+  return {price: e.price, per, fits, cost: fits ? Math.round(L.order.n * e.price * 100)/100 : null};
+}
+ORDER_EXTRA_COLS.push({th:'Price', td:L=>{ const p = orderPrice(L); return p ? `${money(p.price)}/${escapeHtml(p.per)}` : '<span class="cost-miss">no price</span>'; }});
+ORDER_EXTRA_COLS.push({th:'Est. cost', td:L=>{ const p = orderPrice(L); return p && p.fits ? money(p.cost) : (p && L.hasQty ? '<span class="cost-miss">unit doesn\'t fit</span>' : '—'); }});
+ORDER_GROUP_FOOT.push((g, forPrint)=>{
+  const ps = g.lines.map(orderPrice); const tot = ps.reduce((s,p)=>s+(p&&p.fits?p.cost:0),0); const miss = ps.filter(p=>!p||!p.fits).length;
+  if (!ps.some(p=>p&&p.fits)) return miss && !forPrint ? ` · ${miss} without a usable price` : '';
+  return ` · est. ${money(Math.round(tot*100)/100)}${miss ? ` (${miss} item${miss===1?'':'s'} not priced)` : ''}`;
+});
+ORDER_XLSX_EXTRA.push({header:'Price', value:L=>{ const p = orderPrice(L); return p ? p.price : ''; }, wch:9});
+ORDER_XLSX_EXTRA.push({header:'Price per', value:L=>{ const p = orderPrice(L); return p ? p.per : ''; }, wch:9});
+ORDER_XLSX_EXTRA.push({header:'Est. cost', value:()=> '', wch:11,
+  formula:(L, n)=>{ const p = orderPrice(L); return (p && p.fits) ? {f:'IF(AND(ISNUMBER(D'+n+'),ISNUMBER(H'+n+')),D'+n+'*H'+n+',"")', v:p.cost} : null; }});
+ORDER_XLSX_FOOT.push(ctx=>{
+  if (ctx.last < ctx.first) return;
+  ctx.aoa.push([]); const r = ctx.aoa.length + 1;   // 1-based row of the total
+  ctx.aoa.push(['', '', '', '', '', '', '', '', 'Total est. cost']);
+  ctx.fcells.push({addr: XLSX.utils.encode_cell({r:r-1, c:9}), f:{f:'SUM(J'+ctx.first+':J'+ctx.last+')', v: undefined}});
+});
+// main exports: Price | Price per | Price units per row unit | Cost (formula), plus dish cost and cost per pax
+function rowPriceInfo(r, unit){
+  const e = INGINFO.items[ingKey(r.task)];
+  if (!e || !Number.isFinite(e.price)) return null;
+  const per = e.per || 'each'; const f = priceFactor(unit, per);
+  return {price: e.price, per, factor: f};
+}
+EXPORT_EXTRA_COLS.push({header:'Price', value:(r,u)=>{ const p = rowPriceInfo(r,u); return p ? p.price : ''; }, wch:9});
+EXPORT_EXTRA_COLS.push({header:'Price per', value:(r,u)=>{ const p = rowPriceInfo(r,u); return p ? p.per : ''; }, wch:9});
+EXPORT_EXTRA_COLS.push({header:'Price units per Unit', value:(r,u)=>{ const p = rowPriceInfo(r,u); return p && p.factor!==null ? p.factor : ''; }, wch:12});
+EXPORT_EXTRA_COLS.push({header:'Cost', value:()=> '', wch:11,
+  formula:(r, n, u)=>{ const p = rowPriceInfo(r,u); if (!p || p.factor===null) return null;
+    const c = costOfRow(r);
+    return {f:'IF(AND(ISNUMBER(E'+n+'),ISNUMBER(K'+n+'),ISNUMBER(M'+n+')),E'+n+'*M'+n+'*K'+n+',"")', v: c.status==='ok' ? c.cost : ''}; }});
+EXPORT_BLOCK_HOOKS.push(ctx=>{
+  const first = ctx.dataStartRow + 1, last = ctx.dataStartRow + ctx.rows.length;
+  const c = costOfRows(ctx.rows);
+  const padTo = (row, n) => { while (row.length < n) row.push(''); return row; };
+  padTo(ctx.aoa[ctx.paxRowNum-1], 12)[12] = 'Cost (these rows)';
+  ctx.put(ctx.paxRowNum-1, 13, 'SUM(N'+first+':N'+last+')', c.cost);
+  padTo(ctx.aoa[ctx.titleRowIdx], 12)[12] = 'Cost per pax';
+  const pp = (ctx.paxSet && ctx.pax>0) ? Math.round(c.cost/ctx.pax*1e6)/1e6 : '';
+  ctx.put(ctx.titleRowIdx, 13, 'IF(ISNUMBER(B'+ctx.paxRowNum+'),IFERROR(N'+ctx.paxRowNum+'/B'+ctx.paxRowNum+',""),"")', pp);
+});
+
+
+// ---------- 1. Instant demo: "Try with sample menu" ----------
+// A made-up kitchen menu (no real venue, supplier or person). Loads as a normal one-time
+// list (so every view, print and export works), clearly labelled as sample data, with some
+// allergens, suppliers and prices filled in (only for ingredients this browser has no info
+// for yet; those entries are marked and removed again by "Clear sample").
+const SAMPLE_SOURCE = 'Sample menu (made-up data)';
+const SAMPLE_SUP = {prod:'Sample Produce Co.', meat:'Sample Meat & Seafood', dairy:'Sample Dairy Supplies', dry:'Sample Dry Goods'};
+// [task, qty per pax, unit, supplier key, price, per, confirmed allergens (null = leave as suggestion)]
+const SAMPLE_MENU = [
+  {dish:'Sample: Roast Chicken, Thyme Jus', day:'Friday', pax:80, items:[
+    ['Chicken supreme', 0.18, 'kg', 'meat', 14.5, 'kg', []],
+    ['Thyme jus', 0.05, 'L', null, null, null, null],
+    ['Brown onion', 0.03, 'kg', 'prod', 2.2, 'kg', []],
+    ['Garlic', 0.005, 'kg', 'prod', 15, 'kg', []],
+    ['Butter', 0.01, 'kg', 'dairy', 12, 'kg', ['dairy']],
+    ['Potato', 0.15, 'kg', 'prod', 2.5, 'kg', []],
+    ['Thickened cream', 0.04, 'L', 'dairy', 6.5, 'L', ['dairy']],
+    ['Gruyere cheese', 0.015, 'kg', 'dairy', 38, 'kg', null]]},
+  {dish:'Sample: Market Fish, Lemon Butter Sauce', day:'Saturday', pax:60, items:[
+    ['Barramundi fillet', 0.16, 'kg', 'meat', 32, 'kg', ['fish']],
+    ['Lemon butter sauce', 0.04, 'L', null, null, null, null],
+    ['Butter', 0.015, 'kg', 'dairy', 12, 'kg', ['dairy']],
+    ['Lemon', 0.25, 'each', 'prod', 0.6, 'each', []],
+    ['Broccolini', 0.06, 'kg', 'prod', 12, 'kg', []],
+    ['Almond flakes', 0.008, 'kg', 'dry', 22, 'kg', null]]},
+  {dish:'Sample: Pumpkin, Feta & Spinach Salad', day:'Friday', pax:50, items:[
+    ['Butternut pumpkin', 0.12, 'kg', 'prod', 3, 'kg', []],
+    ['Feta', 0.03, 'kg', 'dairy', 16, 'kg', null],
+    ['Baby spinach', 0.02, 'kg', 'prod', 18, 'kg', []],
+    ['Balsamic dressing', 0.02, 'L', null, null, null, null],
+    ['Sesame seeds', 0.003, 'kg', 'dry', 9, 'kg', null]]},
+  {dish:'Sample: Prawn Linguine', day:'Saturday', pax:40, items:[
+    ['Linguine', 0.1, 'kg', 'dry', 4.5, 'kg', ['gluten']],
+    ['Prawn cutlets', 0.12, 'kg', 'meat', 28, 'kg', ['crustacea']],
+    ['Cherry tomatoes', 0.06, 'kg', 'prod', 9, 'kg', []],
+    ['Garlic', 0.006, 'kg', 'prod', 15, 'kg', []],
+    ['Chilli', 0.002, 'kg', 'prod', 20, 'kg', []],
+    ['Parsley', 0.05, 'bunch', 'prod', 2.5, 'each', []],
+    ['Olive oil', 0.015, 'L', 'dry', 9, 'L', []]]},
+  {dish:'Sample: Chocolate Tart', day:'Sunday', pax:70, items:[
+    ['Sweet pastry', 0.06, 'kg', null, null, null, null],
+    ['Dark chocolate', 0.04, 'kg', 'dry', 18, 'kg', null],
+    ['Thickened cream', 0.05, 'L', 'dairy', 6.5, 'L', ['dairy']],
+    ['Eggs', 0.5, 'each', 'dairy', 0.45, 'each', ['egg']],
+    ['Raspberries', 0.02, 'kg', 'prod', 30, 'kg', []]]},
+];
+const SAMPLE_LEADERS = {'Vegetables':'Commis (sample)', 'Proteins':'Sous chef (sample)', 'Sauce, Purees and Gels':'Chef de partie (sample)'};
+function sampleActive(){ return ROWS.length>0 && !!sourceInfo && sourceInfo.name===SAMPLE_SOURCE; }
+function loadSampleMenu(){
+  if (ROWS.length && !sampleActive() && !confirm('Replace the current list with the sample menu? The current list will be cleared (print or export it first if you need it).')) return;
+  toolMode = 'onetime';
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {}; dishIncluded = {};
+  SAMPLE_MENU.forEach(d=>{
+    eventDayOverride[d.dish] = d.day;
+    paxByDish[d.dish] = d.pax;
+    const before = ROWS.length;
+    addRows(d.dish, d.items.map(it=>({item: it[0], qty: it[1], unit: it[2]})));
+    for (let i=before; i<ROWS.length; i++){ ROWS[i].srcSheet = d.dish; ROWS[i].srcType = 'sample'; }
+    d.items.forEach(it=>{
+      const k = ingKey(it[0]); if (INGINFO.items[k]) return;   // never overwrite the user's own info
+      const e = {smp:1};
+      if (it[3]) e.sup = SAMPLE_SUP[it[3]];
+      if (it[4]!=null){ e.price = it[4]; e.per = it[5]; }
+      if (Array.isArray(it[6])) e.al = it[6].slice();
+      INGINFO.items[k] = e;
+    });
+  });
+  Object.keys(SAMPLE_LEADERS).forEach(s=>{ if (!leaderBySection[s]) leaderBySection[s] = SAMPLE_LEADERS[s]; });
+  saveIngInfo();
+  sourceInfo = {name: SAMPLE_SOURCE, loadedAt: new Date()};
+  document.getElementById('fileTag').textContent = 'sample menu';
+  setStatus('Loaded the sample menu: '+SAMPLE_MENU.length+' made-up dishes. Explore the views, prints and exports, then press "Clear sample" when you are ready to load your own list.', 'ok');
+  renderApp();
+}
+function clearSampleMenu(){
+  const sampleDishes = new Set(SAMPLE_MENU.map(d=>d.dish));
+  ROWS = ROWS.filter(r=>!sampleDishes.has(r.dish));
+  sampleDishes.forEach(d=>{ delete paxByDish[d]; delete eventDayOverride[d]; delete dishIncluded[d]; delete INGINFO.dishAl[d]; });
+  Object.keys(INGINFO.items).forEach(k=>{ if (INGINFO.items[k].smp) delete INGINFO.items[k]; });
+  Object.keys(SAMPLE_LEADERS).forEach(s=>{ if (leaderBySection[s]===SAMPLE_LEADERS[s]) leaderBySection[s] = ''; });
+  saveIngInfo();
+  if (!ROWS.length){ clearOnetimeSession(); sourceInfo = {name:null, loadedAt:null}; document.getElementById('fileTag').textContent = 'no file loaded'; }
+  setStatus('Sample menu cleared. Load your own preplist above.', 'ok');
+  renderApp();
+}
+function sampleBannerHtml(){
+  if (!sampleActive()) return '';
+  return `<div class="sample-banner no-print" id="sampleBanner"><b>SAMPLE DATA</b> — a made-up menu so you can try Prepline. Dishes, suppliers and prices are invented.
+    <button type="button" class="secondary" onclick="clearSampleMenu()" id="clearSampleBtn">Clear sample</button></div>`;
+}
+
+
+// ---------- 3. Team share: a section's list on a phone, by QR code or link, no server ----------
+// The list is packed into the link itself (after #, so it is never sent to any server):
+//   JSON -> UTF-8 -> deflate-raw (CompressionStream) -> base64url, prefixed "z" ("j" = not
+//   compressed, for browsers without CompressionStream). QR codes are drawn here with the
+//   bundled qrcode-generator (MIT); no QR web service is called.
+// Limits (measured, see tests): a QR code holds at most 2,953 bytes (version 40, low error
+// correction, byte mode), and the whole link must fit, so the list part gets about 2,900
+// characters. Above ~1,200 characters the code gets dense (version 25+) and older phone
+// cameras can struggle, so the dialog warns. Bigger lists are split into parts (Part 1 of N,
+// each a complete read-only list for its rows, up to SHARE_CONFIG.maxParts); beyond that only the
+// copy-link option is offered. Links themselves can be much longer (browsers accept
+// megabytes), but some chat apps shorten or cut very long links.
+const SHARE_CONFIG = {
+  qrMaxChars: 2953,       // QR capacity: version 40-L, byte mode
+  qrComfortChars: 1200,   // above this the QR is dense: warn, suggest the link
+  maxParts: 8,
+  // A copy opened from a file (offline build) has no web address a phone can open, so links point here instead.
+  fallbackUrl: 'https://autoprod-dev.github.io/preplist-sorter/',
+};
+const DAY_CODES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+function b64urlFromBytes(bytes){ let s = ''; for (let i=0;i<bytes.length;i+=0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000)); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function bytesFromB64url(t){ const s = atob(t.replace(/-/g,'+').replace(/_/g,'/') + '==='.slice((t.length+3)%4)); const b = new Uint8Array(s.length); for (let i=0;i<s.length;i++) b[i] = s.charCodeAt(i); return b; }
+async function streamBytes(bytes, stream){ const out = await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer(); return new Uint8Array(out); }
+async function packShare(obj){
+  const raw = new TextEncoder().encode(JSON.stringify(obj));
+  if (typeof CompressionStream === 'function'){
+    try{ return 'z' + b64urlFromBytes(await streamBytes(raw, new CompressionStream('deflate-raw'))); }catch(e){}
+  }
+  return 'j' + b64urlFromBytes(raw);
+}
+async function unpackShare(token){
+  const kind = token[0], body = token.slice(1);
+  let bytes = bytesFromB64url(body);
+  if (kind==='z'){
+    if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot open compressed share links. Update it, or ask for the list another way.');
+    bytes = await streamBytes(bytes, new DecompressionStream('deflate-raw'));
+  } else if (kind!=='j') throw new Error('Unknown link format.');
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+function shareBaseUrl(){
+  return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : SHARE_CONFIG.fallbackUrl;
+}
+function shareRowsFor(section){ return activeRows().filter(r=>r.section===section); }
+function sharePayload(section, rows, part, parts){
+  const ds = [], di = {};
+  rows.forEach(r=>{ if (di[r.dish]===undefined){ di[r.dish] = ds.length; ds.push(r.dish); } });
+  const p = {v:1, k:'sec', n:section, l: leaderBySection[section]||'', d: new Date().toISOString().slice(0,10),
+    ds: ds.map(d=>cleanDishName(d)||d), dp: ds.map(d=>Number.isFinite(paxByDish[d]) ? paxByDish[d] : null),
+    r: rows.map(r=>{ const t = computeTotal(r); const a = alForTask(r.task);
+      return [di[r.dish], r.task, t!==null ? (qN(t,r.unit)+' '+qU(t,r.unit)).trim() : '', DAY_CODES.indexOf(r.day), a.tags.map(x=>tagShort(x)+(a.confirmed?'':'?')).join(' ')]; })};
+  if (sampleActive()) p.smp = 1;
+  if (parts>1) p.p = [part, parts];
+  return p;
+}
+async function shareLinksFor(section){
+  const rows = shareRowsFor(section);
+  const base = shareBaseUrl() + '#s=';
+  const whole = base + await packShare(sharePayload(section, rows, 1, 1));
+  const res = {section, rows: rows.length, whole, parts: [whole], split: false, qrOk: whole.length <= SHARE_CONFIG.qrMaxChars};
+  if (!res.qrOk){
+    for (let n=2; n<=SHARE_CONFIG.maxParts; n++){
+      const size = Math.ceil(rows.length / n), chunks = [], links = [];
+      for (let i=0;i<n;i++){ const chunk = rows.slice(i*size, (i+1)*size); if (chunk.length) chunks.push(chunk); }
+      for (let i=0;i<chunks.length;i++) links.push(base + await packShare(sharePayload(section, chunks[i], i+1, chunks.length)));
+      if (links.every(l=>l.length <= SHARE_CONFIG.qrMaxChars)){ res.parts = links; res.split = true; res.qrOk = true; break; }
+    }
+  }
+  return res;
+}
+function qrSvg(text){
+  const q = qrcode(0, 'L'); q.addData(text, 'Byte'); q.make();
+  const n = q.getModuleCount(), m = 4, size = n + 2*m; let d = '';
+  for (let r=0;r<n;r++) for (let c=0;c<n;c++) if (q.isDark(r,c)) d += `M${c+m} ${r+m}h1v1h-1z`;
+  return {svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" class="qr-svg" role="img" aria-label="QR code"><rect width="${size}" height="${size}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`, version: (n-17)/4, modules: n};
+}
+async function openShareSection(section){
+  closeShareModal();
+  const box = document.createElement('div'); box.id = 'shareModal'; box.className = 'share-modal no-print';
+  box.innerHTML = `<div class="share-card"><div class="share-top"><h3>Share "${escapeHtml(section)}" to phones</h3><button type="button" class="ghost" onclick="closeShareModal()" aria-label="Close">✕</button></div><div class="share-body">Preparing…</div></div>`;
+  document.body.appendChild(box);
+  let res;
+  try{ res = await shareLinksFor(section); }catch(e){ box.querySelector('.share-body').textContent = 'Could not build the share link: ' + e.message; return; }
+  const lead = leaderBySection[section] ? ` for ${escapeHtml(leaderBySection[section])}` : '';
+  let html = `<p class="share-lede">${res.rows} task${res.rows===1?'':'s'}${lead}. Scan with a phone camera: the list opens read-only in the browser, with nothing to install and no account. The list travels inside the link, so it is a snapshot: share again after changes.</p>`;
+  if (!/^https?:$/.test(location.protocol)) html += `<p class="share-warn">This copy is opened from a file, so the link points to the online Prepline (${escapeHtml(SHARE_CONFIG.fallbackUrl)}).</p>`;
+  if (res.qrOk){
+    html += `<div class="share-qrs">` + res.parts.map((l,i)=>{ const q = qrSvg(l);
+      return `<figure class="share-qr" data-version="${q.version}" data-chars="${l.length}">${q.svg}<figcaption>${res.split ? `<b>Part ${i+1} of ${res.parts.length}</b> · ` : ''}${l.length.toLocaleString()} characters · QR version ${q.version}${l.length > SHARE_CONFIG.qrComfortChars ? ' · <span class="share-warn">dense: if it won\'t scan, send the link instead</span>' : ''}</figcaption></figure>`; }).join('') + `</div>`;
+    if (res.split) html += `<p class="share-warn">This list is too big for one QR code (max ${SHARE_CONFIG.qrMaxChars.toLocaleString()} characters), so it is split into ${res.parts.length} parts. Each part opens on its own.</p>`;
+  } else {
+    html += `<p class="share-warn" id="shareTooBig">This list is too big for QR codes (${res.whole.length.toLocaleString()} characters; even split into ${SHARE_CONFIG.maxParts} parts each would be over ${SHARE_CONFIG.qrMaxChars.toLocaleString()}). Copy the link and send it instead (email, Teams, text).</p>`;
+  }
+  html += `<div class="share-link"><input type="text" readonly id="shareLinkInput" value="${escapeHtml(res.whole)}" onclick="this.select()">
+    <button type="button" onclick="copyShareLink()">Copy link</button> <a href="${escapeHtml(res.whole)}" target="_blank" rel="noopener">Open</a></div>
+    <div class="small share-size" id="shareSize">Full link: ${res.whole.length.toLocaleString()} characters.${res.whole.length>8000 ? ' Very long: some chat apps cut links this long, so email may work better.' : ''}</div>`;
+  box.querySelector('.share-body').innerHTML = html;
+  box.dataset.parts = String(res.parts.length);
+}
+function closeShareModal(){ const m = document.getElementById('shareModal'); if (m) m.remove(); }
+function copyShareLink(){
+  const i = document.getElementById('shareLinkInput'); if (!i) return;
+  const done = ok => { const s = document.getElementById('shareSize'); if (s) s.textContent = ok ? 'Link copied.' : 'Select the link and copy it.'; };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(i.value).then(()=>done(true), ()=>{ i.select(); done(false); });
+  else { i.select(); done(false); }
+}
+// ---- the shared, read-only view (opened from a link; reads and writes nothing in storage) ----
+let sharedViewData = null, _svPrevTitle = null;
+async function openSharedViewFromHash(){
+  const m = /^#s=([zj][A-Za-z0-9_-]+)$/.exec(location.hash || '');
+  if (!m){ if (document.body.classList.contains('shared-mode')) closeSharedView(true); return false; }
+  document.body.classList.add('shared-mode');
+  let v = document.getElementById('sharedView');
+  if (!v){ v = document.createElement('div'); v.id = 'sharedView'; document.body.appendChild(v); }
+  v.innerHTML = '<div class="sv-wrap"><p>Opening the shared list…</p></div>';
+  try{
+    const data = await unpackShare(m[1]);
+    if (!data || data.v!==1 || !Array.isArray(data.r) || !Array.isArray(data.ds)) throw new Error('bad');
+    sharedViewData = data; renderSharedView();
+  }catch(e){
+    v.innerHTML = `<div class="sv-wrap"><h2>This share link can't be opened</h2><p>It may be incomplete (cut off when it was sent) or damaged. Ask for a new link or QR code.</p><p><a href="#" onclick="closeSharedView(); return false;">Open Prepline</a></p></div>`;
+  }
+  return true;
+}
+function renderSharedView(){
+  const d = sharedViewData, v = document.getElementById('sharedView'); if (!d || !v) return;
+  const S = x => escapeHtml(String(x==null?'':x));
+  const byDay = {};
+  d.r.forEach(row=>{ const day = DAY_CODES[row[3]] || 'No day set'; (byDay[day] = byDay[day] || []).push(row); });
+  const days = [...DAY_CODES, 'No day set'].filter(x=>byDay[x]);
+  if (_svPrevTitle===null) _svPrevTitle = document.title;
+  document.title = (d.n||'List') + ' — Prepline (shared)';
+  v.innerHTML = `<div class="sv-wrap">
+    <div class="sv-head"><div class="sv-brand">Prepline · shared list (read-only)</div>
+      <h1>${S(d.n)}</h1>
+      <div class="sv-meta">${d.l ? 'Lead: <b>'+S(d.l)+'</b> · ' : ''}${d.r.length} task${d.r.length===1?'':'s'} · shared ${S(d.d)}${Array.isArray(d.p) ? ` · <b>Part ${S(d.p[0])} of ${S(d.p[1])}</b>` : ''}</div>
+      ${d.smp ? '<div class="sv-sample">SAMPLE DATA — made-up menu</div>' : ''}
+    </div>
+    ${days.map(day=>`<h2 class="sv-day">${S(day)}</h2><table class="sv-table"><tbody>${byDay[day].map(row=>`<tr><td class="sv-tick"><input type="checkbox" aria-label="done"></td><td><div class="sv-task">${S(row[1])}${row[4] ? row[4].split(' ').map(t=>`<span class="al-chip${t.endsWith('?')?' sug':''}">${S(t)}</span>`).join('') : ''}</div><div class="sv-dish">${S(d.ds[row[0]])}${d.dp && d.dp[row[0]]!=null ? ' · '+S(d.dp[row[0]])+' pax' : ''}</div></td><td class="sv-qty">${row[2] ? S(row[2]) : '—'}</td></tr>`).join('')}</tbody></table>`).join('')}
+    <p class="sv-foot">Ticks stay on this phone only while the page is open. This is a snapshot: ask for a new link after changes.${d.r.some(r=>r[4] && r[4].includes('?')) ? ' Allergen tags with ? are automatic suggestions: check them.' : ''}<br><a href="#" onclick="closeSharedView(); return false;">Open Prepline</a></p>
+  </div>`;
+}
+function closeSharedView(fromHash){
+  document.body.classList.remove('shared-mode'); sharedViewData = null;
+  const v = document.getElementById('sharedView'); if (v) v.remove();
+  if (_svPrevTitle!==null){ document.title = _svPrevTitle; _svPrevTitle = null; }
+  if (!fromHash) history.replaceState(null, '', location.pathname + location.search);
+}
+window.addEventListener('hashchange', ()=>{ openSharedViewFromHash(); });
+
+
+// ---------- 7. Feedback button (no server, no address) ----------
+// Builds a short feedback text and copies it, to send to whoever shared Prepline with the user.
+// Only the app version, browser and screen size are included, plus the list itself ONLY if the
+// user ticks it. Nothing is sent from the page and there is no built-in address.
+function feedbackEditionLabel(){
+  return teamEdition() ? 'team build' : (LICENSE_CONFIG.mode==='off' ? 'public build' : 'test build');
+}
+function feedbackMeta(){
+  const v = (document.querySelector('meta[name="prepline-version"]')||{}).content || '';
+  return [`App: Prepline v${v} (${feedbackEditionLabel()})`, `Browser: ${navigator.userAgent}`,
+    `Screen: ${window.screen ? screen.width+'x'+screen.height : '?'} · window ${window.innerWidth}x${window.innerHeight}`,
+    `Page: ${location.protocol==='file:' ? 'offline file' : location.origin + location.pathname}`].join('\n');
+}
+function feedbackListText(){
+  const rows = activeRows(); if (!rows.length) return '(no list loaded)';
+  const out = [];
+  [...new Set(rows.map(r=>r.dish))].forEach(d=>{
+    out.push(`${cleanDishName(d)} (pax ${paxByDish[d]!==undefined ? paxByDish[d] : 'not set'})`);
+    rows.filter(r=>r.dish===d).forEach(r=>{ const t = computeTotal(r); out.push(`  - ${r.task}: ${t!==null ? qN(t,r.unit)+' '+qU(t,r.unit) : '—'} · ${r.section} · ${r.day||'no day'}`); });
+  });
+  return out.join('\n');
+}
+function feedbackBody(){
+  const msg = (document.getElementById('fbText')||{}).value || '';
+  const inc = (document.getElementById('fbIncludeList')||{}).checked;
+  return `Prepline feedback\n\n${msg.trim() || '(write your feedback here)'}\n\n---\n${feedbackMeta()}${inc ? '\n\nMy current list:\n' + feedbackListText() : ''}`;
+}
+function openFeedback(){
+  closeFeedback();
+  const box = document.createElement('div'); box.id = 'feedbackModal'; box.className = 'share-modal no-print';
+  box.innerHTML = `<div class="share-card" style="max-width:560px;"><div class="share-top"><h3>Feedback</h3><button type="button" class="ghost" onclick="closeFeedback()" aria-label="Close">✕</button></div>
+    <p class="share-lede">Ideas, problems, wrong sorting? Write it here, press <b>Copy feedback text</b>, then paste it into an email, Teams or a text to whoever shared Prepline with you (or whoever looks after it in your kitchen). Nothing is sent from this page.</p>
+    <textarea id="fbText" rows="6" style="width:100%; box-sizing:border-box;" placeholder="What happened, or what would help?"></textarea>
+    <label style="display:block; font-size:13px; margin:8px 0;"><input type="checkbox" id="fbIncludeList"> Include my current list (dish names, tasks, totals) — off by default</label>
+    <div class="small" style="font-size:11.5px; color:#5C5F58;">Always included: app version, browser and screen size. Nothing else.</div>
+    <div class="row" style="gap:8px; margin-top:10px; align-items:center;">
+      <button type="button" id="fbCopyBtn" onclick="copyFeedback()">Copy feedback text</button>
+      <span class="small" id="fbStatus" style="font-size:12px;"></span>
+    </div>
+    <textarea id="fbPreview" readonly rows="5" style="display:none; width:100%; box-sizing:border-box; margin-top:8px; font-size:12px;" aria-label="Feedback text to copy"></textarea></div>`;
+  document.body.appendChild(box);
+}
+function closeFeedback(){ const m = document.getElementById('feedbackModal'); if (m) m.remove(); }
+function copyFeedback(){
+  const text = feedbackBody();
+  const st = document.getElementById('fbStatus');
+  const ok = () => { if (st) st.textContent = 'Copied. Paste it into an email, Teams or a text to whoever shared Prepline with you.'; };
+  const fail = () => {   // no clipboard access (e.g. some file:// pages): show the text, selected, to copy by hand
+    const pv = document.getElementById('fbPreview');
+    if (pv){ pv.value = text; pv.style.display = 'block'; pv.focus(); pv.select(); }
+    if (st) st.textContent = 'Could not copy automatically: the text is selected below, press Ctrl+C (or Cmd+C) to copy it.';
+  };
+  window.__lastFeedbackCopy = text;
+  try{ if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail(); }catch(e){ fail(); }
+}
+
+
+// ---------- 8. Installable app (PWA) ----------
+// Switches on only when served over http(s) from one of the site paths below (live, test, team); each site gets
+// its own manifest, service worker (scope = its own path) and cache names, so they never clash.
+// A file:// copy (offline zip, single file, team build) or any other path: nothing is injected,
+// no service worker is registered, silently.
+const PWA_CONFIG = { paths: ['/preplist-sorter/', '/prepline-test/', '/prepline-team/'], basePath: null, checkEveryMin: 60 };
+function pwaEnabled(){
+  if (!/^https?:$/.test(location.protocol)) return false;
+  PWA_CONFIG.basePath = PWA_CONFIG.paths.find(p => location.pathname.startsWith(p)) || null;
+  return !!PWA_CONFIG.basePath;
+}
+function pwaInjectHead(){
+  const b = PWA_CONFIG.basePath, head = document.head;
+  const add = (tag, attrs) => { const e = document.createElement(tag); Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v)); e.setAttribute('data-pwa', '1'); head.appendChild(e); };
+  if (!head.querySelector('link[rel="manifest"]')) add('link', {rel:'manifest', href: b + 'manifest.webmanifest'});
+  add('link', {rel:'icon', type:'image/png', sizes:'32x32', href: b + 'icons/favicon-32.png'});
+  add('link', {rel:'apple-touch-icon', sizes:'180x180', href: b + 'icons/apple-touch-icon.png'});
+}
+function pwaShowUpdate(reg){
+  if (document.getElementById('pwaUpdateBar')) return;
+  const bar = document.createElement('div'); bar.id = 'pwaUpdateBar'; bar.className = 'pwa-update no-print';
+  bar.innerHTML = `<span>A new version of Prepline is available.</span> <button type="button" id="pwaReloadBtn">Reload</button> <button type="button" class="pwa-later" onclick="this.parentNode.remove()">Later</button>`;
+  document.body.appendChild(bar);
+  document.getElementById('pwaReloadBtn').onclick = () => {
+    const w = reg.waiting;
+    if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
+  };
+}
+function pwaInit(){
+  if (!pwaEnabled()) return;
+  pwaInjectHead();
+  if (!('serviceWorker' in navigator)) return;
+  let reloading = false;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;     // first install: no reload needed
+    reloading = true; location.reload();
+  });
+  navigator.serviceWorker.register(PWA_CONFIG.basePath + 'sw.js', {scope: PWA_CONFIG.basePath}).then(reg => {
+    window.__pwaReg = reg;
+    if (reg.waiting && navigator.serviceWorker.controller) pwaShowUpdate(reg);
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing; if (!nw) return;
+      nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) pwaShowUpdate(reg); });
+    });
+    setInterval(() => reg.update().catch(()=>{}), PWA_CONFIG.checkEveryMin * 60000);
+  }).catch(e => console.warn('Prepline offline support unavailable:', e));
+}
+if (document.readyState === 'complete') pwaInit(); else window.addEventListener('load', pwaInit);
+
+let INGINFO = loadIngInfo();
+const _v33BaseRender = render;
+render = function(){ _v33BaseRender(); renderIngPanel(); };
+
+// ================= end Prepline v3.3 features =================
+
 proBeforeInit();
 loadDatabase();
 loadOnetimeSession();
@@ -5013,6 +6086,7 @@ toolMode = (ROWS && ROWS.length>0) ? 'onetime' : (hasExistingDb ? 'database' : '
 appMode = hasExistingDb ? 'weekly' : 'database';
 renderApp();
 proAfterInit();
+openSharedViewFromHash();   // v3.3: a team-share link opens the read-only list (nothing is stored)
 
 
 
