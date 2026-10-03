@@ -53,6 +53,13 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.3.2 (2026-10-04) Survey link, one-time survey prompt, survey QR, SEO
+- "Help shape Prepline – 1-min survey" link next to Feedback. Opens in a new tab (`rel="noopener"`). The address lives in one constant, `SURVEY_URL`; empty = every survey link, prompt and QR is hidden.
+- One-time prompt (small corner card, not a blocking modal) about 1.5 s after a list is first generated: Take survey / No thanks. Remembered in `localStorage` (`prepline.surveyPrompt.v1`) the moment it shows, so it never appears again. Never shown in the phone shared view.
+- Small "Feedback / survey" QR code (about 16 mm) in the bottom-right corner of every printout, after the content (kept together, no extra page in normal use); a small survey QR plus link in the share-to-phones window; a survey link at the foot of the phone shared view. QR codes drawn locally with the bundled qrcode-generator: no network request.
+- Survey links carry `?from=app-link|app-prompt|app-print|app-share|app-phone` (`team-…` in the team build) so the survey can tell where answers came from. No personal data.
+- SEO (public page only, inside `<!-- SEO:START/END -->`, stripped from team and test builds): title, meta description, canonical, Open Graph + Twitter card with `icons/og-image.png` (1200x630), JSON-LD SoftwareApplication (free, AUD), `robots.txt`, `sitemap.xml`; one h1 ("Prepline – kitchen prep list organiser"), the top-bar brand is no longer an h1.
+
 ## 3.3.1 (2026-10-03) Live release of 3.3; team build; no support address
 - Feedback: no email address and no mailto anywhere. "Copy feedback text" is the main action, to paste into
   an email, Teams or a text to whoever shared Prepline with you. If the clipboard is blocked, the text is shown selected.
