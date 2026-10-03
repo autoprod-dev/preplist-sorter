@@ -8,20 +8,25 @@ URL = sys.argv[1]
 SHOTS = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith('--') else '/workspace/prepline-v2-shots'
 OUT = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith('--') else '/workspace/prepline-v3-test-out'
 EXPECT_VER = sys.argv[sys.argv.index('--expect-version')+1] if '--expect-version' in sys.argv else None
-LIVE = '--live' in sys.argv   # public build: LICENSE_CONFIG mode 'off' (no Pro UI, no Lemon Squeezy)
+OFFLINE = '--offline' in sys.argv   # file:// build, ALL network blocked; any request attempt fails the run
+LIVE = '--live' in sys.argv or OFFLINE   # public build: LICENSE_CONFIG mode 'off' (no Pro UI, no Lemon Squeezy)
 S = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'samples') + '/'
 os.makedirs(SHOTS, exist_ok=True); os.makedirs(OUT, exist_ok=True)
-results = []; ext = {}
+results = []; ext = {}; net_attempts = []
 def check(name, ok, info=''):
     results.append({'test': name, 'ok': bool(ok), 'info': str(info)[:600]}); print(('PASS ' if ok else 'FAIL ') + name + ('  | ' + str(info)[:300] if info else ''))
 def track(ctx):
     def on_req(r):
         h = urlparse(r.url).hostname or ''
-        if h not in ('localhost', '127.0.0.1') and not r.url.startswith(('data:', 'blob:')):
+        if OFFLINE and not r.url.startswith(('file:', 'data:', 'blob:')): net_attempts.append(r.url[:140])
+        if h not in ('localhost', '127.0.0.1') and not r.url.startswith(('data:', 'blob:', 'file:')):
             ext.setdefault(h, set()).add(r.method + ' ' + r.url.split('?')[0][:140])
     ctx.on('request', on_req)
 def new_ctx(b, w=1280, h=900, **kw):
     ctx = b.new_context(viewport={'width': w, 'height': h}, accept_downloads=True, **kw); track(ctx)
+    if OFFLINE:
+        ctx.set_offline(True)
+        ctx.route(re.compile(r'^(https?|wss?|ftp)://.*'), lambda route: (net_attempts.append('ROUTED ' + route.request.url[:140]), route.abort()))
     ls = []
     ctx.route(re.compile(r'.*lemonsqueezy\.com/checkout.*'), lambda route: (ls.append(route.request.url), route.abort()))
     return ctx, ls
@@ -63,6 +68,10 @@ with sync_playwright() as p:
     ctx, ls = new_ctx(b); pg, errs = page_with_errs(ctx)
     pg.goto(URL); pg.wait_for_load_state('networkidle')
     ver = pg.get_attribute('meta[name="prepline-version"]', 'content')
+    if OFFLINE:
+        pg.wait_for_function('window.pdfjsLib', timeout=15000)
+        check('offline: pdf.js + worker loaded from the bundled copy', pg.evaluate('window.pdfjsWorkerMode') == 'worker' and pg.evaluate('typeof XLSX') == 'object', pg.evaluate('window.pdfjsWorkerMode'))
+        check('offline: no web fonts referenced (system fonts)', not pg.evaluate("[...document.querySelectorAll('link[href]')].some(l=>/^https?:/.test(l.href))"))
     check('load: title is Prepline', pg.title().startswith('Prepline'), pg.title())
     check('load: version string present' + (f' = {EXPECT_VER}' if EXPECT_VER else ''), ver and (not EXPECT_VER or ver == EXPECT_VER) and ('v' + ver) in pg.inner_text('#appVersion'), ver)
     if not LIVE:
@@ -651,7 +660,9 @@ print('\nEXTERNAL REQUESTS:')
 for h in sorted(ext):
     print(' ', h); [print('    ', u) for u in sorted(ext[h])]
 bad = [h for h in ext if re.search(r'anthropic|openai|claude|generativelanguage|vision|ocr|tesseract|azure|aws|huggingface', h)]
-if LIVE:
+if OFFLINE:
+    check('offline: zero network requests (all network blocked, file:// page)', not net_attempts and not ext, (net_attempts[:5], sorted(ext)))
+elif LIVE:
     allowed = {'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', urlparse(URL).hostname}
     check('live: outside requests only to the CDN, Google Fonts and the site itself (no Lemon Squeezy)', set(ext) <= allowed and not any('lemonsqueezy' in h for h in ext), sorted(ext))
 check('network: no AI/OCR service hosts contacted', not bad, bad)
