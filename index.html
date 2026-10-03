@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.2.3">
+<meta name="prepline-version" content="3.2.4">
 <title>Prepline: prep list sorter</title>
 <script>
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
@@ -679,6 +679,12 @@ var LICENSE_CONFIG = {
     font-size:13.5px; background:var(--accent-bg); color:var(--accent-dark); padding:3px 9px; border-radius:6px; display:inline-block;
   }
   #preplistTab .needpax{color:var(--prot); font-size:11.5px; font-style:italic;}
+  #preplistTab .print-method-toggle{display:inline-flex; align-items:center; gap:0; border:1.5px solid var(--ink); border-radius:6px; overflow:hidden; background:#fff;}
+  #preplistTab .print-method-toggle .pmt-label{font-size:12.5px; font-weight:600; padding:7px 10px; border-right:1.5px solid var(--ink);}
+  #preplistTab .print-method-toggle .pmt-btn{border:0; border-radius:0; margin:0; padding:7px 14px; background:#fff; color:var(--ink); font-weight:600; cursor:pointer; box-shadow:none;}
+  #preplistTab .print-method-toggle .pmt-btn + .pmt-btn{border-left:1px solid var(--line);}
+  #preplistTab .print-method-toggle .pmt-btn.on{background:var(--ink); color:#fff;}
+  #preplistTab .pmt-note{font-size:12px; color:var(--ink-soft); margin:-12px 0 16px;}
   #preplistTab input.pax-invalid{border-color:var(--prot) !important; background:#fff3f1; outline:1px solid var(--prot);}
   #preplistTab tr.dish-excluded td{opacity:0.45; text-decoration:line-through;}
   #preplistTab tr.dish-excluded td:first-child{text-decoration:none;}
@@ -1002,7 +1008,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.2.3</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.2.4</div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -3496,6 +3502,7 @@ function printViaIframe(fullHtml){
   setTimeout(doPrint, 500); // covers browsers where a same-document iframe's load event doesn't reliably fire
 }
 async function printReadyHtml(fullHtml, filename){
+  fullHtml = stripMethodImages(fullHtml);   // v3.2.4
   setStatus('Preparing your printout…');
   const downloads = await getDownloadsCapability();
   if (downloads){
@@ -3766,10 +3773,12 @@ function render(){
       : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
       : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
   </div>
-  <div class="row no-print" style="margin-bottom:20px; gap:8px;">
+  <div class="row no-print print-row" style="margin-bottom:20px; gap:8px; align-items:center;">
     <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one page complete)</button>
     <button class="secondary" onclick="printAllDays()" type="button">🖨️ Print all prep days (one page complete)</button>
-  </div>`;
+    ${printMethodToggleHtml()}
+  </div>
+  ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
   html += searchBarHtml();
   html += printOrderControlHtml();
@@ -3834,7 +3843,35 @@ function findSimilarBtn(task){
 // under the ingredients table, so cooking temps/cut sizes/technique notes are handy
 // The actual pixels of just the Method: region from every relevant page, packed onto one
 // consolidated page — not the whole production tool page, and not re-typed text either.
+// v3.2.4: "Include method in printout" (Yes/No). A device preference, kept in its own
+// localStorage key (not the session, database, template or Pro-kitchen keys), default Yes.
+const PRINT_METHOD_KEY = 'preplinePref_printIncludeMethod_v1';
+let includeMethodInPrint = (function(){ try{ return localStorage.getItem(PRINT_METHOD_KEY)!=='no'; }catch(e){ return true; } })();
+function setIncludeMethodInPrint(on){
+  includeMethodInPrint = !!on;
+  try{ localStorage.setItem(PRINT_METHOD_KEY, includeMethodInPrint ? 'yes' : 'no'); }catch(e){}
+  render();
+}
+function printMethodToggleHtml(){
+  const yes = includeMethodInPrint;
+  return `<div class="print-method-toggle" role="group" aria-label="Include method in printout" id="printMethodToggle">
+    <span class="pmt-label">Include method in printout</span>
+    <button type="button" class="pmt-btn ${yes?'on':''}" aria-pressed="${yes}" data-pmt="yes" onclick="setIncludeMethodInPrint(true)">Yes</button>
+    <button type="button" class="pmt-btn ${!yes?'on':''}" aria-pressed="${!yes}" data-pmt="no" onclick="setIncludeMethodInPrint(false)">No</button>
+  </div>`;
+}
+// Belt and braces for "No": every printout goes through printReadyHtml(), which also drops
+// any method/page image block or stray <img> before the print page is built.
+function stripMethodImages(fullHtml){
+  if (includeMethodInPrint) return fullHtml;
+  try{
+    const doc = new DOMParser().parseFromString(fullHtml, 'text/html');
+    doc.querySelectorAll('.orig-pages-grid, .method-crops-title, .orig-page-item, img').forEach(el=>el.remove());
+    return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+  }catch(e){ return fullHtml; }
+}
 function methodCropsPageHtml(rows){
+  if (!includeMethodInPrint) return '';   // v3.2.4: "Include method in printout: No" — nothing, not even the heading
   const seen = new Set(); const order = [];
   rows.forEach(r=>{ if (!seen.has(r.dish)){ seen.add(r.dish); order.push(r.dish); } });
   const withCrops = order.filter(d=>methodCrops[d] && methodCrops[d].length);
