@@ -857,6 +857,9 @@ var LICENSE_CONFIG = {
   .cost-hint{display:block; font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
   .price-input{width:64px;}
   .price-cell{white-space:nowrap;}
+  .sample-row{margin-top:10px; align-items:center; gap:10px;}
+  .sample-row .small{font-size:12px; color:var(--ink-soft); flex:1 1 260px;}
+  .sample-banner{background:#FFF1D6; border:2px dashed #C97A2E; color:#6B4F28; border-radius:8px; padding:10px 12px; margin:0 0 14px; font-size:13px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
   .dish-tags{margin-top:12px; font-size:12.5px;}
 </style>
 <style id="pro-css">
@@ -935,6 +938,10 @@ var LICENSE_CONFIG = {
       <div class="big">Drop an .xlsx preplist, or one or more production tool PDFs, here — or click to browse</div>
       <div class="small" id="dropzoneHint">Every tab in a workbook is read as one dish. A production tool PDF is read from each dish's front page only: quantities are as printed there (finished/cooked weights for sub-recipes such as sauces and purees), not raw weights.</div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.pdf" multiple>
+    </div>
+    <div class="row no-print sample-row" id="sampleRow">
+      <button class="secondary" id="sampleMenuBtn" type="button" onclick="loadSampleMenu()">✨ Try with sample menu</button>
+      <span class="small">No file handy? Load a made-up kitchen menu (5 dishes) and see a full prep list in seconds. Clearly marked as sample data; clear it any time.</span>
     </div>
     <div class="row no-print" id="appendRow" style="margin-top:10px; display:none; align-items:center;">
       <button class="secondary" id="appendPdfBtn" type="button">+ Append another PDF to this list <span class="pro-pill">PRO</span></button>
@@ -3816,7 +3823,7 @@ function render(){
     return;
   }
 
-  let html = pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
+  let html = sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
 
   html += `<div class="viewtoggle no-print">
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
@@ -4664,8 +4671,9 @@ function proCleanName(s, max){ return String(s||'').replace(/[^A-Za-z0-9 &\/,.+(
 
 // ---- print footer: free printouts carry a small footer, Pro prints are clean ----
 function freeFooterOn(){ return !!(LICENSE_CONFIG.freeLimits && LICENSE_CONFIG.freeLimits.printFooter); }
+function sampleMarkHtml(){ return (typeof sampleActive==='function' && sampleActive()) ? '<div style="text-align:center; font:700 11px monospace; color:#B5442E; margin-top:10px;">SAMPLE DATA — made-up menu</div>' : ''; }
 function printFooterHtml(){
-  return (proActive() || !freeFooterOn()) ? '' : `<div class="made-with-footer" style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px 'Inter',sans-serif; color:#777; text-align:center;">Made with Prepline</div>`;
+  return sampleMarkHtml() + ((proActive() || !freeFooterOn()) ? '' : `<div class="made-with-footer" style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px 'Inter',sans-serif; color:#777; text-align:center;">Made with Prepline</div>`);
 }
 
 // ---- custom stations (Pro): extra sections with their own keywords, checked before the built-in ones ----
@@ -5475,6 +5483,98 @@ EXPORT_BLOCK_HOOKS.push(ctx=>{
   const pp = (ctx.paxSet && ctx.pax>0) ? Math.round(c.cost/ctx.pax*1e6)/1e6 : '';
   ctx.put(ctx.titleRowIdx, 13, 'IF(ISNUMBER(B'+ctx.paxRowNum+'),IFERROR(N'+ctx.paxRowNum+'/B'+ctx.paxRowNum+',""),"")', pp);
 });
+
+
+// ---------- 1. Instant demo: "Try with sample menu" ----------
+// A made-up kitchen menu (no real venue, supplier or person). Loads as a normal one-time
+// list (so every view, print and export works), clearly labelled as sample data, with some
+// allergens, suppliers and prices filled in (only for ingredients this browser has no info
+// for yet; those entries are marked and removed again by "Clear sample").
+const SAMPLE_SOURCE = 'Sample menu (made-up data)';
+const SAMPLE_SUP = {prod:'Sample Produce Co.', meat:'Sample Meat & Seafood', dairy:'Sample Dairy Supplies', dry:'Sample Dry Goods'};
+// [task, qty per pax, unit, supplier key, price, per, confirmed allergens (null = leave as suggestion)]
+const SAMPLE_MENU = [
+  {dish:'Sample: Roast Chicken, Thyme Jus', day:'Friday', pax:80, items:[
+    ['Chicken supreme', 0.18, 'kg', 'meat', 14.5, 'kg', []],
+    ['Thyme jus', 0.05, 'L', null, null, null, null],
+    ['Brown onion', 0.03, 'kg', 'prod', 2.2, 'kg', []],
+    ['Garlic', 0.005, 'kg', 'prod', 15, 'kg', []],
+    ['Butter', 0.01, 'kg', 'dairy', 12, 'kg', ['dairy']],
+    ['Potato', 0.15, 'kg', 'prod', 2.5, 'kg', []],
+    ['Thickened cream', 0.04, 'L', 'dairy', 6.5, 'L', ['dairy']],
+    ['Gruyere cheese', 0.015, 'kg', 'dairy', 38, 'kg', null]]},
+  {dish:'Sample: Market Fish, Lemon Butter Sauce', day:'Saturday', pax:60, items:[
+    ['Barramundi fillet', 0.16, 'kg', 'meat', 32, 'kg', ['fish']],
+    ['Lemon butter sauce', 0.04, 'L', null, null, null, null],
+    ['Butter', 0.015, 'kg', 'dairy', 12, 'kg', ['dairy']],
+    ['Lemon', 0.25, 'each', 'prod', 0.6, 'each', []],
+    ['Broccolini', 0.06, 'kg', 'prod', 12, 'kg', []],
+    ['Almond flakes', 0.008, 'kg', 'dry', 22, 'kg', null]]},
+  {dish:'Sample: Pumpkin, Feta & Spinach Salad', day:'Friday', pax:50, items:[
+    ['Butternut pumpkin', 0.12, 'kg', 'prod', 3, 'kg', []],
+    ['Feta', 0.03, 'kg', 'dairy', 16, 'kg', null],
+    ['Baby spinach', 0.02, 'kg', 'prod', 18, 'kg', []],
+    ['Balsamic dressing', 0.02, 'L', null, null, null, null],
+    ['Sesame seeds', 0.003, 'kg', 'dry', 9, 'kg', null]]},
+  {dish:'Sample: Prawn Linguine', day:'Saturday', pax:40, items:[
+    ['Linguine', 0.1, 'kg', 'dry', 4.5, 'kg', ['gluten']],
+    ['Prawn cutlets', 0.12, 'kg', 'meat', 28, 'kg', ['crustacea']],
+    ['Cherry tomatoes', 0.06, 'kg', 'prod', 9, 'kg', []],
+    ['Garlic', 0.006, 'kg', 'prod', 15, 'kg', []],
+    ['Chilli', 0.002, 'kg', 'prod', 20, 'kg', []],
+    ['Parsley', 0.05, 'bunch', 'prod', 2.5, 'each', []],
+    ['Olive oil', 0.015, 'L', 'dry', 9, 'L', []]]},
+  {dish:'Sample: Chocolate Tart', day:'Sunday', pax:70, items:[
+    ['Sweet pastry', 0.06, 'kg', null, null, null, null],
+    ['Dark chocolate', 0.04, 'kg', 'dry', 18, 'kg', null],
+    ['Thickened cream', 0.05, 'L', 'dairy', 6.5, 'L', ['dairy']],
+    ['Eggs', 0.5, 'each', 'dairy', 0.45, 'each', ['egg']],
+    ['Raspberries', 0.02, 'kg', 'prod', 30, 'kg', []]]},
+];
+const SAMPLE_LEADERS = {'Vegetables':'Commis (sample)', 'Proteins':'Sous chef (sample)', 'Sauce, Purees and Gels':'Chef de partie (sample)'};
+function sampleActive(){ return ROWS.length>0 && !!sourceInfo && sourceInfo.name===SAMPLE_SOURCE; }
+function loadSampleMenu(){
+  if (ROWS.length && !sampleActive() && !confirm('Replace the current list with the sample menu? The current list will be cleared (print or export it first if you need it).')) return;
+  toolMode = 'onetime';
+  ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {}; dishIncluded = {};
+  SAMPLE_MENU.forEach(d=>{
+    eventDayOverride[d.dish] = d.day;
+    paxByDish[d.dish] = d.pax;
+    const before = ROWS.length;
+    addRows(d.dish, d.items.map(it=>({item: it[0], qty: it[1], unit: it[2]})));
+    for (let i=before; i<ROWS.length; i++){ ROWS[i].srcSheet = d.dish; ROWS[i].srcType = 'sample'; }
+    d.items.forEach(it=>{
+      const k = ingKey(it[0]); if (INGINFO.items[k]) return;   // never overwrite the user's own info
+      const e = {smp:1};
+      if (it[3]) e.sup = SAMPLE_SUP[it[3]];
+      if (it[4]!=null){ e.price = it[4]; e.per = it[5]; }
+      if (Array.isArray(it[6])) e.al = it[6].slice();
+      INGINFO.items[k] = e;
+    });
+  });
+  Object.keys(SAMPLE_LEADERS).forEach(s=>{ if (!leaderBySection[s]) leaderBySection[s] = SAMPLE_LEADERS[s]; });
+  saveIngInfo();
+  sourceInfo = {name: SAMPLE_SOURCE, loadedAt: new Date()};
+  document.getElementById('fileTag').textContent = 'sample menu';
+  setStatus('Loaded the sample menu: '+SAMPLE_MENU.length+' made-up dishes. Explore the views, prints and exports, then press "Clear sample" when you are ready to load your own list.', 'ok');
+  renderApp();
+}
+function clearSampleMenu(){
+  const sampleDishes = new Set(SAMPLE_MENU.map(d=>d.dish));
+  ROWS = ROWS.filter(r=>!sampleDishes.has(r.dish));
+  sampleDishes.forEach(d=>{ delete paxByDish[d]; delete eventDayOverride[d]; delete dishIncluded[d]; delete INGINFO.dishAl[d]; });
+  Object.keys(INGINFO.items).forEach(k=>{ if (INGINFO.items[k].smp) delete INGINFO.items[k]; });
+  Object.keys(SAMPLE_LEADERS).forEach(s=>{ if (leaderBySection[s]===SAMPLE_LEADERS[s]) leaderBySection[s] = ''; });
+  saveIngInfo();
+  if (!ROWS.length){ clearOnetimeSession(); sourceInfo = {name:null, loadedAt:null}; document.getElementById('fileTag').textContent = 'no file loaded'; }
+  setStatus('Sample menu cleared. Load your own preplist above.', 'ok');
+  renderApp();
+}
+function sampleBannerHtml(){
+  if (!sampleActive()) return '';
+  return `<div class="sample-banner no-print" id="sampleBanner"><b>SAMPLE DATA</b> — a made-up menu so you can try Prepline. Dishes, suppliers and prices are invented.
+    <button type="button" class="secondary" onclick="clearSampleMenu()" id="clearSampleBtn">Clear sample</button></div>`;
+}
 
 let INGINFO = loadIngInfo();
 const _v33BaseRender = render;
