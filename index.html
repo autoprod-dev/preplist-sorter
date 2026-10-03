@@ -861,6 +861,10 @@ var LICENSE_CONFIG = {
   .sample-row .small{font-size:12px; color:var(--ink-soft); flex:1 1 260px;}
   .sample-banner{background:#FFF1D6; border:2px dashed #C97A2E; color:#6B4F28; border-radius:8px; padding:10px 12px; margin:0 0 14px; font-size:13px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
   .share-modal{position:fixed; inset:0; background:rgba(28,30,27,.55); z-index:9000; display:flex; align-items:flex-start; justify-content:center; overflow:auto; padding:24px 10px;}
+  .share-card button{font-family:'Inter',sans-serif; font-weight:700; font-size:13px; border:1px solid var(--accent-dark); background:var(--accent); color:#fff; padding:8px 14px; border-radius:9px; cursor:pointer; box-shadow:0 2px 0 var(--accent-dark);}
+  .share-card button.secondary{background:#fff; color:var(--ink); border-color:var(--line); box-shadow:var(--shadow-sm);}
+  .share-card button.ghost{background:transparent; color:var(--ink-soft); border-color:transparent; box-shadow:none;}
+  .share-card textarea{font-family:'Inter',sans-serif; font-size:14px; border:1px solid var(--line); border-radius:8px; padding:8px;}
   .share-card{background:#fff; border-radius:12px; max-width:760px; width:100%; padding:16px 18px; box-shadow:0 10px 28px rgba(0,0,0,.25);}
   .share-top{display:flex; justify-content:space-between; align-items:center; gap:10px;} .share-top h3{margin:0; font-size:17px;}
   .share-lede{font-size:13px; color:#3a3c38;} .share-warn{color:#B5442E; font-size:12.5px;}
@@ -930,6 +934,7 @@ var LICENSE_CONFIG = {
     <button class="shell-tab-btn" id="licenceKeyBtn" onclick="AutoprodLicence.openLicenceDialog()" type="button">Enter licence key</button>
     <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
+    <button class="shell-tab-btn" id="feedbackBtn" onclick="openFeedback()" type="button" title="Send feedback (opens your email app or copies the text)">Feedback</button>
   </div>
 </div>
 
@@ -5765,6 +5770,76 @@ function closeSharedView(fromHash){
   if (!fromHash) history.replaceState(null, '', location.pathname + location.search);
 }
 window.addEventListener('hashchange', ()=>{ openSharedViewFromHash(); });
+
+
+// ---------- 7. Feedback button (no server) ----------
+// Opens the user's email app with a pre-filled message, or copies the text. Only the app
+// version, browser and screen size are included, plus the list itself ONLY if the user ticks it.
+const FEEDBACK_CONFIG = {
+  email: 'support@autoprod.example',   // PLACEHOLDER address: replace with a real, monitored inbox before relying on it
+  placeholder: true,
+  mailtoMax: 1800,                     // keep mailto links short: some mail apps cut longer ones
+};
+function feedbackMeta(){
+  const v = (document.querySelector('meta[name="prepline-version"]')||{}).content || '';
+  return [`App: Prepline v${v} (${LICENSE_CONFIG.mode==='off' ? 'public' : 'test'} build)`, `Browser: ${navigator.userAgent}`,
+    `Screen: ${window.screen ? screen.width+'x'+screen.height : '?'} · window ${window.innerWidth}x${window.innerHeight}`,
+    `Page: ${location.protocol==='file:' ? 'offline file' : location.origin + location.pathname}`].join('\n');
+}
+function feedbackListText(){
+  const rows = activeRows(); if (!rows.length) return '(no list loaded)';
+  const out = [];
+  [...new Set(rows.map(r=>r.dish))].forEach(d=>{
+    out.push(`${cleanDishName(d)} (pax ${paxByDish[d]!==undefined ? paxByDish[d] : 'not set'})`);
+    rows.filter(r=>r.dish===d).forEach(r=>{ const t = computeTotal(r); out.push(`  - ${r.task}: ${t!==null ? qN(t,r.unit)+' '+qU(t,r.unit) : '—'} · ${r.section} · ${r.day||'no day'}`); });
+  });
+  return out.join('\n');
+}
+function feedbackBody(){
+  const msg = (document.getElementById('fbText')||{}).value || '';
+  const inc = (document.getElementById('fbIncludeList')||{}).checked;
+  return `${msg.trim() || '(write your feedback here)'}\n\n---\n${feedbackMeta()}${inc ? '\n\nMy current list:\n' + feedbackListText() : ''}`;
+}
+function openFeedback(){
+  closeFeedback();
+  const box = document.createElement('div'); box.id = 'feedbackModal'; box.className = 'share-modal no-print';
+  box.innerHTML = `<div class="share-card" style="max-width:560px;"><div class="share-top"><h3>Send feedback</h3><button type="button" class="ghost" onclick="closeFeedback()" aria-label="Close">✕</button></div>
+    <p class="share-lede">Ideas, problems, wrong sorting? Tell us. Nothing is sent from this page: it opens your email app with the message filled in, or copies it for you to paste anywhere.</p>
+    <textarea id="fbText" rows="6" style="width:100%; box-sizing:border-box;" placeholder="What happened, or what would help?"></textarea>
+    <label style="display:block; font-size:13px; margin:8px 0;"><input type="checkbox" id="fbIncludeList"> Include my current list (dish names, tasks, totals) — off by default</label>
+    <div class="small" style="font-size:11.5px; color:#5C5F58;">Always included: app version, browser and screen size. Nothing else.</div>
+    <div class="row" style="gap:8px; margin-top:10px; align-items:center;">
+      <button type="button" id="fbMailBtn" onclick="sendFeedbackEmail()">Open email</button>
+      <button type="button" class="secondary" id="fbCopyBtn" onclick="copyFeedback()">Copy to clipboard</button>
+      <span class="small" id="fbStatus" style="font-size:12px;"></span>
+    </div>
+    <div class="small" style="font-size:11.5px; color:#5C5F58; margin-top:8px;">To: ${escapeHtml(FEEDBACK_CONFIG.email)}${FEEDBACK_CONFIG.placeholder ? ' <span class="share-warn">(placeholder address, not monitored yet)</span>' : ''}</div></div>`;
+  document.body.appendChild(box);
+}
+function closeFeedback(){ const m = document.getElementById('feedbackModal'); if (m) m.remove(); }
+function feedbackMailto(){
+  const v = (document.querySelector('meta[name="prepline-version"]')||{}).content || '';
+  let body = feedbackBody(), cut = false;
+  const mk = b => 'mailto:' + FEEDBACK_CONFIG.email + '?subject=' + encodeURIComponent('Prepline v'+v+' feedback') + '&body=' + encodeURIComponent(b);
+  while (mk(body).length > FEEDBACK_CONFIG.mailtoMax && body.length > 200){ body = body.slice(0, Math.floor(body.length*0.85)); cut = true; }
+  if (cut) body += '\n[cut short: use Copy to clipboard for the full text]';
+  return {url: mk(body), cut};
+}
+function sendFeedbackEmail(){
+  const m = feedbackMailto();
+  const st = document.getElementById('fbStatus');
+  if (st) st.textContent = m.cut ? 'Long message: the email is cut short. Use Copy to clipboard for everything.' : 'Opening your email app…';
+  window.__lastFeedbackMailto = m.url;
+  location.href = m.url;
+}
+function copyFeedback(){
+  const text = 'To: ' + FEEDBACK_CONFIG.email + '\n\n' + feedbackBody();
+  const st = document.getElementById('fbStatus');
+  const ok = () => { if (st) st.textContent = 'Copied. Paste it into an email, Teams or a text.'; };
+  const fail = () => { if (st) st.textContent = 'Could not copy automatically; select the text and copy it.'; };
+  window.__lastFeedbackCopy = text;
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail();
+}
 
 let INGINFO = loadIngInfo();
 const _v33BaseRender = render;
