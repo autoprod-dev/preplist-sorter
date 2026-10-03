@@ -963,6 +963,7 @@ var LICENSE_CONFIG = {
   #preplistTab .masthead h1 .h1-tag::before{content:none;}
   .shell-tab-btn.survey-link{text-decoration:none; display:inline-flex; align-items:center; font-weight:600; opacity:.92;}
   .shell-tab-btn.survey-link[hidden]{display:none;}
+  .shell-tab-btn.contact-link{text-decoration:none; display:inline-flex; align-items:center;} .shell-tab-btn.contact-link[hidden]{display:none;}
   .survey-toast{position:fixed; right:16px; bottom:16px; z-index:9000; max-width:330px; background:#1C1E1B; color:#F6F1E7; border-radius:12px; padding:14px 16px; box-shadow:0 8px 28px rgba(0,0,0,.28); font:14px/1.4 'Inter',sans-serif;}
   .survey-toast b{display:block; font-size:15px; margin-bottom:4px;}
   .survey-toast .st-row{display:flex; gap:8px; margin-top:10px;}
@@ -984,6 +985,7 @@ var LICENSE_CONFIG = {
     <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
     <button class="shell-tab-btn" id="feedbackBtn" onclick="openFeedback()" type="button" title="Send feedback (opens your email app or copies the text)">Feedback</button>
+    <a class="shell-tab-btn contact-link" id="contactLink" href="#" hidden title="Email Prepline support">Email us</a>
     <a class="shell-tab-btn survey-link" id="surveyLink" href="#" target="_blank" rel="noopener" hidden title="Opens a short anonymous survey in a new tab">Help shape Prepline – 1-min survey</a>
   </div>
 </div>
@@ -1307,7 +1309,8 @@ var LICENSE_CONFIG = {
     <div class="help-body">
       <h3>Feedback</h3>
       <p>The Feedback button (top right) builds a short message and copies it, to paste into an email, Teams or a text to whoever shared Prepline with you. It includes the app version and browser only; your list is added only if you tick “Include my current list”.</p>
-      <p><b>Help shape Prepline – 1-min survey</b> (next to Feedback) opens a short anonymous survey in a new tab. Nothing is sent unless you open it and press Send. A small survey QR code also sits in a corner of printouts and in the share-to-phone window; it is drawn inside the app, no outside service is used.</p>
+      <p><b>Help shape Prepline – 1-min survey</b> (next to Feedback) opens a short anonymous survey in a new tab. Nothing is sent unless you open it and press Send.</p>
+      <p><b>Email us</b> (next to Feedback) or <b>Email feedback</b> in the Feedback window opens your own email app with a message to Prepline support at autoprod.help@gmail.com. A small survey QR code also sits in a corner of printouts and in the share-to-phone window; it is drawn inside the app, no outside service is used.</p>
     </div>
   </div>
 </div>
@@ -5912,6 +5915,21 @@ window.addEventListener('hashchange', ()=>{ openSharedViewFromHash(); });
 // user clicks it, and QR codes are drawn locally with the bundled qrcode-generator.
 const SURVEY_URL = 'https://autoprod-dev.github.io/prepline-survey/';
 const SURVEY_PROMPT_KEY = 'prepline.surveyPrompt.v1';
+// Public support / feedback address (Autoprod). The ONLY place it lives. Empty = no email link or button.
+const SUPPORT_EMAIL = 'autoprod.help@gmail.com';
+const MAILTO_MAX = 1800;   // keep mailto links short enough for every mail app
+function supportMailto(subject, body){
+  if (!SUPPORT_EMAIL) return '';
+  let b = body || '';
+  if (b.length > MAILTO_MAX) b = b.slice(0, MAILTO_MAX) + '\n\n[cut short: use Copy feedback text and paste the full text]';
+  return 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent(subject || 'Prepline feedback') + (b ? '&body=' + encodeURIComponent(b) : '');
+}
+function initContactLink(){
+  const a = document.getElementById('contactLink'); if (!a) return;
+  if (!SUPPORT_EMAIL){ a.hidden = true; a.removeAttribute('href'); return; }
+  a.href = supportMailto('Prepline feedback'); a.title = 'Email ' + SUPPORT_EMAIL; a.hidden = false;
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initContactLink); else initContactLink();
 function surveyUrl(from){
   if (!SURVEY_URL) return '';
   const src = (typeof teamEdition==='function' && teamEdition()) ? 'team' : 'app';
@@ -5984,16 +6002,23 @@ function openFeedback(){
   closeFeedback();
   const box = document.createElement('div'); box.id = 'feedbackModal'; box.className = 'share-modal no-print';
   box.innerHTML = `<div class="share-card" style="max-width:560px;"><div class="share-top"><h3>Feedback</h3><button type="button" class="ghost" onclick="closeFeedback()" aria-label="Close">✕</button></div>
-    <p class="share-lede">Ideas, problems, wrong sorting? Write it here, press <b>Copy feedback text</b>, then paste it into an email, Teams or a text to whoever shared Prepline with you (or whoever looks after it in your kitchen). Nothing is sent from this page.</p>
+    <p class="share-lede">Ideas, problems, wrong sorting? Write it here, press <b>Copy feedback text</b>, then paste it into an email, Teams or a text to whoever shared Prepline with you (or whoever looks after it in your kitchen)${SUPPORT_EMAIL ? `, or press <b>Email feedback</b> to send it to us at <a href="${escapeHtml(supportMailto('Prepline feedback'))}">${escapeHtml(SUPPORT_EMAIL)}</a> from your own email app` : ''}. Nothing is sent from this page.</p>
     <textarea id="fbText" rows="6" style="width:100%; box-sizing:border-box;" placeholder="What happened, or what would help?"></textarea>
     <label style="display:block; font-size:13px; margin:8px 0;"><input type="checkbox" id="fbIncludeList"> Include my current list (dish names, tasks, totals) — off by default</label>
     <div class="small" style="font-size:11.5px; color:#5C5F58;">Always included: app version, browser and screen size. Nothing else.</div>
     <div class="row" style="gap:8px; margin-top:10px; align-items:center;">
       <button type="button" id="fbCopyBtn" onclick="copyFeedback()">Copy feedback text</button>
+      ${SUPPORT_EMAIL ? '<button type="button" class="secondary" id="fbMailBtn" onclick="emailFeedback()">Email feedback</button>' : ''}
       <span class="small" id="fbStatus" style="font-size:12px;"></span>
     </div>
     <textarea id="fbPreview" readonly rows="5" style="display:none; width:100%; box-sizing:border-box; margin-top:8px; font-size:12px;" aria-label="Feedback text to copy"></textarea></div>`;
   document.body.appendChild(box);
+}
+function emailFeedback(){
+  const url = supportMailto('Prepline feedback', feedbackBody()); if (!url) return;
+  window.__lastFeedbackMailto = url;
+  const st = document.getElementById('fbStatus'); if (st) st.textContent = 'Opening your email app… If nothing opens, use Copy feedback text and email ' + SUPPORT_EMAIL + '.';
+  location.href = url;
 }
 function closeFeedback(){ const m = document.getElementById('feedbackModal'); if (m) m.remove(); }
 function copyFeedback(){
