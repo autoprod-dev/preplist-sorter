@@ -1012,6 +1012,8 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   .made-with-footer[hidden]{display:none !important;}
   .pro-pill{display:inline-block; font:700 10px/1 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; letter-spacing:.06em; background:var(--accent-bg,#F1E6D2); color:var(--accent-dark,#6B4F28); border:1px solid #D9C7A6; padding:3px 7px; border-radius:20px; vertical-align:middle;}
   .pro-pill[hidden]{display:none;}
+  /* Pro switched off (LICENSE_CONFIG.mode 'off'): everything is free, so no PRO pills/badges anywhere (v3.3.2) */
+  body.pro-off .pro-pill, body.pro-off .pro-tag{display:none !important;}
   #preplistTab .pro-panel{border-left:4px solid var(--accent);}
   #preplistTab .pro-plans{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;}
   #preplistTab .pro-plan{position:relative; background:#fff; border:1px solid var(--line); border-radius:9px; padding:14px; display:flex; flex-direction:column; gap:5px;}
@@ -5156,6 +5158,7 @@ function renderProPanel(){
     ${freeFooterOn() ? '<div class="pro-per">Clean prints are on: no footer on your printouts.</div>' : ''}`;
 }
 function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro' && !teamEdition(); }
+(function markProOff(){ const go = ()=>{ if (proUiOff()) document.body.classList.add('pro-off'); }; if (document.body) go(); else document.addEventListener('DOMContentLoaded', go); })();
 function renderProChrome(){
   if (teamEdition()){
     // Team edition: all tools on, no Upgrade / licence buttons, no footer, append row like Pro.
@@ -5168,7 +5171,8 @@ function renderProChrome(){
     return;
   }
   if (proUiOff()){
-    // Pro switched off: no Upgrade / licence buttons, no Pro panel, no append-PDF row, no footer.
+    // Pro switched off: no Upgrade / licence buttons, no Pro panel, no append-PDF row, no footer, no PRO pills.
+    document.body.classList.add('pro-off');
     ['proUpgradeBtn','licenceKeyBtn'].forEach(id=>{ const b = document.getElementById(id); if (b){ b.hidden = true; b.style.display = 'none'; } });
     const pp = document.getElementById('proPanel'); if (pp){ pp.innerHTML = ''; pp.style.display = 'none'; }
     const ar = document.getElementById('appendRow'); if (ar) ar.style.display = 'none';
