@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.3.3">
+<meta name="prepline-version" content="3.3.4">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -671,6 +671,17 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   .rp-auto{font:11.5px/1.5 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; background:#F6F1E7; border-radius:7px; padding:8px 10px; white-space:pre-wrap; color:#3D3F3A; margin-top:6px;}
   .footer-links{margin:2px 0 8px; font-size:12px;} .footer-links a{color:inherit;}
   .privacy-list{line-height:1.55; padding-left:1.2em;} .privacy-list li{margin:4px 0;}
+  /* v3.3.4: phones / touch screens: checkboxes and small links big enough to tap (about 24px+) */
+  @media (pointer:coarse), (max-width:700px){
+    #preplistTab input[type=checkbox], .share-modal input[type=checkbox]{width:24px !important; height:24px !important; min-width:24px; margin:2px 6px 2px 0; vertical-align:middle;}
+    #preplistTab label:has(> input[type=checkbox]), .share-modal label:has(> input[type=checkbox]){min-height:32px; display:inline-flex; align-items:center;}
+    .share-modal label:has(> input[type=checkbox]){display:flex;}
+    .footer-links a{display:inline-block; padding:6px 4px; min-height:24px;}
+    #preplistTab select, #preplistTab input[type=number], #preplistTab input[type=text], #preplistTab input[type=date], #preplistTab button{min-height:32px;}
+  }
+  /* v3.3.4: the view switcher wraps on narrow phones instead of pushing the page wider */
+  #preplistTab .viewtoggle{flex-wrap:wrap; max-width:100%; box-sizing:border-box;}
+  @media (max-width:420px){ #preplistTab .viewtoggle button{padding:9px 12px;} }
   .survey-toast{position:fixed; right:16px; bottom:16px; z-index:9000; max-width:330px; background:#1C1E1B; color:#F6F1E7; border-radius:12px; padding:14px 16px; box-shadow:0 8px 28px rgba(0,0,0,.28); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
   .survey-toast b{display:block; font-size:15px; margin-bottom:4px;}
   .survey-toast .st-row{display:flex; gap:8px; margin-top:10px;}
@@ -845,7 +856,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.3</div>
+    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.4</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -3303,10 +3314,16 @@ function fmtDateTime(d){
 }
 // v3.3.3: every date the app shows or prints is dd/mm/yyyy, whatever the browser language.
 function fmtDMY(d){
-  if (!(d instanceof Date)) d = (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) ? new Date(d.slice(0,10)+'T00:00:00') : new Date(d);
+  if (!(d instanceof Date)) d = (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) ? new Date(d+'T00:00:00') : new Date(d);   // date-only = local day; full ISO time = that moment, shown in local time
   if (isNaN(d.getTime())) return '';
   const p = n => String(n).padStart(2, '0');
   return p(d.getDate()) + '/' + p(d.getMonth()+1) + '/' + d.getFullYear();
+}
+// v3.3.4: today's date as yyyy-mm-dd in the user's own time zone (toISOString() is UTC: before
+// 11 am in Sydney it gave yesterday's date in file names and share links).
+function localYMD(d){
+  d = d || new Date(); const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
 }
 function fmtHM(d){
   const hr = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
@@ -3359,7 +3376,7 @@ function renderMasterSummary(){
       <button class="ghost" type="button" onclick="setAllDishesIncluded(true)">Tick all</button>
       <button class="ghost" type="button" onclick="setAllDishesIncluded(false)">Untick all</button>
     </div>
-    <div class="no-print" style="border:1px solid var(--line); border-radius:6px;">
+    <div class="no-print summary-table-wrap" style="border:1px solid var(--line); border-radius:6px; overflow-x:auto; -webkit-overflow-scrolling:touch;">
       <table><thead><tr><th style="width:5%"></th><th style="width:13%">Day</th><th style="width:13%">Date</th><th style="width:49%">Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
     </div>
   </div>
@@ -3657,7 +3674,7 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
     ws['!cols'] = [{wch:38},{wch:16},{wch:8},{wch:14},{wch:13},{wch:24},{wch:12},{wch:34}, ...EXPORT_EXTRA_COLS.map(c=>({wch:c.wch||14}))];
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName(tabNameFn(key), usedNames, nameChanges));
   });
-  const stamp = new Date().toISOString().slice(0,10);
+  const stamp = localYMD();
   XLSX.writeFile(wb, filenamePrefix+'_'+stamp+'.xlsx');
   lastExportNameChanges = nameChanges;
   const renameNote = nameChanges.length ? '⚠ '+nameChanges.length+' tab name'+(nameChanges.length>1?'s':'')+' changed because Excel requires it: '
@@ -5266,7 +5283,7 @@ function exportOrderToXlsx(){
     ws['!cols'] = [{wch:34},{wch:10},{wch:7},{wch:10},{wch:10},{wch:22},{wch:40}, ...ORDER_XLSX_EXTRA.map(c=>({wch:c.wch||12}))];
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName(title, used, changes));
   });
-  XLSX.writeFile(wb, 'Order_Sheet_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb, 'Order_Sheet_'+localYMD()+'.xlsx');
   setStatus('Exported the order sheet: '+groups.length+' supplier tab(s). Order qty is an editable number.', 'ok');
 }
 
@@ -5550,7 +5567,7 @@ function shareRowsFor(section){ return activeRows().filter(r=>r.section===sectio
 function sharePayload(section, rows, part, parts){
   const ds = [], di = {};
   rows.forEach(r=>{ if (di[r.dish]===undefined){ di[r.dish] = ds.length; ds.push(r.dish); } });
-  const p = {v:1, k:'sec', n:section, l: leaderBySection[section]||'', d: new Date().toISOString().slice(0,10),
+  const p = {v:1, k:'sec', n:section, l: leaderBySection[section]||'', d: localYMD(),
     ds: ds.map(d=>cleanDishName(d)||d), dp: ds.map(d=>Number.isFinite(paxByDish[d]) ? paxByDish[d] : null),
     r: rows.map(r=>{ const t = computeTotal(r); const a = alForTask(r.task);
       return [di[r.dish], r.task, t!==null ? (qN(t,r.unit)+' '+qU(t,r.unit)).trim() : '', DAY_CODES.indexOf(r.day), a.tags.map(x=>tagShort(x)+(a.confirmed?'':'?')).join(' ')]; })};
@@ -5688,7 +5705,7 @@ function initSurveyLink(){
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSurveyLink); else initSurveyLink();
 function surveyPromptSeen(){ try{ return !!localStorage.getItem(SURVEY_PROMPT_KEY); }catch(e){ return true; } }
-function markSurveyPrompt(v){ try{ localStorage.setItem(SURVEY_PROMPT_KEY, v + ' ' + new Date().toISOString().slice(0,10)); }catch(e){} }
+function markSurveyPrompt(v){ try{ localStorage.setItem(SURVEY_PROMPT_KEY, v + ' ' + localYMD()); }catch(e){} }
 let _surveyPromptQueued = false;
 function maybeSurveyPrompt(){
   if (_surveyPromptQueued || !SURVEY_URL || !ROWS.length || surveyPromptSeen()) return;
