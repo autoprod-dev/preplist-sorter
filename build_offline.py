@@ -10,7 +10,7 @@ Outputs (same file names/URLs as earlier offline packages):
                                           lib/xlsx.full.min.js  SheetJS 0.18.5 (unmodified)
                                           lib/pdf.min.js        pdf.js 5.6.205 (source wrapped in a string, see below)
                                           lib/pdf.worker.min.js pdf.js 5.6.205 worker (same)
-                                          README.txt, LICENSES/
+                                          README.txt, LICENSES/, privacy.html
     dist/Preplist-Sorter-offline.html   the same app as one self-contained file (libraries inlined)
 
 Offline rules:
@@ -211,6 +211,12 @@ def build(src):
         ("Prepline/LICENSES/THIRD-PARTY-NOTICES.txt", NOTICES.replace("\n", "\r\n")),
     ] + [(f"Prepline/LICENSES/{dst}", open(os.path.join(VENDOR, rel), encoding="utf-8").read())
          for rel, dst in LICENSES.items()]
+    # 3.3.3: the privacy notice travels with the folder package too (the app also shows it in-app on file://)
+    priv = os.path.join(os.path.dirname(os.path.abspath(src)), "privacy.html")
+    if os.path.exists(priv):
+        ptxt = open(priv, encoding="utf-8").read().replace('<a href="./">Back to Prepline</a>', '<a href="index.html">Back to Prepline</a>')
+        check_no_remote(ptxt, "privacy.html")
+        files.insert(1, ("Prepline/privacy.html", ptxt))
 
     # B) single self-contained file (same app, libraries inlined)
     one = html[:mod.start()] + (

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.3.2">
+<meta name="prepline-version" content="3.3.3">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,430 +11,42 @@
 <meta name="apple-mobile-web-app-title" content="Prepline">
 <title>Prepline: free kitchen prep list organiser and sorter</title>
 <script>
-/* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
- * mode 'test':    no network calls, only the TEST- keys below unlock Pro, a TEST MODE badge shows,
- *                 Buy buttons show a notice instead of opening checkout.
- * mode 'ls-test': CURRENT. Lemon Squeezy TEST-MODE store (autoprod-dev, store 485739; ids below are
- *                 test-mode ids, see monetise/LS_TEST_IDS.md). Buy opens the real test checkout
- *                 (test card, nothing charged); its keys are checked with the License API like
- *                 live. TEST- keys still work offline. TEST MODE badge stays visible.
- * mode 'live':    keys are checked with Lemon Squeezy's public License API. Before switching, replace
- *                 the ids and checkout URLs with the LIVE-mode ones (test-mode keys are refused).
- * mode 'off':     Pro switched off (public site while the store is not approved for real money):
- *                 no TEST badge, no Upgrade / licence / Buy UI, no Lemon Squeezy calls, no Pro panel or
- *                 Pro-only tools (append PDF, templates, custom stations, kitchens). The code stays here.
- * Activation limit (3 devices per key) is set on the Lemon Squeezy product, not here.
- */
+/* Prepline public build: Pro is switched off and everything is free. No licence, payment or account code is included. */
 var LICENSE_CONFIG = {
-  mode: 'off',                                   // LIVE SITE: Pro off (store not approved for real money). 'off' | 'test' | 'ls-test' | 'live'  ('off' = Pro switched off: no licence UI, no network, everything free stays free)
+  mode: 'off',                                   // public build: everything free, no licence UI, no network
   edition: 'web',
-  // v3: free-plan limits from the v2 Pro build, OFF so the v3 baseline behaviour is unchanged
-  // (several PDFs at once are free; free prints have no footer). Set true to bring them back.
-  freeLimits: { onePdfPerSort: false, printFooter: false },                                // edition: 'web' | 'offline-pro' | 'team' (team = team build: every tool unlocked, no licence; only honoured on file://, localhost or /prepline-team/)
+  freeLimits: { onePdfPerSort: false, printFooter: false },
   storeName: 'Autoprod',
   appName: 'Prepline',
-  productName: 'Prepline Pro',
-  storageKey: 'autoprod.licence.prepline.v1',
-  revalidateDays: 7,                             // re-check with Lemon Squeezy at most once a week
-  offlineGraceDays: 14,                          // keep Pro working this long past a missed check (offline)
-  maxActivations: 3,                             // informational: enforce via the LS product's activation limit
-  apiBase: 'https://api.lemonsqueezy.com/v1/licenses',
-  lemonSqueezy: {
-    storeId: '485739',                             // autoprod-dev.lemonsqueezy.com (TEST MODE)
-    productIds: ['1395962', '1395968'],            // Prepline Pro (monthly+yearly), Prepline Pro Lifetime
-    variants: {                                    // variant id -> plan id (any other variant is refused)
-      '2179964': 'monthly',                        // A$7/mo
-      '2179971': 'yearly',                         // A$59/yr
-      '2179974': 'lifetime'                        // A$79 once (A$49 with LAUNCH50)
-    }
-  },
-  checkout: {
-    monthly:  'https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e?enabled=2179964',
-    yearly:   'https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c?enabled=2179971',
-    lifetime: 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314?checkout%5Bdiscount_code%5D=LAUNCH50'
-  },
-  offlineDownloadUrl: 'TODO-offline-download-url', // e.g. Lemon Squeezy "My Orders" page / product file
-  plans: [
-    { id: 'monthly',  label: 'Monthly',  short: 'monthly',  price: 'A$7',  per: 'per month, cancel any time' },
-    { id: 'yearly',   label: 'Yearly',   short: 'yearly',   price: 'A$59', per: 'per year (about 30% off monthly)', best: true, tag: 'BEST VALUE' },
-    { id: 'lifetime', label: 'Lifetime', short: 'lifetime', price: 'A$79', per: 'one-off payment', note: 'A$49 with code LAUNCH50 (first 50 buyers)', tag: 'LAUNCH DEAL' }
-  ],
-  upgrade: {
-    title: 'Upgrade to Prepline Pro',
-    intro: 'The free version stays free: sort, print and export to Excel. Pro is for kitchens that live in it.',
-    features: [
-      'Append more PDFs to the current list (items merge into one list)',
-      'Saved templates and your own custom stations',
-      'Multiple kitchens: separate named profiles on one device',
-      'The offline Windows version (works with no internet)'
-    ],
-    gstNote: 'GST handled at checkout',
-    refund: '14-day no-questions refund.'
-  },
-  testKeys: {                                    // 'test' and 'ls-test' modes only. Ignored in live mode.
-    'TEST-PRO-MONTHLY':  { plan: 'monthly' },
-    'TEST-PRO-YEARLY':   { plan: 'yearly' },
-    'TEST-PRO-LIFETIME': { plan: 'lifetime' },
-    'TEST-UNIFILE-PRO':  { reject: 'That key is for Unifile Pro, not Prepline Pro.' },
-    'TEST-LIMIT-REACHED':{ reject: 'This license key has reached the activation limit. (Simulated: deactivate it on another device first.)' },
-    'TEST-EXPIRED':      { reject: 'This license key has expired. (Simulated expired subscription.)' }
-  }
+  productName: 'Prepline',
+  offlineDownloadUrl: '',
+  plans: [],
+  upgrade: { features: [] }
 };
 </script>
 <!-- AUTOPROD-LICENCE:BEGIN -->
 <script>
-/* ==== Autoprod licence module v1 (shared; inlined into each single-file app) ====
- * Canonical source: monetise/shared/autoprod-licence.js. Each app inlines this file right
- * after its own LICENSE_CONFIG object (see monetise/shared/sync_licence.py).
- *
- * Modes
- *   test    : no network at all. Only the documented TEST-* keys in LICENSE_CONFIG.testKeys work.
- *             A "TEST MODE" badge is always visible and Buy buttons show a notice instead of
- *             opening checkout.
- *   ls-test : Lemon Squeezy TEST-MODE store. Buy buttons open the real test-mode checkouts
- *             (test card, nothing charged); keys from those checkouts are checked with the
- *             License API exactly like live. The offline TEST-* keys also still work (no network).
- *             The "TEST MODE" badge stays visible.
- *   live    : Lemon Squeezy public License API (no API key; CORS allows browsers):
- *          POST https://api.lemonsqueezy.com/v1/licenses/activate   license_key, instance_name
- *          POST https://api.lemonsqueezy.com/v1/licenses/validate   license_key, instance_id
- *          POST https://api.lemonsqueezy.com/v1/licenses/deactivate license_key, instance_id
- *          Body: application/x-www-form-urlencoded, header Accept: application/json.
- *          The response meta.store_id / meta.product_id / meta.variant_id must match
- *          LICENSE_CONFIG (variant id -> plan via lemonSqueezy.variants). In live mode keys
- *          whose license_key.test_mode is true are refused; TEST-* keys are ignored.
- *          The 3-device limit is the "activation limit" set on the Lemon Squeezy product;
- *          this code just reports LS's "activation limit reached" error.
- * Only the licence key (and the instance id / a generic device label) is ever sent. Files,
- * prep lists and settings never leave the browser.
- * Stored in localStorage (LICENSE_CONFIG.storageKey): key, instance id, plan, timestamps.
- * Revalidation: at most once every LICENSE_CONFIG.revalidateDays (7). If the check can't reach
- * Lemon Squeezy (offline), Pro keeps working for LICENSE_CONFIG.offlineGraceDays after the last
- * successful check. An explicit "invalid/expired/disabled" answer removes Pro on this device.
- */
+/* Always-free stub: same names the app calls, nothing behind them. */
 (function () {
   'use strict';
-  var C = window.LICENSE_CONFIG || {};
-  var DAY = 86400000;
-  var listeners = [];
-  var S = null;           // stored licence state or null
-  var status = 'free';    // 'free' | 'pro' | 'grace' | 'lapsed'
-  var api = {};
-  api._now = function () { return Date.now(); };
-  function offlineTestKeys() { return C.mode !== 'live'; }          // TEST-* keys: test + ls-test only
-  function isLocal() { return C.mode === 'test' || !!(S && S.testKey); } // no network for this licence
-  api.isTestMode = function () { return C.mode !== 'live'; };
-
-  function el(tag, attrs, html) {
-    var e = document.createElement(tag);
-    if (attrs) Object.keys(attrs).forEach(function (k) {
-      if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]);
-    });
-    if (html != null) e.innerHTML = html;
-    return e;
-  }
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function load() {
-    try { var raw = localStorage.getItem(C.storageKey); S = raw ? JSON.parse(raw) : null; } catch (e) { S = null; }
-    if (S && (typeof S.key !== 'string' || !S.key || S.mode !== C.mode)) S = null; // test keys never survive a switch to live
-  }
-  function save() { try { if (S) localStorage.setItem(C.storageKey, JSON.stringify(S)); else localStorage.removeItem(C.storageKey); } catch (e) {} }
-  function computeStatus() {
-    if (!S) return 'free';
-    if (isLocal()) return 'pro';
-    var age = api._now() - (S.lastValidatedAt || 0);
-    if (age <= (C.revalidateDays || 7) * DAY) return 'pro';
-    if (age <= ((C.revalidateDays || 7) + (C.offlineGraceDays || 14)) * DAY) return 'grace';
-    return 'lapsed';
-  }
-  function emit() {
-    var prev = status; status = computeStatus();
-    paintBadge();
-    listeners.forEach(function (fn) { try { fn(api.isPro(), status, prev); } catch (e) { console.error(e); } });
-  }
-  function maskKey(k) { return k.length <= 8 ? k : k.slice(0, 4) + '\u2026' + k.slice(-4); }
-  function planLabel(id) { var p = (C.plans || []).find(function (x) { return x.id === id; }); return p ? p.label : (id || 'Pro'); }
-  function deviceLabel() {
-    var ua = navigator.userAgent || '', os = /Windows/.test(ua) ? 'Windows' : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Device';
-    var br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
-    return (C.appName || 'App') + ' - ' + os + ' ' + br + ' - ' + new Date(api._now()).toISOString().slice(0, 10);
-  }
-
-  // ---------- Lemon Squeezy License API (live mode only) ----------
-  function lsPost(path, params) {
-    var body = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
-    return fetch((C.apiBase || 'https://api.lemonsqueezy.com/v1/licenses') + '/' + path, {
-      method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: body
-    }).then(function (res) {
-      return res.json().then(function (j) { return j; }, function () { throw new Error('network'); });
-    }, function () { throw new Error('network'); });   // offline / DNS / blocked
-  }
-  function configured() {
-    var ls = C.lemonSqueezy || {}, ids = ls.productIds || [], vs = Object.keys(ls.variants || {});
-    var todo = function (x) { return /TODO/i.test(String(x)); };
-    return !!ids.length && !ids.some(todo) && !vs.some(todo) && !todo(ls.storeId || 'TODO');
-  }
-  // Plan for a variant id. With a variants map configured, an unknown variant is refused (null);
-  // with no map at all every variant of the listed products counts as plain 'pro'.
-  function planFromVariant(meta) {
-    var v = (C.lemonSqueezy && C.lemonSqueezy.variants) || {};
-    if (!Object.keys(v).length) return 'pro';
-    return v[String(meta && meta.variant_id)] || null;
-  }
-  function productMatches(meta) {
-    if (!meta) return false;
-    var ls = C.lemonSqueezy || {};
-    if (String(meta.store_id) !== String(ls.storeId)) return false;
-    if ((ls.productIds || []).map(String).indexOf(String(meta.product_id)) < 0) return false;
-    return !!planFromVariant(meta);
-  }
-  api._planFromVariant = planFromVariant; api._productMatches = productMatches;   // exposed for tests
-
-  api.activate = function (rawKey) {
-    var key = String(rawKey || '').trim();
-    if (!key) return Promise.resolve({ ok: false, error: 'Paste your licence key first.' });
-    var t = offlineTestKeys() ? (C.testKeys || {})[key.toUpperCase()] : null;
-    if (C.mode === 'test' || t) {
-      if (!t) return Promise.resolve({ ok: false, error: 'That licence key isn\u2019t valid. (Test mode: use one of the documented TEST- keys.)' });
-      if (t.reject) return Promise.resolve({ ok: false, error: t.reject });
-      S = { mode: C.mode, testKey: true, key: key.toUpperCase(), instanceId: 'test-' + Math.random().toString(36).slice(2, 10), plan: t.plan,
-            productName: C.productName, activatedAt: api._now(), lastValidatedAt: api._now(), lastAttemptAt: api._now() };
-      save(); emit();
-      return Promise.resolve({ ok: true });
+  var C = window.LICENSE_CONFIG || {}, noop = function () {}, toastEl, toastT;
+  var api = {
+    config: C,
+    activate: function () { return Promise.resolve({ ok: false, error: 'Not available.' }); },
+    revalidate: function () { return Promise.resolve('free'); },
+    deactivate: function () { return Promise.resolve({ ok: true }); },
+    isPro: function () { return false; }, status: function () { return 'free'; }, plan: function () { return null; },
+    state: function () { return null; }, isTestMode: function () { return false; }, onChange: noop,
+    openLicenceDialog: noop, openUpgrade: noop, buy: noop, init: function () { api._inited = true; },
+    toast: function (msg) {
+      if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'pl-toast no-print'; toastEl.setAttribute('role', 'status'); toastEl.id = 'plToast';
+        toastEl.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#222;color:#fff;padding:11px 16px;border-radius:12px;font:600 14px/1.35 system-ui,sans-serif;z-index:10000;max-width:calc(100% - 30px)';
+        document.body.appendChild(toastEl); }
+      toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { toastEl.hidden = true; }, 4200);
     }
-    if (!configured()) return Promise.resolve({ ok: false, error: 'The store isn\u2019t set up yet (LICENSE_CONFIG still has TODO ids).' });
-    return lsPost('activate', { license_key: key, instance_name: deviceLabel() }).then(function (j) {
-      if (!j.activated) return { ok: false, error: j.error || 'That licence key couldn\u2019t be activated.' };
-      var testKeyInLive = C.mode === 'live' && j.license_key && j.license_key.test_mode === true;
-      if (!productMatches(j.meta) || testKeyInLive) {
-        // Wrong product/plan (or a test-mode key in the live app): give the activation straight back
-        // so it doesn't use up a device slot.
-        lsPost('deactivate', { license_key: key, instance_id: j.instance && j.instance.id }).catch(function () {});
-        return { ok: false, error: !productMatches(j.meta) ? 'That key is for a different product, not ' + C.productName + '.'
-          : 'That is a test-mode key from the Lemon Squeezy test store; it doesn\u2019t work in the live app.' };
-      }
-      S = { mode: C.mode, key: key, instanceId: j.instance.id, plan: planFromVariant(j.meta), productName: j.meta.product_name,
-            activatedAt: api._now(), lastValidatedAt: api._now(), lastAttemptAt: api._now(), expiresAt: j.license_key && j.license_key.expires_at };
-      save(); emit();
-      return { ok: true };
-    }, function () { return { ok: false, error: 'Couldn\u2019t reach the licence server. Check your internet connection and try again.' }; });
   };
-
-  api.revalidate = function (force) {
-    if (!S) return Promise.resolve(status);
-    var now = api._now();
-    if (isLocal()) {
-      if (force || now - S.lastValidatedAt >= (C.revalidateDays || 7) * DAY) { S.lastValidatedAt = now; S.lastAttemptAt = now; save(); }
-      emit(); return Promise.resolve(status);
-    }
-    var due = now - (S.lastValidatedAt || 0) >= (C.revalidateDays || 7) * DAY;
-    var retryOk = now - (S.lastAttemptAt || 0) >= 6 * 3600000;   // don't hammer the API while offline
-    if (!force && (!due || !retryOk)) { emit(); return Promise.resolve(status); }
-    S.lastAttemptAt = now; save();
-    return lsPost('validate', { license_key: S.key, instance_id: S.instanceId }).then(function (j) {
-      var st = j.license_key && j.license_key.status;
-      if (j.valid && productMatches(j.meta) && st !== 'expired' && st !== 'disabled') {
-        S.lastValidatedAt = api._now(); S.plan = planFromVariant(j.meta); S.expiresAt = j.license_key.expires_at; save(); emit();
-      } else {
-        var why = st === 'expired' ? 'has expired' : st === 'disabled' ? 'was disabled' : 'is no longer valid on this device';
-        S = null; save(); emit(); api.toast('Your ' + C.productName + ' licence ' + why + '. Pro features are off.');
-      }
-      return status;
-    }, function () { emit(); return status; });
-  };
-
-  api.deactivate = function () {
-    if (!S) return Promise.resolve({ ok: true });
-    if (isLocal()) { S = null; save(); emit(); return Promise.resolve({ ok: true }); }
-    var cur = S;
-    return lsPost('deactivate', { license_key: cur.key, instance_id: cur.instanceId }).then(function (j) {
-      if (j.deactivated || /not found/i.test(j.error || '')) { S = null; save(); emit(); return { ok: true }; }
-      return { ok: false, error: j.error || 'Couldn\u2019t deactivate. Try again.' };
-    }, function () { return { ok: false, error: 'You need to be online to free up this device slot. Try again when connected.' }; });
-  };
-
-  api.isPro = function () { return status === 'pro' || status === 'grace'; };
-  api.status = function () { return status; };
-  api.plan = function () { return S ? S.plan : null; };
-  api.state = function () { return S ? JSON.parse(JSON.stringify(S)) : null; };
-  api.onChange = function (fn) { listeners.push(fn); };
-  api.config = C;
-
-  // ---------- UI ----------
-  var css = [
-    '.pl-badge{position:fixed;left:12px;bottom:12px;z-index:9999;background:#E0701B;color:#fff;font:800 11px/1 system-ui,sans-serif;letter-spacing:.08em;padding:7px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;border:2px solid #fff}',
-    '.pl-badge small{font-weight:600;letter-spacing:0;margin-left:6px;opacity:.9}',
-    '@media print{.pl-badge,.pl-toast{display:none!important}}',
-    'dialog.pl-dlg{border:var(--pl-border,1px solid #ccc);border-radius:var(--pl-radius,14px);padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--pl-bg,#fff);color:var(--pl-ink,#222);font-family:var(--pl-font,system-ui,sans-serif);box-shadow:var(--pl-shadow,0 12px 40px rgba(0,0,0,.25))}',
-    'dialog.pl-dlg::backdrop{background:rgba(15,15,20,.55)}',
-    '.pl-in{padding:22px 22px 18px}',
-    '.pl-in h3{margin:0 0 6px;font-family:var(--pl-display,inherit);font-size:1.45em;line-height:1.15}',
-    '.pl-in p{margin:6px 0;line-height:1.5}',
-    '.pl-soft{color:var(--pl-soft,#666);font-size:.92em}',
-    '.pl-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}',
-    '.pl-row.end{justify-content:flex-end}',
-    '.pl-input{flex:1 1 220px;font:600 15px/1.2 ui-monospace,Menlo,Consolas,monospace;padding:11px 12px;border:var(--pl-border,1px solid #bbb);border-radius:10px;background:var(--pl-field,#fff);color:var(--pl-ink,#222);min-width:0}',
-    '.pl-btn{font:700 14px/1 var(--pl-font,system-ui,sans-serif);padding:11px 16px;border-radius:var(--pl-btn-radius,10px);border:var(--pl-btn-border,1px solid transparent);background:var(--pl-accent,#333);color:var(--pl-on-accent,#fff);cursor:pointer;box-shadow:var(--pl-btn-shadow,none)}',
-    '.pl-btn.alt{background:transparent;color:var(--pl-ink,#222);border:var(--pl-border,1px solid #bbb)}',
-    '.pl-btn.link{background:none;border:0;box-shadow:none;color:var(--pl-soft,#666);text-decoration:underline;padding:6px}',
-    '.pl-btn[disabled]{opacity:.5;cursor:wait}',
-    '.pl-msg{min-height:1.2em;margin-top:10px;font-weight:600;font-size:.93em}',
-    '.pl-msg.err{color:#C0392B}.pl-msg.ok{color:#2E7D4F}',
-    '.pl-test{background:#FFF1E0;color:#7A3E00;border:1px dashed #E0701B;border-radius:10px;padding:9px 11px;font-size:.86em;margin-top:12px}',
-    '.pl-test code{font-weight:700}',
-    '.pl-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:14px 0 6px}',
-    '.pl-plan{border:var(--pl-border,1px solid #ccc);border-radius:12px;padding:14px 12px;display:flex;flex-direction:column;gap:6px;background:var(--pl-card,transparent);position:relative}',
-    '.pl-plan.best{outline:3px solid var(--pl-accent,#333)}',
-    '.pl-plan .pl-tag{position:absolute;top:-10px;right:10px;background:var(--pl-accent,#333);color:var(--pl-on-accent,#fff);font:800 10.5px/1 system-ui,sans-serif;padding:4px 8px;border-radius:99px;letter-spacing:.03em}',
-    '.pl-plan b{font-size:1em}.pl-price{font:800 1.9em/1 var(--pl-display,inherit)}.pl-per{font-size:.85em;color:var(--pl-soft,#666)}',
-    '.pl-plan .pl-btn{margin-top:auto}',
-    '.pl-feats{margin:10px 0 0;padding-left:1.1em;line-height:1.55}',
-    '.pl-kv{font:13px/1.6 ui-monospace,Menlo,Consolas,monospace;background:var(--pl-card,#f5f5f5);border-radius:10px;padding:10px 12px;margin-top:10px;word-break:break-all}',
-    '.pl-toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#222;color:#fff;padding:11px 16px;border-radius:12px;font:600 14px/1.35 system-ui,sans-serif;z-index:10000;max-width:calc(100% - 30px);box-shadow:0 6px 20px rgba(0,0,0,.3)}'
-  ].join('\n');
-
-  var badge, licDlg, upDlg, toastEl, toastT;
-  api.toast = function (msg) {
-    if (!toastEl) { toastEl = el('div', { class: 'pl-toast', role: 'status', id: 'plToast' }); document.body.appendChild(toastEl); }
-    toastEl.textContent = msg; toastEl.hidden = false; clearTimeout(toastT);
-    toastT = setTimeout(function () { toastEl.hidden = true; }, 4200);
-  };
-  function paintBadge() {
-    if (!badge) return;
-    badge.hidden = C.mode === 'live';
-    var pl = planLabel(S && S.plan);
-    badge.innerHTML = 'TEST MODE<small>' + (api.isPro() ? esc(C.productName) + (pl === C.productName ? '' : ' (' + esc(pl) + ')') : 'free') + '</small>';
-  }
-  function showDialog(d) { if (typeof d.showModal === 'function') { if (!d.open) d.showModal(); } else d.setAttribute('open', ''); }
-  function closeDialog(d) { if (typeof d.close === 'function' && d.open) d.close(); else d.removeAttribute('open'); }
-
-  function renderLicence(msg, cls) {
-    var h;
-    var tk = Object.keys(C.testKeys || {}).filter(function (k) { return !C.testKeys[k].reject; }).map(function (k) { return '<code>' + esc(k) + '</code>'; }).join(', ');
-    var testHint = C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: no payments, no network calls. Keys that work here: ' + tk + '.</div>'
-      : C.mode === 'ls-test' ? '<div class="pl-test"><b>TEST MODE</b>: Lemon Squeezy test store, no real payments. Keys from a test checkout are checked with Lemon Squeezy; offline test keys also work: ' + tk + '.</div>' : '';
-    if (S) {
-      var st = status === 'grace' ? 'Active (offline grace: will re-check with ' + esc(C.storeName) + ' when you\u2019re online)' : status === 'lapsed' ? 'Paused: couldn\u2019t re-check the licence for a while. Go online and press Re-check.' : 'Active';
-      h = '<h3>' + esc(C.productName) + ' is on</h3>' +
-        '<p class="pl-soft">This device is using one of your ' + (C.maxActivations || 3) + ' activations.</p>' +
-        '<div class="pl-kv">Plan: ' + esc(planLabel(S.plan)) + '<br>Key: ' + esc(maskKey(S.key)) + '<br>Status: ' + st +
-        '<br>Last checked: ' + new Date(S.lastValidatedAt).toLocaleString() + '</div>' +
-        '<div class="pl-msg ' + (cls || '') + '" id="plLicMsg">' + esc(msg || '') + '</div>' + testHint +
-        '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="recheck">Re-check now</button>' +
-        '<button class="pl-btn alt" type="button" data-pl="deactivate" id="plDeactivate">Deactivate on this device</button>' +
-        '<button class="pl-btn" type="button" data-pl="close">Close</button></div>';
-    } else {
-      h = '<h3>Enter licence key</h3>' +
-        '<p class="pl-soft">Paste the key from your ' + esc(C.storeName) + ' receipt email. Each key works on up to ' + (C.maxActivations || 3) + ' devices; use \u201cDeactivate on this device\u201d to move it.</p>' +
-        '<form class="pl-row" data-pl="form"><label for="plKey" style="position:absolute;left:-9999px">Licence key</label>' +
-        '<input class="pl-input" id="plKey" autocomplete="off" spellcheck="false" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX">' +
-        '<button class="pl-btn" type="submit" id="plActivate">Activate</button></form>' +
-        '<div class="pl-msg ' + (cls || '') + '" id="plLicMsg">' + esc(msg || '') + '</div>' + testHint +
-        '<p class="pl-soft" style="margin-top:12px">Only the key is sent to ' + ((C.mode === 'test' || (S && S.testKey)) ? 'nobody (test mode)' : 'Lemon Squeezy, our payment provider, to check it') + '. Your files never leave this browser.</p>' +
-        '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="buy">Don\u2019t have a key? See Pro</button><button class="pl-btn alt" type="button" data-pl="close">Close</button></div>';
-    }
-    licDlg.querySelector('.pl-in').innerHTML = h;
-  }
-  api.openLicenceDialog = function () { renderLicence(); showDialog(licDlg); var i = licDlg.querySelector('#plKey'); if (i) i.focus(); };
-
-  function renderUpgrade(reason) {
-    var u = C.upgrade || {};
-    var plans = (C.plans || []).map(function (p) {
-      return '<div class="pl-plan' + (p.best ? ' best' : '') + '">' + (p.tag ? '<span class="pl-tag">' + esc(p.tag) + '</span>' : '') +
-        '<b>' + esc(p.label) + '</b><div class="pl-price">' + esc(p.price) + '</div><div class="pl-per">' + esc(p.per || '') + '</div>' +
-        (p.note ? '<div class="pl-per">' + esc(p.note) + '</div>' : '') +
-        '<button class="pl-btn" type="button" data-pl="checkout" data-plan="' + esc(p.id) + '">Buy ' + esc(p.short || p.label) + '</button></div>';
-    }).join('');
-    var h = '<h3>' + esc(u.title || ('Upgrade to ' + C.productName)) + '</h3>' +
-      (reason ? '<p style="font-weight:700">' + esc(reason) + '</p>' : '') +
-      (u.intro ? '<p class="pl-soft">' + esc(u.intro) + '</p>' : '') +
-      (u.features ? '<ul class="pl-feats">' + u.features.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' : '') +
-      '<div class="pl-plans">' + plans + '</div>' +
-      '<p class="pl-soft">Prices in AUD' + (u.gstNote ? ', ' + esc(u.gstNote) : '') + '. Secure checkout by Lemon Squeezy (merchant of record). ' + esc(u.refund || '') + '</p>' +
-      '<div class="pl-msg" id="plUpMsg"></div>' +
-      (C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy buttons don\u2019t open checkout and nothing is charged.</div>'
-        : C.mode === 'ls-test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy opens a Lemon Squeezy <b>test</b> checkout. Nothing is charged (use test card 4242 4242 4242 4242).</div>' : '') +
-      '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="enterkey">Already bought? Enter licence key</button><button class="pl-btn alt" type="button" data-pl="close">Not now</button></div>';
-    upDlg.querySelector('.pl-in').innerHTML = h;
-  }
-  api.openUpgrade = function (reason) { renderUpgrade(reason); showDialog(upDlg); };
-  api.buy = function (planId) {
-    var url = (C.checkout || {})[planId];
-    if (C.mode === 'test' || !url || /TODO/.test(url)) {
-      var m = 'TEST MODE: checkout is disabled. In live mode this button opens ' + (url || '(no URL set)') + '. Use a TEST- key to try Pro.';
-      var box = upDlg && upDlg.querySelector('#plUpMsg'); if (box && upDlg.open) { box.className = 'pl-msg err'; box.textContent = m; }
-      api.toast(m); return false;
-    }
-    window.open(url, '_blank', 'noopener');
-    return true;
-  };
-
-  function onDialogClick(e) {
-    var b = e.target.closest('[data-pl]'); if (!b) return;
-    var act = b.getAttribute('data-pl');
-    if (act === 'close') closeDialog(b.closest('dialog'));
-    if (act === 'buy') { closeDialog(licDlg); api.openUpgrade(); }
-    if (act === 'enterkey') { closeDialog(upDlg); api.openLicenceDialog(); }
-    if (act === 'checkout') api.buy(b.getAttribute('data-plan'));
-    if (act === 'deactivate') {
-      b.disabled = true;
-      api.deactivate().then(function (r) {
-        if (r.ok) { renderLicence('Deactivated. This device slot is free again.', 'ok'); api.toast(C.productName + ' deactivated on this device.'); }
-        else renderLicence(r.error, 'err');
-      });
-    }
-    if (act === 'recheck') { b.disabled = true; api.revalidate(true).then(function () { renderLicence(S ? 'Checked.' : '', 'ok'); }); }
-  }
-  function onSubmit(e) {
-    if (!e.target.matches('[data-pl="form"]')) return;
-    e.preventDefault();
-    var input = licDlg.querySelector('#plKey'), btn = licDlg.querySelector('#plActivate'), msg = licDlg.querySelector('#plLicMsg');
-    btn.disabled = true; msg.className = 'pl-msg'; msg.textContent = 'Checking\u2026';
-    api.activate(input.value).then(function (r) {
-      if (r.ok) { renderLicence('Activated. Thanks for supporting ' + C.storeName + '!', 'ok'); api.toast(C.productName + ' unlocked.'); }
-      else { btn.disabled = false; msg.className = 'pl-msg err'; msg.textContent = r.error; input.select(); }
-    });
-  }
-
-  api.init = function () {
-    if (api._inited) return; api._inited = true;
-    var st = el('style', { id: 'pl-licence-css' }); st.textContent = css; document.head.appendChild(st);
-    badge = el('button', { class: 'pl-badge', type: 'button', id: 'plTestBadge', title: 'Test mode: no real payments. Click to enter a licence key.' });
-    badge.addEventListener('click', function () { api.openLicenceDialog(); });
-    document.body.appendChild(badge);
-    licDlg = el('dialog', { class: 'pl-dlg', id: 'plLicenceDialog', 'aria-label': 'Licence key' }, '<div class="pl-in"></div>');
-    upDlg = el('dialog', { class: 'pl-dlg', id: 'plUpgradeDialog', 'aria-label': 'Upgrade' }, '<div class="pl-in"></div>');
-    [licDlg, upDlg].forEach(function (d) {
-      d.addEventListener('click', onDialogClick); d.addEventListener('submit', onSubmit);
-      d.addEventListener('click', function (e) { if (e.target === d) closeDialog(d); });   // backdrop click
-      document.body.appendChild(d);
-    });
-    emit();
-    api.revalidate(false);
-  };
-
-  if (C.mode === 'off') {
-    // Pro switched off: this module stays in the file but does nothing. Always free, no badge,
-    // no dialogs, no checkout, no network; a licence saved by another build is ignored.
-    var noop = function () {};
-    api.activate = function () { return Promise.resolve({ ok: false, error: 'Pro is not available.' }); };
-    api.revalidate = function () { return Promise.resolve('free'); };
-    api.deactivate = function () { return Promise.resolve({ ok: true }); };
-    api.isPro = function () { return false; };
-    api.status = function () { return 'free'; };
-    api.plan = function () { return null; };
-    api.state = function () { return null; };
-    api.isTestMode = function () { return false; };
-    api.openLicenceDialog = noop; api.openUpgrade = noop; api.buy = noop;
-    api.init = function () { api._inited = true; };
-    window.AutoprodLicence = api;
-    return;
-  }
-  load(); status = computeStatus();
   window.AutoprodLicence = api;
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', api.init); else api.init();
 })();
-/* ==== end Autoprod licence module ==== */
 </script>
 <!-- AUTOPROD-LICENCE:END -->
 <!-- SheetJS xlsx 0.18.5 (Apache-2.0), inlined for offline use -->
@@ -848,6 +460,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   #preplistTab footer{margin-top:44px; font-size:11.5px; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:16px; line-height:1.6;}
 
   @media print{
+    html,body{background:#fff !important;}   /* v3.3.3: no beige page background on a short last page */
     body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
     .no-print{display:none !important;}
     .wrap{max-width:100%; padding:0;}
@@ -855,8 +468,8 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
     table{page-break-inside:auto;}
     tr{page-break-inside:avoid;}
     .print-only{display:block !important;}
-    .print-only .dish{font-size:6.5px;}
-    .print-only .pf-section, .print-only .pf-day{font-size:10.4px;}
+    .print-only .dish{font-size:11px; line-height:1.25;}   /* v3.3.3: was 6.5px; 11px is about 8.3pt (Dishes / Used in columns) */
+    .print-only .pf-section, .print-only .pf-day, .print-only .pf-lead{font-size:10.4px; line-height:1.25;}
     .print-only tbody td{border-bottom:1.5px solid #999;}
     .orig-pages-grid{
       page-break-before:always; padding-top:14px;
@@ -866,11 +479,11 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
       flex-basis:100%; font-family:Georgia,Cambria,Times New Roman,serif; font-weight:600; font-size:12px;
       color:#1C1E1B; margin-bottom:4px;
     }
-    .orig-page-item{flex:0 0 calc(33.33% - 10px); break-inside:avoid;}
+    .orig-page-item{flex:0 0 100%; break-inside:avoid; page-break-inside:avoid;}   /* v3.3.3: full width, readable */
     .orig-page-print-label{
       font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:9px; color:#5C5F58; margin-bottom:4px;
     }
-    .orig-page-item img{max-width:100%; height:auto; border:1px solid #D6D2C4; display:block;}
+    .orig-page-item img{width:100%; max-width:100%; height:auto; max-height:245mm; object-fit:contain; object-position:left top; border:1px solid #D6D2C4; display:block;}
   }
   .print-only{display:none;}
   .print-head{margin-bottom:16px;}
@@ -936,6 +549,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
 
   .print-only{display:none;}
   @media print{
+    html,body{background:#fff !important;}
     body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
     .no-print{display:none !important;}
     .wrap{max-width:100%; padding:0;}
@@ -1048,6 +662,15 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   .shell-tab-btn.survey-link{text-decoration:none; display:inline-flex; align-items:center; font-weight:600; opacity:.92;}
   .shell-tab-btn.survey-link[hidden]{display:none;}
   .shell-tab-btn.contact-link{text-decoration:none; display:inline-flex; align-items:center;} .shell-tab-btn.contact-link[hidden]{display:none;}
+  /* v3.3.3: Report a problem (clearly visible), privacy link */
+  .shell-tab-btn.report-btn{background:#B5442E; border-color:#B5442E; color:#fff; font-weight:700;}
+  .shell-tab-btn.report-btn:hover{background:#9A3825;}
+  .rp-field{display:block; font-size:13px; font-weight:600; margin:10px 0 4px;}
+  .rp-req{color:#B5442E;}
+  .rp-err{color:#B5442E; font-size:12.5px; font-weight:600;}
+  .rp-auto{font:11.5px/1.5 ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; background:#F6F1E7; border-radius:7px; padding:8px 10px; white-space:pre-wrap; color:#3D3F3A; margin-top:6px;}
+  .footer-links{margin:2px 0 8px; font-size:12px;} .footer-links a{color:inherit;}
+  .privacy-list{line-height:1.55; padding-left:1.2em;} .privacy-list li{margin:4px 0;}
   .survey-toast{position:fixed; right:16px; bottom:16px; z-index:9000; max-width:330px; background:#1C1E1B; color:#F6F1E7; border-radius:12px; padding:14px 16px; box-shadow:0 8px 28px rgba(0,0,0,.28); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
   .survey-toast b{display:block; font-size:15px; margin-bottom:4px;}
   .survey-toast .st-row{display:flex; gap:8px; margin-top:10px;}
@@ -1070,6 +693,7 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
     <button class="shell-tab-btn" id="feedbackBtn" onclick="openFeedback()" type="button" title="Send feedback (opens your email app or copies the text)">Feedback</button>
     <a class="shell-tab-btn contact-link" id="contactLink" href="#" hidden title="Email Prepline support">Email us</a>
+    <button class="shell-tab-btn report-btn" id="reportBtn" onclick="openReport()" type="button" title="Something not working? Send us a short problem report (opens your email app, or copy it)">⚠ Report a problem</button>
     <a class="shell-tab-btn survey-link" id="surveyLink" href="#" target="_blank" rel="noopener" hidden title="Opens a short anonymous survey in a new tab">Help shape Prepline – 1-min survey</a>
   </div>
 </div>
@@ -1221,7 +845,8 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.2</div>
+    <div id="appVersion" style="font-family:ui-monospace,Cascadia Mono,Consolas,Menlo,monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.3</div>
+    <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -2861,6 +2486,34 @@ function pdfFindMethodRegion(items){
 // Crops a rendered page canvas down to just its Method region — the actual pixels, so
 // whatever's on the page is shown exactly as printed, with none of the text-reading
 // fragility of trying to re-type it out. Returns null if there's nothing to crop.
+// v3.3.3: trims blank (near-white) margins off a method capture so it prints larger.
+// A row/column only counts as content with more than a few dark pixels, so a thin page rule
+// down the side doesn't stop the trim. Keeps a small border; on any problem, or if the trim
+// would remove almost everything, the original canvas is returned unchanged.
+function trimCanvasWhitespace(c){
+  try{
+    const w = c.width, hgt = c.height; if (w < 20 || hgt < 20) return c;
+    const data = c.getContext('2d').getImageData(0, 0, w, hgt).data;
+    const rowDark = new Uint32Array(hgt), colDark = new Uint32Array(w);
+    for (let y=0; y<hgt; y++){ for (let x=0; x<w; x++){ const i = (y*w + x)*4; if (data[i] < 200 || data[i+1] < 200 || data[i+2] < 200){ rowDark[y]++; colDark[x]++; } } }
+    const rMin = Math.max(3, Math.round(w*0.004)), cMin = Math.max(3, Math.round(hgt*0.01));
+    let top = 0; while (top < hgt && rowDark[top] <= rMin) top++;
+    let bot = hgt-1; while (bot > top && rowDark[bot] <= rMin) bot--;
+    let left = 0; while (left < w && colDark[left] <= cMin) left++;
+    let right = w-1; while (right > left && colDark[right] <= cMin) right--;
+    if (top >= bot || left >= right) return c;
+    const pad = Math.round(Math.max(w, hgt) * 0.015) + 6;
+    top = Math.max(0, top-pad); left = Math.max(0, left-pad); bot = Math.min(hgt-1, bot+pad); right = Math.min(w-1, right+pad);
+    const nw = right-left+1, nh = bot-top+1;
+    if (nw < w*0.15 || nh < hgt*0.08) return c;              // suspiciously small: keep the original
+    if (nw > w*0.97 && nh > hgt*0.97) return c;              // nothing worth trimming
+    const out = document.createElement('canvas'); out.width = nw; out.height = nh;
+    const octx = out.getContext('2d'); if (!octx) return c;
+    octx.fillStyle = '#fff'; octx.fillRect(0, 0, nw, nh);
+    octx.drawImage(c, left, top, nw, nh, 0, 0, nw, nh);
+    return out;
+  }catch(e){ return c; }
+}
 function cropMethodRegion(canvas, scale, region){
   if (!region) return null;
   try{
@@ -2875,7 +2528,8 @@ function cropMethodRegion(canvas, scale, region){
     const cctx = crop.getContext('2d');
     if (!cctx) return null;
     cctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
-    const url = crop.toDataURL('image/jpeg', 0.82);
+    const trimmed = trimCanvasWhitespace(crop);
+    const url = trimmed.toDataURL('image/jpeg', 0.82);
     return (url && url!=='data:,') ? url : null;
   }catch(e){ return null; }
 }
@@ -3645,8 +3299,18 @@ function fmtDateTime(d){
   // reopening the page after a sort crashed the results render ("toLocaleDateString is not a function").
   if (!(d instanceof Date)) d = new Date(d);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) +
-    ' at ' + d.toLocaleTimeString('en-AU', {hour:'numeric', minute:'2-digit'});
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + fmtDMY(d) + ' at ' + fmtHM(d);
+}
+// v3.3.3: every date the app shows or prints is dd/mm/yyyy, whatever the browser language.
+function fmtDMY(d){
+  if (!(d instanceof Date)) d = (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) ? new Date(d.slice(0,10)+'T00:00:00') : new Date(d);
+  if (isNaN(d.getTime())) return '';
+  const p = n => String(n).padStart(2, '0');
+  return p(d.getDate()) + '/' + p(d.getMonth()+1) + '/' + d.getFullYear();
+}
+function fmtHM(d){
+  const hr = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+  return ((hr % 12) || 12) + ':' + m + ' ' + (hr < 12 ? 'am' : 'pm');
 }
 
 function renderMasterSummary(){
@@ -3754,7 +3418,7 @@ function buildPrintDocHtml(target){
   const styleHtml = styleTag ? styleTag.outerHTML : '';
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title>
     ${styleHtml}
-    <style>body{padding:24px;} .print-only{display:block !important;}</style>
+    <style>html,body{background:#fff;} body{padding:24px;} .print-only{display:block !important;}</style>
     </head><body>${target.outerHTML}${printFooterHtml()}</body></html>`;
 }
 // Printing a specific view (one dish / one section / one prep day / the master summary).
@@ -3840,7 +3504,7 @@ async function printAllOfView(targetView, filename){
   const bodyHtml = blocks.map((el,i)=>el.outerHTML+(i<blocks.length-1?'<div style="page-break-after:always;"></div>':'')).join('');
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title>
     ${styleHtml}
-    <style>body{padding:24px;} .print-only{display:block !important;}</style>
+    <style>html,body{background:#fff;} body{padding:24px;} .print-only{display:block !important;}</style>
     </head><body>${bodyHtml}${printFooterHtml()}</body></html>`;
   await printReadyHtml(fullHtml, filename);
 }
@@ -4445,8 +4109,8 @@ function renderByPriority(){
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
-          <td>${escapeHtml(g.section)}</td>
-          <td>${escapeHtml(leaderBySection[g.section] || '—')}</td>
+          <td class="pf-section">${escapeHtml(g.section)}</td>
+          <td class="pf-lead">${escapeHtml(leaderBySection[g.section] || '—')}</td>
         </tr>`;
       }).join('');
     } else {
@@ -4466,7 +4130,7 @@ function renderByPriority(){
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
           <td class="pf-section">${escapeHtml(r.section)}</td>
-          <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
+          <td class="pf-lead">${escapeHtml(leaderBySection[r.section] || '—')}</td>
         </tr>`;
       }).join('');
     }
@@ -4479,8 +4143,8 @@ function renderByPriority(){
       </div>
       ${alPrintNote(rowsForDay)}
       <table><thead>${consolidateOn
-        ? '<tr><th style="width:32%">Task</th><th style="width:26%">Dishes</th><th style="width:12%">Total needed</th><th style="width:14%">Section</th><th style="width:10%">Lead</th></tr>'
-        : '<tr><th style="width:13%">Dish</th><th>Task</th><th style="width:7%">Pax</th><th style="width:9%">Per pax</th><th style="width:10%">Total needed</th><th style="width:12%">Section</th><th style="width:9%">Lead</th></tr>'}</thead>
+        ? '<tr><th style="width:27%">Task</th><th style="width:22%">Dishes</th><th style="width:11%">Total needed</th><th style="width:21%">Section</th><th style="width:19%">Lead</th></tr>'
+        : '<tr><th style="width:14%">Dish</th><th>Task</th><th style="width:6%">Pax</th><th style="width:8%">Per pax</th><th style="width:9%">Total needed</th><th style="width:16%">Section</th><th style="width:14%">Lead</th></tr>'}</thead>
       <tbody>
       ${printRowsHtml2}
       </tbody></table>
@@ -5111,7 +4775,7 @@ function renderProPanel(){
       <ul class="pro-feats">${C.upgrade.features.map(f=>`<li>${proEsc(f)}</li>`).join('')}</ul>
       <div class="row" style="align-items:center; margin-top:8px;">
         <button class="secondary" type="button" onclick="AutoprodLicence.openLicenceDialog()">Enter licence key</button>
-        <span class="small" style="font-size:12px;color:var(--ink-soft);">Prices in AUD. Secure checkout by Lemon Squeezy (merchant of record, handles GST). 14-day no-questions refund.</span>
+        
       </div>`;
     return;
   }
@@ -5132,7 +4796,7 @@ function renderProPanel(){
       <details class="pro-box" open><summary>Saved templates (${tplNames.length})</summary>
         <div class="row" style="gap:6px; margin:8px 0;"><div class="field" style="flex:1 1 160px;"><input type="text" id="proTemplateName" placeholder="Template name, e.g. Friday banquet" maxlength="60"></div>
           <button class="secondary" type="button" id="proSaveTemplateBtn" onclick="saveTemplate()">Save current list</button></div>
-        ${tplNames.length ? `<table class="pro-table"><tbody>${tplNames.map(n=>`<tr><td>${proEsc(n)}<div class="pro-per">${(tpl[n].ROWS||[]).length} items · ${proEsc(String(tpl[n].savedAt||'').slice(0,10))}</div></td>
+        ${tplNames.length ? `<table class="pro-table"><tbody>${tplNames.map(n=>`<tr><td>${proEsc(n)}<div class="pro-per">${(tpl[n].ROWS||[]).length} items · ${proEsc(tpl[n].savedAt ? fmtDMY(String(tpl[n].savedAt)) : '')}</div></td>
           <td style="text-align:right; white-space:nowrap;"><button class="secondary" type="button" onclick="loadTemplate('${encName(n)}')">Load</button> <button class="ghost" type="button" onclick="deleteTemplate('${encName(n)}')">Delete</button></td></tr>`).join('')}</tbody></table>`
           : '<div class="pro-per">No templates yet. Sort a list, then save it here to reuse next time.</div>'}
       </details>
@@ -5568,7 +5232,7 @@ function renderOrderSheet(){
     ${g.lines.map(L=>`<tr data-line="${escapeHtml(L.id)}"><td class="task">${escapeHtml(L.task)}${alChipsRowsHtml(L.rows)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.td(L)}</td>`).join('')}${g.supplier?'':`<td>${supplierInputHtml(L.task, 'osup')}</td>`}</tr>`).join('')}
     </tbody></table></div>
     <div class="print-only" id="print-${gid}">
-      <div class="print-head"><h2>Order sheet — ${escapeHtml(title)}</h2><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'} · printed ${escapeHtml(new Date().toLocaleDateString())}${ORDER_GROUP_FOOT.map(f=>f(g, true)).join('')}</div></div>
+      <div class="print-head"><h2>Order sheet — ${escapeHtml(title)}</h2><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'} · printed ${escapeHtml(fmtDMY(new Date()))}${ORDER_GROUP_FOOT.map(f=>f(g, true)).join('')}</div></div>
       <table><thead><tr><th>Item</th><th>Needed</th><th>Order qty</th><th>Used in</th>${ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('')}<th style="width:8%">✓</th></tr></thead><tbody>
       ${g.lines.map(L=>`<tr><td class="task">${escapeHtml(L.task)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.print ? c.print(L) : c.td(L)}</td>`).join('')}<td></td></tr>`).join('')}
       </tbody></table>
@@ -5586,7 +5250,7 @@ function exportOrderToXlsx(){
   const wb = XLSX.utils.book_new(), used = new Set(), changes = [];
   groups.forEach(g=>{
     const title = g.supplier || 'No supplier yet';
-    const aoa = [['Order sheet: '+title], ['Generated '+new Date().toLocaleDateString()+' with Prepline. Order qty is rounded up; edit it as needed.'], [],
+    const aoa = [['Order sheet: '+title], ['Generated '+fmtDMY(new Date())+' with Prepline. Order qty is rounded up; edit it as needed.'], [],
       ['Item','Needed','Unit','Order qty','Order unit','Supplier','Used in', ...ORDER_XLSX_EXTRA.map(c=>c.header)]];
     const hdrRow = aoa.length;   // 1-based row of the header
     const fcells = [];
@@ -5974,7 +5638,7 @@ function renderSharedView(){
   v.innerHTML = `<div class="sv-wrap">
     <div class="sv-head"><div class="sv-brand">Prepline · shared list (read-only)</div>
       <h1>${S(d.n)}</h1>
-      <div class="sv-meta">${d.l ? 'Lead: <b>'+S(d.l)+'</b> · ' : ''}${d.r.length} task${d.r.length===1?'':'s'} · shared ${S(d.d)}${Array.isArray(d.p) ? ` · <b>Part ${S(d.p[0])} of ${S(d.p[1])}</b>` : ''}</div>
+      <div class="sv-meta">${d.l ? 'Lead: <b>'+S(d.l)+'</b> · ' : ''}${d.r.length} task${d.r.length===1?'':'s'} · shared ${S(/^\d{4}-\d{2}-\d{2}$/.test(String(d.d||'')) ? fmtDMY(d.d) : d.d)}${Array.isArray(d.p) ? ` · <b>Part ${S(d.p[0])} of ${S(d.p[1])}</b>` : ''}</div>
       ${d.smp ? '<div class="sv-sample">SAMPLE DATA — made-up menu</div>' : ''}
     </div>
     ${days.map(day=>`<h2 class="sv-day">${S(day)}</h2><table class="sv-table"><tbody>${byDay[day].map(row=>`<tr><td class="sv-tick"><input type="checkbox" aria-label="done"></td><td><div class="sv-task">${S(row[1])}${row[4] ? row[4].split(' ').map(t=>`<span class="al-chip${t.endsWith('?')?' sug':''}">${S(t)}</span>`).join('') : ''}</div><div class="sv-dish">${S(d.ds[row[0]])}${d.dp && d.dp[row[0]]!=null ? ' · '+S(d.dp[row[0]])+' pax' : ''}</div></td><td class="sv-qty">${row[2] ? S(row[2]) : '—'}</td></tr>`).join('')}</tbody></table>`).join('')}
@@ -6115,6 +5779,148 @@ function copyFeedback(){
   window.__lastFeedbackCopy = text;
   try{ if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail(); }catch(e){ fail(); }
 }
+
+// ---------- 7b. Report a problem (v3.3.3) ----------
+// A short form: what went wrong (required) and what you were doing (optional). Adds the app
+// version, view, browser/OS, screen size, edition and date. Recipe data ONLY if the box is ticked.
+// Sent with a plain mailto: (your own email app) or copied. No network request from this page.
+const REPORT_MAX = 1800;
+function reportVersion(){ return (document.querySelector('meta[name="prepline-version"]')||{}).content || ''; }
+function reportEdition(){
+  if (typeof teamEdition==='function' && teamEdition()) return 'team';
+  if (location.protocol === 'file:') return 'offline';
+  return 'web';
+}
+function reportBrowserOs(){
+  const ua = navigator.userAgent || '';
+  const m = (re) => (ua.match(re)||[])[1];
+  let br = 'Unknown browser';
+  if (m(/Edg(?:e|A|iOS)?\/([\d.]+)/)) br = 'Edge ' + m(/Edg(?:e|A|iOS)?\/(\d+)/);
+  else if (m(/OPR\/(\d+)/)) br = 'Opera ' + m(/OPR\/(\d+)/);
+  else if (m(/Firefox\/(\d+)/)) br = 'Firefox ' + m(/Firefox\/(\d+)/);
+  else if (m(/CriOS\/(\d+)/)) br = 'Chrome ' + m(/CriOS\/(\d+)/) + ' (iOS)';
+  else if (m(/Chrome\/(\d+)/)) br = 'Chrome ' + m(/Chrome\/(\d+)/);
+  else if (/Safari\//.test(ua) && m(/Version\/(\d+)/)) br = 'Safari ' + m(/Version\/(\d+)/);
+  let os = 'Unknown OS';
+  if (/Windows NT 10/.test(ua)) os = 'Windows 10/11'; else if (/Windows/.test(ua)) os = 'Windows';
+  else if (/iPhone|iPad|iPod/.test(ua)) os = 'iOS ' + (m(/OS (\d+[_\d]*)/)||'').replace(/_/g, '.');
+  else if (/Android/.test(ua)) os = 'Android ' + (m(/Android ([\d.]+)/)||'');
+  else if (/CrOS/.test(ua)) os = 'ChromeOS'; else if (/Mac OS X/.test(ua)) os = 'macOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  return br + ' on ' + os.trim();
+}
+function reportViewLabel(){
+  if (document.body.classList.contains('shared-mode')) return 'shared phone view';
+  const help = document.getElementById('helpTab');
+  if (help && help.classList.contains('active')) return 'Help tab';
+  const names = {dish:'By dish', section:'By team section', priority:'By prep day', order:'Order sheet'};
+  const v = (typeof viewMode !== 'undefined') ? viewMode : '';
+  return 'Preplist tab, ' + (names[v] || v || 'no view') + ((typeof ROWS !== 'undefined' && ROWS.length) ? ' (list loaded, ' + ROWS.length + ' rows)' : ' (no list loaded)');
+}
+function reportAutoText(){
+  const d = new Date();
+  return [`App: Prepline v${reportVersion()} (${reportEdition()} edition)`,
+    `View: ${reportViewLabel()}`,
+    `Browser: ${reportBrowserOs()}`,
+    `Screen: ${window.screen ? screen.width+'x'+screen.height : '?'} (window ${window.innerWidth}x${window.innerHeight})`,
+    `Date: ${fmtDMY(d)} ${fmtHM(d)}`,
+    `User agent: ${navigator.userAgent}`].join('\n');
+}
+function reportBody(full){
+  const v = id => ((document.getElementById(id)||{}).value || '').trim();
+  const inc = (document.getElementById('rpIncludeList')||{}).checked;
+  let body = `Prepline problem report\n\nWhat went wrong:\n${v('rpDesc')}\n\nWhat I was doing:\n${v('rpDoing') || '(not given)'}\n\n---\n${reportAutoText()}`;
+  if (inc) body += '\n\nMy current list (included because I ticked the box):\n' + feedbackListText();
+  if (!full && body.length > REPORT_MAX) body = body.slice(0, REPORT_MAX - 70) + '\n\n[cut short to fit an email link: use Copy report for the full text]';
+  return body;
+}
+function reportMailto(){
+  if (!SUPPORT_EMAIL) return '';
+  return 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent('Prepline problem report v' + reportVersion()) + '&body=' + encodeURIComponent(reportBody(false));
+}
+function openReport(){
+  closeReport();
+  const box = document.createElement('div'); box.id = 'reportModal'; box.className = 'share-modal no-print';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Report a problem');
+  box.innerHTML = `<div class="share-card" style="max-width:580px;"><div class="share-top"><h3>Report a problem</h3><button type="button" class="ghost" onclick="closeReport()" aria-label="Close">✕</button></div>
+    <p class="share-lede">Tell us what went wrong. <b>Email report</b> opens your own email app with the report ready to send${SUPPORT_EMAIL ? ` to ${escapeHtml(SUPPORT_EMAIL)}` : ''}; <b>Copy report</b> copies it so you can paste it anywhere. Nothing is sent from this page.</p>
+    <label class="rp-field" for="rpDesc">What went wrong? <span class="rp-req">(required)</span></label>
+    <textarea id="rpDesc" rows="4" required style="width:100%; box-sizing:border-box;" placeholder="e.g. The prep day print cut off the last two rows"></textarea>
+    <label class="rp-field" for="rpDoing">What were you doing? <span style="font-weight:400;">(optional)</span></label>
+    <textarea id="rpDoing" rows="2" style="width:100%; box-sizing:border-box;" placeholder="e.g. Uploaded a PDF, changed pax, then pressed Print all prep days"></textarea>
+    <label style="display:block; font-size:13px; margin:10px 0 4px;"><input type="checkbox" id="rpIncludeList"> Include my current list (dish names, tasks, totals) — off by default</label>
+    <div class="small" style="font-size:11.5px; color:#5C5F58;">Added automatically (no recipe data unless you tick the box above):</div>
+    <div class="rp-auto" id="rpAuto"></div>
+    <div class="row" style="gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+      ${SUPPORT_EMAIL ? '<button type="button" id="rpMailBtn" onclick="emailReport()">Email report</button>' : ''}
+      <button type="button" class="secondary" id="rpCopyBtn" onclick="copyReport()">Copy report</button>
+      <span class="small" id="rpStatus" style="font-size:12px;"></span>
+    </div>
+    <textarea id="rpPreview" readonly rows="6" style="display:none; width:100%; box-sizing:border-box; margin-top:8px; font-size:12px;" aria-label="Report text to copy"></textarea></div>`;
+  document.body.appendChild(box);
+  document.getElementById('rpAuto').textContent = reportAutoText();
+  box.addEventListener('click', e => { if (e.target === box) closeReport(); });
+  const t = document.getElementById('rpDesc'); if (t) t.focus();
+}
+function closeReport(){ const m = document.getElementById('reportModal'); if (m) m.remove(); }
+function reportValid(){
+  const t = document.getElementById('rpDesc'), st = document.getElementById('rpStatus');
+  if (t && t.value.trim()) return true;
+  if (st){ st.className = 'small rp-err'; st.textContent = 'Please describe the problem first (the first box).'; }
+  if (t) t.focus();
+  return false;
+}
+function emailReport(){
+  if (!reportValid()) return;
+  const url = reportMailto(); if (!url) return;
+  window.__lastReportMailto = url;
+  const st = document.getElementById('rpStatus');
+  if (st){ st.className = 'small'; st.textContent = 'Opening your email app… If nothing opens, use Copy report and email it to ' + SUPPORT_EMAIL + '.'; }
+  location.href = url;
+}
+function copyReport(){
+  if (!reportValid()) return;
+  const text = 'Subject: Prepline problem report v' + reportVersion() + '\n\n' + reportBody(true);
+  const st = document.getElementById('rpStatus');
+  window.__lastReportCopy = text;
+  const ok = () => { if (st){ st.className = 'small'; st.textContent = 'Copied. Paste it into an email to ' + (SUPPORT_EMAIL || 'whoever looks after Prepline') + ', or into Teams.'; } };
+  const fail = () => {
+    const pv = document.getElementById('rpPreview');
+    if (pv){ pv.value = text; pv.style.display = 'block'; pv.focus(); pv.select(); }
+    if (st){ st.className = 'small'; st.textContent = 'Could not copy automatically: the text is selected below, press Ctrl+C (or Cmd+C) to copy it.'; }
+  };
+  try{ if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail(); }catch(e){ fail(); }
+}
+
+// ---------- 7c. Privacy (v3.3.3) ----------
+// Online (http/https) the footer link opens privacy.html next to the app. A file:// copy (offline
+// download, single-file team edition) shows the same notice in the app, so nothing is fetched.
+const PRIVACY_UPDATED = '04/10/2026';
+function privacyListHtml(){
+  const mail = SUPPORT_EMAIL || 'autoprod.help@gmail.com';
+  return `<ul class="privacy-list">
+    <li><b>Your recipes and lists stay on your device.</b> Prepline runs in your web browser. Files you open and the lists it makes are kept in this browser on this device. Nothing is uploaded.</li>
+    <li><b>No accounts, no tracking.</b> There is no sign-up, no login, no analytics and no advertising.</li>
+    <li><b>Feedback and the survey are optional.</b> They only reach Autoprod (${escapeHtml(mail)}) when you choose to send them: Feedback and Report a problem open your own email app (or you copy the text), and the 1-minute survey is a separate page you open yourself.</li>
+    <li><b>The survey email field is optional.</b> It is only for early access to new features and never shared. Leave it blank and your answers are anonymous.</li>
+    <li><b>Questions?</b> Email <a href="mailto:${escapeHtml(mail)}">${escapeHtml(mail)}</a>.</li>
+  </ul><p class="small" style="font-size:12px; color:#5C5F58;">Last updated ${PRIVACY_UPDATED}.</p>`;
+}
+function privacyLinkClick(e){
+  if (/^https?:$/.test(location.protocol)) return true;   // online: open privacy.html
+  if (e) e.preventDefault();
+  openPrivacy();
+  return false;
+}
+function openPrivacy(){
+  closePrivacy();
+  const box = document.createElement('div'); box.id = 'privacyModal'; box.className = 'share-modal no-print';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Privacy');
+  box.innerHTML = `<div class="share-card" style="max-width:580px;"><div class="share-top"><h3>Privacy</h3><button type="button" class="ghost" onclick="closePrivacy()" aria-label="Close">✕</button></div>${privacyListHtml()}</div>`;
+  box.addEventListener('click', e => { if (e.target === box) closePrivacy(); });
+  document.body.appendChild(box);
+}
+function closePrivacy(){ const m = document.getElementById('privacyModal'); if (m) m.remove(); }
 
 
 // ---------- 8. Installable app (PWA) ----------
