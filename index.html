@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.3.2">
+<meta name="prepline-version" content="3.3.3">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -31,7 +31,7 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Prepline","alternateName":"Prepline prep list sorter",
 "description":"Free kitchen prep list organiser for chefs and cooks. Turn a menu, PDF or spreadsheet into prep lists sorted by dish, station and prep day, scale by pax, tag allergens, build supplier order sheets, print one page or share to phones. Runs in your browser, works offline.","url":"https://autoprod-dev.github.io/preplist-sorter/","applicationCategory":"BusinessApplication","applicationSubCategory":"Kitchen prep list organiser",
 "operatingSystem":"Any (web browser: Windows, macOS, Android, iOS)","browserRequirements":"Requires JavaScript and a modern browser",
-"inLanguage":"en-AU","softwareVersion":"3.3.2","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
+"inLanguage":"en-AU","softwareVersion":"3.3.3","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
 "offers":{"@type":"Offer","price":"0","priceCurrency":"AUD"},
 "featureList":["Auto-sorted prep lists from a menu, PDF or spreadsheet","Pax scaling","Prep lists by dish, team section and prep day","Allergen tags","Supplier order sheet","Cost per dish","Share to phones by QR code or link","One-page printouts","Excel export","Works offline"],
 "publisher":{"@type":"Organization","name":"Autoprod"}}
@@ -345,7 +345,7 @@ var LICENSE_CONFIG = {
       h = '<h3>' + esc(C.productName) + ' is on</h3>' +
         '<p class="pl-soft">This device is using one of your ' + (C.maxActivations || 3) + ' activations.</p>' +
         '<div class="pl-kv">Plan: ' + esc(planLabel(S.plan)) + '<br>Key: ' + esc(maskKey(S.key)) + '<br>Status: ' + st +
-        '<br>Last checked: ' + new Date(S.lastValidatedAt).toLocaleString() + '</div>' +
+        '<br>Last checked: ' + new Date(S.lastValidatedAt).toLocaleString('en-AU') + '</div>' +
         '<div class="pl-msg ' + (cls || '') + '" id="plLicMsg">' + esc(msg || '') + '</div>' + testHint +
         '<div class="pl-row end"><button class="pl-btn link" type="button" data-pl="recheck">Re-check now</button>' +
         '<button class="pl-btn alt" type="button" data-pl="deactivate" id="plDeactivate">Deactivate on this device</button>' +
@@ -766,6 +766,7 @@ var LICENSE_CONFIG = {
   #preplistTab footer{margin-top:44px; font-size:11.5px; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:16px; line-height:1.6;}
 
   @media print{
+    html,body{background:#fff !important;}   /* v3.3.3: no beige page background on a short last page */
     body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
     .no-print{display:none !important;}
     .wrap{max-width:100%; padding:0;}
@@ -773,8 +774,8 @@ var LICENSE_CONFIG = {
     table{page-break-inside:auto;}
     tr{page-break-inside:avoid;}
     .print-only{display:block !important;}
-    .print-only .dish{font-size:6.5px;}
-    .print-only .pf-section, .print-only .pf-day{font-size:10.4px;}
+    .print-only .dish{font-size:11px; line-height:1.25;}   /* v3.3.3: was 6.5px; 11px is about 8.3pt (Dishes / Used in columns) */
+    .print-only .pf-section, .print-only .pf-day, .print-only .pf-lead{font-size:10.4px; line-height:1.25;}
     .print-only tbody td{border-bottom:1.5px solid #999;}
     .orig-pages-grid{
       page-break-before:always; padding-top:14px;
@@ -784,11 +785,11 @@ var LICENSE_CONFIG = {
       flex-basis:100%; font-family:'Fraunces',serif; font-weight:600; font-size:12px;
       color:#1C1E1B; margin-bottom:4px;
     }
-    .orig-page-item{flex:0 0 calc(33.33% - 10px); break-inside:avoid;}
+    .orig-page-item{flex:0 0 100%; break-inside:avoid; page-break-inside:avoid;}   /* v3.3.3: full width, readable */
     .orig-page-print-label{
       font-family:'IBM Plex Mono',monospace; font-size:9px; color:#5C5F58; margin-bottom:4px;
     }
-    .orig-page-item img{max-width:100%; height:auto; border:1px solid #D6D2C4; display:block;}
+    .orig-page-item img{width:100%; max-width:100%; height:auto; max-height:245mm; object-fit:contain; object-position:left top; border:1px solid #D6D2C4; display:block;}
   }
   .print-only{display:none;}
   .print-head{margin-bottom:16px;}
@@ -854,6 +855,7 @@ var LICENSE_CONFIG = {
 
   .print-only{display:none;}
   @media print{
+    html,body{background:#fff !important;}
     body{background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
     .no-print{display:none !important;}
     .wrap{max-width:100%; padding:0;}
@@ -966,6 +968,15 @@ var LICENSE_CONFIG = {
   .shell-tab-btn.survey-link{text-decoration:none; display:inline-flex; align-items:center; font-weight:600; opacity:.92;}
   .shell-tab-btn.survey-link[hidden]{display:none;}
   .shell-tab-btn.contact-link{text-decoration:none; display:inline-flex; align-items:center;} .shell-tab-btn.contact-link[hidden]{display:none;}
+  /* v3.3.3: Report a problem (clearly visible), privacy link */
+  .shell-tab-btn.report-btn{background:#B5442E; border-color:#B5442E; color:#fff; font-weight:700;}
+  .shell-tab-btn.report-btn:hover{background:#9A3825;}
+  .rp-field{display:block; font-size:13px; font-weight:600; margin:10px 0 4px;}
+  .rp-req{color:#B5442E;}
+  .rp-err{color:#B5442E; font-size:12.5px; font-weight:600;}
+  .rp-auto{font:11.5px/1.5 'IBM Plex Mono',monospace; background:#F6F1E7; border-radius:7px; padding:8px 10px; white-space:pre-wrap; color:#3D3F3A; margin-top:6px;}
+  .footer-links{margin:2px 0 8px; font-size:12px;} .footer-links a{color:inherit;}
+  .privacy-list{line-height:1.55; padding-left:1.2em;} .privacy-list li{margin:4px 0;}
   .survey-toast{position:fixed; right:16px; bottom:16px; z-index:9000; max-width:330px; background:#1C1E1B; color:#F6F1E7; border-radius:12px; padding:14px 16px; box-shadow:0 8px 28px rgba(0,0,0,.28); font:14px/1.4 'Inter',sans-serif;}
   .survey-toast b{display:block; font-size:15px; margin-bottom:4px;}
   .survey-toast .st-row{display:flex; gap:8px; margin-top:10px;}
@@ -988,6 +999,7 @@ var LICENSE_CONFIG = {
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
     <button class="shell-tab-btn" id="feedbackBtn" onclick="openFeedback()" type="button" title="Send feedback (opens your email app or copies the text)">Feedback</button>
     <a class="shell-tab-btn contact-link" id="contactLink" href="#" hidden title="Email Prepline support">Email us</a>
+    <button class="shell-tab-btn report-btn" id="reportBtn" onclick="openReport()" type="button" title="Something not working? Send us a short problem report (opens your email app, or copy it)">⚠ Report a problem</button>
     <a class="shell-tab-btn survey-link" id="surveyLink" href="#" target="_blank" rel="noopener" hidden title="Opens a short anonymous survey in a new tab">Help shape Prepline – 1-min survey</a>
   </div>
 </div>
@@ -1139,7 +1151,8 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.2</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.3.3</div>
+    <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -2779,6 +2792,34 @@ function pdfFindMethodRegion(items){
 // Crops a rendered page canvas down to just its Method region — the actual pixels, so
 // whatever's on the page is shown exactly as printed, with none of the text-reading
 // fragility of trying to re-type it out. Returns null if there's nothing to crop.
+// v3.3.3: trims blank (near-white) margins off a method capture so it prints larger.
+// A row/column only counts as content with more than a few dark pixels, so a thin page rule
+// down the side doesn't stop the trim. Keeps a small border; on any problem, or if the trim
+// would remove almost everything, the original canvas is returned unchanged.
+function trimCanvasWhitespace(c){
+  try{
+    const w = c.width, hgt = c.height; if (w < 20 || hgt < 20) return c;
+    const data = c.getContext('2d').getImageData(0, 0, w, hgt).data;
+    const rowDark = new Uint32Array(hgt), colDark = new Uint32Array(w);
+    for (let y=0; y<hgt; y++){ for (let x=0; x<w; x++){ const i = (y*w + x)*4; if (data[i] < 200 || data[i+1] < 200 || data[i+2] < 200){ rowDark[y]++; colDark[x]++; } } }
+    const rMin = Math.max(3, Math.round(w*0.004)), cMin = Math.max(3, Math.round(hgt*0.01));
+    let top = 0; while (top < hgt && rowDark[top] <= rMin) top++;
+    let bot = hgt-1; while (bot > top && rowDark[bot] <= rMin) bot--;
+    let left = 0; while (left < w && colDark[left] <= cMin) left++;
+    let right = w-1; while (right > left && colDark[right] <= cMin) right--;
+    if (top >= bot || left >= right) return c;
+    const pad = Math.round(Math.max(w, hgt) * 0.015) + 6;
+    top = Math.max(0, top-pad); left = Math.max(0, left-pad); bot = Math.min(hgt-1, bot+pad); right = Math.min(w-1, right+pad);
+    const nw = right-left+1, nh = bot-top+1;
+    if (nw < w*0.15 || nh < hgt*0.08) return c;              // suspiciously small: keep the original
+    if (nw > w*0.97 && nh > hgt*0.97) return c;              // nothing worth trimming
+    const out = document.createElement('canvas'); out.width = nw; out.height = nh;
+    const octx = out.getContext('2d'); if (!octx) return c;
+    octx.fillStyle = '#fff'; octx.fillRect(0, 0, nw, nh);
+    octx.drawImage(c, left, top, nw, nh, 0, 0, nw, nh);
+    return out;
+  }catch(e){ return c; }
+}
 function cropMethodRegion(canvas, scale, region){
   if (!region) return null;
   try{
@@ -2793,7 +2834,8 @@ function cropMethodRegion(canvas, scale, region){
     const cctx = crop.getContext('2d');
     if (!cctx) return null;
     cctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
-    const url = crop.toDataURL('image/jpeg', 0.82);
+    const trimmed = trimCanvasWhitespace(crop);
+    const url = trimmed.toDataURL('image/jpeg', 0.82);
     return (url && url!=='data:,') ? url : null;
   }catch(e){ return null; }
 }
@@ -3563,8 +3605,18 @@ function fmtDateTime(d){
   // reopening the page after a sort crashed the results render ("toLocaleDateString is not a function").
   if (!(d instanceof Date)) d = new Date(d);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year:'numeric'}) +
-    ' at ' + d.toLocaleTimeString('en-AU', {hour:'numeric', minute:'2-digit'});
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + fmtDMY(d) + ' at ' + fmtHM(d);
+}
+// v3.3.3: every date the app shows or prints is dd/mm/yyyy, whatever the browser language.
+function fmtDMY(d){
+  if (!(d instanceof Date)) d = (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) ? new Date(d.slice(0,10)+'T00:00:00') : new Date(d);
+  if (isNaN(d.getTime())) return '';
+  const p = n => String(n).padStart(2, '0');
+  return p(d.getDate()) + '/' + p(d.getMonth()+1) + '/' + d.getFullYear();
+}
+function fmtHM(d){
+  const hr = d.getHours(), m = String(d.getMinutes()).padStart(2, '0');
+  return ((hr % 12) || 12) + ':' + m + ' ' + (hr < 12 ? 'am' : 'pm');
 }
 
 function renderMasterSummary(){
@@ -3674,7 +3726,7 @@ function buildPrintDocHtml(target){
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     ${styleHtml}
-    <style>body{padding:24px;} .print-only{display:block !important;}</style>
+    <style>html,body{background:#fff;} body{padding:24px;} .print-only{display:block !important;}</style>
     </head><body>${target.outerHTML}${printFooterHtml()}</body></html>`;
 }
 // Printing a specific view (one dish / one section / one prep day / the master summary).
@@ -3762,7 +3814,7 @@ async function printAllOfView(targetView, filename){
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     ${styleHtml}
-    <style>body{padding:24px;} .print-only{display:block !important;}</style>
+    <style>html,body{background:#fff;} body{padding:24px;} .print-only{display:block !important;}</style>
     </head><body>${bodyHtml}${printFooterHtml()}</body></html>`;
   await printReadyHtml(fullHtml, filename);
 }
@@ -4367,8 +4419,8 @@ function renderByPriority(){
           <td class="task">${escapeHtml(g.taskLabel)}${isMerged?`<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>`:''}${alChipsRowsHtml(g.rows)}</td>
           <td class="dish">${dishList}</td>
           <td class="qty">${totalCell}</td>
-          <td>${escapeHtml(g.section)}</td>
-          <td>${escapeHtml(leaderBySection[g.section] || '—')}</td>
+          <td class="pf-section">${escapeHtml(g.section)}</td>
+          <td class="pf-lead">${escapeHtml(leaderBySection[g.section] || '—')}</td>
         </tr>`;
       }).join('');
     } else {
@@ -4388,7 +4440,7 @@ function renderByPriority(){
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
           <td class="pf-section">${escapeHtml(r.section)}</td>
-          <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
+          <td class="pf-lead">${escapeHtml(leaderBySection[r.section] || '—')}</td>
         </tr>`;
       }).join('');
     }
@@ -4401,8 +4453,8 @@ function renderByPriority(){
       </div>
       ${alPrintNote(rowsForDay)}
       <table><thead>${consolidateOn
-        ? '<tr><th style="width:32%">Task</th><th style="width:26%">Dishes</th><th style="width:12%">Total needed</th><th style="width:14%">Section</th><th style="width:10%">Lead</th></tr>'
-        : '<tr><th style="width:13%">Dish</th><th>Task</th><th style="width:7%">Pax</th><th style="width:9%">Per pax</th><th style="width:10%">Total needed</th><th style="width:12%">Section</th><th style="width:9%">Lead</th></tr>'}</thead>
+        ? '<tr><th style="width:27%">Task</th><th style="width:22%">Dishes</th><th style="width:11%">Total needed</th><th style="width:21%">Section</th><th style="width:19%">Lead</th></tr>'
+        : '<tr><th style="width:14%">Dish</th><th>Task</th><th style="width:6%">Pax</th><th style="width:8%">Per pax</th><th style="width:9%">Total needed</th><th style="width:16%">Section</th><th style="width:14%">Lead</th></tr>'}</thead>
       <tbody>
       ${printRowsHtml2}
       </tbody></table>
@@ -5054,7 +5106,7 @@ function renderProPanel(){
       <details class="pro-box" open><summary>Saved templates (${tplNames.length})</summary>
         <div class="row" style="gap:6px; margin:8px 0;"><div class="field" style="flex:1 1 160px;"><input type="text" id="proTemplateName" placeholder="Template name, e.g. Friday banquet" maxlength="60"></div>
           <button class="secondary" type="button" id="proSaveTemplateBtn" onclick="saveTemplate()">Save current list</button></div>
-        ${tplNames.length ? `<table class="pro-table"><tbody>${tplNames.map(n=>`<tr><td>${proEsc(n)}<div class="pro-per">${(tpl[n].ROWS||[]).length} items · ${proEsc(String(tpl[n].savedAt||'').slice(0,10))}</div></td>
+        ${tplNames.length ? `<table class="pro-table"><tbody>${tplNames.map(n=>`<tr><td>${proEsc(n)}<div class="pro-per">${(tpl[n].ROWS||[]).length} items · ${proEsc(tpl[n].savedAt ? fmtDMY(String(tpl[n].savedAt)) : '')}</div></td>
           <td style="text-align:right; white-space:nowrap;"><button class="secondary" type="button" onclick="loadTemplate('${encName(n)}')">Load</button> <button class="ghost" type="button" onclick="deleteTemplate('${encName(n)}')">Delete</button></td></tr>`).join('')}</tbody></table>`
           : '<div class="pro-per">No templates yet. Sort a list, then save it here to reuse next time.</div>'}
       </details>
@@ -5490,7 +5542,7 @@ function renderOrderSheet(){
     ${g.lines.map(L=>`<tr data-line="${escapeHtml(L.id)}"><td class="task">${escapeHtml(L.task)}${alChipsRowsHtml(L.rows)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.td(L)}</td>`).join('')}${g.supplier?'':`<td>${supplierInputHtml(L.task, 'osup')}</td>`}</tr>`).join('')}
     </tbody></table></div>
     <div class="print-only" id="print-${gid}">
-      <div class="print-head"><h2>Order sheet — ${escapeHtml(title)}</h2><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'} · printed ${escapeHtml(new Date().toLocaleDateString())}${ORDER_GROUP_FOOT.map(f=>f(g, true)).join('')}</div></div>
+      <div class="print-head"><h2>Order sheet — ${escapeHtml(title)}</h2><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'} · printed ${escapeHtml(fmtDMY(new Date()))}${ORDER_GROUP_FOOT.map(f=>f(g, true)).join('')}</div></div>
       <table><thead><tr><th>Item</th><th>Needed</th><th>Order qty</th><th>Used in</th>${ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('')}<th style="width:8%">✓</th></tr></thead><tbody>
       ${g.lines.map(L=>`<tr><td class="task">${escapeHtml(L.task)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.print ? c.print(L) : c.td(L)}</td>`).join('')}<td></td></tr>`).join('')}
       </tbody></table>
@@ -5508,7 +5560,7 @@ function exportOrderToXlsx(){
   const wb = XLSX.utils.book_new(), used = new Set(), changes = [];
   groups.forEach(g=>{
     const title = g.supplier || 'No supplier yet';
-    const aoa = [['Order sheet: '+title], ['Generated '+new Date().toLocaleDateString()+' with Prepline. Order qty is rounded up; edit it as needed.'], [],
+    const aoa = [['Order sheet: '+title], ['Generated '+fmtDMY(new Date())+' with Prepline. Order qty is rounded up; edit it as needed.'], [],
       ['Item','Needed','Unit','Order qty','Order unit','Supplier','Used in', ...ORDER_XLSX_EXTRA.map(c=>c.header)]];
     const hdrRow = aoa.length;   // 1-based row of the header
     const fcells = [];
@@ -5896,7 +5948,7 @@ function renderSharedView(){
   v.innerHTML = `<div class="sv-wrap">
     <div class="sv-head"><div class="sv-brand">Prepline · shared list (read-only)</div>
       <h1>${S(d.n)}</h1>
-      <div class="sv-meta">${d.l ? 'Lead: <b>'+S(d.l)+'</b> · ' : ''}${d.r.length} task${d.r.length===1?'':'s'} · shared ${S(d.d)}${Array.isArray(d.p) ? ` · <b>Part ${S(d.p[0])} of ${S(d.p[1])}</b>` : ''}</div>
+      <div class="sv-meta">${d.l ? 'Lead: <b>'+S(d.l)+'</b> · ' : ''}${d.r.length} task${d.r.length===1?'':'s'} · shared ${S(/^\d{4}-\d{2}-\d{2}$/.test(String(d.d||'')) ? fmtDMY(d.d) : d.d)}${Array.isArray(d.p) ? ` · <b>Part ${S(d.p[0])} of ${S(d.p[1])}</b>` : ''}</div>
       ${d.smp ? '<div class="sv-sample">SAMPLE DATA — made-up menu</div>' : ''}
     </div>
     ${days.map(day=>`<h2 class="sv-day">${S(day)}</h2><table class="sv-table"><tbody>${byDay[day].map(row=>`<tr><td class="sv-tick"><input type="checkbox" aria-label="done"></td><td><div class="sv-task">${S(row[1])}${row[4] ? row[4].split(' ').map(t=>`<span class="al-chip${t.endsWith('?')?' sug':''}">${S(t)}</span>`).join('') : ''}</div><div class="sv-dish">${S(d.ds[row[0]])}${d.dp && d.dp[row[0]]!=null ? ' · '+S(d.dp[row[0]])+' pax' : ''}</div></td><td class="sv-qty">${row[2] ? S(row[2]) : '—'}</td></tr>`).join('')}</tbody></table>`).join('')}
@@ -6037,6 +6089,148 @@ function copyFeedback(){
   window.__lastFeedbackCopy = text;
   try{ if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail(); }catch(e){ fail(); }
 }
+
+// ---------- 7b. Report a problem (v3.3.3) ----------
+// A short form: what went wrong (required) and what you were doing (optional). Adds the app
+// version, view, browser/OS, screen size, edition and date. Recipe data ONLY if the box is ticked.
+// Sent with a plain mailto: (your own email app) or copied. No network request from this page.
+const REPORT_MAX = 1800;
+function reportVersion(){ return (document.querySelector('meta[name="prepline-version"]')||{}).content || ''; }
+function reportEdition(){
+  if (typeof teamEdition==='function' && teamEdition()) return 'team';
+  if (location.protocol === 'file:') return 'offline';
+  return 'web';
+}
+function reportBrowserOs(){
+  const ua = navigator.userAgent || '';
+  const m = (re) => (ua.match(re)||[])[1];
+  let br = 'Unknown browser';
+  if (m(/Edg(?:e|A|iOS)?\/([\d.]+)/)) br = 'Edge ' + m(/Edg(?:e|A|iOS)?\/(\d+)/);
+  else if (m(/OPR\/(\d+)/)) br = 'Opera ' + m(/OPR\/(\d+)/);
+  else if (m(/Firefox\/(\d+)/)) br = 'Firefox ' + m(/Firefox\/(\d+)/);
+  else if (m(/CriOS\/(\d+)/)) br = 'Chrome ' + m(/CriOS\/(\d+)/) + ' (iOS)';
+  else if (m(/Chrome\/(\d+)/)) br = 'Chrome ' + m(/Chrome\/(\d+)/);
+  else if (/Safari\//.test(ua) && m(/Version\/(\d+)/)) br = 'Safari ' + m(/Version\/(\d+)/);
+  let os = 'Unknown OS';
+  if (/Windows NT 10/.test(ua)) os = 'Windows 10/11'; else if (/Windows/.test(ua)) os = 'Windows';
+  else if (/iPhone|iPad|iPod/.test(ua)) os = 'iOS ' + (m(/OS (\d+[_\d]*)/)||'').replace(/_/g, '.');
+  else if (/Android/.test(ua)) os = 'Android ' + (m(/Android ([\d.]+)/)||'');
+  else if (/CrOS/.test(ua)) os = 'ChromeOS'; else if (/Mac OS X/.test(ua)) os = 'macOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  return br + ' on ' + os.trim();
+}
+function reportViewLabel(){
+  if (document.body.classList.contains('shared-mode')) return 'shared phone view';
+  const help = document.getElementById('helpTab');
+  if (help && help.classList.contains('active')) return 'Help tab';
+  const names = {dish:'By dish', section:'By team section', priority:'By prep day', order:'Order sheet'};
+  const v = (typeof viewMode !== 'undefined') ? viewMode : '';
+  return 'Preplist tab, ' + (names[v] || v || 'no view') + ((typeof ROWS !== 'undefined' && ROWS.length) ? ' (list loaded, ' + ROWS.length + ' rows)' : ' (no list loaded)');
+}
+function reportAutoText(){
+  const d = new Date();
+  return [`App: Prepline v${reportVersion()} (${reportEdition()} edition)`,
+    `View: ${reportViewLabel()}`,
+    `Browser: ${reportBrowserOs()}`,
+    `Screen: ${window.screen ? screen.width+'x'+screen.height : '?'} (window ${window.innerWidth}x${window.innerHeight})`,
+    `Date: ${fmtDMY(d)} ${fmtHM(d)}`,
+    `User agent: ${navigator.userAgent}`].join('\n');
+}
+function reportBody(full){
+  const v = id => ((document.getElementById(id)||{}).value || '').trim();
+  const inc = (document.getElementById('rpIncludeList')||{}).checked;
+  let body = `Prepline problem report\n\nWhat went wrong:\n${v('rpDesc')}\n\nWhat I was doing:\n${v('rpDoing') || '(not given)'}\n\n---\n${reportAutoText()}`;
+  if (inc) body += '\n\nMy current list (included because I ticked the box):\n' + feedbackListText();
+  if (!full && body.length > REPORT_MAX) body = body.slice(0, REPORT_MAX - 70) + '\n\n[cut short to fit an email link: use Copy report for the full text]';
+  return body;
+}
+function reportMailto(){
+  if (!SUPPORT_EMAIL) return '';
+  return 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent('Prepline problem report v' + reportVersion()) + '&body=' + encodeURIComponent(reportBody(false));
+}
+function openReport(){
+  closeReport();
+  const box = document.createElement('div'); box.id = 'reportModal'; box.className = 'share-modal no-print';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Report a problem');
+  box.innerHTML = `<div class="share-card" style="max-width:580px;"><div class="share-top"><h3>Report a problem</h3><button type="button" class="ghost" onclick="closeReport()" aria-label="Close">✕</button></div>
+    <p class="share-lede">Tell us what went wrong. <b>Email report</b> opens your own email app with the report ready to send${SUPPORT_EMAIL ? ` to ${escapeHtml(SUPPORT_EMAIL)}` : ''}; <b>Copy report</b> copies it so you can paste it anywhere. Nothing is sent from this page.</p>
+    <label class="rp-field" for="rpDesc">What went wrong? <span class="rp-req">(required)</span></label>
+    <textarea id="rpDesc" rows="4" required style="width:100%; box-sizing:border-box;" placeholder="e.g. The prep day print cut off the last two rows"></textarea>
+    <label class="rp-field" for="rpDoing">What were you doing? <span style="font-weight:400;">(optional)</span></label>
+    <textarea id="rpDoing" rows="2" style="width:100%; box-sizing:border-box;" placeholder="e.g. Uploaded a PDF, changed pax, then pressed Print all prep days"></textarea>
+    <label style="display:block; font-size:13px; margin:10px 0 4px;"><input type="checkbox" id="rpIncludeList"> Include my current list (dish names, tasks, totals) — off by default</label>
+    <div class="small" style="font-size:11.5px; color:#5C5F58;">Added automatically (no recipe data unless you tick the box above):</div>
+    <div class="rp-auto" id="rpAuto"></div>
+    <div class="row" style="gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap;">
+      ${SUPPORT_EMAIL ? '<button type="button" id="rpMailBtn" onclick="emailReport()">Email report</button>' : ''}
+      <button type="button" class="secondary" id="rpCopyBtn" onclick="copyReport()">Copy report</button>
+      <span class="small" id="rpStatus" style="font-size:12px;"></span>
+    </div>
+    <textarea id="rpPreview" readonly rows="6" style="display:none; width:100%; box-sizing:border-box; margin-top:8px; font-size:12px;" aria-label="Report text to copy"></textarea></div>`;
+  document.body.appendChild(box);
+  document.getElementById('rpAuto').textContent = reportAutoText();
+  box.addEventListener('click', e => { if (e.target === box) closeReport(); });
+  const t = document.getElementById('rpDesc'); if (t) t.focus();
+}
+function closeReport(){ const m = document.getElementById('reportModal'); if (m) m.remove(); }
+function reportValid(){
+  const t = document.getElementById('rpDesc'), st = document.getElementById('rpStatus');
+  if (t && t.value.trim()) return true;
+  if (st){ st.className = 'small rp-err'; st.textContent = 'Please describe the problem first (the first box).'; }
+  if (t) t.focus();
+  return false;
+}
+function emailReport(){
+  if (!reportValid()) return;
+  const url = reportMailto(); if (!url) return;
+  window.__lastReportMailto = url;
+  const st = document.getElementById('rpStatus');
+  if (st){ st.className = 'small'; st.textContent = 'Opening your email app… If nothing opens, use Copy report and email it to ' + SUPPORT_EMAIL + '.'; }
+  location.href = url;
+}
+function copyReport(){
+  if (!reportValid()) return;
+  const text = 'Subject: Prepline problem report v' + reportVersion() + '\n\n' + reportBody(true);
+  const st = document.getElementById('rpStatus');
+  window.__lastReportCopy = text;
+  const ok = () => { if (st){ st.className = 'small'; st.textContent = 'Copied. Paste it into an email to ' + (SUPPORT_EMAIL || 'whoever looks after Prepline') + ', or into Teams.'; } };
+  const fail = () => {
+    const pv = document.getElementById('rpPreview');
+    if (pv){ pv.value = text; pv.style.display = 'block'; pv.focus(); pv.select(); }
+    if (st){ st.className = 'small'; st.textContent = 'Could not copy automatically: the text is selected below, press Ctrl+C (or Cmd+C) to copy it.'; }
+  };
+  try{ if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fail); else fail(); }catch(e){ fail(); }
+}
+
+// ---------- 7c. Privacy (v3.3.3) ----------
+// Online (http/https) the footer link opens privacy.html next to the app. A file:// copy (offline
+// download, single-file team edition) shows the same notice in the app, so nothing is fetched.
+const PRIVACY_UPDATED = '04/10/2026';
+function privacyListHtml(){
+  const mail = SUPPORT_EMAIL || 'autoprod.help@gmail.com';
+  return `<ul class="privacy-list">
+    <li><b>Your recipes and lists stay on your device.</b> Prepline runs in your web browser. Files you open and the lists it makes are kept in this browser on this device. Nothing is uploaded.</li>
+    <li><b>No accounts, no tracking.</b> There is no sign-up, no login, no analytics and no advertising.</li>
+    <li><b>Feedback and the survey are optional.</b> They only reach Autoprod (${escapeHtml(mail)}) when you choose to send them: Feedback and Report a problem open your own email app (or you copy the text), and the 1-minute survey is a separate page you open yourself.</li>
+    <li><b>The survey email field is optional.</b> It is only for early access to new features and never shared. Leave it blank and your answers are anonymous.</li>
+    <li><b>Questions?</b> Email <a href="mailto:${escapeHtml(mail)}">${escapeHtml(mail)}</a>.</li>
+  </ul><p class="small" style="font-size:12px; color:#5C5F58;">Last updated ${PRIVACY_UPDATED}.</p>`;
+}
+function privacyLinkClick(e){
+  if (/^https?:$/.test(location.protocol)) return true;   // online: open privacy.html
+  if (e) e.preventDefault();
+  openPrivacy();
+  return false;
+}
+function openPrivacy(){
+  closePrivacy();
+  const box = document.createElement('div'); box.id = 'privacyModal'; box.className = 'share-modal no-print';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Privacy');
+  box.innerHTML = `<div class="share-card" style="max-width:580px;"><div class="share-top"><h3>Privacy</h3><button type="button" class="ghost" onclick="closePrivacy()" aria-label="Close">✕</button></div>${privacyListHtml()}</div>`;
+  box.addEventListener('click', e => { if (e.target === box) closePrivacy(); });
+  document.body.appendChild(box);
+}
+function closePrivacy(){ const m = document.getElementById('privacyModal'); if (m) m.remove(); }
 
 
 // ---------- 8. Installable app (PWA) ----------

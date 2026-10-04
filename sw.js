@@ -8,11 +8,11 @@
  *    So an old index can never be served for ever: the next online load replaces it.
  *  - Pinned CDN libraries (cdnjs xlsx / pdf.js, versioned URLs): cache first.
  *  - Google Fonts, icons, manifest: stale-while-revalidate.
- *  - Anything else (licence API, checkout, other sites, non-GET): not touched.
+ *  - Anything else (other sites, non-GET): not touched.
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '3.3.2';
+const VERSION = '3.3.3';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
 // The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
 const NO_CDN = SCOPE_PATH === '/prepline-team/';
@@ -116,5 +116,5 @@ self.addEventListener('fetch', event => {
   if (NO_CDN) return;   // team site: nothing outside the site is ever handled (or requested) here
   if (CDN_LIBS.includes(url.href)) { event.respondWith(cacheFirst(req)); return; }
   if (FONT_HOSTS.includes(url.hostname)) { event.respondWith(staleWhileRevalidate(req)); return; }
-  // everything else (licence checks, checkout, analytics-free by design): straight to the network
+  // everything else: straight to the network (no analytics by design)
 });

@@ -53,6 +53,13 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.3.3 (2026-10-04) Colleague trial: print fixes, Report a problem, privacy page
+- Print: Dishes / Used in column 11px (about 8.3pt, was 6.5px); prep-day handouts give Section and Lead more room (small-print 10.4px) so rows no longer wrap to 3 lines; white page background in print (no beige band under a short last page); Method captures print full width, with the blank margin around each capture trimmed when it is captured (any problem keeps the full capture).
+- Dates are dd/mm/yyyy everywhere (loaded stamp, order sheet "printed", Excel "Generated", shared view, templates), whatever the browser language.
+- "Report a problem" button next to Feedback / Email us (and in the footer): what went wrong (required), what you were doing (optional); adds app version, view, browser and OS, screen size, edition (web/team/offline) and date. Email report (mailto autoprod.help@gmail.com, subject "Prepline problem report v3.3.3", body capped at 1,800 characters) or Copy report. Your list only if you tick the box (off by default). No network request.
+- Privacy page (privacy.html, linked in the footer; a file:// copy shows the same notice in the app).
+- Public and team builds: the Lemon Squeezy test checkout config and licence code are left out of the built page (build_public.py); the test site keeps them.
+
 ## 3.3.2 (2026-10-04) Survey link, one-time survey prompt, survey QR, SEO
 - "Help shape Prepline – 1-min survey" link next to Feedback. Opens in a new tab (`rel="noopener"`). The address lives in one constant, `SURVEY_URL`; empty = every survey link, prompt and QR is hidden.
 - One-time prompt (small corner card, not a blocking modal) about 1.5 s after a list is first generated: Take survey / No thanks. Remembered in `localStorage` (`prepline.surveyPrompt.v1`) the moment it shows, so it never appears again. Never shown in the phone shared view.
