@@ -55,7 +55,7 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 
 ## 3.3.4 (2026-10-05) Phone fixes from the mobile check (TEST site only, not live)
 - 320px phones (iPhone SE, Galaxy S9+): view switcher wraps; summary table scrolls inside its box. No more sideways page scroll or zoomed-out page (this also hid the survey prompt's "No thanks" button).
-- Bigger tap targets on touch screens: row checkboxes 22px, checkbox labels 32px tall, footer links padded.
+- Bigger tap targets on touch screens: row checkboxes 24px, checkbox labels and buttons/inputs/selects 32px tall, footer links padded.
 - Dates use the local day, not UTC: Excel and order-sheet file names, share payload date and survey prompt mark (before 11 am Sydney they showed yesterday).
 - New test: tests/v3/test_v334.py.
 

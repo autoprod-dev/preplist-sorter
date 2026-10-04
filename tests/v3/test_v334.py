@@ -29,7 +29,7 @@ with sync_playwright() as p:
             pg.evaluate(f"setView('{v}')"); pg.wait_for_timeout(250); sw, W = pg.evaluate(OVER)
             check(f'{dev}: {v} view fits the screen width', sw <= W + 1, (sw, W))
         sizes = pg.evaluate("[...document.querySelectorAll('#preplistTab input[type=checkbox]')].filter(e=>e.offsetParent).map(e=>{const r=e.getBoundingClientRect(); return Math.min(r.width, r.height);})")
-        check(f'{dev}: checkboxes at least 22px ({len(sizes)} visible)', sizes and min(sizes) >= 21.5, sorted(set(round(s) for s in sizes))[:5])
+        check(f'{dev}: checkboxes at least 24px ({len(sizes)} visible)', sizes and min(sizes) >= 23.5, sorted(set(round(s) for s in sizes))[:5])
         fl = pg.evaluate("[...document.querySelectorAll('.footer-links a')].map(a=>Math.round(a.getBoundingClientRect().height))")
         check(f'{dev}: footer links at least 24px tall', fl and min(fl) >= 24, fl)
         if dev == 'Pixel 5':
