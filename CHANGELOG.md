@@ -53,6 +53,12 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.3.4 (2026-10-05) Phone fixes from the mobile check (TEST site only, not live)
+- 320px phones (iPhone SE, Galaxy S9+): view switcher wraps; summary table scrolls inside its box. No more sideways page scroll or zoomed-out page (this also hid the survey prompt's "No thanks" button).
+- Bigger tap targets on touch screens: row checkboxes 22px, checkbox labels 32px tall, footer links padded.
+- Dates use the local day, not UTC: Excel and order-sheet file names, share payload date and survey prompt mark (before 11 am Sydney they showed yesterday).
+- New test: tests/v3/test_v334.py.
+
 ## 3.3.3 (2026-10-04) Colleague trial: print fixes, Report a problem, privacy page
 - Print: Dishes / Used in column 11px (about 8.3pt, was 6.5px); prep-day handouts give Section and Lead more room (small-print 10.4px) so rows no longer wrap to 3 lines; white page background in print (no beige band under a short last page); Method captures print full width, with the blank margin around each capture trimmed when it is captured (any problem keeps the full capture).
 - Dates are dd/mm/yyyy everywhere (loaded stamp, order sheet "printed", Excel "Generated", shared view, templates), whatever the browser language.
