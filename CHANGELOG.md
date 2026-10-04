@@ -53,6 +53,10 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.3.5 (2026-10-05) Team edition fits 320px phones (TEST site only, not live/team)
+- The Kitchen tools grid (Saved templates, Custom stations, Kitchens; shown only in the team edition / Pro) had a 280px minimum column and pushed 320px phones 8px wider. Columns now shrink to the screen (minmax(min(280px,100%),1fr)).
+- Found when releasing 3.3.4: live passed, team failed test_v334 at 320px and was rolled back to 3.3.3.
+
 ## 3.3.4 (2026-10-05) Phone fixes from the mobile check (TEST site only, not live)
 - 320px phones (iPhone SE, Galaxy S9+): view switcher wraps; summary table scrolls inside its box. No more sideways page scroll or zoomed-out page (this also hid the survey prompt's "No thanks" button).
 - Bigger tap targets on touch screens: row checkboxes 24px, checkbox labels and buttons/inputs/selects 32px tall, footer links padded.
