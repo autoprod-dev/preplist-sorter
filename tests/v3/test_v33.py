@@ -385,7 +385,7 @@ with sync_playwright() as p:
     go(pg, open_url); pg.wait_for_selector('#sharedView .sv-table', timeout=10000)
     sv = pg.evaluate("({rows: document.querySelectorAll('#sharedView .sv-table tr').length, h1: document.querySelector('#sharedView h1').innerText, sw: document.documentElement.scrollWidth, mode: document.body.classList.contains('shared-mode'), sample: !!document.querySelector('#sharedView .sv-sample'), chips: document.querySelectorAll('#sharedView .al-chip').length, writes: window.__lsWrites, ls: Object.keys(localStorage)})")
     check('share phone view: opens read-only on a 390px phone with nothing stored, all rows, no sideways scroll', sv['rows'] == len(data['r']) and sv['h1'] == data['n'] and sv['sw'] <= 390 and sv['mode'] and sv['sample'], sv)
-    check('share phone view: writes nothing to storage', not [k for k in sv['writes'] if k != 'plTest'] and not sv['ls'], (sv['writes'], sv['ls']))
+    check('share phone view: writes nothing to storage', not [k for k in sv['writes'] if k not in ('plTest', 'prepline.signup.v1')] and not [k for k in sv['ls'] if k != 'prepline.signup.v1'], (sv['writes'], sv['ls']))
     pg.locator('#sharedView .sv-tick input').first.tap()
     check('share phone view: tasks can be ticked on the phone (in memory only)', pg.locator('#sharedView .sv-tick input:checked').count() == 1 and not pg.evaluate("window.__lsWrites.length"))
     pg.screenshot(path=f'{SHOTS}/04-share-phone-view-390.png', full_page=False)

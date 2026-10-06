@@ -80,7 +80,7 @@ with sync_playwright() as p:
         r = pp.evaluate("fetch(location.href,{cache:'no-store'}).then(r=>r.status)")
         txt = pp.inner_text('body')
         check('privacy page: 200 and covers device-only data, no tracking, optional survey/feedback, optional email, contact, date',
-              r == 200 and all(k in txt for k in ['stay on your device', 'No accounts, no tracking', 'autoprod.help@gmail.com', 'email field is optional', 'Last updated 04/10/2026']), (r, txt[:200]))
+              r == 200 and all(k in txt for k in (['stay on your device', 'Your name and role', 'No login, no analytics', 'autoprod.help@gmail.com', 'email field is optional', 'Last updated 06/10/2026'] if tuple(map(int, EXPECT.split('.')[:2])) >= (3, 4) else ['stay on your device', 'No accounts, no tracking', 'autoprod.help@gmail.com', 'email field is optional', 'Last updated 04/10/2026'])), (r, txt[:200]))
         noidx = pp.locator('meta[name=robots]').count()
         check('privacy page: noindex ' + ('present (team/test)' if EDITION == 'team' or TESTBUILD else 'absent (public)'), (noidx > 0) == (EDITION == 'team' or TESTBUILD))
         pp.close()

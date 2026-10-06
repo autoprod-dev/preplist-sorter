@@ -53,6 +53,11 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Re-upload: the importer reads the wider layout (Source tab is now 7 columns right of Item), and a re-uploaded PDF export keeps its totals (per-pax × PAX).
 - Tests: formulas checked with openpyxl and recalculated with LibreOffice headless (Python evaluator fallback), before and after editing PAX, a per-pax cell and one row's PAX; spreadsheet, PDF, PDF with no Yield, append and template lists.
 
+## 3.4.0 (2026-10-06) First-visit welcome box (name + position)
+- Asks once per device for Name and Position before using the app (live and test sites only; never on file:// copies, the team site, the shared phone view or in print). ALLOW_SKIP flag (default false).
+- Saved to the private "Prepline sign-ups" Google Sheet via an Apps Script web app: Name, Position, Date tried only. Queued in localStorage and retried once per load (max 5); the app never waits for the network.
+- Privacy page and in-app privacy text updated. New tests: tests/v3/test_v340.py; tests/v3/signup_off/ lets older suites run with the box done.
+
 ## 3.3.5 (2026-10-05) Team edition fits 320px phones (TEST site only, not live/team)
 - The Kitchen tools grid (Saved templates, Custom stations, Kitchens; shown only in the team edition / Pro) had a 280px minimum column and pushed 320px phones 8px wider. Columns now shrink to the screen (minmax(min(280px,100%),1fr)).
 - Found when releasing 3.3.4: live passed, team failed test_v334 at 320px and was rolled back to 3.3.3.
