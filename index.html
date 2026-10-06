@@ -6294,7 +6294,7 @@ const SIGNUP_CONFIG = {
   sites: { '/preplist-sorter/': 'live', '/prepline-test/': 'test' },
   positions: ['Head Chef', 'Sous Chef', 'Chef de Partie', 'Cook', 'Kitchen Hand', 'Other'],
   doneKey: 'prepline.signup.v1', queueKey: 'prepline.signupQueue.v1', skipKey: 'prepline.signupSkip.v1',
-  maxTries: 5, minMs: 1500, timeoutMs: 10000,
+  maxTries: 5, minMs: 1500, timeoutMs: 30000,   // Apps Script can take 10-30 s on a cold start
 };
 function signupSite(){
   if (!/^https?:$/.test(location.protocol) || !SIGNUP_CONFIG.endpoint) return null;
@@ -6423,7 +6423,7 @@ async function flushSignupQueue(){
     const t = ctl ? setTimeout(() => ctl.abort(), SIGNUP_CONFIG.timeoutMs) : 0;
     const r = await fetch(SIGNUP_CONFIG.endpoint + '?site=' + encodeURIComponent(site), {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(q.b),
-      credentials: 'omit', cache: 'no-store', redirect: 'follow', signal: ctl ? ctl.signal : undefined });
+      credentials: 'omit', cache: 'no-store', redirect: 'follow', keepalive: true, signal: ctl ? ctl.signal : undefined });
     clearTimeout(t);
     res = await r.json();
   }catch(e){ res = null; }

@@ -97,7 +97,8 @@ with sync_playwright() as p:
     check('sent once, in the background', len(m.calls) == 1, len(m.calls))
     c = m.calls[0]; b = json.loads(c['body'])
     check('POST is text/plain (no CORS preflight)', c['ct'].startswith('text/plain'))
-    check('URL ends with ?site=test', c['url'].endswith('/exec?site=test'), c['url'])
+    SITE = 'live' if '/preplist-sorter/' in URL else 'test'
+    check(f'URL ends with ?site={SITE}', c['url'].endswith('/exec?site=' + SITE), c['url'])
     check('payload has only v,name,position,other,ms,hp', set(b) == {'v', 'name', 'position', 'other', 'ms', 'hp'}, b)
     check('payload values cleaned', b['name'] == "Zoë O'Brien-Núñez" and b['position'] == 'Other' and b['other'] == 'Pastry lead' and b['hp'] == '', b)
     check('no device / version / source / user agent sent', not re.search(r'Mozilla|iPhone|Android|3\.4\.0|device|version|source', c['body']), c['body'])
