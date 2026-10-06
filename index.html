@@ -6397,7 +6397,7 @@ function submitWelcome(){
   if (oErr){ otherEl.focus(); return; }
   const body = { v: 1, name: name, position: position, ms: Date.now() - _wmShownAt, hp: box.querySelector('#wmWebsite').value || '' };
   if (position === 'Other') body.other = other;
-  signupLS(SIGNUP_CONFIG.queueKey, JSON.stringify({ b: body, tries: 0, site: signupSite() }));
+  signupLS(SIGNUP_CONFIG.queueKey, JSON.stringify({ b: body, tries: 0, site: signupSite(), shown: _wmShownAt }));
   signupLS(SIGNUP_CONFIG.doneKey, JSON.stringify({ d: localYMD() }));
   closeWelcome();
   // never send sooner than 1.5 s after the box appeared (the server rejects faster ones as bots)
@@ -6416,6 +6416,8 @@ async function flushSignupQueue(){
   if (!q || !q.b){ signupLS(SIGNUP_CONFIG.queueKey, null); return; }
   const site = q.site || signupSite();
   if (!site || (q.tries || 0) >= SIGNUP_CONFIG.maxTries){ signupLS(SIGNUP_CONFIG.queueKey, null); return; }
+  // ms = time from the box appearing to this send (we never send before 1.5 s, so a quick autofill isn't treated as a bot)
+  if (q.shown && typeof q.b.ms === 'number') q.b.ms = Math.max(q.b.ms, Date.now() - q.shown);
   q.tries = (q.tries || 0) + 1; signupLS(SIGNUP_CONFIG.queueKey, JSON.stringify(q));   // counted before sending
   let res = null;
   try{

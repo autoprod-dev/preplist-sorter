@@ -135,6 +135,13 @@ with sync_playwright() as p:
     check('server rejected (invalid): dropped, not retried', ls(pg, QK) is None)
     ctx.close()
 
+    # ---------- quick submit (autofill + tap in under 1.5 s) ----------
+    ctx = ch.new_context(); m = Mock(ctx); pg = ctx.new_page(); pg.goto(URL); pg.wait_for_selector('#welcomeModal')
+    pg.evaluate("document.getElementById('wmName').value='Quick Tap'; document.querySelector('input[name=wmPos][value=Cook]').checked=true; document.getElementById('wmForm').requestSubmit()")
+    pg.wait_for_timeout(2500)
+    check('quick submit (<1.5 s): sent after 1.5 s with ms >= 1500 (server would accept)', m.calls and json.loads(m.calls[0]['body'])['ms'] >= 1500 and m.calls[0]['t'] > 0, m.calls and m.calls[0]['body'])
+    ctx.close()
+
     # ---------- honeypot ----------
     ctx = ch.new_context(); m = Mock(ctx); pg = ctx.new_page(); pg.goto(URL); pg.wait_for_selector('#welcomeModal')
     check('honeypot field hidden from people and screen readers', pg.locator('.wm-hp').get_attribute('aria-hidden') == 'true' and pg.locator('#wmWebsite').get_attribute('tabindex') == '-1')
