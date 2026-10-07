@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.0">
+<meta name="prepline-version" content="3.5.0">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -31,7 +31,7 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Prepline","alternateName":"Prepline prep list sorter",
 "description":"Free kitchen prep list organiser for chefs and cooks. Turn a menu, PDF or spreadsheet into prep lists sorted by dish, station and prep day, scale by pax, tag allergens, build supplier order sheets, print one page or share to phones. Runs in your browser, works offline.","url":"https://autoprod-dev.github.io/preplist-sorter/","applicationCategory":"BusinessApplication","applicationSubCategory":"Kitchen prep list organiser",
 "operatingSystem":"Any (web browser: Windows, macOS, Android, iOS)","browserRequirements":"Requires JavaScript and a modern browser",
-"inLanguage":"en-AU","softwareVersion":"3.4.0","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
+"inLanguage":"en-AU","softwareVersion":"3.5.0","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
 "offers":{"@type":"Offer","price":"0","priceCurrency":"AUD"},
 "featureList":["Auto-sorted prep lists from a menu, PDF or spreadsheet","Pax scaling","Prep lists by dish, team section and prep day","Allergen tags","Supplier order sheet","Cost per dish","Share to phones by QR code or link","One-page printouts","Excel export","Works offline"],
 "publisher":{"@type":"Organization","name":"Autoprod"}}
@@ -41,19 +41,24 @@
 /* ============ LICENSE_CONFIG (edit this block to go live; see monetise/SETUP_STEPS.md) ============
  * mode 'test':    no network calls, only the TEST- keys below unlock Pro, a TEST MODE badge shows,
  *                 Buy buttons show a notice instead of opening checkout.
- * mode 'ls-test': CURRENT. Lemon Squeezy TEST-MODE store (autoprod-dev, store 485739; ids below are
+ * mode 'ls-test': Lemon Squeezy TEST-MODE store (autoprod-dev, store 485739; ids below are
  *                 test-mode ids, see monetise/LS_TEST_IDS.md). Buy opens the real test checkout
  *                 (test card, nothing charged); its keys are checked with the License API like
  *                 live. TEST- keys still work offline. TEST MODE badge stays visible.
- * mode 'live':    keys are checked with Lemon Squeezy's public License API. Before switching, replace
- *                 the ids and checkout URLs with the LIVE-mode ones (test-mode keys are refused).
+ * mode 'live':    CURRENT (Pro live release, 8 Oct 2026). Keys are checked with Lemon Squeezy's public
+ *                 License API; test-mode keys and the TEST- keys are refused; no TEST MODE badge.
+ *                 >>> LIVE-ID PLACEHOLDERS: every value containing TODO_LIVE below must be replaced with the
+ *                 LIVE-mode id / checkout link before publishing (fill_live_ids.py does it and
+ *                 check_live_ready.py refuses to pass while any TODO_LIVE is left). While a placeholder is
+ *                 left, activation answers "store isn't set up yet" and Buy shows a notice instead of
+ *                 opening a checkout, so a half-filled build can't send anyone to a wrong link.
  * mode 'off':     Pro switched off (public site while the store is not approved for real money):
  *                 no TEST badge, no Upgrade / licence / Buy UI, no Lemon Squeezy calls, no Pro panel or
  *                 Pro-only tools (append PDF, templates, custom stations, kitchens). The code stays here.
  * Activation limit (3 devices per key) is set on the Lemon Squeezy product, not here.
  */
 var LICENSE_CONFIG = {
-  mode: 'ls-test',                               // 'off' | 'test' | 'ls-test' | 'live'  ('off' = Pro switched off: no licence UI, no network, everything free stays free)
+  mode: 'live',                                  // 'off' | 'test' | 'ls-test' | 'live'  ('off' = Pro switched off: no licence UI, no network, everything free stays free)
   edition: 'web',
   // v3: free-plan limits from the v2 Pro build, OFF so the v3 baseline behaviour is unchanged
   // (several PDFs at once are free; free prints have no footer). Set true to bring them back.
@@ -67,20 +72,22 @@ var LICENSE_CONFIG = {
   maxActivations: 3,                             // informational: enforce via the LS product's activation limit
   apiBase: 'https://api.lemonsqueezy.com/v1/licenses',
   lemonSqueezy: {
-    storeId: '485739',                             // autoprod-dev.lemonsqueezy.com (TEST MODE)
-    productIds: ['1395962', '1395968'],            // Prepline Pro (monthly+yearly), Prepline Pro Lifetime
-    variants: {                                    // variant id -> plan id (any other variant is refused)
-      '2179964': 'monthly',                        // A$7/mo
-      '2179971': 'yearly',                         // A$59/yr
-      '2179974': 'lifetime'                        // A$79 once (A$49 with LAUNCH50)
+    storeId: '485739',                             // autoprod-dev.lemonsqueezy.com (LIVE mode; same store id as test mode)
+    productIds: ['TODO_LIVE_PRODUCT_PRO', 'TODO_LIVE_PRODUCT_LIFETIME'],   // LIVE Prepline Pro (monthly+yearly), LIVE Prepline Pro Lifetime
+    variants: {                                    // LIVE variant id -> plan id (any other variant is refused)
+      'TODO_LIVE_VARIANT_MONTHLY': 'monthly',      // A$7/mo
+      'TODO_LIVE_VARIANT_YEARLY': 'yearly',        // A$59/yr
+      'TODO_LIVE_VARIANT_LIFETIME': 'lifetime'     // A$79 once (A$49 with LAUNCH50)
     }
   },
-  checkout: {
-    monthly:  'https://autoprod-dev.lemonsqueezy.com/checkout/buy/26141028-ac72-45a5-95d5-07ebf96e9a2e?enabled=2179964',
-    yearly:   'https://autoprod-dev.lemonsqueezy.com/checkout/buy/bbdeab5d-7ff3-48e8-88d1-5d0fec3c620c?enabled=2179971',
-    lifetime: 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/d69e7ed5-d47d-40af-8d17-a7e599a89314?checkout%5Bdiscount_code%5D=LAUNCH50'
+  checkout: {                                      // LIVE checkout links (variant "Share" link); lifetime keeps LAUNCH50 prefilled
+    monthly:  'https://autoprod-dev.lemonsqueezy.com/checkout/buy/TODO_LIVE_CHECKOUT_MONTHLY_UUID?enabled=TODO_LIVE_VARIANT_MONTHLY',
+    yearly:   'https://autoprod-dev.lemonsqueezy.com/checkout/buy/TODO_LIVE_CHECKOUT_YEARLY_UUID?enabled=TODO_LIVE_VARIANT_YEARLY',
+    lifetime: 'https://autoprod-dev.lemonsqueezy.com/checkout/buy/TODO_LIVE_CHECKOUT_LIFETIME_UUID?checkout%5Bdiscount_code%5D=LAUNCH50'
   },
-  offlineDownloadUrl: 'TODO-offline-download-url', // e.g. Lemon Squeezy "My Orders" page / product file
+  offlineDownloadUrl: 'https://app.lemonsqueezy.com/my-orders', // buyers download Prepline-Pro-Windows.zip (attached to the live variants) from Lemon Squeezy "My Orders"
+  supportEmail: 'autoprod.help@gmail.com',         // public Autoprod support address (receipts, refunds, feedback, problem reports)
+  legal: { terms: 'terms.html', privacy: 'privacy.html', refunds: 'refunds.html' },   // shown in the footer and the Upgrade panel when Pro is on
   plans: [
     { id: 'monthly',  label: 'Monthly',  short: 'monthly',  price: 'A$7',  per: 'per month, cancel any time' },
     { id: 'yearly',   label: 'Yearly',   short: 'yearly',   price: 'A$59', per: 'per year (about 30% off monthly)', best: true, tag: 'BEST VALUE' },
@@ -98,7 +105,7 @@ var LICENSE_CONFIG = {
     gstNote: 'GST handled at checkout',
     refund: '14-day no-questions refund.'
   },
-  testKeys: {                                    // 'test' and 'ls-test' modes only. Ignored in live mode.
+  testKeys: {                                    // 'test' and 'ls-test' modes only. IGNORED (refused) in live mode.
     'TEST-PRO-MONTHLY':  { plan: 'monthly' },
     'TEST-PRO-YEARLY':   { plan: 'yearly' },
     'TEST-PRO-LIFETIME': { plan: 'lifetime' },
@@ -377,7 +384,8 @@ var LICENSE_CONFIG = {
       (u.intro ? '<p class="pl-soft">' + esc(u.intro) + '</p>' : '') +
       (u.features ? '<ul class="pl-feats">' + u.features.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' : '') +
       '<div class="pl-plans">' + plans + '</div>' +
-      '<p class="pl-soft">Prices in AUD' + (u.gstNote ? ', ' + esc(u.gstNote) : '') + '. Secure checkout by Lemon Squeezy (merchant of record). ' + esc(u.refund || '') + '</p>' +
+      '<p class="pl-soft">Prices in AUD' + (u.gstNote ? ', ' + esc(u.gstNote) : '') + '. Secure checkout by Lemon Squeezy (merchant of record). ' + esc(u.refund || '') +
+        (C.legal ? ' <a href="' + esc(C.legal.terms) + '" target="_blank" rel="noopener">Terms</a> \u00b7 <a href="' + esc(C.legal.refunds) + '" target="_blank" rel="noopener">Refunds</a> \u00b7 <a href="' + esc(C.legal.privacy) + '" target="_blank" rel="noopener">Privacy</a>' : '') + '</p>' +
       '<div class="pl-msg" id="plUpMsg"></div>' +
       (C.mode === 'test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy buttons don\u2019t open checkout and nothing is charged.</div>'
         : C.mode === 'ls-test' ? '<div class="pl-test"><b>TEST MODE</b>: Buy opens a Lemon Squeezy <b>test</b> checkout. Nothing is charged (use test card 4242 4242 4242 4242).</div>' : '') +
@@ -388,7 +396,8 @@ var LICENSE_CONFIG = {
   api.buy = function (planId) {
     var url = (C.checkout || {})[planId];
     if (C.mode === 'test' || !url || /TODO/.test(url)) {
-      var m = 'TEST MODE: checkout is disabled. In live mode this button opens ' + (url || '(no URL set)') + '. Use a TEST- key to try Pro.';
+      var m = C.mode === 'live' ? 'Checkout isn\u2019t available yet. Please try again soon or email ' + (C.supportEmail || 'us') + '.'
+        : 'TEST MODE: checkout is disabled. In live mode this button opens ' + (url || '(no URL set)') + '. Use a TEST- key to try Pro.';
       var box = upDlg && upDlg.querySelector('#plUpMsg'); if (box && upDlg.open) { box.className = 'pl-msg err'; box.textContent = m; }
       api.toast(m); return false;
     }
@@ -1190,8 +1199,8 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.0</div>
-    <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.5.0</div>
+    <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a><span id="footerLegal" hidden> · <a href="terms.html" id="termsLink" target="_blank" rel="noopener">Terms</a> · <a href="refunds.html" id="refundsLink" target="_blank" rel="noopener">Refunds</a></span> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
     every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
@@ -5095,7 +5104,7 @@ function downloadOffline(){
   if (!proGate('The offline Windows version is included with Pro.')) return;
   const url = LICENSE_CONFIG.offlineDownloadUrl;
   if (LICENSE_CONFIG.mode==='test' || !url || /TODO/.test(url)){
-    AutoprodLicence.toast('TEST MODE: the offline download link is a placeholder ('+url+'). In live mode this opens the Pro download (Prepline-Pro-Windows.zip).');
+    AutoprodLicence.toast(LICENSE_CONFIG.mode==='live' ? 'The offline download isn\u2019t available yet. Please email '+(LICENSE_CONFIG.supportEmail||'us')+'.' : 'TEST MODE: the offline download link is a placeholder ('+url+'). In live mode this opens the Pro download (Prepline-Pro-Windows.zip).');
     return;
   }
   window.open(url, '_blank', 'noopener');
@@ -5131,6 +5140,7 @@ function renderProPanel(){
       <div class="row" style="align-items:center; margin-top:8px;">
         <button class="secondary" type="button" onclick="AutoprodLicence.openLicenceDialog()">Enter licence key</button>
         <span class="small" style="font-size:12px;color:var(--ink-soft);">Prices in AUD. Secure checkout by Lemon Squeezy (merchant of record, handles GST). 14-day no-questions refund.</span>
+        ${legalLinksHtml()}
       </div>`;
     return;
   }
@@ -5176,6 +5186,12 @@ function renderProPanel(){
     <div class="status ${proPanelMsg.cls}" id="proPanelStatus">${proEsc(proPanelMsg.text)}</div>
     ${freeFooterOn() ? '<div class="pro-per">Clean prints are on: no footer on your printouts.</div>' : ''}`;
 }
+// Terms / Refunds / Privacy links (Pro on only; the public and team builds have no LICENSE_CONFIG.legal)
+function legalHref(file){ return location.protocol==='file:' ? 'https://autoprod-dev.github.io/preplist-sorter/'+file : file; }
+function legalLinksHtml(){
+  const L = LICENSE_CONFIG.legal; if (!L) return '';
+  return `<span class="small legal-links" style="font-size:12px;color:var(--ink-soft);"><a href="${proEsc(legalHref(L.terms))}" target="_blank" rel="noopener">Terms</a> · <a href="${proEsc(legalHref(L.refunds))}" target="_blank" rel="noopener">Refunds</a> · <a href="${proEsc(legalHref(L.privacy))}" target="_blank" rel="noopener">Privacy</a></span>`;
+}
 function proUiOff(){ return LICENSE_CONFIG.mode === 'off' && LICENSE_CONFIG.edition !== 'offline-pro' && !teamEdition(); }
 (function markProOff(){ const go = ()=>{ if (proUiOff()) document.body.classList.add('pro-off'); }; if (document.body) go(); else document.addEventListener('DOMContentLoaded', go); })();
 function renderProChrome(){
@@ -5198,6 +5214,10 @@ function renderProChrome(){
     const f = document.getElementById('madeWithFooter'); if (f) f.hidden = !freeFooterOn();
     return;
   }
+  const fl = document.getElementById('footerLegal');
+  if (fl && LICENSE_CONFIG.legal){ fl.hidden = false;
+    const t = document.getElementById('termsLink'); if (t) t.href = legalHref(LICENSE_CONFIG.legal.terms);
+    const r = document.getElementById('refundsLink'); if (r) r.href = legalHref(LICENSE_CONFIG.legal.refunds); }
   const pro = proActive();
   const up = document.getElementById('proUpgradeBtn');
   if (up){ up.textContent = pro ? '★ Pro' : '★ Upgrade to Pro'; up.classList.toggle('active', pro);
@@ -6017,7 +6037,7 @@ window.addEventListener('hashchange', ()=>{ openSharedViewFromHash(); });
 const SURVEY_URL = 'https://autoprod-dev.github.io/prepline-survey/';
 const SURVEY_PROMPT_KEY = 'prepline.surveyPrompt.v1';
 // Public support / feedback address (Autoprod). The ONLY place it lives. Empty = no email link or button.
-const SUPPORT_EMAIL = 'autoprod.help@gmail.com';
+const SUPPORT_EMAIL = (window.LICENSE_CONFIG && LICENSE_CONFIG.supportEmail) || 'autoprod.help@gmail.com';
 const MAILTO_MAX = 1800;   // keep mailto links short enough for every mail app
 function supportMailto(subject, body){
   if (!SUPPORT_EMAIL) return '';

@@ -4,6 +4,14 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - v1: original "Preplist Sorter" baseline (commit 0820477).
 - v2: PDF qty/name split fix, offline build, reload fix (master); Pro + Lemon Squeezy test mode (branch `pro`).
 
+## 3.5.0 (2026-10-08) Prepline Pro live release (branch pro-live-3.5.0, NOT published yet)
+- LICENSE_CONFIG `mode: 'live'`: Pro switched on for real money. No TEST MODE badge; TEST- keys and Lemon Squeezy test-mode keys are refused.
+- Live store 485739; product/variant ids and checkout links are `TODO_LIVE_*` placeholders until the live-mode products exist (`release/fill_live_ids.py` fills them, `release/check_live_ready.py` blocks publishing while any are left). Lifetime checkout keeps LAUNCH50 prefilled.
+- `supportEmail: autoprod.help@gmail.com` (SUPPORT_EMAIL now reads it), `offlineDownloadUrl: https://app.lemonsqueezy.com/my-orders`, `legal` links.
+- Terms, Privacy and Refunds pages (seller Autoprod, contact autoprod.help@gmail.com, NSW law, effective 8 Oct 2026; no ABN line) linked from the footer and the Upgrade panel/dialog when Pro is on. Public and team builds (build_public.py) are unchanged.
+- Live-mode wording for a not-yet-configured checkout/download (no "TEST MODE" text in live).
+- Offline Windows Pro zip rebuilt from the live source (`release/build_pro_zip.py`), staged for Lemon Squeezy, never in the public site.
+
 ## 3.0.0 (2026-10-02)
 - New baseline: `originals/kitchen-organiser-2026-10-02-from-gerard.html` (sha256 in `originals/SHA256SUMS`), kept byte-for-byte untouched.
 - Adds: method crops from production-tool PDF pages under each prep list, "View original" page viewer, per-view Excel export (editable, re-uploadable), closed-days auto-shift, bulk move ticked rows, tick/untick dishes, iframe printing.
