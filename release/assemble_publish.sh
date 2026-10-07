@@ -5,15 +5,18 @@
 # Both start from the live master tree (tag live-backup-2026-10-08-pre-pro-live) so the free offline download,
 # vendor files, icons, robots.txt etc. stay exactly as they are today, then overlay the changed web files.
 # The paid Prepline-Pro-* files are never copied. Nothing is committed or pushed.
+# The GoatCounter visitor counter (release/goatcounter.json, release/add_goatcounter.py) is added HERE, to this
+# live public set only; the source index.html, the test site, the team edition and the offline zips never get it.
 set -euo pipefail
 MODE=${1:?plain|protected}; OUT=${2:?outdir}
 ROOT=$(cd "$(dirname "$0")/.." && pwd); TAG=live-backup-2026-10-08-pre-pro-live
-[ -z "$(git -C "$ROOT" status --porcelain -- index.html privacy.html terms.html refunds.html sw.js VERSION sitemap.xml)" ] || { echo "commit the web files first"; exit 1; }
+[ -z "$(git -C "$ROOT" status --porcelain -- index.html privacy.html terms.html refunds.html sw.js VERSION sitemap.xml release/goatcounter.json release/goatcounter release/add_goatcounter.py)" ] || { echo "commit the web files first"; exit 1; }
 WEB="index.html privacy.html terms.html refunds.html sw.js VERSION sitemap.xml manifest.webmanifest robots.txt icons"
 STAGE=$(mktemp -d); trap 'rm -rf "$STAGE"' EXIT
 git -C "$ROOT" archive "$TAG" | tar -x -C "$STAGE"
 git -C "$ROOT" archive HEAD $WEB | tar -x -C "$STAGE"
 rm -f "$STAGE"/dist/Prepline-Pro-*
+python3 "$ROOT/release/add_goatcounter.py" "$STAGE"
 rm -rf "$OUT"; mkdir -p "$OUT"
 if [ "$MODE" = plain ]; then
   cp -a "$STAGE"/. "$OUT"/

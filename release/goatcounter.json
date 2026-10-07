@@ -1,0 +1,7 @@
+{
+  "code": "autoprod-prepline",
+  "_comment": "GoatCounter site code for the LIVE public site only. Change 'code' if the name is taken; the endpoint is https://<code>.goatcounter.com/count. count.js below is a pinned, unmodified copy of https://gc.zgo.at/count.js (ISC licence), self-hosted as vendor/goatcounter/count.js.",
+  "count_js": "release/goatcounter/count.js",
+  "count_js_sha256": "792b7abd26c1fb6ae62906833e09a301251e2641816e69e4f95aba518f3fe3f0",
+  "pages": ["index.html", "privacy.html", "terms.html", "refunds.html"]
+}

@@ -116,5 +116,5 @@ self.addEventListener('fetch', event => {
   if (NO_CDN) return;   // team site: nothing outside the site is ever handled (or requested) here
   if (CDN_LIBS.includes(url.href)) { event.respondWith(cacheFirst(req)); return; }
   if (FONT_HOSTS.includes(url.hostname)) { event.respondWith(staleWhileRevalidate(req)); return; }
-  // everything else: straight to the network (no analytics by design)
+  // everything else (incl. the live site's cookie-free GoatCounter count): straight to the network, never cached
 });
