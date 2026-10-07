@@ -21,6 +21,9 @@ def scan(name, data):
     try: t = data.decode('utf-8')
     except UnicodeDecodeError: return    # binary (png, woff2, ico): no text to leak
     vendor = bool(VENDOR.search(name))
+    if name.endswith('.html'):   # offline single-file builds inline pdf.js / SheetJS: library code, scanned as vendor
+        t, n = re.subn(r'<script type="text/x-inline-module" id="pdfjs-(?:lib|worker)-src">.*?</script>|<!-- SheetJS xlsx 0\.18\.5 \(inlined for offline use\) -->\n<script>.*?</script>', '', t, flags=re.S)
+        if n: notes.append(f'{name}: {n} inlined vendor library block(s) (pdf.js/SheetJS) skipped')
     for m in ANON.finditer(t):
         ctx = t[max(0, m.start()-50):m.end()+50].replace('\n', ' ')
         # pdf.js handles "ICC" colour profiles (ICCBased); that's library code, not identity
