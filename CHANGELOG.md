@@ -10,6 +10,7 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - `supportEmail: autoprod.help@gmail.com` (SUPPORT_EMAIL now reads it), `offlineDownloadUrl: https://app.lemonsqueezy.com/my-orders`, `legal` links.
 - Terms, Privacy and Refunds pages (seller Autoprod, contact autoprod.help@gmail.com, NSW law, effective 8 Oct 2026; no ABN line) linked from the footer and the Upgrade panel/dialog when Pro is on. Public and team builds (build_public.py) are unchanged.
 - Live-mode wording for a not-yet-configured checkout/download (no "TEST MODE" text in live).
+- Fixes (branch pro-live-3.5.0-fixes only): original-page viewer styled as a modal overlay (from test 3.4.2; on live 3.4.0 the hidden viewer showed at the bottom of the page); "Apply to all" pax: a bad value is marked on the box and the warning is replaced by "Pax N applied to every dish." once a valid value is applied (it used to stay on screen).
 - Offline Windows Pro zip rebuilt from the live source (`release/build_pro_zip.py`), staged for Lemon Squeezy, never in the public site.
 
 ## 3.0.0 (2026-10-02)

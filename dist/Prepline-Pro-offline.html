@@ -1085,6 +1085,18 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#N(e,
   /* v3.3.4: the view switcher wraps on narrow phones instead of pushing the page wider */
   #preplistTab .viewtoggle{flex-wrap:wrap; max-width:100%; box-sizing:border-box;}
   @media (max-width:420px){ #preplistTab .viewtoggle button{padding:9px 12px;} }
+  /* v3.4.2 (from the test site): the original-page viewer is a modal overlay (it had no styles, so the hidden viewer showed at the bottom of the page) */
+  .orig-viewer-overlay{position:fixed; inset:0; z-index:9500; background:rgba(28,30,27,0.6); display:flex; align-items:center; justify-content:center; padding:12px; box-sizing:border-box;}
+  .orig-viewer-overlay.hidden{display:none !important;}
+  .orig-viewer-card{background:var(--paper2); color:var(--ink); border-radius:12px; width:min(900px,100%); max-height:100%; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.35);}
+  .orig-viewer-head{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; padding:12px 14px; border-bottom:1px solid var(--line);}
+  .orig-viewer-title{font-weight:600;} .orig-viewer-sub{font-size:12px; color:var(--ink-soft);}
+  .orig-viewer-body{flex:1; min-height:0; overflow:auto; padding:10px; text-align:center; background:#fff;}
+  .orig-viewer-body img{max-width:100%; height:auto;}
+  .orig-viewer-nav{display:flex; justify-content:space-between; gap:8px; padding:10px 14px; border-top:1px solid var(--line);}
+  @media print{ .orig-viewer-overlay{display:none !important;} }
+  /* 3.5.0: a bad "apply pax to all" value is marked on the box */
+  #preplistTab #bulkPax[aria-invalid=true]{border-color:#B3261E; box-shadow:0 0 0 1px #B3261E;}
   /* v3.4.0: first-visit welcome box (name + position) */
   .wm-overlay{position:fixed; inset:0; z-index:10000; background:rgba(28,30,27,0.55); display:flex; align-items:center; justify-content:center; padding:12px; box-sizing:border-box; overflow-y:auto;}
   .wm-card{background:#fff; color:var(--ink,#1C1E1B); width:100%; max-width:440px; box-sizing:border-box; border-radius:14px; padding:20px 18px 14px; box-shadow:0 12px 40px rgba(0,0,0,0.25); margin:auto; max-height:calc(100dvh - 24px); overflow-y:auto;}
@@ -3566,11 +3578,16 @@ document.getElementById('dbImportInput').addEventListener('change', e=>{
 });
 
 document.getElementById('bulkPaxBtn').addEventListener('click', ()=>{
-  const p = parsePaxInput(document.getElementById('bulkPax').value);
-  if (!p.ok || p.n===undefined){ setStatus('Enter a pax number from 0 to '+PAX_MAX.toLocaleString('en-AU')+' to apply to every dish.', 'warn'); return; }
+  const inp = document.getElementById('bulkPax');
+  const p = parsePaxInput(inp.value);
+  if (!p.ok || p.n===undefined){ inp.setAttribute('aria-invalid', 'true'); setStatus('Enter a pax number from 0 to '+PAX_MAX.toLocaleString('en-AU')+' to apply to every dish.', 'warn'); return; }
+  inp.setAttribute('aria-invalid', 'false');
   Object.keys(dishList()).forEach(d=>storePax(d, p.n));
   render();
+  // 3.5.0: replace the earlier warning (it used to stay on screen after a valid value was applied)
+  setStatus('Pax '+p.n.toLocaleString('en-AU')+' applied to every dish.', 'ok');
 });
+document.getElementById('bulkPax').addEventListener('input', e=>{ e.target.setAttribute('aria-invalid', 'false'); });
 
 function dishList(){
   const seen = {};
