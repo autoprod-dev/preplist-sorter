@@ -20,14 +20,15 @@ if [ "$MODE" = plain ]; then
 elif [ "$MODE" = protected ]; then
   TOOL=/workspace/copy-protect/tooling
   B=$(mktemp -d); cp -a "$STAGE"/. "$B"/; cp "$TOOL"/build.mjs "$TOOL"/LICENSE "$B"/; ln -s "$TOOL"/node_modules "$B"/node_modules
-  KEEP=$(cd "$B" && find vendor dist -type f | sort | python3 -c 'import sys,json;print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+  mv "$B"/dist "$B"/_freedist   # build.mjs writes to ./dist; the free offline download is copied back byte-for-byte below
+  KEEP=$(cd "$B" && find vendor -type f | sort | python3 -c 'import sys,json;print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
   cat > "$B"/build.config.json <<JSON
-{ "include": ["index.html","privacy.html","terms.html","refunds.html","sw.js","manifest.webmanifest","robots.txt","sitemap.xml","VERSION","icons","vendor","dist"],
+{ "include": ["index.html","privacy.html","terms.html","refunds.html","sw.js","manifest.webmanifest","robots.txt","sitemap.xml","VERSION","icons","vendor"],
   "keep": $KEEP,
   "readme": "Prepline by Autoprod: built site files only. Copyright (c) 2026 Autoprod. All rights reserved." }
 JSON
   echo '{"type":"module"}' > "$B"/package.json
   (cd "$B" && node build.mjs)
-  cp -a "$B"/dist/. "$OUT"/; rm -rf "$B"
+  cp -a "$B"/dist/. "$OUT"/; mkdir -p "$OUT"/dist; cp -a "$B"/_freedist/. "$OUT"/dist/; rm -rf "$B"
 else echo "mode must be plain or protected"; exit 1; fi
 echo "assembled $MODE publish set from $(git -C "$ROOT" rev-parse --short HEAD) ($(git -C "$ROOT" rev-parse --abbrev-ref HEAD)) -> $OUT"
