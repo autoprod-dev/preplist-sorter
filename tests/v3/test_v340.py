@@ -20,6 +20,9 @@ class Mock:
     def __init__(self, ctx, mode='ok'):
         self.mode = mode; self.calls = []
         ctx.route(EP, self.handle)
+        if ctx.browser and ctx.browser.browser_type.name == 'webkit':
+            # Playwright's WebKit does not route keepalive fetches (they would reach the real Sheet): block them in the page
+            ctx.add_init_script("""(() => { const of = window.fetch; window.fetch = function (u, o) { if (/script\\.google(usercontent)?\\.com/.test(String(u))) return Promise.reject(new TypeError('blocked in tests')); return of.apply(this, arguments); }; })()""")
     def handle(self, route):
         req = route.request
         self.calls.append({'url': req.url, 'body': req.post_data, 'ct': req.headers.get('content-type', ''), 't': time.time()})

@@ -12,6 +12,9 @@ def check(name, cond, extra=''):
     else: bad.append(name); print('FAIL', name, ' |', extra)
 EP = re.compile(r'https://script\.google(usercontent)?\.com/.*')
 GEO_SPY = """(() => { window.__geoCalls = 0; try { const g = navigator.geolocation; if (g) { for (const k of ['getCurrentPosition','watchPosition']) { const o = g[k]; g[k] = function(){ window.__geoCalls++; return o && o.apply(g, arguments); }; } } } catch(e){} })()"""
+WK_STUB = """(() => { window.__stubBodies = []; const of = window.fetch;
+  window.fetch = function (u, o) { if (/script\\.google(usercontent)?\\.com/.test(String(u))) { window.__stubBodies.push(o && o.body);
+    return Promise.resolve(new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } })); } return of.apply(this, arguments); }; })()"""
 def run(eng, tz, loc_, expect_tz, expect_lang, expect_loc, label, devices=None):
     kw = dict(timezone_id=tz, locale=loc_) if tz else dict(locale=loc_)
     ctx = eng.new_context(**kw); calls = []; others = []
@@ -20,17 +23,18 @@ def run(eng, tz, loc_, expect_tz, expect_lang, expect_loc, label, devices=None):
         route.fulfill(status=200, content_type='application/json', headers={'Access-Control-Allow-Origin': '*'}, body='{"ok":true}')
     ctx.route(EP, h)
     ctx.add_init_script(GEO_SPY)
+    if eng.browser_type.name == 'webkit':
+        # Playwright's WebKit does NOT route keepalive fetches: they go to the real endpoint. Stub fetch for it in the page.
+        ctx.add_init_script(WK_STUB)
     pg = ctx.new_page(); errs = []; cons = []
     pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: m.type == 'error' and cons.append(m.text))
     pg.on('request', lambda r: others.append(r.url))
     pg.goto(URL); pg.wait_for_selector('#welcomeModal', timeout=10000)
     check(f'{label}: no new form field (still name, 6 positions, hidden Other, honeypot)', pg.locator('#welcomeModal input').count() == 1 + 6 + 1 + 1, pg.locator('#welcomeModal input').count())
     pg.fill('#wmName', 'TEST Geo'); pg.locator('#welcomeModal .wm-pos label').filter(has_text=re.compile(r'^\s*Cook\s*$')).click(); pg.wait_for_timeout(1700); pg.click('#wmStart'); pg.wait_for_timeout(1500)
-    if eng.browser_type.name == 'webkit' and not calls:
-        # Playwright's WebKit doesn't route keepalive fetches (the request just hangs in the harness, same code as 3.4.0),
-        # so check the exact body queued for sending instead.
-        q = json.loads(pg.evaluate("localStorage.getItem('prepline.signupQueue.v1')") or '{}'); calls.append(json.dumps(q.get('b', {})))
-        check(f'{label}: queued once (WebKit harness)', bool(q.get('b')))
+    if eng.browser_type.name == 'webkit':
+        calls[:] = pg.evaluate('window.__stubBodies || []')
+        check(f'{label}: sent once (WebKit, in-page fetch stub)', len(calls) == 1, len(calls))
     else:
         check(f'{label}: sent once', len(calls) == 1, len(calls))
     b = json.loads(calls[0]) if calls else {}
