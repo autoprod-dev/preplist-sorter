@@ -62,7 +62,7 @@ with sync_playwright() as p:
     ctx = ch.new_context(**p.devices['Pixel 5']); m = Mock(ctx); pg = ctx.new_page(); pg.goto(URL); pg.wait_for_selector('#welcomeModal')
     check('ALLOW_SKIP off: no "Skip for now"', pg.locator('#wmSkip').count() == 0)
     pg.keyboard.press('Escape'); check('ALLOW_SKIP off: Escape does not close', visible(pg))
-    check('under-form note text', "So the maker can see who's trying Prepline. Only your name, role and the date are saved. Privacy" in pg.locator('.wm-note').inner_text())
+    check('under-form note text', "So the maker can see who's trying Prepline. Only your name, role, the date and your rough location (from your device's time zone) are saved. Privacy" in pg.locator('.wm-note').inner_text())
     check('Privacy link points to privacy.html', pg.locator('.wm-note a').get_attribute('href') == 'privacy.html')
     check('background is inert while open', pg.evaluate("!!document.querySelector('#sampleMenuBtn').closest('[inert]')"))
     # Tab focus trap
@@ -99,7 +99,7 @@ with sync_playwright() as p:
     check('POST is text/plain (no CORS preflight)', c['ct'].startswith('text/plain'))
     SITE = 'live' if '/preplist-sorter/' in URL else 'test'
     check(f'URL ends with ?site={SITE}', c['url'].endswith('/exec?site=' + SITE), c['url'])
-    check('payload has only v,name,position,other,ms,hp', set(b) == {'v', 'name', 'position', 'other', 'ms', 'hp'}, b)
+    check('payload has only v,name,position,other,ms,hp + tz,lang,loc (3.4.1 approx location)', set(b) == {'v', 'name', 'position', 'other', 'ms', 'hp', 'tz', 'lang', 'loc'}, b)
     check('payload values cleaned', b['name'] == "Zoë O'Brien-Núñez" and b['position'] == 'Other' and b['other'] == 'Pastry lead' and b['hp'] == '', b)
     check('no device / version / source / user agent sent', not re.search(r'Mozilla|iPhone|Android|3\.4\.0|device|version|source', c['body']), c['body'])
     check('ms >= 1500 when sent', b['ms'] >= 1500, b['ms'])
@@ -202,13 +202,14 @@ with sync_playwright() as p:
     check('privacy.html: name and role section', "When you first open Prepline we ask your name and role. These, with the date and time, are saved to a private Google Sheet run by Autoprod so the maker can see who's trying it. Not used for marketing, not shared or sold. To have yours removed, email autoprod.help@gmail.com." in t)
     check('privacy.html: recipes stay on device still first', t.find('Your recipes and lists stay on your device') < t.find('Your name and role'))
     check('privacy.html: no "No accounts, no tracking" / device type', 'No accounts, no tracking' not in t and 'device type' not in t.lower())
-    check('privacy.html: last updated 06/10/2026', 'Last updated 06/10/2026' in t)
+    check('privacy.html: last updated 08/10/2026', 'Last updated 08/10/2026' in t)
+    check('privacy.html: approximate location from time zone + language, no IP, no precise location', 'We also record your approximate country or region' in t and 'time zone and language settings' in t and "We don't record your IP address and we never ask for or use your precise location." in t)
     if SHOTS:
         el = pg.locator('h2', has_text='Your name and role'); el.scroll_into_view_if_needed()
         pg.set_viewport_size({'width': 760, 'height': 820}); pg.screenshot(path=f'{SHOTS}/privacy-section.png', full_page=True)
     pg.goto(URL); pg.evaluate("localStorage.setItem('prepline.signup.v1','{}')"); pg.reload(); pg.wait_for_timeout(500)
     li = pg.evaluate('privacyListHtml()')
-    check('in-app privacy: name and role item, no "No accounts, no tracking"', 'we ask your name and role' in li and 'No accounts, no tracking' not in li and '06/10/2026' in li)
+    check('in-app privacy: name and role item, no "No accounts, no tracking"', 'we ask your name and role' in li and 'No accounts, no tracking' not in li and '08/10/2026' in li and 'approximate country or region' in li and 'no IP address and no precise location' in li)
     ctx.close()
     # ---------- client/server validation parity ----------
     ctx = ch.new_context(); Mock(ctx); pg = ctx.new_page(); pg.goto(URL)

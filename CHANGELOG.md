@@ -58,6 +58,17 @@ Version scheme: MAJOR.MINOR.PATCH. A new baseline from Gerard = new major.
 - Saved to the private "Prepline sign-ups" Google Sheet via an Apps Script web app: Name, Position, Date tried only. Queued in localStorage and retried once per load (max 5); the app never waits for the network.
 - Privacy page and in-app privacy text updated. New tests: tests/v3/test_v340.py; tests/v3/signup_off/ lets older suites run with the box done.
 
+## 3.4.1 (2026-10-08) Welcome box: approximate location, no extra question
+- The sign-up now also sends an approximate location worked out on the device: the browser's time zone
+  (`Intl.DateTimeFormat().resolvedOptions().timeZone`) and language (`navigator.language`), e.g. "Australia (Sydney time)" + en-AU.
+  A built-in table (every tzdata zone.tab zone + old names some browsers report -> country) gives the country; unknown zones
+  (UTC, Etc/...) fall back to the language's region ("Philippines (from language)"), then "Unknown".
+- No new form field. No IP address, no IP-lookup service, no navigator.geolocation.
+- Sheet: new "Approx location" and "Time zone" columns (Apps Script v5). Alert email: "Location: Australia (Sydney time), en-AU".
+- Under-form note and privacy texts (page + in-app) say so; privacy last updated 08/10/2026. SW cache 3.4.1.
+- Tests: tests/v3/test_v341_geo.py (Sydney, Manila, Auckland, London, Dubai, Fiji, New York, UTC fallbacks; WebKit Perth; Firefox Kolkata),
+  test_v340.py updated for the new payload keys and texts.
+
 ## 3.3.5 (2026-10-05) Team edition fits 320px phones (TEST site only, not live/team)
 - The Kitchen tools grid (Saved templates, Custom stations, Kitchens; shown only in the team edition / Pro) had a 280px minimum column and pushed 320px phones 8px wider. Columns now shrink to the screen (minmax(min(280px,100%),1fr)).
 - Found when releasing 3.3.4: live passed, team failed test_v334 at 320px and was rolled back to 3.3.3.
