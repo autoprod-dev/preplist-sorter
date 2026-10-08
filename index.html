@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.0">
+<meta name="prepline-version" content="3.4.1">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -31,7 +31,7 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Prepline","alternateName":"Prepline prep list sorter",
 "description":"Free kitchen prep list organiser for chefs and cooks. Turn a menu, PDF or spreadsheet into prep lists sorted by dish, station and prep day, scale by pax, tag allergens, build supplier order sheets, print one page or share to phones. Runs in your browser, works offline.","url":"https://autoprod-dev.github.io/preplist-sorter/","applicationCategory":"BusinessApplication","applicationSubCategory":"Kitchen prep list organiser",
 "operatingSystem":"Any (web browser: Windows, macOS, Android, iOS)","browserRequirements":"Requires JavaScript and a modern browser",
-"inLanguage":"en-AU","softwareVersion":"3.4.0","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
+"inLanguage":"en-AU","softwareVersion":"3.4.1","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
 "offers":{"@type":"Offer","price":"0","priceCurrency":"AUD"},
 "featureList":["Auto-sorted prep lists from a menu, PDF or spreadsheet","Pax scaling","Prep lists by dish, team section and prep day","Allergen tags","Supplier order sheet","Cost per dish","Share to phones by QR code or link","One-page printouts","Excel export","Works offline"],
 "publisher":{"@type":"Organization","name":"Autoprod"}}
@@ -802,7 +802,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.0</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.1</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -5863,12 +5863,12 @@ function copyReport(){
 // ---------- 7c. Privacy (v3.3.3) ----------
 // Online (http/https) the footer link opens privacy.html next to the app. A file:// copy (offline
 // download, single-file team edition) shows the same notice in the app, so nothing is fetched.
-const PRIVACY_UPDATED = '06/10/2026';
+const PRIVACY_UPDATED = '08/10/2026';
 function privacyListHtml(){
   const mail = SUPPORT_EMAIL || 'autoprod.help@gmail.com';
   return `<ul class="privacy-list">
     <li><b>Your recipes and lists stay on your device.</b> Prepline runs in your web browser. Files you open and the lists it makes are kept in this browser on this device. Nothing is uploaded.</li>
-    ${(typeof signupSite === 'function' && signupSite()) ? `<li><b>Your name and role.</b> When you first open Prepline we ask your name and role. These, with the date and time, are saved to a private Google Sheet run by Autoprod so the maker can see who's trying it. Not used for marketing, not shared or sold. To have yours removed, email <a href="mailto:${escapeHtml(mail)}">${escapeHtml(mail)}</a>.</li>
+    ${(typeof signupSite === 'function' && signupSite()) ? `<li><b>Your name and role.</b> When you first open Prepline we ask your name and role. These, with the date and time, are saved to a private Google Sheet run by Autoprod so the maker can see who's trying it. We also record your approximate country or region, worked out on your device from its time zone and language settings: no IP address and no precise location. Not used for marketing, not shared or sold. To have yours removed, email <a href="mailto:${escapeHtml(mail)}">${escapeHtml(mail)}</a>.</li>
     <li><b>No login, no analytics.</b> There is no account or password. We don't use analytics, tracking cookies or advertising.</li>` : `<li><b>No accounts, no tracking.</b> This copy asks for nothing and sends nothing: no sign-up, no login, no analytics and no advertising.</li>`}
     <li><b>Feedback and the survey are optional.</b> They only reach Autoprod (${escapeHtml(mail)}) when you choose to send them: Feedback and Report a problem open your own email app (or you copy the text), and the 1-minute survey is a separate page you open yourself.</li>
     <li><b>The survey email field is optional.</b> It is only for early access to new features and never shared. Leave it blank and your answers are anonymous.</li>
@@ -5893,8 +5893,8 @@ function closePrivacy(){ const m = document.getElementById('privacyModal'); if (
 
 
 // ---------- 7d. First-visit welcome box: name + position (v3.4.0) ----------
-// Asks once per device who is trying Prepline. Only the name, the position and (on the server) the
-// date are kept, in a private Google Sheet run by Autoprod. Recipes and lists never leave the device.
+// Asks once per device who is trying Prepline. Only the name, the position, an approximate location worked
+// out on the device from its time zone + language (7e, no extra question) and (on the server) the date are kept, in a private Google Sheet run by Autoprod. Recipes and lists never leave the device.
 //  - Online only, on the live and test sites (the path picks the Sheet tab). Never on a file:// copy,
 //    the team site, the shared phone view (#s=...) or in print.
 //  - The app keeps loading behind the box; the box never waits for the network. The entry is queued
@@ -5925,6 +5925,42 @@ function signupTextError(s, min, max, what){
 function signupInShareOrPrint(){
   return /^#s=/.test(location.hash || '') || document.body.classList.contains('shared-mode') ||
     (window.matchMedia && matchMedia('print').matches);
+}
+// ---------- 7e. Welcome box: approximate location, worked out on the device (v3.4.x) ----------
+// From the browser's time zone and language ONLY, e.g. Australia/Sydney + en-AU -> "Australia (Sydney time)".
+// No extra question, no IP address, no IP-lookup service, no GPS (navigator.geolocation is never used).
+// Zones not in the table fall back to the language's region ("Philippines (from language)"), then "Unknown".
+// Table: every zone in tzdata zone.tab (+ old names some browsers still report) -> ISO country code.
+const SIGNUP_TZ_PREFIX = { A: 'America/', E: 'Europe/', S: 'Asia/', F: 'Africa/', P: 'Pacific/', U: 'Australia/', T: 'Atlantic/', I: 'Indian/', N: 'Antarctica/', R: 'Arctic/' };
+const SIGNUP_TZ_MAP = 'AD:EAndorra;AE:SDubai;AF:SKabul;AG:AAntigua;AI:AAnguilla;AL:ETirane;AM:SYerevan;AO:FLuanda;AQ:NCasey NDavis NDumontDUrville NMawson NMcMurdo NPalmer NRothera NSyowa NTroll NVostok;AR:AArgentina/Buenos_Aires AArgentina/Catamarca AArgentina/Cordoba AArgentina/Jujuy AArgentina/La_Rioja AArgentina/Mendoza AArgentina/Rio_Gallegos AArgentina/Salta AArgentina/San_Juan AArgentina/San_Luis AArgentina/Tucuman AArgentina/Ushuaia;AS:PPago_Pago;AT:EVienna;AU:NMacquarie UAdelaide UBrisbane UBroken_Hill UDarwin UEucla UHobart ULindeman ULord_Howe UMelbourne UPerth USydney;AW:AAruba;AX:EMariehamn;AZ:SBaku;BA:ESarajevo;BB:ABarbados;BD:SDhaka;BE:EBrussels;BF:FOuagadougou;BG:ESofia;BH:SBahrain;BI:FBujumbura;BJ:FPorto-Novo;BL:ASt_Barthelemy;BM:TBermuda;BN:SBrunei;BO:ALa_Paz;BQ:AKralendijk;BR:AAraguaina ABahia ABelem ABoa_Vista ACampo_Grande ACuiaba AEirunepe AFortaleza AMaceio AManaus ANoronha APorto_Velho ARecife ARio_Branco ASantarem ASao_Paulo;BS:ANassau;BT:SThimphu;BW:FGaborone;BY:EMinsk;BZ:ABelize;CA:AAtikokan ABlanc-Sablon ACambridge_Bay ACreston ADawson ADawson_Creek AEdmonton AFort_Nelson AGlace_Bay AGoose_Bay AHalifax AInuvik AIqaluit AMoncton ARankin_Inlet ARegina AResolute ASt_Johns ASwift_Current AToronto AVancouver AWhitehorse AWinnipeg;CC:ICocos;CD:FKinshasa FLubumbashi;CF:FBangui;CG:FBrazzaville;CH:EZurich;CI:FAbidjan;CK:PRarotonga;CL:ACoyhaique APunta_Arenas ASantiago PEaster;CM:FDouala;CN:SShanghai SUrumqi;CO:ABogota;CR:ACosta_Rica;CU:AHavana;CV:TCape_Verde;CW:ACuracao;CX:IChristmas;CY:SFamagusta SNicosia;CZ:EPrague;DE:EBerlin EBusingen;DJ:FDjibouti;DK:ECopenhagen;DM:ADominica;DO:ASanto_Domingo;DZ:FAlgiers;EC:AGuayaquil PGalapagos;EE:ETallinn;EG:FCairo;EH:FEl_Aaiun;ER:FAsmara;ES:FCeuta TCanary EMadrid;ET:FAddis_Ababa;FI:EHelsinki;FJ:PFiji;FK:TStanley;FM:PChuuk PKosrae PPohnpei;FO:TFaroe;FR:EParis;GA:FLibreville;GB:ELondon;GD:AGrenada;GE:STbilisi;GF:ACayenne;GG:EGuernsey;GH:FAccra;GI:EGibraltar;GL:ADanmarkshavn ANuuk AScoresbysund AThule;GM:FBanjul;GN:FConakry;GP:AGuadeloupe;GQ:FMalabo;GR:EAthens;GS:TSouth_Georgia;GT:AGuatemala;GU:PGuam;GW:FBissau;GY:AGuyana;HK:SHong_Kong;HN:ATegucigalpa;HR:EZagreb;HT:APort-au-Prince;HU:EBudapest;ID:SJakarta SJayapura SMakassar SPontianak;IE:EDublin;IL:SJerusalem;IM:EIsle_of_Man;IN:SKolkata;IO:IChagos;IQ:SBaghdad;IR:STehran;IS:TReykjavik;IT:ERome;JE:EJersey;JM:AJamaica;JO:SAmman;JP:STokyo;KE:FNairobi;KG:SBishkek;KH:SPhnom_Penh;KI:PKanton PKiritimati PTarawa;KM:IComoro;KN:ASt_Kitts;KP:SPyongyang;KR:SSeoul;KW:SKuwait;KY:ACayman;KZ:SAlmaty SAqtau SAqtobe SAtyrau SOral SQostanay SQyzylorda;LA:SVientiane;LB:SBeirut;LC:ASt_Lucia;LI:EVaduz;LK:SColombo;LR:FMonrovia;LS:FMaseru;LT:EVilnius;LU:ELuxembourg;LV:ERiga;LY:FTripoli;MA:FCasablanca;MC:EMonaco;MD:EChisinau;ME:EPodgorica;MF:AMarigot;MG:IAntananarivo;MH:PKwajalein PMajuro;MK:ESkopje;ML:FBamako;MM:SYangon;MN:SHovd SUlaanbaatar;MO:SMacau;MP:PSaipan;MQ:AMartinique;MR:FNouakchott;MS:AMontserrat;MT:EMalta;MU:IMauritius;MV:IMaldives;MW:FBlantyre;MX:ABahia_Banderas ACancun AChihuahua ACiudad_Juarez AHermosillo AMatamoros AMazatlan AMerida AMexico_City AMonterrey AOjinaga ATijuana;MY:SKuala_Lumpur SKuching;MZ:FMaputo;NA:FWindhoek;NC:PNoumea;NE:FNiamey;NF:PNorfolk;NG:FLagos;NI:AManagua;NL:EAmsterdam;NO:EOslo;NP:SKathmandu;NR:PNauru;NU:PNiue;NZ:PAuckland PChatham;OM:SMuscat;PA:APanama;PE:ALima;PF:PGambier PMarquesas PTahiti;PG:PBougainville PPort_Moresby;PH:SManila;PK:SKarachi;PL:EWarsaw;PM:AMiquelon;PN:PPitcairn;PR:APuerto_Rico;PS:SGaza SHebron;PT:TAzores TMadeira ELisbon;PW:PPalau;PY:AAsuncion;QA:SQatar;RE:IReunion;RO:EBucharest;RS:EBelgrade;RU:SAnadyr SBarnaul SChita SIrkutsk SKamchatka SKhandyga SKrasnoyarsk SMagadan SNovokuznetsk SNovosibirsk SOmsk SSakhalin SSrednekolymsk STomsk SUst-Nera SVladivostok SYakutsk SYekaterinburg EAstrakhan EKaliningrad EKirov EMoscow ESamara ESaratov EUlyanovsk EVolgograd;RW:FKigali;SA:SRiyadh;SB:PGuadalcanal;SC:IMahe;SD:FKhartoum;SE:EStockholm;SG:SSingapore;SH:TSt_Helena;SI:ELjubljana;SJ:RLongyearbyen;SK:EBratislava;SL:FFreetown;SM:ESan_Marino;SN:FDakar;SO:FMogadishu;SR:AParamaribo;SS:FJuba;ST:FSao_Tome;SV:AEl_Salvador;SX:ALower_Princes;SY:SDamascus;SZ:FMbabane;TC:AGrand_Turk;TD:FNdjamena;TF:IKerguelen;TG:FLome;TH:SBangkok;TJ:SDushanbe;TK:PFakaofo;TL:SDili;TM:SAshgabat;TN:FTunis;TO:PTongatapu;TR:EIstanbul;TT:APort_of_Spain;TV:PFunafuti;TW:STaipei;TZ:FDar_es_Salaam;UA:EKyiv ESimferopol;UG:FKampala;UM:PMidway PWake;US:AAdak AAnchorage ABoise AChicago ADenver ADetroit AIndiana/Indianapolis AIndiana/Knox AIndiana/Marengo AIndiana/Petersburg AIndiana/Tell_City AIndiana/Vevay AIndiana/Vincennes AIndiana/Winamac AJuneau AKentucky/Louisville AKentucky/Monticello ALos_Angeles AMenominee AMetlakatla ANew_York ANome ANorth_Dakota/Beulah ANorth_Dakota/Center ANorth_Dakota/New_Salem APhoenix ASitka AYakutat PHonolulu;UY:AMontevideo;UZ:SSamarkand STashkent;VA:EVatican;VC:ASt_Vincent;VE:ACaracas;VG:ATortola;VI:ASt_Thomas;VN:SHo_Chi_Minh;VU:PEfate;WF:PWallis;WS:PApia;YE:SAden;YT:IMayotte;ZA:FJohannesburg;ZM:FLusaka;ZW:FHarare';
+const SIGNUP_TZ_ALIAS = 'FAsmera=FAsmara FTimbuktu=FBamako AArgentina/ComodRivadavia=AArgentina/Catamarca AAtka=AAdak ABuenos_Aires=AArgentina/Buenos_Aires ACatamarca=AArgentina/Catamarca ACoral_Harbour=AAtikokan ACordoba=AArgentina/Cordoba AEnsenada=ATijuana AFort_Wayne=AIndiana/Indianapolis AGodthab=ANuuk AIndianapolis=AIndiana/Indianapolis AJujuy=AArgentina/Jujuy AKnox_IN=AIndiana/Knox ALouisville=AKentucky/Louisville AMendoza=AArgentina/Mendoza AMontreal=AToronto ANipigon=AToronto APangnirtung=AIqaluit APorto_Acre=ARio_Branco ARainy_River=AWinnipeg ARosario=AArgentina/Cordoba ASanta_Isabel=ATijuana AShiprock=ADenver AThunder_Bay=AToronto AVirgin=ASt_Thomas AYellowknife=AEdmonton NSouth_Pole=NMcMurdo SAshkhabad=SAshgabat SCalcutta=SKolkata SChoibalsan=SUlaanbaatar SChongqing=SShanghai SChungking=SShanghai SDacca=SDhaka SHarbin=SShanghai SIstanbul=EIstanbul SKashgar=SUrumqi SKatmandu=SKathmandu SMacao=SMacau SRangoon=SYangon SSaigon=SHo_Chi_Minh STel_Aviv=SJerusalem SThimbu=SThimphu SUjung_Pandang=SMakassar SUlan_Bator=SUlaanbaatar TFaeroe=TFaroe TJan_Mayen=EOslo UACT=USydney UCanberra=USydney UCurrie=UHobart ULHI=ULord_Howe UNSW=USydney UNorth=UDarwin UQueensland=UBrisbane USouth=UAdelaide UTasmania=UHobart UVictoria=UMelbourne UWest=UPerth UYancowinna=UBroken_Hill EBelfast=ELondon EKiev=EKyiv ENicosia=SNicosia ETiraspol=EChisinau EUzhgorod=EKyiv EZaporozhye=EKyiv PEnderbury=PKanton PJohnston=PHonolulu PPonape=PPohnpei PSamoa=PPago_Pago PTruk=PChuuk PYap=PChuuk';
+let _signupTzIndex = null;
+function signupTzIndex(){
+  if (_signupTzIndex) return _signupTzIndex;
+  const ex = z => SIGNUP_TZ_PREFIX[z[0]] + z.slice(1), zones = {}, alias = {};
+  SIGNUP_TZ_MAP.split(';').forEach(g => { const i = g.indexOf(':'); g.slice(i + 1).split(' ').forEach(z => { zones[ex(z)] = g.slice(0, i); }); });
+  SIGNUP_TZ_ALIAS.split(' ').forEach(p => { const i = p.indexOf('='); alias[ex(p.slice(0, i))] = ex(p.slice(i + 1)); });
+  return (_signupTzIndex = { zones: zones, alias: alias });
+}
+function signupRegionName(cc){
+  try{ const n = new Intl.DisplayNames(['en'], { type: 'region' }).of(cc); if (n && n !== cc) return n; }catch(e){}
+  return cc;
+}
+function signupGeo(){
+  let tz = '', lang = '';
+  try{ tz = String(Intl.DateTimeFormat().resolvedOptions().timeZone || ''); }catch(e){}
+  try{ lang = String(navigator.language || ''); }catch(e){}
+  if (tz.length > 64 || !/^[A-Za-z][A-Za-z0-9_+\-]*(\/[A-Za-z0-9_+\-]+){0,2}$/.test(tz)) tz = '';
+  if (lang.length > 35 || !/^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8}){0,4}$/.test(lang)) lang = '';
+  const idx = signupTzIndex(), canon = idx.alias[tz] || tz, cc = Object.prototype.hasOwnProperty.call(idx.zones, canon) ? idx.zones[canon] : '';
+  let loc = 'Unknown';
+  if (cc){ const country = signupRegionName(cc), city = canon.split('/').pop().replace(/_/g, ' ');
+    loc = city === country ? country : country + ' (' + city + ' time)'; }
+  else {
+    const r = lang.split('-').slice(1).find(p => /^([A-Za-z]{2}|\d{3})$/.test(p));
+    if (r) loc = signupRegionName(r.toUpperCase()) + ' (from language)';
+  }
+  return { tz: tz, lang: lang, loc: loc.replace(/[\u2018\u2019]/g, "'").slice(0, 60) };
 }
 function maybeShowWelcome(){
   if (!signupSite() || signupLS(SIGNUP_CONFIG.doneKey) || signupInShareOrPrint()) return;
@@ -5959,7 +5995,7 @@ function showWelcome(){
     <div class="wm-hp" aria-hidden="true"><label for="wmWebsite">Website</label><input type="text" id="wmWebsite" name="website" tabindex="-1" autocomplete="off"></div>
     <button type="submit" class="wm-start" id="wmStart">Start using Prepline</button>
     ${ALLOW_SKIP ? '<button type="button" class="wm-skip" id="wmSkip">Skip for now</button>' : ''}
-    <p class="wm-note">So the maker can see who's trying Prepline. Only your name, role and the date are saved. <a href="privacy.html" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a></p>
+    <p class="wm-note">So the maker can see who's trying Prepline. Only your name, role, the date and your rough location (from your device's time zone) are saved. <a href="privacy.html" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a></p>
   </form>`;
   document.body.appendChild(box);
   document.documentElement.classList.add('wm-open');
@@ -6007,7 +6043,9 @@ function submitWelcome(){
   if (nErr){ nameEl.focus(); return; }
   if (pErr){ box.querySelector('input[name=wmPos]').focus(); return; }
   if (oErr){ otherEl.focus(); return; }
-  const body = { v: 1, name: name, position: position, ms: Date.now() - _wmShownAt, hp: box.querySelector('#wmWebsite').value || '' };
+  const geo = signupGeo();   // approximate location from time zone + language (no IP, no GPS)
+  const body = { v: 1, name: name, position: position, ms: Date.now() - _wmShownAt, hp: box.querySelector('#wmWebsite').value || '',
+    tz: geo.tz, lang: geo.lang, loc: geo.loc };
   if (position === 'Other') body.other = other;
   signupLS(SIGNUP_CONFIG.queueKey, JSON.stringify({ b: body, tries: 0, site: signupSite(), shown: _wmShownAt }));
   signupLS(SIGNUP_CONFIG.doneKey, JSON.stringify({ d: localYMD() }));
