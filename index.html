@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--! Prepline by Autoprod. © 2026 Autoprod. All rights reserved. Not for resale or redistribution. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -3974,7 +3975,16 @@ function printViaIframe(fullHtml){
   iframe.onload = doPrint;
   setTimeout(doPrint, 500); // covers browsers where a same-document iframe's load event doesn't reliably fire
 }
-async function printReadyHtml(fullHtml, filename){
+// v3.4.6: every printout (each Print button and every "Print all" document) carries the notice.
+const COPYRIGHT_NOTICE = '© 2026 Autoprod. All rights reserved. Not for resale or redistribution.';
+function withCopyright(html){
+  if (html.includes('ap-print-copy')) return html;
+  const line = '<div class="ap-print-copy" style="margin-top:16px; padding-top:6px; border-top:1px solid #ccc; font:10px/1.4 system-ui,sans-serif; color:#555; text-align:center;">' + COPYRIGHT_NOTICE + '</div>';
+  const i = html.lastIndexOf('</body>');
+  return i < 0 ? html + line : html.slice(0, i) + line + html.slice(i);
+}
+async function printReadyHtml(fullHtml, filename){ return printReadyHtmlRaw(withCopyright(fullHtml), filename); }
+async function printReadyHtmlRaw(fullHtml, filename){
   fullHtml = stripMethodImages(fullHtml);   // v3.2.4
   setStatus('Preparing your printout…');
   const downloads = await getDownloadsCapability();
@@ -6773,5 +6783,6 @@ openSharedViewFromHash();   // v3.3: a team-share link opens the read-only list 
 
 
 </script>
+<footer class="ap-copy" id="apCopyright" style="text-align:center; margin:24px 12px 18px; font-size:11px; opacity:.75;">© 2026 Autoprod. All rights reserved. Not for resale or redistribution.</footer>
 </body>
 </html>
