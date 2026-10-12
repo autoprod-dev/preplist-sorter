@@ -1,9 +1,10 @@
 <!DOCTYPE html>
+<!--! Prepline by Autoprod. © 2026 Autoprod. All rights reserved. Not for resale or redistribution. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.2">
+<meta name="prepline-version" content="3.4.3">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1190,7 +1191,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.2</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.3</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -3948,7 +3949,16 @@ function printViaIframe(fullHtml){
   iframe.onload = doPrint;
   setTimeout(doPrint, 500); // covers browsers where a same-document iframe's load event doesn't reliably fire
 }
-async function printReadyHtml(fullHtml, filename){
+// v3.4.6: every printout (each Print button and every "Print all" document) carries the notice.
+const COPYRIGHT_NOTICE = '© 2026 Autoprod. All rights reserved. Not for resale or redistribution.';
+function withCopyright(html){
+  if (html.includes('ap-print-copy')) return html;
+  const line = '<div class="ap-print-copy" style="margin-top:16px; padding-top:6px; border-top:1px solid #ccc; font:10px/1.4 system-ui,sans-serif; color:#555; text-align:center;">' + COPYRIGHT_NOTICE + '</div>';
+  const i = html.lastIndexOf('</body>');
+  return i < 0 ? html + line : html.slice(0, i) + line + html.slice(i);
+}
+async function printReadyHtml(fullHtml, filename){ return printReadyHtmlRaw(withCopyright(fullHtml), filename); }
+async function printReadyHtmlRaw(fullHtml, filename){
   fullHtml = stripMethodImages(fullHtml);   // v3.2.4
   setStatus('Preparing your printout…');
   const downloads = await getDownloadsCapability();
@@ -6736,5 +6746,6 @@ openSharedViewFromHash();   // v3.3: a team-share link opens the read-only list 
 
 
 </script>
+<footer class="ap-copy" id="apCopyright" style="text-align:center; margin:24px 12px 18px; font-size:11px; opacity:.75;">© 2026 Autoprod. All rights reserved. Not for resale or redistribution.</footer>
 </body>
 </html>
