@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.1">
+<meta name="prepline-version" content="3.4.2">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -702,8 +702,8 @@ var LICENSE_CONFIG = {
   #preplistTab select.rowsel:hover{border-color:var(--accent);}
   #preplistTab select.rowsel:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-bg);}
   #preplistTab .section-table-wrap {
-    border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius) var(--radius); overflow:auto;
-    max-height:520px; margin-bottom:30px; box-shadow:var(--shadow-sm);
+    border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius) var(--radius); overflow-x:auto; overflow-y:visible;
+    max-height:none; margin-bottom:30px; box-shadow:var(--shadow-sm);
   }
 
   #preplistTab .empty{padding:70px 20px; text-align:center; color:var(--ink-soft);}
@@ -1190,7 +1190,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.1</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.2</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1937,11 +1937,22 @@ function renderApp(){
 }
 
 // ---------- column sorting (per view, applies to every table within that view) ----------
-let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}};
+// v3.4.5: ONE print order shared by every view (By dish, By team section, By prep day,
+// Order sheet) and remembered on this device. Each view reads it in its own terms
+// (see sortColumnOptions / orderLineSortVal).
+const PRINT_ORDER_KEY = 'prepline.printOrder.v1';
+const SORT_COLS = ['dish','task','total','section','day','lead'];
+let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}, order:{col:null,dir:'asc'}};
+function setAllSort(col, dir){
+  col = SORT_COLS.includes(col) ? col : null; dir = dir==='desc' ? 'desc' : 'asc';
+  Object.keys(sortState).forEach(v=>{ sortState[v] = {col, dir}; });
+  try{ localStorage.setItem(PRINT_ORDER_KEY, JSON.stringify({col, dir})); }catch(e){}
+}
+(function loadPrintOrder(){ try{ const o = JSON.parse(localStorage.getItem(PRINT_ORDER_KEY)||'null'); if (o) setAllSort(o.col, o.dir); }catch(e){} })();
 function setSort(view, col){
   const s = sortState[view];
-  if (s.col===col){ s.dir = s.dir==='asc' ? 'desc' : 'asc'; }
-  else { s.col = col; s.dir = 'asc'; }
+  if (s.col===col) setAllSort(col, s.dir==='asc' ? 'desc' : 'asc');
+  else setAllSort(col, 'asc');
   render();
 }
 // Explicit setter (col and/or dir chosen directly from a dropdown, not by re-clicking a
@@ -1949,7 +1960,7 @@ function setSort(view, col){
 // a direction in one go, for whichever print layout (per dish / per section / per day)
 // they're about to run.
 function setSortExplicit(view, col, dir){
-  sortState[view] = {col: col || null, dir: dir || 'asc'};
+  setAllSort(col || null, dir || 'asc');
   renderApp();
 }
 function sortArrow(view, col){
@@ -1966,12 +1977,13 @@ function applySort(rows, view){
   const s = sortState[view];
   if (!s.col) return rows;
   const mult = s.dir==='asc' ? 1 : -1;
-  return [...rows].sort((a,b)=>{
+  return rows.map((r,i)=>[r,i]).sort((A,B)=>{
+    const a = A[0], b = B[0];
     let va, vb;
     switch(s.col){
       case 'dish': va=cleanDishName(a.dish).toLowerCase(); vb=cleanDishName(b.dish).toLowerCase(); break;
       case 'task': va=a.task.toLowerCase(); vb=b.task.toLowerCase(); break;
-      case 'total': { const ta=computeTotal(a), tb=computeTotal(b); va=ta===null?-Infinity:ta; vb=tb===null?-Infinity:tb; break; }
+      case 'total': { const ta=computeTotal(a), tb=computeTotal(b); va=ta===null?-Infinity:toBaseQty(ta,a.unit).n; vb=tb===null?-Infinity:toBaseQty(tb,b.unit).n; break; }   // v3.4.5: 12 kg > 100 g
       case 'section': va=a.section.toLowerCase(); vb=b.section.toLowerCase(); break;
       case 'lead': va=(leaderBySection[a.section]||'').toLowerCase(); vb=(leaderBySection[b.section]||'').toLowerCase(); break;
       case 'day': va=a.day?WEEKDAYS.indexOf(a.day):99; vb=b.day?WEEKDAYS.indexOf(b.day):99; break;
@@ -1979,23 +1991,46 @@ function applySort(rows, view){
     }
     if (va<vb) return -1*mult;
     if (va>vb) return 1*mult;
-    return 0;
-  });
+    return A[1]-B[1];   // stable: ties keep the default (job-clustered) order
+  }).map(x=>x[0]);
 }
 // Which columns make sense to order by in each view — kept separate per view since
 // e.g. "Section" is meaningless to sort by inside the By-section print (every row in
 // that print run is already the same section).
+// v3.4.5: every view offers the same 6 choices (so the choice carries across views);
+// the label says what it means there. Where a choice can't change anything (Section inside
+// one section's list) the label says so and that list keeps its default order.
 function sortColumnOptions(view){
-  if (view==='dish') return [['task','Task'],['total','Total to make'],['section','Section'],['day','Prep day']];
-  if (view==='section') return [['dish','Dish name'],['task','Task'],['total','Total needed'],['day','Prep day']];
-  return [['dish','Dish name'],['task','Task'],['total','Total needed'],['section','Section'],['lead','Team lead']];
+  if (view==='order') return [['dish','Dish (first dish it is used in)'],['task','Item'],['total','Amount needed'],['section','Section'],['day','Prep day (earliest)'],['lead','Team lead']];
+  return [['dish', view==='dish' ? 'Dish name (one dish per list: no change)' : 'Dish name'],['task','Task'],['total', view==='dish' ? 'Total to make' : 'Total needed'],
+    ['section', view==='section' ? 'Section (one section per list: no change)' : 'Section'],['day', view==='priority' ? 'Prep day (one day per list: no change)' : 'Prep day'],['lead','Team lead']];
+}
+function orderLineSortVal(L, col){
+  const rs = L.rows || [];
+  switch(col){
+    case 'dish': return (L.dishes||[]).map(d=>cleanDishName(d).toLowerCase()).sort()[0] || '';
+    case 'task': return String(L.task||'').toLowerCase();
+    case 'total': { if (!L.hasQty || !L.need) return -Infinity; const b = toBaseQty(L.need.n, L.need.u); return Number.isFinite(b.n) ? b.n : -Infinity; }
+    case 'section': return rs.map(r=>String(r.section||'').toLowerCase()).sort()[0] || '';
+    case 'day': return Math.min(99, ...rs.map(r=>r.day?WEEKDAYS.indexOf(r.day):99));
+    case 'lead': return rs.map(r=>(leaderBySection[r.section]||'').toLowerCase()).filter(Boolean).sort()[0] || '';
+  }
+  return 0;
+}
+function sortOrderLines(lines){
+  const s = sortState.order;
+  if (!s.col) return lines;
+  const mult = s.dir==='asc' ? 1 : -1;
+  return lines.map((L,i)=>[L,i]).sort((a,b)=>{ const va = orderLineSortVal(a[0], s.col), vb = orderLineSortVal(b[0], s.col);
+    return va<vb ? -mult : va>vb ? mult : a[1]-b[1]; }).map(x=>x[0]);
 }
 function printOrderControlHtml(){
   const view = viewMode;
   const opts = sortColumnOptions(view);
   const s = sortState[view];
-  return `<div class="no-print" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 18px; padding:12px 16px; background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);">
+  return `<div class="no-print print-order-ctl" data-view="${view}" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 18px; padding:12px 16px; background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);">
     <b style="font-size:12.5px;">Before printing — order by:</b>
+    <span class="meta" style="font-size:11.5px;">Rows in every view${view==='order'?' (lines within each supplier)':''}, on screen and in print. Remembered on this device.</span>
     <select onchange="setSortExplicit('${view}', this.value, sortState['${view}'].dir)">
       <option value="">Default order</option>
       ${opts.map(([col,label])=>`<option value="${col}" ${s.col===col?'selected':''}>${escapeHtml(label)}</option>`).join('')}
@@ -2331,11 +2366,11 @@ function bulkMoveToolbarHtml(rowsInThisTable){
   const selectedCount = idxList.filter(i=>selectedRowIdx.has(i)).length;
   return `<div class="row no-print" style="gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap;">
     <span class="meta" style="font-size:12px;">${selectedCount} ticked</span>
-    <select id="bulkMoveDaySelect" style="width:auto;">
+    <select class="bulk-move-day" style="width:auto;">
       <option value="">— move ticked rows to —</option>
       ${WEEKDAYS.map(w=>`<option value="${w}" ${blockedDays.has(w)?'disabled':''}>${w}${blockedDays.has(w)?' (closed)':''}</option>`).join('')}
     </select>
-    <button class="secondary" type="button" ${anySelectedHere?'':'disabled'} onclick="bulkMoveSelectedToDay(document.getElementById('bulkMoveDaySelect').value)">Move ticked rows</button>
+    <button class="secondary" type="button" ${anySelectedHere?'':'disabled'} onclick="bulkMoveSelectedToDay(this.parentNode.querySelector('select.bulk-move-day').value, [${idxList.join(',')}])">Move ticked rows</button>
     <button class="ghost" type="button" onclick="clearRowSelection()">Clear ticks</button>
   </div>`;
 }
@@ -2348,13 +2383,17 @@ function toggleSelectAll(checked, idxArray){
   render();
 }
 function clearRowSelection(){ selectedRowIdx.clear(); render(); }
-function bulkMoveSelectedToDay(day){
+function bulkMoveSelectedToDay(day, scopeIdx){
   if (!day){ setStatus('Pick a day to move the ticked rows to first.', 'err'); return; }
-  if (!selectedRowIdx.size){ setStatus('Nothing ticked yet — tick at least one row.', 'err'); return; }
-  let moved = 0;
-  selectedRowIdx.forEach(idx=>{ if (ROWS[idx]){ ROWS[idx].day = day; moved++; } });
-  selectedRowIdx.clear();
+  // v3.4.4: each preplist's toolbar moves the ticked rows of THAT list (scopeIdx); before,
+  // every toolbar read the first list's day picker (duplicate id), so lists 2+ did nothing.
+  const targets = [...selectedRowIdx].filter(i=>!scopeIdx || scopeIdx.includes(i));
+  if (!targets.length){ setStatus('Nothing ticked yet — tick at least one row.', 'err'); return; }
+  let moved = 0; const dishesTouched = new Set();
+  targets.forEach(idx=>{ if (ROWS[idx]){ ROWS[idx].day = day; moved++; dishesTouched.add(ROWS[idx].dish); selectedRowIdx.delete(idx); } });
+  if (!scopeIdx) selectedRowIdx.clear();
   render();
+  dishesTouched.forEach(d=>autoCopyAfterEdit(d));
   setStatus('Moved '+moved+' row(s) to '+day+'.', 'ok');
 }
 function daySelect(globalIdx, currentVal){
@@ -2365,7 +2404,7 @@ function daySelect(globalIdx, currentVal){
 }
 // Manually picking a weekday on a row is a deliberate override — it sticks even if the
 // event day changes later, unless the person picks a fresh weekday again.
-function setDay(idx, val){ ROWS[idx].day = val; render(); }
+function setDay(idx, val){ ROWS[idx].day = val; render(); autoCopyAfterEdit(ROWS[idx].dish); }
 
 function parseQty(q){
   if (q===undefined || q===null || q==='') return NaN;
@@ -3265,6 +3304,9 @@ async function handlePdfFiles(fileList, opts){
         if (usedDishTitles.has(dishTitle)){
           const suffix = d.main.batDate ? ' — for '+d.main.batDate : ' — run '+(usedDishTitles.size+1);
           dishTitle = dishTitle + suffix;
+          // v3.4.4: the same recipe for two events on the SAME date got the same key and merged
+          let n = 2; const stem = dishTitle;
+          while (usedDishTitles.has(dishTitle)) dishTitle = stem + ' (' + (n++) + ')';
         }
         usedDishTitles.add(dishTitle);
         const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
@@ -3664,16 +3706,105 @@ function fmtHM(d){
   return ((hr % 12) || 12) + ':' + m + ' ' + (hr < 12 ? 'am' : 'pm');
 }
 
-function renderMasterSummary(){
-  const dishes = [];
-  ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
-  // Order by event day, Monday → Sunday; dishes with no event day set yet go last.
-  const sorted = [...dishes].sort((a,b)=>{
+// v3.4.4: ONE dish order, shared by the summary table and the preplists below it.
+// Order by event day, Monday → Sunday; dishes with no event day set yet go last.
+// ---------- v3.4.4: copy prep-day plan + garnish section to similar dishes ----------
+// "Similar" = the same recipe (same name as printed, ignoring the "— for <date>" / "(2)"
+// keys added to tell runs apart) for an event on the SAME date. Nothing else is matched.
+function similarBaseName(dish){
+  const r = ROWS.find(x=>x.dish===dish);
+  const base = (r && r.srcType==='pdf' && r.srcSheet) ? r.srcSheet : String(dish).replace(/\s+—\s+(for .+|run \d+)$/,'').replace(/\s+\(\d+\)$/,'');
+  return _cleanDishName(base).toLowerCase().replace(/\s+/g,' ').trim();
+}
+function similarDishesOf(dish){
+  const date = getEventDateStr(dish);
+  if (!date) return [];
+  const key = similarBaseName(dish), seen = [];
+  ROWS.forEach(r=>{ if (r.dish!==dish && !seen.includes(r.dish) && getEventDateStr(r.dish)===date && similarBaseName(r.dish)===key) seen.push(r.dish); });
+  return seen;
+}
+const AUTO_COPY_KEY = 'prepline.autoCopySimilar';
+function autoCopyOn(){ try{ return localStorage.getItem(AUTO_COPY_KEY)==='1'; }catch(e){ return false; } }
+function setAutoCopy(on){ try{ localStorage.setItem(AUTO_COPY_KEY, on?'1':'0'); }catch(e){} render(); setStatus(on ? 'Auto-apply is on: prep-day and garnish changes copy to similar dishes on the same date (Undo is offered each time).' : 'Auto-apply is off.', 'ok'); }
+function similarBarHtml(dish){
+  const sims = similarDishesOf(dish);
+  if (!sims.length) return '';
+  const enc = encName(dish);
+  const names = sims.map(d=>{ const p = paxByDish[d]; return escapeHtml(cleanDishName(d)) + (p!==undefined ? ' ('+p+' pax)' : ''); }).join(', ');
+  return `<div class="row no-print similar-bar" style="gap:8px; align-items:center; margin:10px 0 0; flex-wrap:wrap; font-size:12px;">
+    <span class="meta">Same dish, same date: ${names}</span>
+    <button class="secondary" type="button" onclick="copyToSimilar('${enc}')" title="Copies this dish's prep days and its garnish section to the matching dishes. Quantities follow each dish's own pax.">Copy to similar dishes</button>
+    <label style="display:inline-flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="auto-copy-toggle" ${autoCopyOn()?'checked':''} onchange="setAutoCopy(this.checked)" style="width:auto;"> Auto-apply</label>
+  </div>`;
+}
+let similarUndo = null;
+function roundSensible(n){
+  if (!Number.isFinite(n)) return n;
+  const a = Math.abs(n);
+  const step = a>=100 ? 1 : a>=10 ? 0.5 : a>=1 ? 0.1 : 0.01;
+  return Math.round(n/step)*step >= 0 ? Math.round(Math.round(n/step)*step*1000)/1000 : n;
+}
+function taskKey(r){ return String(r.task||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function isGarnishRow(r){ return r.section==='Garnishes, Herbs, Powders, Oils Etc.'; }
+function copyToSimilar(encDish, auto){
+  const src = decodeURIComponent(encDish);
+  const sims = similarDishesOf(src);
+  if (!sims.length){ setStatus('No similar dishes on the same date to copy to.', 'err'); return; }
+  const before = ROWS.map(r=>({day:r.day, section:r.section, flagged:r.flagged}));
+  const beforeLen = ROWS.length;
+  const srcRows = ROWS.filter(r=>r.dish===src);
+  const srcPax = paxByDish[src];
+  let changed = 0, added = 0;
+  sims.forEach(t=>{
+    const tRows = ROWS.filter(r=>r.dish===t), used = new Set();
+    const tPax = paxByDish[t];
+    const ratio = (Number.isFinite(srcPax) && srcPax>0 && Number.isFinite(tPax)) ? tPax/srcPax : 1;
+    srcRows.forEach(sr=>{
+      const m = tRows.find(r=>!used.has(r) && taskKey(r)===taskKey(sr));
+      if (m){
+        used.add(m);
+        if (m.day!==sr.day || m.section!==sr.section){ m.day = sr.day; m.section = sr.section; m.flagged = false; changed++; }
+      } else if (isGarnishRow(sr)){
+        // A garnish line this dish doesn't have yet: add it, scaled to this dish's pax.
+        const c = Object.assign({}, sr, {dish: t, flagged: false});
+        if (c.pdfFixedTotal!==undefined && c.pdfFixedTotal!==null){
+          const srcTotal = computeTotal(sr);
+          c.pdfFixedTotal = roundSensible(srcTotal * ratio); c.pdfBasePax = Number.isFinite(tPax) ? tPax : c.pdfBasePax;
+        }
+        ROWS.push(c); added++;
+      }
+    });
+  });
+  similarUndo = {before, beforeLen};
+  render();
+  if (!changed && !added){ setStatus('Similar dishes already match this one.', 'ok'); similarUndo = null; return; }
+  const el = document.getElementById('statusMsg');
+  setStatus((auto?'Auto-applied: ':'Copied: ')+changed+' row(s) updated'+(added?', '+added+' garnish line(s) added (scaled by pax)':'')+' on '+sims.length+' similar dish(es). ', 'ok');
+  const b = document.createElement('button'); b.type='button'; b.className='ghost'; b.id='undoSimilarBtn'; b.textContent='Undo'; b.onclick = undoCopyToSimilar; el.appendChild(b);
+}
+function undoCopyToSimilar(){
+  if (!similarUndo) return;
+  const {before, beforeLen} = similarUndo;
+  ROWS.length = beforeLen;
+  before.forEach((b,i)=>{ if (ROWS[i]) Object.assign(ROWS[i], b); });
+  similarUndo = null;
+  render(); setStatus('Undone: similar dishes are back as they were.', 'ok');
+}
+function autoCopyAfterEdit(dish){
+  if (autoCopyOn() && dish && similarDishesOf(dish).length) copyToSimilar(encName(dish), true);
+}
+function summaryDishOrder(dishes){
+  if (!dishes){ dishes = []; ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); }); }
+  const first = {}; ROWS.forEach((r,i)=>{ if (first[r.dish]===undefined) first[r.dish] = i; });
+  return [...dishes].sort((a,b)=>{
     const ia = getEventDay(a) ? WEEKDAYS.indexOf(getEventDay(a)) : 99;
     const ib = getEventDay(b) ? WEEKDAYS.indexOf(getEventDay(b)) : 99;
     if (ia !== ib) return ia - ib;
-    return cleanDishName(a).localeCompare(cleanDishName(b));
+    return cleanDishName(a).localeCompare(cleanDishName(b)) || ((first[a]||0) - (first[b]||0));
   });
+}
+function renderMasterSummary(){
+  const sorted = summaryDishOrder();
   const totalTasks = ROWS.length;
   const paxKnown = sorted.filter(d=>paxByDish[d]!==undefined);
   const paxSum = paxKnown.reduce((s,d)=>s+Number(paxByDish[d]),0);
@@ -4070,6 +4201,7 @@ function printMasterSummary(){
 }
 
 function render(){
+  invalidateDishNumbers();
   const area = document.getElementById('resultsArea');
   scheduleOnetimeSave();   // v3.2.2: every change that re-renders is saved (pax edits were lost on reload)
   renderPaxPanel();
@@ -4105,9 +4237,18 @@ function render(){
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
   html += searchBarHtml();
-  html += viewMode==='order' ? '' : printOrderControlHtml();
+  html += printOrderControlHtml();   // v3.4.5: the Order sheet view has it too
   html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : renderByPriority()));
+  // v3.4.4: re-rendering after a manual edit keeps the page where it was and keeps focus
+  // on the control that was just changed (it used to jump back to the top).
+  const keepY = window.scrollY, keepX = window.scrollX, ae = document.activeElement;
+  let focusKey = null;
+  if (ae && ae !== document.body && area.contains(ae)) focusKey = ['onchange','onclick','oninput','id'].map(a=>ae.getAttribute(a)).find(Boolean) ? {tag: ae.tagName, attr: ['onchange','onclick','oninput','id'].find(a=>ae.getAttribute(a)), val: ['onchange','onclick','oninput','id'].map(a=>ae.getAttribute(a)).find(Boolean)} : null;
+  const keepH = area.offsetHeight; area.style.minHeight = keepH + 'px';
   area.innerHTML = html;
+  area.style.minHeight = '';
+  if (focusKey){ const el = [...area.querySelectorAll(focusKey.tag)].find(e=>e.getAttribute(focusKey.attr)===focusKey.val); if (el){ try{ el.focus({preventScroll:true}); }catch(e){} } }
+  if (window.scrollY !== keepY || window.scrollX !== keepX) window.scrollTo(keepX, keepY);
 }
 
 function setView(v){ viewMode = v; render(); }
@@ -4216,7 +4357,7 @@ function methodCropsPageHtml(rows){
 function renderByDish(){
   let dishes = [];
   activeRows().forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
-  dishes.sort((a,b)=> cleanDishName(a).localeCompare(cleanDishName(b)));
+  dishes = summaryDishOrder(dishes);
   const totalDishCount = dishes.length;
   if (searchQuery.trim()){
     dishes = dishes.filter(d => activeRows().some(r=>r.dish===d && rowMatchesSearch(r)));
@@ -4256,6 +4397,7 @@ function renderByDish(){
           ${originalPageImages[dish] ? `<button class="ghost" onclick="openOriginalViewer('${encDish}')" type="button">📖 View original${originalPageImages[dish].length>1?' ('+originalPageImages[dish].length+' pages)':''}</button>` : ''}
         </div>
       </div>
+      ${similarBarHtml(dish)}
       ${bulkMoveToolbarHtml(rows)}
       <div class="section-table-wrap no-print">
         <table><thead><tr>
@@ -4388,7 +4530,7 @@ function renderByPriority(){
          <input type="text" inputmode="numeric" class="leader-input" style="width:60px;" placeholder="—"
            value="${rosteredChefs[d]!==undefined?rosteredChefs[d]:''}" onchange="setRosteredChefs('${d}', this.value)">`
       : '';
-    const groups = consolidateOn ? buildConsolidatedGroups(rowsForDay) : null;
+    const groups = consolidateOn ? sortGroups(buildConsolidatedGroups(rowsForDay), 'priority') : null;
     const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForDay.length} tasks)` : `${rowsForDay.length} tasks`;
     html += `<div class="section-head no-print" style="background:var(--${key}-bg);">
       <div><h3 style="color:var(--${key})">${heading}</h3><div class="meta">${rowCountLabel} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)${gapText}</div></div>
@@ -4574,7 +4716,7 @@ function renderBySection(){
     const key = SECTION_KEY[s];
     const rowsForSection = applySort(activeRows().filter(r=> r.section===s && (activeFilter!=='REVIEW' || r.flagged) && rowMatchesSearch(r)), 'section');
     if (rowsForSection.length===0) return;
-    const groups = consolidateOn ? buildConsolidatedGroups(rowsForSection) : null;
+    const groups = consolidateOn ? sortGroups(buildConsolidatedGroups(rowsForSection), 'section') : null;
     const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForSection.length} tasks)` : `${rowsForSection.length} tasks`;
     html += `<div class="section-head no-print" style="background:var(--${key}-bg);">
       <div><h3 style="color:var(--${key})">${s}</h3><div class="meta">${rowCountLabel}</div></div>
@@ -4789,6 +4931,21 @@ function buildConsolidatedGroups(rows){
   });
   return order.map(k=>groups[k]);
 }
+// v3.4.5: merged lines (same task across dishes) are ordered as lines, by the same choice.
+function sortGroups(groups, view){
+  const s = sortState[view];
+  if (!s || !s.col) return groups;
+  const mult = s.dir==='asc' ? 1 : -1;
+  const val = g=>{ switch(s.col){
+    case 'dish': return g.dishes.map(d=>cleanDishName(d).toLowerCase()).sort()[0] || '';
+    case 'task': return String(g.taskLabel||'').toLowerCase();
+    case 'total': return g.hasTotal ? g.total : -Infinity;
+    case 'section': return String(g.section||'').toLowerCase();
+    case 'day': return g.day ? WEEKDAYS.indexOf(g.day) : 99;
+    case 'lead': return (leaderBySection[g.section]||'').toLowerCase();
+  } return 0; };
+  return groups.map((g,i)=>[g,i]).sort((A,B)=>{ const a=val(A[0]), b=val(B[0]); return a<b ? -mult : a>b ? mult : A[1]-B[1]; }).map(x=>x[0]);
+}
 function consolidateToggleHtml(){
   return `<label class="no-print" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; cursor:pointer;">
     <input type="checkbox" ${consolidateOn?'checked':''} onchange="setConsolidate(this.checked)" style="width:auto;">
@@ -4821,7 +4978,35 @@ const DISH_NAME_ALIASES = {
   '2026 cabbage brik dietary':'Cabbage Brik (Dietary)',
   '2026 eggplant steak dietary':'Eggplant Steak (Dietary)',
 };
+// v3.4.5: the same dish in separate preplists on the same event day is shown as
+// "Dish (1)", "Dish (2)", "Dish (3)"... in every view, the summary and all printouts.
+// Display only: the dish keys used for pax, days, edits and saved state never change.
+let _dishNumMemo = null;
+function invalidateDishNumbers(){ _dishNumMemo = null; }
+function dishInstanceBase(dish){
+  const r = ROWS.find(x=>x.dish===dish);
+  const base = (r && r.srcType==='pdf' && r.srcSheet) ? r.srcSheet : String(dish).replace(/\s+\(\d+\)$/,'').replace(/\s+—\s+(for .+|run \d+)$/,'');
+  return _cleanDishName(base);
+}
+function dishNumbers(){
+  if (_dishNumMemo && _dishNumMemo.n===ROWS.length) return _dishNumMemo.map;
+  const order = []; ROWS.forEach(r=>{ if (!order.includes(r.dish)) order.push(r.dish); });   // upload order
+  const groups = {};
+  order.forEach(d=>{ const when = getEventDateStr(d) || getEventDay(d); if (!when) return;
+    const k = dishInstanceBase(d).toLowerCase().replace(/\s+/g,' ').trim() + '|' + when; (groups[k] = groups[k] || []).push(d); });
+  const map = {};
+  Object.values(groups).forEach(g=>{ if (g.length>1) g.forEach((d,i)=>{ map[d] = {base: dishInstanceBase(d), n: i+1}; }); });
+  _dishNumMemo = {n: ROWS.length, map};
+  return map;
+}
 function cleanDishName(raw){
+  if (typeof ROWS!=='undefined' && raw!==undefined && raw!==null){
+    const m = dishNumbers()[raw];
+    if (m) return m.base + ' (' + m.n + ')';
+  }
+  return _cleanDishName(raw);
+}
+function _cleanDishName(raw){
   raw = (raw===undefined || raw===null) ? '' : String(raw);
   let t = raw.trim();
   const lower = t.toLowerCase().replace(/\s+/g,' ');
@@ -4876,7 +5061,7 @@ function dishKeyword(raw){
 }
 function setFilter(s){ activeFilter = s; render(); }
 function setLeader(section, name){ leaderBySection[section] = (name||'').trim(); render(); }
-function moveRow(idx, newSection){ ROWS[idx].section = newSection; ROWS[idx].flagged=false; render(); }
+function moveRow(idx, newSection){ ROWS[idx].section = newSection; ROWS[idx].flagged=false; render(); autoCopyAfterEdit(ROWS[idx].dish); }
 
 function printSection(section){
   const key = SECTION_KEY[section];
@@ -5576,6 +5761,7 @@ function renderOrderSheet(){
       ${unassigned ? `<span class="needpax">${unassigned.lines.length} item(s) with no supplier yet (listed last)</span>` : ''}
     </div>${supplierDatalistHtml()}`;
   groups.forEach(g=>{
+    g = Object.assign({}, g, {lines: sortOrderLines(g.lines)});   // v3.4.5: the print order applies here too
     const title = g.supplier || 'No supplier yet';
     const gid = 'order-' + hashId(g.supplier || '~none');
     const extraTh = ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('');
