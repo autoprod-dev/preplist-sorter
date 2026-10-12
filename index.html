@@ -1958,11 +1958,22 @@ function renderApp(){
 }
 
 // ---------- column sorting (per view, applies to every table within that view) ----------
-let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}};
+// v3.4.5: ONE print order shared by every view (By dish, By team section, By prep day,
+// Order sheet) and remembered on this device. Each view reads it in its own terms
+// (see sortColumnOptions / orderLineSortVal).
+const PRINT_ORDER_KEY = 'prepline.printOrder.v1';
+const SORT_COLS = ['dish','task','total','section','day','lead'];
+let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}, order:{col:null,dir:'asc'}};
+function setAllSort(col, dir){
+  col = SORT_COLS.includes(col) ? col : null; dir = dir==='desc' ? 'desc' : 'asc';
+  Object.keys(sortState).forEach(v=>{ sortState[v] = {col, dir}; });
+  try{ localStorage.setItem(PRINT_ORDER_KEY, JSON.stringify({col, dir})); }catch(e){}
+}
+(function loadPrintOrder(){ try{ const o = JSON.parse(localStorage.getItem(PRINT_ORDER_KEY)||'null'); if (o) setAllSort(o.col, o.dir); }catch(e){} })();
 function setSort(view, col){
   const s = sortState[view];
-  if (s.col===col){ s.dir = s.dir==='asc' ? 'desc' : 'asc'; }
-  else { s.col = col; s.dir = 'asc'; }
+  if (s.col===col) setAllSort(col, s.dir==='asc' ? 'desc' : 'asc');
+  else setAllSort(col, 'asc');
   render();
 }
 // Explicit setter (col and/or dir chosen directly from a dropdown, not by re-clicking a
@@ -1970,7 +1981,7 @@ function setSort(view, col){
 // a direction in one go, for whichever print layout (per dish / per section / per day)
 // they're about to run.
 function setSortExplicit(view, col, dir){
-  sortState[view] = {col: col || null, dir: dir || 'asc'};
+  setAllSort(col || null, dir || 'asc');
   renderApp();
 }
 function sortArrow(view, col){
@@ -1987,12 +1998,13 @@ function applySort(rows, view){
   const s = sortState[view];
   if (!s.col) return rows;
   const mult = s.dir==='asc' ? 1 : -1;
-  return [...rows].sort((a,b)=>{
+  return rows.map((r,i)=>[r,i]).sort((A,B)=>{
+    const a = A[0], b = B[0];
     let va, vb;
     switch(s.col){
       case 'dish': va=cleanDishName(a.dish).toLowerCase(); vb=cleanDishName(b.dish).toLowerCase(); break;
       case 'task': va=a.task.toLowerCase(); vb=b.task.toLowerCase(); break;
-      case 'total': { const ta=computeTotal(a), tb=computeTotal(b); va=ta===null?-Infinity:ta; vb=tb===null?-Infinity:tb; break; }
+      case 'total': { const ta=computeTotal(a), tb=computeTotal(b); va=ta===null?-Infinity:toBaseQty(ta,a.unit).n; vb=tb===null?-Infinity:toBaseQty(tb,b.unit).n; break; }   // v3.4.5: 12 kg > 100 g
       case 'section': va=a.section.toLowerCase(); vb=b.section.toLowerCase(); break;
       case 'lead': va=(leaderBySection[a.section]||'').toLowerCase(); vb=(leaderBySection[b.section]||'').toLowerCase(); break;
       case 'day': va=a.day?WEEKDAYS.indexOf(a.day):99; vb=b.day?WEEKDAYS.indexOf(b.day):99; break;
@@ -2000,23 +2012,46 @@ function applySort(rows, view){
     }
     if (va<vb) return -1*mult;
     if (va>vb) return 1*mult;
-    return 0;
-  });
+    return A[1]-B[1];   // stable: ties keep the default (job-clustered) order
+  }).map(x=>x[0]);
 }
 // Which columns make sense to order by in each view — kept separate per view since
 // e.g. "Section" is meaningless to sort by inside the By-section print (every row in
 // that print run is already the same section).
+// v3.4.5: every view offers the same 6 choices (so the choice carries across views);
+// the label says what it means there. Where a choice can't change anything (Section inside
+// one section's list) the label says so and that list keeps its default order.
 function sortColumnOptions(view){
-  if (view==='dish') return [['task','Task'],['total','Total to make'],['section','Section'],['day','Prep day']];
-  if (view==='section') return [['dish','Dish name'],['task','Task'],['total','Total needed'],['day','Prep day']];
-  return [['dish','Dish name'],['task','Task'],['total','Total needed'],['section','Section'],['lead','Team lead']];
+  if (view==='order') return [['dish','Dish (first dish it is used in)'],['task','Item'],['total','Amount needed'],['section','Section'],['day','Prep day (earliest)'],['lead','Team lead']];
+  return [['dish', view==='dish' ? 'Dish name (one dish per list: no change)' : 'Dish name'],['task','Task'],['total', view==='dish' ? 'Total to make' : 'Total needed'],
+    ['section', view==='section' ? 'Section (one section per list: no change)' : 'Section'],['day', view==='priority' ? 'Prep day (one day per list: no change)' : 'Prep day'],['lead','Team lead']];
+}
+function orderLineSortVal(L, col){
+  const rs = L.rows || [];
+  switch(col){
+    case 'dish': return (L.dishes||[]).map(d=>cleanDishName(d).toLowerCase()).sort()[0] || '';
+    case 'task': return String(L.task||'').toLowerCase();
+    case 'total': { if (!L.hasQty || !L.need) return -Infinity; const b = toBaseQty(L.need.n, L.need.u); return Number.isFinite(b.n) ? b.n : -Infinity; }
+    case 'section': return rs.map(r=>String(r.section||'').toLowerCase()).sort()[0] || '';
+    case 'day': return Math.min(99, ...rs.map(r=>r.day?WEEKDAYS.indexOf(r.day):99));
+    case 'lead': return rs.map(r=>(leaderBySection[r.section]||'').toLowerCase()).filter(Boolean).sort()[0] || '';
+  }
+  return 0;
+}
+function sortOrderLines(lines){
+  const s = sortState.order;
+  if (!s.col) return lines;
+  const mult = s.dir==='asc' ? 1 : -1;
+  return lines.map((L,i)=>[L,i]).sort((a,b)=>{ const va = orderLineSortVal(a[0], s.col), vb = orderLineSortVal(b[0], s.col);
+    return va<vb ? -mult : va>vb ? mult : a[1]-b[1]; }).map(x=>x[0]);
 }
 function printOrderControlHtml(){
   const view = viewMode;
   const opts = sortColumnOptions(view);
   const s = sortState[view];
-  return `<div class="no-print" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 18px; padding:12px 16px; background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);">
+  return `<div class="no-print print-order-ctl" data-view="${view}" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 18px; padding:12px 16px; background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);">
     <b style="font-size:12.5px;">Before printing — order by:</b>
+    <span class="meta" style="font-size:11.5px;">Rows in every view${view==='order'?' (lines within each supplier)':''}, on screen and in print. Remembered on this device.</span>
     <select onchange="setSortExplicit('${view}', this.value, sortState['${view}'].dir)">
       <option value="">Default order</option>
       ${opts.map(([col,label])=>`<option value="${col}" ${s.col===col?'selected':''}>${escapeHtml(label)}</option>`).join('')}
@@ -3705,7 +3740,7 @@ function fmtHM(d){
 function similarBaseName(dish){
   const r = ROWS.find(x=>x.dish===dish);
   const base = (r && r.srcType==='pdf' && r.srcSheet) ? r.srcSheet : String(dish).replace(/\s+—\s+(for .+|run \d+)$/,'').replace(/\s+\(\d+\)$/,'');
-  return cleanDishName(base).toLowerCase().replace(/\s+/g,' ').trim();
+  return _cleanDishName(base).toLowerCase().replace(/\s+/g,' ').trim();
 }
 function similarDishesOf(dish){
   const date = getEventDateStr(dish);
@@ -4192,6 +4227,7 @@ function printMasterSummary(){
 }
 
 function render(){
+  invalidateDishNumbers();
   const area = document.getElementById('resultsArea');
   scheduleOnetimeSave();   // v3.2.2: every change that re-renders is saved (pax edits were lost on reload)
   renderPaxPanel();
@@ -4227,7 +4263,7 @@ function render(){
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
   html += searchBarHtml();
-  html += viewMode==='order' ? '' : printOrderControlHtml();
+  html += printOrderControlHtml();   // v3.4.5: the Order sheet view has it too
   html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : renderByPriority()));
   // v3.4.4: re-rendering after a manual edit keeps the page where it was and keeps focus
   // on the control that was just changed (it used to jump back to the top).
@@ -4520,7 +4556,7 @@ function renderByPriority(){
          <input type="text" inputmode="numeric" class="leader-input" style="width:60px;" placeholder="—"
            value="${rosteredChefs[d]!==undefined?rosteredChefs[d]:''}" onchange="setRosteredChefs('${d}', this.value)">`
       : '';
-    const groups = consolidateOn ? buildConsolidatedGroups(rowsForDay) : null;
+    const groups = consolidateOn ? sortGroups(buildConsolidatedGroups(rowsForDay), 'priority') : null;
     const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForDay.length} tasks)` : `${rowsForDay.length} tasks`;
     html += `<div class="section-head no-print" style="background:var(--${key}-bg);">
       <div><h3 style="color:var(--${key})">${heading}</h3><div class="meta">${rowCountLabel} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)${gapText}</div></div>
@@ -4706,7 +4742,7 @@ function renderBySection(){
     const key = SECTION_KEY[s];
     const rowsForSection = applySort(activeRows().filter(r=> r.section===s && (activeFilter!=='REVIEW' || r.flagged) && rowMatchesSearch(r)), 'section');
     if (rowsForSection.length===0) return;
-    const groups = consolidateOn ? buildConsolidatedGroups(rowsForSection) : null;
+    const groups = consolidateOn ? sortGroups(buildConsolidatedGroups(rowsForSection), 'section') : null;
     const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForSection.length} tasks)` : `${rowsForSection.length} tasks`;
     html += `<div class="section-head no-print" style="background:var(--${key}-bg);">
       <div><h3 style="color:var(--${key})">${s}</h3><div class="meta">${rowCountLabel}</div></div>
@@ -4921,6 +4957,21 @@ function buildConsolidatedGroups(rows){
   });
   return order.map(k=>groups[k]);
 }
+// v3.4.5: merged lines (same task across dishes) are ordered as lines, by the same choice.
+function sortGroups(groups, view){
+  const s = sortState[view];
+  if (!s || !s.col) return groups;
+  const mult = s.dir==='asc' ? 1 : -1;
+  const val = g=>{ switch(s.col){
+    case 'dish': return g.dishes.map(d=>cleanDishName(d).toLowerCase()).sort()[0] || '';
+    case 'task': return String(g.taskLabel||'').toLowerCase();
+    case 'total': return g.hasTotal ? g.total : -Infinity;
+    case 'section': return String(g.section||'').toLowerCase();
+    case 'day': return g.day ? WEEKDAYS.indexOf(g.day) : 99;
+    case 'lead': return (leaderBySection[g.section]||'').toLowerCase();
+  } return 0; };
+  return groups.map((g,i)=>[g,i]).sort((A,B)=>{ const a=val(A[0]), b=val(B[0]); return a<b ? -mult : a>b ? mult : A[1]-B[1]; }).map(x=>x[0]);
+}
 function consolidateToggleHtml(){
   return `<label class="no-print" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; cursor:pointer;">
     <input type="checkbox" ${consolidateOn?'checked':''} onchange="setConsolidate(this.checked)" style="width:auto;">
@@ -4953,7 +5004,35 @@ const DISH_NAME_ALIASES = {
   '2026 cabbage brik dietary':'Cabbage Brik (Dietary)',
   '2026 eggplant steak dietary':'Eggplant Steak (Dietary)',
 };
+// v3.4.5: the same dish in separate preplists on the same event day is shown as
+// "Dish (1)", "Dish (2)", "Dish (3)"... in every view, the summary and all printouts.
+// Display only: the dish keys used for pax, days, edits and saved state never change.
+let _dishNumMemo = null;
+function invalidateDishNumbers(){ _dishNumMemo = null; }
+function dishInstanceBase(dish){
+  const r = ROWS.find(x=>x.dish===dish);
+  const base = (r && r.srcType==='pdf' && r.srcSheet) ? r.srcSheet : String(dish).replace(/\s+\(\d+\)$/,'').replace(/\s+—\s+(for .+|run \d+)$/,'');
+  return _cleanDishName(base);
+}
+function dishNumbers(){
+  if (_dishNumMemo && _dishNumMemo.n===ROWS.length) return _dishNumMemo.map;
+  const order = []; ROWS.forEach(r=>{ if (!order.includes(r.dish)) order.push(r.dish); });   // upload order
+  const groups = {};
+  order.forEach(d=>{ const when = getEventDateStr(d) || getEventDay(d); if (!when) return;
+    const k = dishInstanceBase(d).toLowerCase().replace(/\s+/g,' ').trim() + '|' + when; (groups[k] = groups[k] || []).push(d); });
+  const map = {};
+  Object.values(groups).forEach(g=>{ if (g.length>1) g.forEach((d,i)=>{ map[d] = {base: dishInstanceBase(d), n: i+1}; }); });
+  _dishNumMemo = {n: ROWS.length, map};
+  return map;
+}
 function cleanDishName(raw){
+  if (typeof ROWS!=='undefined' && raw!==undefined && raw!==null){
+    const m = dishNumbers()[raw];
+    if (m) return m.base + ' (' + m.n + ')';
+  }
+  return _cleanDishName(raw);
+}
+function _cleanDishName(raw){
   raw = (raw===undefined || raw===null) ? '' : String(raw);
   let t = raw.trim();
   const lower = t.toLowerCase().replace(/\s+/g,' ');
@@ -5719,6 +5798,7 @@ function renderOrderSheet(){
       ${unassigned ? `<span class="needpax">${unassigned.lines.length} item(s) with no supplier yet (listed last)</span>` : ''}
     </div>${supplierDatalistHtml()}`;
   groups.forEach(g=>{
+    g = Object.assign({}, g, {lines: sortOrderLines(g.lines)});   // v3.4.5: the print order applies here too
     const title = g.supplier || 'No supplier yet';
     const gid = 'order-' + hashId(g.supplier || '~none');
     const extraTh = ORDER_EXTRA_COLS.map(c=>`<th>${c.th}</th>`).join('');
