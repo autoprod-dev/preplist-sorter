@@ -711,8 +711,8 @@ var LICENSE_CONFIG = {
   #preplistTab select.rowsel:hover{border-color:var(--accent);}
   #preplistTab select.rowsel:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-bg);}
   #preplistTab .section-table-wrap {
-    border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius) var(--radius); overflow:auto;
-    max-height:520px; margin-bottom:30px; box-shadow:var(--shadow-sm);
+    border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius) var(--radius); overflow-x:auto; overflow-y:visible;
+    max-height:none; margin-bottom:30px; box-shadow:var(--shadow-sm);
   }
 
   #preplistTab .empty{padding:70px 20px; text-align:center; color:var(--ink-soft);}
@@ -2352,11 +2352,11 @@ function bulkMoveToolbarHtml(rowsInThisTable){
   const selectedCount = idxList.filter(i=>selectedRowIdx.has(i)).length;
   return `<div class="row no-print" style="gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap;">
     <span class="meta" style="font-size:12px;">${selectedCount} ticked</span>
-    <select id="bulkMoveDaySelect" style="width:auto;">
+    <select class="bulk-move-day" style="width:auto;">
       <option value="">— move ticked rows to —</option>
       ${WEEKDAYS.map(w=>`<option value="${w}" ${blockedDays.has(w)?'disabled':''}>${w}${blockedDays.has(w)?' (closed)':''}</option>`).join('')}
     </select>
-    <button class="secondary" type="button" ${anySelectedHere?'':'disabled'} onclick="bulkMoveSelectedToDay(document.getElementById('bulkMoveDaySelect').value)">Move ticked rows</button>
+    <button class="secondary" type="button" ${anySelectedHere?'':'disabled'} onclick="bulkMoveSelectedToDay(this.parentNode.querySelector('select.bulk-move-day').value, [${idxList.join(',')}])">Move ticked rows</button>
     <button class="ghost" type="button" onclick="clearRowSelection()">Clear ticks</button>
   </div>`;
 }
@@ -2369,13 +2369,17 @@ function toggleSelectAll(checked, idxArray){
   render();
 }
 function clearRowSelection(){ selectedRowIdx.clear(); render(); }
-function bulkMoveSelectedToDay(day){
+function bulkMoveSelectedToDay(day, scopeIdx){
   if (!day){ setStatus('Pick a day to move the ticked rows to first.', 'err'); return; }
-  if (!selectedRowIdx.size){ setStatus('Nothing ticked yet — tick at least one row.', 'err'); return; }
-  let moved = 0;
-  selectedRowIdx.forEach(idx=>{ if (ROWS[idx]){ ROWS[idx].day = day; moved++; } });
-  selectedRowIdx.clear();
+  // v3.4.4: each preplist's toolbar moves the ticked rows of THAT list (scopeIdx); before,
+  // every toolbar read the first list's day picker (duplicate id), so lists 2+ did nothing.
+  const targets = [...selectedRowIdx].filter(i=>!scopeIdx || scopeIdx.includes(i));
+  if (!targets.length){ setStatus('Nothing ticked yet — tick at least one row.', 'err'); return; }
+  let moved = 0; const dishesTouched = new Set();
+  targets.forEach(idx=>{ if (ROWS[idx]){ ROWS[idx].day = day; moved++; dishesTouched.add(ROWS[idx].dish); selectedRowIdx.delete(idx); } });
+  if (!scopeIdx) selectedRowIdx.clear();
   render();
+  dishesTouched.forEach(d=>autoCopyAfterEdit(d));
   setStatus('Moved '+moved+' row(s) to '+day+'.', 'ok');
 }
 function daySelect(globalIdx, currentVal){
@@ -2386,7 +2390,7 @@ function daySelect(globalIdx, currentVal){
 }
 // Manually picking a weekday on a row is a deliberate override — it sticks even if the
 // event day changes later, unless the person picks a fresh weekday again.
-function setDay(idx, val){ ROWS[idx].day = val; render(); }
+function setDay(idx, val){ ROWS[idx].day = val; render(); autoCopyAfterEdit(ROWS[idx].dish); }
 
 function parseQty(q){
   if (q===undefined || q===null || q==='') return NaN;
@@ -3286,6 +3290,9 @@ async function handlePdfFiles(fileList, opts){
         if (usedDishTitles.has(dishTitle)){
           const suffix = d.main.batDate ? ' — for '+d.main.batDate : ' — run '+(usedDishTitles.size+1);
           dishTitle = dishTitle + suffix;
+          // v3.4.4: the same recipe for two events on the SAME date got the same key and merged
+          let n = 2; const stem = dishTitle;
+          while (usedDishTitles.has(dishTitle)) dishTitle = stem + ' (' + (n++) + ')';
         }
         usedDishTitles.add(dishTitle);
         const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
@@ -3690,16 +3697,105 @@ function fmtHM(d){
   return ((hr % 12) || 12) + ':' + m + ' ' + (hr < 12 ? 'am' : 'pm');
 }
 
-function renderMasterSummary(){
-  const dishes = [];
-  ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
-  // Order by event day, Monday → Sunday; dishes with no event day set yet go last.
-  const sorted = [...dishes].sort((a,b)=>{
+// v3.4.4: ONE dish order, shared by the summary table and the preplists below it.
+// Order by event day, Monday → Sunday; dishes with no event day set yet go last.
+// ---------- v3.4.4: copy prep-day plan + garnish section to similar dishes ----------
+// "Similar" = the same recipe (same name as printed, ignoring the "— for <date>" / "(2)"
+// keys added to tell runs apart) for an event on the SAME date. Nothing else is matched.
+function similarBaseName(dish){
+  const r = ROWS.find(x=>x.dish===dish);
+  const base = (r && r.srcType==='pdf' && r.srcSheet) ? r.srcSheet : String(dish).replace(/\s+—\s+(for .+|run \d+)$/,'').replace(/\s+\(\d+\)$/,'');
+  return cleanDishName(base).toLowerCase().replace(/\s+/g,' ').trim();
+}
+function similarDishesOf(dish){
+  const date = getEventDateStr(dish);
+  if (!date) return [];
+  const key = similarBaseName(dish), seen = [];
+  ROWS.forEach(r=>{ if (r.dish!==dish && !seen.includes(r.dish) && getEventDateStr(r.dish)===date && similarBaseName(r.dish)===key) seen.push(r.dish); });
+  return seen;
+}
+const AUTO_COPY_KEY = 'prepline.autoCopySimilar';
+function autoCopyOn(){ try{ return localStorage.getItem(AUTO_COPY_KEY)==='1'; }catch(e){ return false; } }
+function setAutoCopy(on){ try{ localStorage.setItem(AUTO_COPY_KEY, on?'1':'0'); }catch(e){} render(); setStatus(on ? 'Auto-apply is on: prep-day and garnish changes copy to similar dishes on the same date (Undo is offered each time).' : 'Auto-apply is off.', 'ok'); }
+function similarBarHtml(dish){
+  const sims = similarDishesOf(dish);
+  if (!sims.length) return '';
+  const enc = encName(dish);
+  const names = sims.map(d=>{ const p = paxByDish[d]; return escapeHtml(cleanDishName(d)) + (p!==undefined ? ' ('+p+' pax)' : ''); }).join(', ');
+  return `<div class="row no-print similar-bar" style="gap:8px; align-items:center; margin:10px 0 0; flex-wrap:wrap; font-size:12px;">
+    <span class="meta">Same dish, same date: ${names}</span>
+    <button class="secondary" type="button" onclick="copyToSimilar('${enc}')" title="Copies this dish's prep days and its garnish section to the matching dishes. Quantities follow each dish's own pax.">Copy to similar dishes</button>
+    <label style="display:inline-flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="auto-copy-toggle" ${autoCopyOn()?'checked':''} onchange="setAutoCopy(this.checked)" style="width:auto;"> Auto-apply</label>
+  </div>`;
+}
+let similarUndo = null;
+function roundSensible(n){
+  if (!Number.isFinite(n)) return n;
+  const a = Math.abs(n);
+  const step = a>=100 ? 1 : a>=10 ? 0.5 : a>=1 ? 0.1 : 0.01;
+  return Math.round(n/step)*step >= 0 ? Math.round(Math.round(n/step)*step*1000)/1000 : n;
+}
+function taskKey(r){ return String(r.task||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function isGarnishRow(r){ return r.section==='Garnishes, Herbs, Powders, Oils Etc.'; }
+function copyToSimilar(encDish, auto){
+  const src = decodeURIComponent(encDish);
+  const sims = similarDishesOf(src);
+  if (!sims.length){ setStatus('No similar dishes on the same date to copy to.', 'err'); return; }
+  const before = ROWS.map(r=>({day:r.day, section:r.section, flagged:r.flagged}));
+  const beforeLen = ROWS.length;
+  const srcRows = ROWS.filter(r=>r.dish===src);
+  const srcPax = paxByDish[src];
+  let changed = 0, added = 0;
+  sims.forEach(t=>{
+    const tRows = ROWS.filter(r=>r.dish===t), used = new Set();
+    const tPax = paxByDish[t];
+    const ratio = (Number.isFinite(srcPax) && srcPax>0 && Number.isFinite(tPax)) ? tPax/srcPax : 1;
+    srcRows.forEach(sr=>{
+      const m = tRows.find(r=>!used.has(r) && taskKey(r)===taskKey(sr));
+      if (m){
+        used.add(m);
+        if (m.day!==sr.day || m.section!==sr.section){ m.day = sr.day; m.section = sr.section; m.flagged = false; changed++; }
+      } else if (isGarnishRow(sr)){
+        // A garnish line this dish doesn't have yet: add it, scaled to this dish's pax.
+        const c = Object.assign({}, sr, {dish: t, flagged: false});
+        if (c.pdfFixedTotal!==undefined && c.pdfFixedTotal!==null){
+          const srcTotal = computeTotal(sr);
+          c.pdfFixedTotal = roundSensible(srcTotal * ratio); c.pdfBasePax = Number.isFinite(tPax) ? tPax : c.pdfBasePax;
+        }
+        ROWS.push(c); added++;
+      }
+    });
+  });
+  similarUndo = {before, beforeLen};
+  render();
+  if (!changed && !added){ setStatus('Similar dishes already match this one.', 'ok'); similarUndo = null; return; }
+  const el = document.getElementById('statusMsg');
+  setStatus((auto?'Auto-applied: ':'Copied: ')+changed+' row(s) updated'+(added?', '+added+' garnish line(s) added (scaled by pax)':'')+' on '+sims.length+' similar dish(es). ', 'ok');
+  const b = document.createElement('button'); b.type='button'; b.className='ghost'; b.id='undoSimilarBtn'; b.textContent='Undo'; b.onclick = undoCopyToSimilar; el.appendChild(b);
+}
+function undoCopyToSimilar(){
+  if (!similarUndo) return;
+  const {before, beforeLen} = similarUndo;
+  ROWS.length = beforeLen;
+  before.forEach((b,i)=>{ if (ROWS[i]) Object.assign(ROWS[i], b); });
+  similarUndo = null;
+  render(); setStatus('Undone: similar dishes are back as they were.', 'ok');
+}
+function autoCopyAfterEdit(dish){
+  if (autoCopyOn() && dish && similarDishesOf(dish).length) copyToSimilar(encName(dish), true);
+}
+function summaryDishOrder(dishes){
+  if (!dishes){ dishes = []; ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); }); }
+  const first = {}; ROWS.forEach((r,i)=>{ if (first[r.dish]===undefined) first[r.dish] = i; });
+  return [...dishes].sort((a,b)=>{
     const ia = getEventDay(a) ? WEEKDAYS.indexOf(getEventDay(a)) : 99;
     const ib = getEventDay(b) ? WEEKDAYS.indexOf(getEventDay(b)) : 99;
     if (ia !== ib) return ia - ib;
-    return cleanDishName(a).localeCompare(cleanDishName(b));
+    return cleanDishName(a).localeCompare(cleanDishName(b)) || ((first[a]||0) - (first[b]||0));
   });
+}
+function renderMasterSummary(){
+  const sorted = summaryDishOrder();
   const totalTasks = ROWS.length;
   const paxKnown = sorted.filter(d=>paxByDish[d]!==undefined);
   const paxSum = paxKnown.reduce((s,d)=>s+Number(paxByDish[d]),0);
@@ -4133,7 +4229,16 @@ function render(){
   html += searchBarHtml();
   html += viewMode==='order' ? '' : printOrderControlHtml();
   html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : renderByPriority()));
+  // v3.4.4: re-rendering after a manual edit keeps the page where it was and keeps focus
+  // on the control that was just changed (it used to jump back to the top).
+  const keepY = window.scrollY, keepX = window.scrollX, ae = document.activeElement;
+  let focusKey = null;
+  if (ae && ae !== document.body && area.contains(ae)) focusKey = ['onchange','onclick','oninput','id'].map(a=>ae.getAttribute(a)).find(Boolean) ? {tag: ae.tagName, attr: ['onchange','onclick','oninput','id'].find(a=>ae.getAttribute(a)), val: ['onchange','onclick','oninput','id'].map(a=>ae.getAttribute(a)).find(Boolean)} : null;
+  const keepH = area.offsetHeight; area.style.minHeight = keepH + 'px';
   area.innerHTML = html;
+  area.style.minHeight = '';
+  if (focusKey){ const el = [...area.querySelectorAll(focusKey.tag)].find(e=>e.getAttribute(focusKey.attr)===focusKey.val); if (el){ try{ el.focus({preventScroll:true}); }catch(e){} } }
+  if (window.scrollY !== keepY || window.scrollX !== keepX) window.scrollTo(keepX, keepY);
 }
 
 function setView(v){ viewMode = v; render(); }
@@ -4242,7 +4347,7 @@ function methodCropsPageHtml(rows){
 function renderByDish(){
   let dishes = [];
   activeRows().forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
-  dishes.sort((a,b)=> cleanDishName(a).localeCompare(cleanDishName(b)));
+  dishes = summaryDishOrder(dishes);
   const totalDishCount = dishes.length;
   if (searchQuery.trim()){
     dishes = dishes.filter(d => activeRows().some(r=>r.dish===d && rowMatchesSearch(r)));
@@ -4282,6 +4387,7 @@ function renderByDish(){
           ${originalPageImages[dish] ? `<button class="ghost" onclick="openOriginalViewer('${encDish}')" type="button">📖 View original${originalPageImages[dish].length>1?' ('+originalPageImages[dish].length+' pages)':''}</button>` : ''}
         </div>
       </div>
+      ${similarBarHtml(dish)}
       ${bulkMoveToolbarHtml(rows)}
       <div class="section-table-wrap no-print">
         <table><thead><tr>
@@ -4902,7 +5008,7 @@ function dishKeyword(raw){
 }
 function setFilter(s){ activeFilter = s; render(); }
 function setLeader(section, name){ leaderBySection[section] = (name||'').trim(); render(); }
-function moveRow(idx, newSection){ ROWS[idx].section = newSection; ROWS[idx].flagged=false; render(); }
+function moveRow(idx, newSection){ ROWS[idx].section = newSection; ROWS[idx].flagged=false; render(); autoCopyAfterEdit(ROWS[idx].dish); }
 
 function printSection(section){
   const key = SECTION_KEY[section];
