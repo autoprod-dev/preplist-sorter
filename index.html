@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.3">
+<meta name="prepline-version" content="3.4.8">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1029,6 +1029,7 @@ var LICENSE_CONFIG = {
 </style>
 </head>
 <body>
+<div id="apJsBanner" role="alert" style="display:block; position:relative; z-index:2147483647; margin:0; padding:14px 16px; background:#FFF4C2; color:#1C1E1B; border-bottom:2px solid #C9A227; font:15px/1.45 Arial, Helvetica, sans-serif; text-align:center;"><b>Prepline by Autoprod.</b> If this page looks blank or buttons don&#39;t work, save the file and open it in Chrome or Edge, or use the online version: <a href="https://autoprod-dev.github.io/prepline-free/" style="color:#1A4D8F; font-weight:bold; word-break:break-all;">https://autoprod-dev.github.io/prepline-free/</a></div>
 
 <div class="shell-masthead no-print">
   <div class="shell-brand">Prepline</div>
@@ -1191,7 +1192,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.3</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.8</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1943,6 +1944,12 @@ function renderApp(){
 // (see sortColumnOptions / orderLineSortVal).
 const PRINT_ORDER_KEY = 'prepline.printOrder.v1';
 const SORT_COLS = ['dish','task','total','section','day','lead'];
+const DAY_ORDER_KEY = 'prepline.dayOrder.v1';
+let dayOrderDesc = (function(){ try{ return localStorage.getItem(DAY_ORDER_KEY) === 'desc'; }catch(e){ return false; } })();
+function setDayOrder(d){ dayOrderDesc = d === 'desc'; try{ localStorage.setItem(DAY_ORDER_KEY, dayOrderDesc ? 'desc' : 'asc'); }catch(e){} renderApp(); }
+// Rank of a prep day in the chosen order (unscheduled / unknown always last).
+function dayRank(w){ const i = WEEKDAYS.indexOf(w); return i < 0 ? 99 : (dayOrderDesc ? 6 - i : i); }
+function dayOrderList(){ return dayOrderDesc ? WEEKDAYS.slice().reverse() : WEEKDAYS.slice(); }
 let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}, order:{col:null,dir:'asc'}};
 function setAllSort(col, dir){
   col = SORT_COLS.includes(col) ? col : null; dir = dir==='desc' ? 'desc' : 'asc';
@@ -1987,7 +1994,7 @@ function applySort(rows, view){
       case 'total': { const ta=computeTotal(a), tb=computeTotal(b); va=ta===null?-Infinity:toBaseQty(ta,a.unit).n; vb=tb===null?-Infinity:toBaseQty(tb,b.unit).n; break; }   // v3.4.5: 12 kg > 100 g
       case 'section': va=a.section.toLowerCase(); vb=b.section.toLowerCase(); break;
       case 'lead': va=(leaderBySection[a.section]||'').toLowerCase(); vb=(leaderBySection[b.section]||'').toLowerCase(); break;
-      case 'day': va=a.day?WEEKDAYS.indexOf(a.day):99; vb=b.day?WEEKDAYS.indexOf(b.day):99; break;
+      case 'day': va=dayRank(a.day); vb=dayRank(b.day); if (va<vb) return -1; if (va>vb) return 1; return A[1]-B[1];   // follows Prep day order
       default: return 0;
     }
     if (va<vb) return -1*mult;
@@ -2013,7 +2020,7 @@ function orderLineSortVal(L, col){
     case 'task': return String(L.task||'').toLowerCase();
     case 'total': { if (!L.hasQty || !L.need) return -Infinity; const b = toBaseQty(L.need.n, L.need.u); return Number.isFinite(b.n) ? b.n : -Infinity; }
     case 'section': return rs.map(r=>String(r.section||'').toLowerCase()).sort()[0] || '';
-    case 'day': return Math.min(99, ...rs.map(r=>r.day?WEEKDAYS.indexOf(r.day):99));
+    case 'day': return Math.min(99, ...rs.map(r=>dayRank(r.day)));
     case 'lead': return rs.map(r=>(leaderBySection[r.section]||'').toLowerCase()).filter(Boolean).sort()[0] || '';
   }
   return 0;
@@ -2022,7 +2029,8 @@ function sortOrderLines(lines){
   const s = sortState.order;
   if (!s.col) return lines;
   const mult = s.dir==='asc' ? 1 : -1;
-  return lines.map((L,i)=>[L,i]).sort((a,b)=>{ const va = orderLineSortVal(a[0], s.col), vb = orderLineSortVal(b[0], s.col);
+  const mult2 = s.col==='day' ? 1 : mult;
+  return lines.map((L,i)=>[L,i]).sort((a,b)=>{ const mult = mult2; const va = orderLineSortVal(a[0], s.col), vb = orderLineSortVal(b[0], s.col);
     return va<vb ? -mult : va>vb ? mult : a[1]-b[1]; }).map(x=>x[0]);
 }
 function printOrderControlHtml(){
@@ -2036,10 +2044,15 @@ function printOrderControlHtml(){
       <option value="">Default order</option>
       ${opts.map(([col,label])=>`<option value="${col}" ${s.col===col?'selected':''}>${escapeHtml(label)}</option>`).join('')}
     </select>
-    <select onchange="setSortExplicit('${view}', sortState['${view}'].col, this.value)" ${!s.col?'disabled':''}>
-      <option value="asc" ${s.dir==='asc'?'selected':''}>Ascending (A→Z, day 1→7)</option>
-      <option value="desc" ${s.dir==='desc'?'selected':''}>Descending (Z→A, day 7→1)</option>
+    <select onchange="if (sortState['${view}'].col==='day') setDayOrder(this.value); else setSortExplicit('${view}', sortState['${view}'].col, this.value)" ${!s.col?'disabled':''}>
+      <option value="asc" ${(s.col==='day' ? !dayOrderDesc : s.dir==='asc')?'selected':''}>Ascending (A→Z, day 1→7)</option>
+      <option value="desc" ${(s.col==='day' ? dayOrderDesc : s.dir==='desc')?'selected':''}>Descending (Z→A, day 7→1)</option>
     </select>
+    <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px;"><b>Prep day order:</b>
+    <select id="dayOrderSel" onchange="setDayOrder(this.value)">
+      <option value="asc" ${!dayOrderDesc?'selected':''}>${escapeHtml(dayLabel('Monday'))} → ${escapeHtml(dayLabel('Sunday'))}</option>
+      <option value="desc" ${dayOrderDesc?'selected':''}>${escapeHtml(dayLabel('Sunday'))} → ${escapeHtml(dayLabel('Monday'))}</option>
+    </select></label>
   </div>`;
 }
 let sourceInfo = {name: null, loadedAt: null};
@@ -2145,6 +2158,37 @@ const STAGE_NAMES = ['Collect/Trim/Wash','Cook/Steam/Roast','Portion/Tray up/Box
 // With a 4-day prep lead: Stage 1 = event day − 3, Stage 2 = event day − 2,
 // Stage 3 = event day − 1, Stage 4 = the event day itself (final box-off/continuation).
 const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+// v3.4.8: days are shown numbered everywhere ("1 Monday" ... "7 Sunday"): pickers, every view, all prints.
+const CLASSIC_KEY = 'prepline.classicDays.v1';
+function classicDays(){ try{ return localStorage.getItem(CLASSIC_KEY) === '1'; }catch(e){ return false; } }
+function setClassicDays(on){
+  try{ if (on) localStorage.setItem(CLASSIC_KEY, '1'); else localStorage.removeItem(CLASSIC_KEY); }catch(e){}
+  if (typeof render === 'function') render();
+  setStatus(on ? 'Switched back to the previous version: plain day names, no Copy prep days. Use "Switch to the new version" to turn them on again.'
+               : 'New version on: days numbered 1 Monday to 7 Sunday, and Copy prep days.', 'ok');
+}
+function versionSwitchHtml(){
+  return classicDays()
+    ? `<div class="row no-print version-switch" style="gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; font-size:12.5px;"><span class="meta">Showing the previous version (plain day names, no Copy prep days).</span><button class="secondary" type="button" id="versionSwitchBtn" onclick="setClassicDays(false)">Switch to the new version</button></div>`
+    : `<div class="row no-print version-switch" style="gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; font-size:12.5px;"><span class="meta">New: days numbered 1 Monday to 7 Sunday, and Copy prep days (↓).</span><button class="ghost" type="button" id="versionSwitchBtn" onclick="setClassicDays(true)">Switch back to previous version</button></div>`;
+}
+function dayLabel(w){ if (classicDays()) return w || ''; const i = WEEKDAYS.indexOf(w); return i < 0 ? (w || '') : (i + 1) + ' ' + w; }
+const DAY_RE = /\b(?<![1-7] )(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/g;
+// Rewrites text that IS a day (a cell, heading, option, label) and the few sentences built around days;
+// dish names, tasks and typed text are never touched.
+function numberDaysIn(root){
+  if (!root || classicDays()) return;
+  const skip = el => el.closest && el.closest('.dish-head h3, td.task, .task, textarea, input, script, style, [data-no-daynum]');
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const todo = [];
+  while (w.nextNode()){ const n = w.currentNode, t = n.nodeValue; if (!t || !/day\b/.test(t)) continue;
+    const el = n.parentElement; if (!el || skip(el)) continue;
+    const m = t.match(/^(\s*)(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(\s*(\(closed\))?\s*)$/);
+    if (m) todo.push([n, m[1] + dayLabel(m[2]) + m[3]]);
+    else if (/(Prep window:|→|EVENT DAY|moved|Moved|to )/.test(t) && !/^[A-Z][a-z].{60,}/.test(t)) todo.push([n, t.replace(DAY_RE, d=>dayLabel(d))]);
+  }
+  todo.forEach(([n, v])=>{ if (n.nodeValue !== v) n.nodeValue = v; });
+}
 let eventDayOverride = {}; // dish -> weekday name (manual correction/assignment)
 let eventDateByDish = {}; // dish -> actual calendar date string "dd/mm/yyyy", where known
                           // (a PDF's own batch date, or a manually entered weekly date) —
@@ -2211,7 +2255,7 @@ function setEventDay(encodedDish, val){
 function eventDaySelect(encodedDish, current){
   return `<select class="rowsel leader-input" onchange="setEventDay('${encodedDish}', this.value)">
     <option value="" ${!current?'selected':''}>— set event day —</option>
-    ${WEEKDAYS.map(w=>`<option value="${w}" ${current===w?'selected':''}>${w}</option>`).join('')}
+    ${WEEKDAYS.map(w=>`<option value="${w}" ${current===w?'selected':''}>${dayLabel(w)}</option>`).join('')}
   </select>`;
 }
 
@@ -2369,9 +2413,10 @@ function bulkMoveToolbarHtml(rowsInThisTable){
     <span class="meta" style="font-size:12px;">${selectedCount} ticked</span>
     <select class="bulk-move-day" style="width:auto;">
       <option value="">— move ticked rows to —</option>
-      ${WEEKDAYS.map(w=>`<option value="${w}" ${blockedDays.has(w)?'disabled':''}>${w}${blockedDays.has(w)?' (closed)':''}</option>`).join('')}
+      ${WEEKDAYS.map(w=>`<option value="${w}" ${blockedDays.has(w)?'disabled':''}>${dayLabel(w)}${blockedDays.has(w)?' (closed)':''}</option>`).join('')}
     </select>
     <button class="secondary" type="button" ${anySelectedHere?'':'disabled'} onclick="bulkMoveSelectedToDay(this.parentNode.querySelector('select.bulk-move-day').value, [${idxList.join(',')}])">Move ticked rows</button>
+    ${classicDays() ? '' : ''}<button class="secondary copy-prep-days" type="button" ${classicDays()?'hidden':''} ${selectedCount>=2?'':'disabled'} title="Copies the prep day of the top ticked row to the other ticked rows" onclick="copyPrepDaysTicked([${idxList.join(',')}])">Copy prep days</button>
     <button class="ghost" type="button" onclick="clearRowSelection()">Clear ticks</button>
   </div>`;
 }
@@ -2395,13 +2440,52 @@ function bulkMoveSelectedToDay(day, scopeIdx){
   if (!scopeIdx) selectedRowIdx.clear();
   render();
   dishesTouched.forEach(d=>autoCopyAfterEdit(d));
-  setStatus('Moved '+moved+' row(s) to '+day+'.', 'ok');
+  setStatus('Moved '+moved+' row(s) to '+dayLabel(day)+'.', 'ok');
 }
 function daySelect(globalIdx, currentVal){
-  return `<select class="rowsel" onchange="setDay(${globalIdx}, this.value)">
+  return `<span class="day-cell" style="display:inline-flex; gap:4px; align-items:center;"><select class="rowsel" onchange="setDay(${globalIdx}, this.value)">
     <option value="" ${!currentVal?'selected':''}>— set day —</option>
-    ${WEEKDAYS.map(w=>`<option value="${w}" ${currentVal===w?'selected':''}>${w}</option>`).join('')}
-  </select>`;
+    ${WEEKDAYS.map(w=>`<option value="${w}" ${currentVal===w?'selected':''}>${dayLabel(w)}</option>`).join('')}
+  </select>${classicDays() ? '' : `<button type="button" class="ghost no-print copy-day-down" title="Copy this prep day to the row below" aria-label="Copy this prep day to the row below" onclick="copyDayDown(this, ${globalIdx})" style="padding:4px 8px; min-width:30px;">↓</button>`}</span>`;
+}
+// ---- v3.4.8: Copy prep days (like dragging a prep day down over the rows below in a spreadsheet)
+//  * the ↓ next to a row's prep day copies it to the row below; press again on that row to keep filling down;
+//  * "Copy prep days" in a list's toolbar copies the prep day of the TOP ticked row to every other ticked row.
+// Both offer Undo, and both follow Auto-apply (same dish, same date) like any other prep-day edit.
+function dayUndoSnapshot(){ similarUndo = {before: ROWS.map(r=>({day:r.day, section:r.section, flagged:r.flagged})), beforeLen: ROWS.length}; }
+function offerUndo(msg){
+  setStatus(msg + ' ', 'ok');
+  const el = document.getElementById('statusMsg');
+  const b = document.createElement('button'); b.type='button'; b.className='ghost'; b.id='undoSimilarBtn'; b.textContent='Undo'; b.onclick = undoCopyToSimilar; el.appendChild(b);
+}
+function copyDayDown(btn, srcIdx){
+  const src = ROWS[srcIdx]; if (!src) return;
+  if (!src.day){ setStatus('Set a prep day on this row first, then copy it down.', 'err'); return; }
+  const tr = btn.closest('tr'); let nx = tr && tr.nextElementSibling, sel = null;
+  while (nx && !(sel = nx.querySelector('select.rowsel[onchange^="setDay"]'))) nx = nx.nextElementSibling;
+  if (!sel){ setStatus('This is the last row of the list: nothing below to copy to.', 'err'); return; }
+  const dstIdx = Number((sel.getAttribute('onchange').match(/setDay\((\d+)/)||[])[1]);
+  if (!ROWS[dstIdx]) return;
+  dayUndoSnapshot();
+  const dst = ROWS[dstIdx]; dst.day = src.day;
+  render();
+  // keep the finger/keyboard where the fill is going: focus the ↓ on the row just filled
+  const nb = document.querySelector(`button.copy-day-down[onclick="copyDayDown(this, ${dstIdx})"]`); if (nb){ try{ nb.focus({preventScroll:true}); }catch(e){} }
+  autoCopyAfterEdit(dst.dish);
+  if (!document.getElementById('undoSimilarBtn')) offerUndo('Copied '+dayLabel(src.day)+' to the row below ('+dst.task+').');
+}
+function copyPrepDaysTicked(scopeIdx){
+  const ticked = scopeIdx.filter(i=>selectedRowIdx.has(i));
+  if (ticked.length < 2){ setStatus('Tick the row to copy FROM (the top ticked row) and at least one row to copy to.', 'err'); return; }
+  const src = ROWS[ticked[0]];
+  if (!src.day){ setStatus('The top ticked row has no prep day yet: set one first.', 'err'); return; }
+  dayUndoSnapshot();
+  const dishes = new Set();
+  ticked.slice(1).forEach(i=>{ ROWS[i].day = src.day; dishes.add(ROWS[i].dish); selectedRowIdx.delete(i); });
+  selectedRowIdx.delete(ticked[0]);
+  render();
+  dishes.forEach(d=>autoCopyAfterEdit(d));
+  if (!document.getElementById('undoSimilarBtn')) offerUndo('Copied '+dayLabel(src.day)+' from "'+src.task+'" to '+(ticked.length-1)+' ticked row(s).');
 }
 // Manually picking a weekday on a row is a deliberate override — it sticks even if the
 // event day changes later, unless the person picks a fresh weekday again.
@@ -3672,7 +3756,7 @@ function dishStaffingByDay(dish){
     const d = r.day || 'Unscheduled';
     byDay[d] = (byDay[d]||0) + estimateMinutes(r);
   });
-  const order = [...WEEKDAYS, 'Unscheduled'];
+  const order = [...dayOrderList(), 'Unscheduled'];
   return order.filter(d=>byDay[d]).map(d=>({day:d, minutes:byDay[d], chefs:chefsNeededForMinutes(byDay[d])}));
 }
 function staffingLineHtml(dish){
@@ -3734,7 +3818,7 @@ function similarBarHtml(dish){
   const names = sims.map(d=>{ const p = paxByDish[d]; return escapeHtml(cleanDishName(d)) + (p!==undefined ? ' ('+p+' pax)' : ''); }).join(', ');
   return `<div class="row no-print similar-bar" style="gap:8px; align-items:center; margin:10px 0 0; flex-wrap:wrap; font-size:12px;">
     <span class="meta">Same dish, same date: ${names}</span>
-    <button class="secondary" type="button" onclick="copyToSimilar('${enc}')" title="Copies this dish's prep days and its garnish section to the matching dishes. Quantities follow each dish's own pax.">Copy to similar dishes</button>
+    <button class="secondary copy-preplist-btn" type="button" onclick="openCopyPreplist(this, '${enc}')" title="Copies this dish's prep days and sections to the matching dishes. Each keeps its own pax and quantities.">📋 Copy prep list to similar dishes</button>
     <label style="display:inline-flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="auto-copy-toggle" ${autoCopyOn()?'checked':''} onchange="setAutoCopy(this.checked)" style="width:auto;"> Auto-apply</label>
   </div>`;
 }
@@ -3747,9 +3831,23 @@ function roundSensible(n){
 }
 function taskKey(r){ return String(r.task||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function isGarnishRow(r){ return r.section==='Garnishes, Herbs, Powders, Oils Etc.'; }
-function copyToSimilar(encDish, auto){
+function openCopyPreplist(btn, encDish){
+  const bar = btn.closest('.similar-bar'); const old = bar.querySelector('.copy-preplist-pick'); if (old){ old.remove(); return; }
+  const src = decodeURIComponent(encDish), sims = similarDishesOf(src);
+  const box = document.createElement('div'); box.className = 'copy-preplist-pick';
+  box.style.cssText = 'flex-basis:100%; margin-top:6px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper2);';
+  box.innerHTML = `<div style="font-weight:600; margin-bottom:6px;">Copy the prep days and sections of ${escapeHtml(cleanDishName(src))} to:</div>`
+    + sims.map(d=>{ const pp = paxByDish[d]; return `<label style="display:flex; gap:6px; align-items:center; margin:3px 0; cursor:pointer;"><input type="checkbox" class="cpl-target" value="${encName(d)}" checked style="width:auto;"> ${escapeHtml(cleanDishName(d))}${pp!==undefined?' ('+pp+' pax)':''}</label>`; }).join('')
+    + `<div class="meta" style="margin:4px 0 8px;">Each dish keeps its own pax and quantities.</div>
+    <button type="button" class="cpl-apply">Apply to ticked dishes</button> <button type="button" class="ghost cpl-cancel">Cancel</button>`;
+  bar.appendChild(box);
+  box.querySelector('.cpl-cancel').onclick = ()=>box.remove();
+  box.querySelector('.cpl-apply').onclick = ()=>{ const t = [...box.querySelectorAll('.cpl-target:checked')].map(c=>decodeURIComponent(c.value));
+    if (!t.length){ setStatus('Tick at least one dish to copy to.', 'err'); return; } copyToSimilar(encDish, false, t); };
+}
+function copyToSimilar(encDish, auto, only){
   const src = decodeURIComponent(encDish);
-  const sims = similarDishesOf(src);
+  const sims = similarDishesOf(src).filter(d=>!only || only.includes(d));
   if (!sims.length){ setStatus('No similar dishes on the same date to copy to.', 'err'); return; }
   const before = ROWS.map(r=>({day:r.day, section:r.section, flagged:r.flagged}));
   const beforeLen = ROWS.length;
@@ -3952,6 +4050,7 @@ function printViaIframe(fullHtml){
 // v3.4.6: every printout (each Print button and every "Print all" document) carries the notice.
 const COPYRIGHT_NOTICE = '© 2026 Autoprod. All rights reserved. Not for resale or redistribution.';
 function withCopyright(html){
+  try{ const d = new DOMParser().parseFromString(html, 'text/html'); numberDaysIn(d.body); html = '<!DOCTYPE html>' + d.documentElement.outerHTML; }catch(e){}
   if (html.includes('ap-print-copy')) return html;
   const line = '<div class="ap-print-copy" style="margin-top:16px; padding-top:6px; border-top:1px solid #ccc; font:10px/1.4 system-ui,sans-serif; color:#555; text-align:center;">' + COPYRIGHT_NOTICE + '</div>';
   const i = html.lastIndexOf('</body>');
@@ -4195,7 +4294,7 @@ function exportSectionsToXlsx(){
 // By prep day — one sheet per weekday actually in use (plus "Unscheduled" for anything
 // with no day set), tab named after the day.
 function exportDaysToXlsx(){
-  const order = [...WEEKDAYS, 'Unscheduled'];
+  const order = [...dayOrderList(), 'Unscheduled'];
   exportGroupedToXlsx(
     r => r.day || 'Unscheduled',
     key => key,
@@ -4220,12 +4319,12 @@ function render(){
     const emptyMsg = (toolMode==='database' && appMode==='weekly')
       ? 'Tick some dishes and hit Generate above to build this week\'s preplist.'
       : 'Upload a preplist workbook or paste rows above to get started.';
-    area.innerHTML = `<div class="panel"><div class="empty"><div class="big">Nothing generated yet</div>${emptyMsg}</div></div>`;
+    area.innerHTML = versionSwitchHtml() + `<div class="panel"><div class="empty"><div class="big">Nothing generated yet</div>${emptyMsg}</div></div>`;
     return;
   }
 
   maybeSurveyPrompt();
-  let html = sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
+  let html = versionSwitchHtml() + sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
 
   html += `<div class="viewtoggle no-print">
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
@@ -4259,6 +4358,7 @@ function render(){
   area.style.minHeight = '';
   if (focusKey){ const el = [...area.querySelectorAll(focusKey.tag)].find(e=>e.getAttribute(focusKey.attr)===focusKey.val); if (el){ try{ el.focus({preventScroll:true}); }catch(e){} } }
   if (window.scrollY !== keepY || window.scrollX !== keepX) window.scrollTo(keepX, keepY);
+  try{ numberDaysIn(document.getElementById('preplistTab') || document.body); }catch(e){}
 }
 
 function setView(v){ viewMode = v; render(); }
@@ -4387,7 +4487,7 @@ function renderByDish(){
     const encDish = encName(dish);
     const eventDay = getEventDay(dish);
     const eventDateStr = getEventDateStr(dish);
-    const prepSpan = eventDay ? `${calendarDayForPrepNum(eventDay,1)} → ${eventDay}` : null;
+    const prepSpan = eventDay ? `${dayLabel(calendarDayForPrepNum(eventDay,1))} → ${dayLabel(eventDay)}` : null;
     html += `<div class="dish-block">
       <div class="dish-head no-print">
         <div>
@@ -4497,7 +4597,7 @@ function renderByPriority(){
   // Groups by the ACTUAL calendar weekday each task needs to happen — resolved from
   // that task's own dish event-day plus its Day 1-4 prep stage. Dishes with no event
   // day detected/set yet fall into "Unscheduled" so they're never silently lost.
-  const order = [...WEEKDAYS, 'Unscheduled'];
+  const order = [...dayOrderList(), 'Unscheduled'];
   const dayKeyMap = {'Monday':'day1','Tuesday':'day2','Wednesday':'day3','Thursday':'day4',
     'Friday':'day1','Saturday':'day2','Sunday':'day3','Unscheduled':'review'};
   const rowsByDay = {}; order.forEach(d=>rowsByDay[d]=[]);
@@ -4951,10 +5051,11 @@ function sortGroups(groups, view){
     case 'task': return String(g.taskLabel||'').toLowerCase();
     case 'total': return g.hasTotal ? g.total : -Infinity;
     case 'section': return String(g.section||'').toLowerCase();
-    case 'day': return g.day ? WEEKDAYS.indexOf(g.day) : 99;
+    case 'day': return dayRank(g.day);
     case 'lead': return (leaderBySection[g.section]||'').toLowerCase();
   } return 0; };
-  return groups.map((g,i)=>[g,i]).sort((A,B)=>{ const a=val(A[0]), b=val(B[0]); return a<b ? -mult : a>b ? mult : A[1]-B[1]; }).map(x=>x[0]);
+  const m2 = s.col==='day' ? 1 : mult;
+  return groups.map((g,i)=>[g,i]).sort((A,B)=>{ const mult = m2; const a=val(A[0]), b=val(B[0]); return a<b ? -mult : a>b ? mult : A[1]-B[1]; }).map(x=>x[0]);
 }
 function consolidateToggleHtml(){
   return `<label class="no-print" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; cursor:pointer;">
@@ -6702,6 +6803,7 @@ function pwaShowUpdate(reg){
   document.body.appendChild(bar);
   document.getElementById('pwaReloadBtn').onclick = () => {
     const w = reg.waiting;
+    window.__pwaReloadAsked = true;
     if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
   };
 }
@@ -6712,7 +6814,7 @@ function pwaInit(){
   let reloading = false;
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController || reloading) return;     // first install: no reload needed
+    if (!hadController || reloading || !window.__pwaReloadAsked) return;     // first install, or another tab updated: never reload this one
     reloading = true; location.reload();
   });
   navigator.serviceWorker.register(PWA_CONFIG.basePath + 'sw.js', {scope: PWA_CONFIG.basePath}).then(reg => {
@@ -6747,5 +6849,6 @@ openSharedViewFromHash();   // v3.3: a team-share link opens the read-only list 
 
 </script>
 <footer class="ap-copy" id="apCopyright" style="text-align:center; margin:24px 12px 18px; font-size:11px; opacity:.75;">© 2026 Autoprod. All rights reserved. Not for resale or redistribution.</footer>
+<script>(function(){ try{ if (typeof render === 'function'){ var b = document.getElementById('apJsBanner'); if (b) b.remove(); } }catch(e){} })();</script>
 </body>
 </html>
