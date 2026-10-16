@@ -10,6 +10,8 @@ src = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
 if "mode: 'live'," not in src: sys.exit('source is not in live mode')
 src, n = re.subn(r'<!-- SEO:START.*?<!-- SEO:END -->\n', '', src, flags=re.S)
 if n != 1: sys.exit('SEO block not found')
+# the 'scripts did not run' banner links to the web version; the offline file has no external links, so show the address as plain text
+src = re.sub(r'<a href="https://autoprod-dev\.github\.io/preplist-sorter/"([^>]*)>', r'<span\1>', src.replace('https://autoprod-dev.github.io/preplist-sorter/</a>', 'https://autoprod-dev.github.io/preplist-sorter/</span>'))
 tmp = os.path.join(ROOT, 'dist', '_pro_src.html'); os.makedirs(os.path.dirname(tmp), exist_ok=True)
 open(tmp, 'w', encoding='utf-8', newline='\n').write(src)
 try:
