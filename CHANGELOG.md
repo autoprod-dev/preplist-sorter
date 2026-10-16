@@ -144,3 +144,6 @@ the print-method default (No), per-pax formulas and Source tab columns are uncha
 - Default Yes. The choice is remembered on this device under its own key, `preplinePref_printIncludeMethod_v1` (not in the session, database, template or Pro kitchen data).
 - Unchanged: the on-screen 📖 View original button and its viewer (including the viewer's own Print button, which prints the original pages on request).
 - Tests: default Yes, No for each print type (no images, no heading, no blank method page), reload with No and Yes, phone 390 px.
+
+## 3.5.0-r6 (local, NOT published)
+Ported test 3.4.9-r6: Ref # filled on original PTs from requisitions, Original PTs tab, yield check, Revert to previous version button (needs previous/ on publish), banner/numbered prep days/toggle from 3.4.7-3.4.8. No photo feature.

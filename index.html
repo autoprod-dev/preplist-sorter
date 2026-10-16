@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.5.0">
+<meta name="prepline-version" content="3.5.0-r6">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -881,6 +881,18 @@ var LICENSE_CONFIG = {
 
   /* v3.3.0: allergen chips, ingredient panel */
   .al-chip{display:inline-block; font:700 9.5px/1 'IBM Plex Mono',monospace; letter-spacing:.03em; padding:2px 5px; margin:0 0 0 4px; border-radius:4px; background:#FBE6D6; color:#8A3B12; border:1px solid #E9C3A3; vertical-align:middle;}
+  .po-chip{display:inline-block; font:600 10px/1.2 'IBM Plex Mono',monospace; padding:2px 6px; margin:2px 0 0 4px; border-radius:4px; background:#E4F0E6; color:#22543D; border:1px solid #B5D3BC; vertical-align:middle; white-space:normal;}
+  .po-ref-l{font-weight:800; letter-spacing:.06em; margin-right:2px;}
+  .orig-page{margin:12px 0; text-align:center;} .orig-img{max-width:100%; height:auto; border:1px solid var(--line);} .orig-head{text-align:left; margin-bottom:4px;}
+  @media print{ .orig-page{page-break-after:always; margin:0;} .orig-tab h3,.orig-tab>.meta{display:none;} }
+  .yl-chip{display:inline-block; font:600 10.5px/1.25 'IBM Plex Mono',monospace; padding:2px 6px; border-radius:4px; border:1px solid; white-space:normal;}
+  .yl-chip.ok{background:#E4F0E6; color:#22543D; border-color:#B5D3BC;} .yl-chip.low{background:#FDE2E2; color:#9B2C2C; border-color:#E3A3A3;}
+  .yl-chip.high{background:#FFF4D6; color:#7A5A00; border-color:#E0B84D;} .yl-chip.nocat{background:#fff; color:#555; border-style:dashed;}
+  .po-chip.check{background:#FFF4D6; color:#7A5A00; border:1px dashed #E0B84D;}
+  .po-chip.none{background:#fff; color:#9B2C2C; border:1px dashed #E3A3A3;}
+  .po-table{width:100%; border-collapse:collapse; margin:10px 0; font-size:12.5px;} .po-table td,.po-table th{border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top;}
+  .po-stats{margin:6px 0; font-size:13px;} .po-fix{margin-top:8px; font-size:12.5px;} .po-fix select{max-width:520px;}
+  @media print{ .po-chip{border:1px solid #999; background:#fff; color:#000;} }
   .al-chip.sug{background:#fff; border-style:dashed; color:#8A6A3D;}
   .al-line{font-size:12px; color:#8A3B12; margin-top:4px;}
   .al-note{font-size:10.5px; color:#5C5F58; margin:6px 0; font-style:italic;}
@@ -1050,6 +1062,7 @@ var LICENSE_CONFIG = {
 </style>
 </head>
 <body>
+<div id="apJsBanner" role="alert" style="display:block; position:relative; z-index:2147483647; margin:0; padding:14px 16px; background:#FFF4C2; color:#1C1E1B; border-bottom:2px solid #C9A227; font:15px/1.45 Arial, Helvetica, sans-serif; text-align:center;"><b>Prepline by Autoprod.</b> If this page looks blank or buttons don&#39;t work, save the file and open it in Chrome or Edge, or use the online version: <a href="https://autoprod-dev.github.io/prepline-free/" style="color:#1A4D8F; font-weight:bold; word-break:break-all;">https://autoprod-dev.github.io/prepline-free/</a></div>
 
 <div class="shell-masthead no-print">
   <div class="shell-brand">Prepline</div>
@@ -1212,7 +1225,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.5.0</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.5.0-r6</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a><span id="footerLegal" hidden> · <a href="terms.html" id="termsLink" target="_blank" rel="noopener">Terms</a> · <a href="refunds.html" id="refundsLink" target="_blank" rel="noopener">Refunds</a></span> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1512,20 +1525,106 @@ function renderOriginalViewer(){
   const cur = origViewerImages[origViewerIndex];
   document.getElementById('origViewerTitle').textContent = origViewerDishClean;
   document.getElementById('origViewerSub').textContent = (total>1 ? 'Page '+(origViewerIndex+1)+' of '+total+' — ' : '') + (cur.pageLabel || '');
-  document.getElementById('origViewerImg').src = cur.dataUrl;
+  const imgEl = document.getElementById('origViewerImg'); imgEl.src = cur.dataUrl;
+  origComposed(cur).then(u=>{ if (origViewerImages[origViewerIndex]===cur && u!==cur.dataUrl) imgEl.src = u; }).catch(()=>{});
   const nav = document.getElementById('origViewerNav');
   nav.style.display = total>1 ? '' : 'none';
   document.getElementById('origViewerPrevBtn').disabled = origViewerIndex===0;
   document.getElementById('origViewerNextBtn').disabled = origViewerIndex>=total-1;
+}
+// ---- v3.4.9-r3: supplier, delivery date and PO number are written into the page's own "Ref#" blanks
+// (the underlined box beside each ingredient). Drawn on top of the stored page image when it is viewed or
+// printed, so the PDF itself is never altered and PO files can be uploaded before or after the production tools.
+function pdfRefGeometry(items, scale){
+  if (!items || !items.length) return null;
+  const rows = pdfExtractIngredientRows(items).filter(r=>r.name && Number.isFinite(r.top));
+  if (!rows.length) return null;
+  const blanks = items.filter(w=>/^_{4,}$/.test(String(w.str).trim()) && w.x0>400);
+  const x0 = blanks.length ? Math.min(...blanks.map(w=>w.x0)) : null;
+  const hdr = items.find(w=>/^ref#?:?$/i.test(String(w.str).trim()) && w.x0>400);
+  const bx0 = x0 !== null ? x0 : (hdr ? hdr.x0 - 46 : null);
+  if (bx0 === null) return null;
+  const pageW = Math.max(...items.map(w=>w.x0 + (w.width||0)), bx0 + 70);
+  const mlab = items.find(w=>pdfSquash(w.str)==='method:');
+  const lastBot = mlab ? mlab.top - 0.85*(mlab.size||10) - 2 : null;
+  const up = r=>r.top - 0.85*(r.sz||10);   // pdf.js 'top' is the text baseline: box top = a little above it
+  return {refRows: rows.map((r,i)=>({name:r.name, top:up(r), bot: rows[i+1] ? up(rows[i+1]) : (lastBot ? Math.min(lastBot, up(r)+28) : up(r)+24)})), refBox:{x0:bx0, x1: Math.max(pageW + 2, bx0 + 68)}, refScale:scale};
+}
+function origRefLines(entry){
+  if (!entry || !entry.refRows || !POS.length) return [];
+  return entry.refRows.map(r=>{ const m = poMatchFor(r.name); return (m && m.status==='ok' && m.item) ? {row:r, text:poBoxText(m.item)} : null; }).filter(Boolean);
+}
+const origCompCache = {};
+function origComposed(entry){
+  const lines = origRefLines(entry);
+  if (!lines.length) return Promise.resolve(entry.dataUrl);
+  const key = entry.dataUrl.length + '|' + entry.dataUrl.slice(-40) + '|' + lines.map(l=>l.row.top+l.text).join('~');
+  if (origCompCache[key]) return Promise.resolve(origCompCache[key]);
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+        const c = cv.getContext('2d'); c.drawImage(img, 0, 0);
+        const S = entry.refScale || 1.35, bx = entry.refBox, pad = 1.5;
+        lines.forEach(({row, text})=>{
+          const x = bx.x0 * S, w = Math.max(40, (Math.min(bx.x1, cv.width / S - 3) - bx.x0)) * S, y = (row.top + 1) * S, h = Math.max(9, row.bot - row.top - 1) * S;
+          c.fillStyle = '#fff'; c.fillRect(x - 1, y, w + 2, h);
+          let out = null;
+          for (let fs = 6.2; fs >= 3.6; fs -= 0.2){
+            const px = fs * S; c.font = '600 ' + px + 'px Arial, Helvetica, sans-serif';
+            const words = text.split(' '), ls = []; let cur = '';
+            words.forEach(wd=>{ const t = cur ? cur + ' ' + wd : wd; if (c.measureText(t).width <= w - 2 || !cur) { cur = t; } else { ls.push(cur); cur = wd; } });
+            if (cur) ls.push(cur);
+            if (ls.length * px * 1.08 <= h && ls.every(l=>c.measureText(l).width <= w)) { out = {px, ls}; break; }
+          }
+          if (!out){ const px = 3.6 * S; c.font = '600 ' + px + 'px Arial'; const max = Math.max(1, Math.floor(h / (px * 1.08))); let ls = [], cur = '';
+            text.split(' ').forEach(wd=>{ const t = cur ? cur + ' ' + wd : wd; if (c.measureText(t).width <= w - 2 || !cur) cur = t; else { ls.push(cur); cur = wd; } }); if (cur) ls.push(cur);
+            ls = ls.slice(0, max); if (ls.length) ls[ls.length-1] = ls[ls.length-1].replace(/\s*\S{0,3}$/, '') + '…'; out = {px, ls}; }
+          c.fillStyle = '#0B3D91'; c.textBaseline = 'top';
+          out.ls.forEach((l, i)=>c.fillText(l, x, y + i * out.px * 1.08));
+        });
+        const u = cv.toDataURL('image/jpeg', 0.85); origCompCache[key] = u; res(u);
+      }catch(e){ rej(e); }
+    };
+    img.onerror = ()=>rej(new Error('image'));
+    img.src = entry.dataUrl;
+  });
+}
+function renderOriginalsTab(){
+  const dishes = Object.keys(originalPageImages), n = dishes.reduce((a,d)=>a+originalPageImages[d].length,0);
+  const filled = dishes.reduce((a,d)=>a+originalPageImages[d].reduce((b,e)=>b+origRefLines(e).length,0),0);
+  setTimeout(composeOriginalsInDom, 0);
+  return `<div class="panel orig-tab" id="origTab">
+    <div class="row no-print" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+      <h3 style="margin:0;">📖 Original production tools</h3>
+      <button class="ghost" type="button" onclick="printOriginalsAll()">🖨️ Print the original pages</button>
+    </div>
+    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s); ingredients that cannot be matched, and sub-recipes, are left blank to fill in by hand.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
+    ${dishes.map(d=>originalPageImages[d].map((e,i)=>`<div class="orig-page"><div class="orig-head no-print"><b>${escapeHtml(cleanDishName(d))}</b> <span class="meta">${escapeHtml(e.pageLabel||'')}</span> <button class="ghost" type="button" onclick="openOriginalViewer('${encodeURIComponent(d).replace(/'/g,'%27')}')">📖 View original</button></div><img class="orig-img" data-od="${escapeHtml(encodeURIComponent(d))}" data-oi="${i}" src="${e.dataUrl}" alt="${escapeHtml(cleanDishName(d))}"></div>`).join('')).join('')}
+  </div>`;
+}
+function composeOriginalsInDom(){
+  document.querySelectorAll('img.orig-img').forEach(img=>{
+    const d = decodeURIComponent(img.getAttribute('data-od')), e = (originalPageImages[d]||[])[Number(img.getAttribute('data-oi'))];
+    if (e) origComposed(e).then(u=>{ img.src = u; img.setAttribute('data-filled', u!==e.dataUrl ? '1' : '0'); }).catch(()=>{});
+  });
+}
+async function printOriginalsAll(){
+  const items = []; Object.keys(originalPageImages).forEach(d=>originalPageImages[d].forEach(e=>items.push({d, e})));
+  const urls = await Promise.all(items.map(x=>origComposed(x.e).catch(()=>x.e.dataUrl)));
+  const imgsHtml = items.map((x,i)=>`<div class="pg"><img src="${urls[i]}"></div>`).join('');
+  printViaIframe(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Original production tools</title><style>body{margin:0}.pg{page-break-after:always;display:flex;justify-content:center;padding:8px 0}.pg:last-child{page-break-after:auto}img{max-width:100%;height:auto}</style></head><body>${imgsHtml}</body></html>`);
 }
 function prevOriginalPage(){ if (origViewerIndex>0){ origViewerIndex--; renderOriginalViewer(); } }
 function nextOriginalPage(){ if (origViewerIndex<origViewerImages.length-1){ origViewerIndex++; renderOriginalViewer(); } }
 function closeOriginalViewer(){
   document.getElementById('origViewerOverlay').classList.add('hidden');
 }
-function printOriginalViewer(){
+async function printOriginalViewer(){
   const title = origViewerDishClean;
-  const imgsHtml = origViewerImages.map(im=>`<div class="pg"><img src="${im.dataUrl}"><div class="lbl">${escapeHtml(im.pageLabel||'')}</div></div>`).join('');
+  const urls = await Promise.all(origViewerImages.map(im=>origComposed(im).catch(()=>im.dataUrl)));
+  const imgsHtml = origViewerImages.map((im,i)=>`<div class="pg"><img src="${urls[i]}"><div class="lbl">${escapeHtml(im.pageLabel||'')}</div></div>`).join('');
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
     <style>
       body{margin:0;}
@@ -1705,7 +1804,7 @@ function loadOnetimeSession(){
       paxByDish = cleanPaxMap(s.paxByDish);
       migratePdfBasePax(ROWS, paxByDish);
       activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
-      viewMode = ['dish','section','priority','order'].includes(s.viewMode) ? s.viewMode : 'dish';
+      viewMode = ['dish','section','priority','order','orig'].includes(s.viewMode) ? s.viewMode : 'dish';
       eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
       eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
       rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
@@ -1718,7 +1817,7 @@ function loadOnetimeSession(){
           if (!validDish.has(dish)) return;
           const v = s.originalPageImages[dish];
           const arr = Array.isArray(v) ? v : (okImg(v) ? [v] : []);   // tolerate an old single-image save from before this was a list
-          const clean = arr.filter(okImg).map(x=>({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}));
+          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}));
           if (clean.length) originalPageImages[dish] = clean;
         });
       }
@@ -1729,7 +1828,7 @@ function loadOnetimeSession(){
         Object.keys(s.methodCrops).forEach(dish=>{
           if (!validDish.has(dish)) return;
           const arr = Array.isArray(s.methodCrops[dish]) ? s.methodCrops[dish] : [];
-          const clean = arr.filter(okImg).map(x=>({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}));
+          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}));
           if (clean.length) methodCrops[dish] = clean;
         });
       }
@@ -1964,6 +2063,12 @@ function renderApp(){
 // (see sortColumnOptions / orderLineSortVal).
 const PRINT_ORDER_KEY = 'prepline.printOrder.v1';
 const SORT_COLS = ['dish','task','total','section','day','lead'];
+const DAY_ORDER_KEY = 'prepline.dayOrder.v1';
+let dayOrderDesc = (function(){ try{ return localStorage.getItem(DAY_ORDER_KEY) === 'desc'; }catch(e){ return false; } })();
+function setDayOrder(d){ dayOrderDesc = d === 'desc'; try{ localStorage.setItem(DAY_ORDER_KEY, dayOrderDesc ? 'desc' : 'asc'); }catch(e){} renderApp(); }
+// Rank of a prep day in the chosen order (unscheduled / unknown always last).
+function dayRank(w){ const i = WEEKDAYS.indexOf(w); return i < 0 ? 99 : (dayOrderDesc ? 6 - i : i); }
+function dayOrderList(){ return dayOrderDesc ? WEEKDAYS.slice().reverse() : WEEKDAYS.slice(); }
 let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}, order:{col:null,dir:'asc'}};
 function setAllSort(col, dir){
   col = SORT_COLS.includes(col) ? col : null; dir = dir==='desc' ? 'desc' : 'asc';
@@ -2008,7 +2113,7 @@ function applySort(rows, view){
       case 'total': { const ta=computeTotal(a), tb=computeTotal(b); va=ta===null?-Infinity:toBaseQty(ta,a.unit).n; vb=tb===null?-Infinity:toBaseQty(tb,b.unit).n; break; }   // v3.4.5: 12 kg > 100 g
       case 'section': va=a.section.toLowerCase(); vb=b.section.toLowerCase(); break;
       case 'lead': va=(leaderBySection[a.section]||'').toLowerCase(); vb=(leaderBySection[b.section]||'').toLowerCase(); break;
-      case 'day': va=a.day?WEEKDAYS.indexOf(a.day):99; vb=b.day?WEEKDAYS.indexOf(b.day):99; break;
+      case 'day': va=dayRank(a.day); vb=dayRank(b.day); if (va<vb) return -1; if (va>vb) return 1; return A[1]-B[1];   // follows Prep day order
       default: return 0;
     }
     if (va<vb) return -1*mult;
@@ -2034,7 +2139,7 @@ function orderLineSortVal(L, col){
     case 'task': return String(L.task||'').toLowerCase();
     case 'total': { if (!L.hasQty || !L.need) return -Infinity; const b = toBaseQty(L.need.n, L.need.u); return Number.isFinite(b.n) ? b.n : -Infinity; }
     case 'section': return rs.map(r=>String(r.section||'').toLowerCase()).sort()[0] || '';
-    case 'day': return Math.min(99, ...rs.map(r=>r.day?WEEKDAYS.indexOf(r.day):99));
+    case 'day': return Math.min(99, ...rs.map(r=>dayRank(r.day)));
     case 'lead': return rs.map(r=>(leaderBySection[r.section]||'').toLowerCase()).filter(Boolean).sort()[0] || '';
   }
   return 0;
@@ -2043,7 +2148,8 @@ function sortOrderLines(lines){
   const s = sortState.order;
   if (!s.col) return lines;
   const mult = s.dir==='asc' ? 1 : -1;
-  return lines.map((L,i)=>[L,i]).sort((a,b)=>{ const va = orderLineSortVal(a[0], s.col), vb = orderLineSortVal(b[0], s.col);
+  const mult2 = s.col==='day' ? 1 : mult;
+  return lines.map((L,i)=>[L,i]).sort((a,b)=>{ const mult = mult2; const va = orderLineSortVal(a[0], s.col), vb = orderLineSortVal(b[0], s.col);
     return va<vb ? -mult : va>vb ? mult : a[1]-b[1]; }).map(x=>x[0]);
 }
 function printOrderControlHtml(){
@@ -2057,10 +2163,15 @@ function printOrderControlHtml(){
       <option value="">Default order</option>
       ${opts.map(([col,label])=>`<option value="${col}" ${s.col===col?'selected':''}>${escapeHtml(label)}</option>`).join('')}
     </select>
-    <select onchange="setSortExplicit('${view}', sortState['${view}'].col, this.value)" ${!s.col?'disabled':''}>
-      <option value="asc" ${s.dir==='asc'?'selected':''}>Ascending (A→Z, day 1→7)</option>
-      <option value="desc" ${s.dir==='desc'?'selected':''}>Descending (Z→A, day 7→1)</option>
+    <select onchange="if (sortState['${view}'].col==='day') setDayOrder(this.value); else setSortExplicit('${view}', sortState['${view}'].col, this.value)" ${!s.col?'disabled':''}>
+      <option value="asc" ${(s.col==='day' ? !dayOrderDesc : s.dir==='asc')?'selected':''}>Ascending (A→Z, day 1→7)</option>
+      <option value="desc" ${(s.col==='day' ? dayOrderDesc : s.dir==='desc')?'selected':''}>Descending (Z→A, day 7→1)</option>
     </select>
+    <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px;"><b>Prep day order:</b>
+    <select id="dayOrderSel" onchange="setDayOrder(this.value)">
+      <option value="asc" ${!dayOrderDesc?'selected':''}>${escapeHtml(dayLabel('Monday'))} → ${escapeHtml(dayLabel('Sunday'))}</option>
+      <option value="desc" ${dayOrderDesc?'selected':''}>${escapeHtml(dayLabel('Sunday'))} → ${escapeHtml(dayLabel('Monday'))}</option>
+    </select></label>
   </div>`;
 }
 let sourceInfo = {name: null, loadedAt: null};
@@ -2166,6 +2277,57 @@ const STAGE_NAMES = ['Collect/Trim/Wash','Cook/Steam/Roast','Portion/Tray up/Box
 // With a 4-day prep lead: Stage 1 = event day − 3, Stage 2 = event day − 2,
 // Stage 3 = event day − 1, Stage 4 = the event day itself (final box-off/continuation).
 const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+// v3.4.8: days are shown numbered everywhere ("1 Monday" ... "7 Sunday"): pickers, every view, all prints.
+const CLASSIC_KEY = 'prepline.classicDays.v1';
+function classicDays(){ try{ return localStorage.getItem(CLASSIC_KEY) === '1'; }catch(e){ return false; } }
+function setClassicDays(on){
+  try{ if (on) localStorage.setItem(CLASSIC_KEY, '1'); else localStorage.removeItem(CLASSIC_KEY); }catch(e){}
+  if (typeof render === 'function') render();
+  setStatus(on ? 'Switched back to the previous version: plain day names, no Copy prep days. Use "Switch to the new version" to turn them on again.'
+               : 'New version on: days numbered 1 Monday to 7 Sunday, and Copy prep days.', 'ok');
+}
+// v3.4.9-r4: a persistent "Revert to previous version" button (bottom right, always visible on the website).
+// Every publish keeps the previously published build in ./previous/ (see publish.sh); the button opens it.
+(function revertButton(){
+  if (location.protocol === 'file:') return;            // the offline file has no earlier build next to it
+  const mk = () => {
+    if (document.getElementById('revertPrevBtn')) return;
+    const b = document.createElement('button'); b.id = 'revertPrevBtn'; b.type = 'button'; b.className = 'no-print';
+    b.textContent = '↩ Revert to previous version';
+    b.setAttribute('style', 'position:fixed; right:12px; bottom:12px; z-index:9998; background:#fff; color:#2b2118; border:1.5px solid #8a6a3c; border-radius:999px; padding:8px 14px; font:600 12.5px/1.2 system-ui,sans-serif; box-shadow:0 2px 8px rgba(0,0,0,.18); cursor:pointer;');
+    b.onclick = async () => {
+      let v = '';
+      try{ const r = await fetch('previous/index.html', {cache:'no-store'}); if (r.ok){ const m = (await r.text()).match(/name="prepline-version"\s+content="([^"]+)"/); v = m ? m[1] : 'earlier'; } }catch(e){}
+      if (!v){ alert('There is no earlier version stored yet. It appears after the next update is published.'); return; }
+      if (confirm('Go back to the previous version (' + v + ')?\n\nYour lists stay saved in this browser. To come back to the newest version, open the normal address again.')) location.href = 'previous/';
+    };
+    document.body.appendChild(b);
+    fetch('previous/index.html', {cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{ const m = t.match(/name="prepline-version"\s+content="([^"]+)"/); if (m) b.title = 'Opens version ' + m[1]; }).catch(()=>{});
+  };
+  if (document.body) mk(); else document.addEventListener('DOMContentLoaded', mk);
+})();
+function versionSwitchHtml(){
+  return classicDays()
+    ? `<div class="row no-print version-switch" style="gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; font-size:12.5px;"><span class="meta">Showing the previous version (plain day names, no Copy prep days).</span><button class="secondary" type="button" id="versionSwitchBtn" onclick="setClassicDays(false)">Switch to the new version</button></div>`
+    : `<div class="row no-print version-switch" style="gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 12px; font-size:12.5px;"><span class="meta">New: days numbered 1 Monday to 7 Sunday, and Copy prep days (↓).</span><button class="ghost" type="button" id="versionSwitchBtn" onclick="setClassicDays(true)">Switch back to previous version</button></div>`;
+}
+function dayLabel(w){ if (classicDays()) return w || ''; const i = WEEKDAYS.indexOf(w); return i < 0 ? (w || '') : (i + 1) + ' ' + w; }
+const DAY_RE = /\b(?<![1-7] )(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/g;
+// Rewrites text that IS a day (a cell, heading, option, label) and the few sentences built around days;
+// dish names, tasks and typed text are never touched.
+function numberDaysIn(root){
+  if (!root || classicDays()) return;
+  const skip = el => el.closest && el.closest('.dish-head h3, td.task, .task, textarea, input, script, style, [data-no-daynum]');
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const todo = [];
+  while (w.nextNode()){ const n = w.currentNode, t = n.nodeValue; if (!t || !/day\b/.test(t)) continue;
+    const el = n.parentElement; if (!el || skip(el)) continue;
+    const m = t.match(/^(\s*)(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(\s*(\(closed\))?\s*)$/);
+    if (m) todo.push([n, m[1] + dayLabel(m[2]) + m[3]]);
+    else if (/(Prep window:|→|EVENT DAY|moved|Moved|to )/.test(t) && !/^[A-Z][a-z].{60,}/.test(t)) todo.push([n, t.replace(DAY_RE, d=>dayLabel(d))]);
+  }
+  todo.forEach(([n, v])=>{ if (n.nodeValue !== v) n.nodeValue = v; });
+}
 let eventDayOverride = {}; // dish -> weekday name (manual correction/assignment)
 let eventDateByDish = {}; // dish -> actual calendar date string "dd/mm/yyyy", where known
                           // (a PDF's own batch date, or a manually entered weekly date) —
@@ -2232,7 +2394,7 @@ function setEventDay(encodedDish, val){
 function eventDaySelect(encodedDish, current){
   return `<select class="rowsel leader-input" onchange="setEventDay('${encodedDish}', this.value)">
     <option value="" ${!current?'selected':''}>— set event day —</option>
-    ${WEEKDAYS.map(w=>`<option value="${w}" ${current===w?'selected':''}>${w}</option>`).join('')}
+    ${WEEKDAYS.map(w=>`<option value="${w}" ${current===w?'selected':''}>${dayLabel(w)}</option>`).join('')}
   </select>`;
 }
 
@@ -2390,9 +2552,10 @@ function bulkMoveToolbarHtml(rowsInThisTable){
     <span class="meta" style="font-size:12px;">${selectedCount} ticked</span>
     <select class="bulk-move-day" style="width:auto;">
       <option value="">— move ticked rows to —</option>
-      ${WEEKDAYS.map(w=>`<option value="${w}" ${blockedDays.has(w)?'disabled':''}>${w}${blockedDays.has(w)?' (closed)':''}</option>`).join('')}
+      ${WEEKDAYS.map(w=>`<option value="${w}" ${blockedDays.has(w)?'disabled':''}>${dayLabel(w)}${blockedDays.has(w)?' (closed)':''}</option>`).join('')}
     </select>
     <button class="secondary" type="button" ${anySelectedHere?'':'disabled'} onclick="bulkMoveSelectedToDay(this.parentNode.querySelector('select.bulk-move-day').value, [${idxList.join(',')}])">Move ticked rows</button>
+    ${classicDays() ? '' : ''}<button class="secondary copy-prep-days" type="button" ${classicDays()?'hidden':''} ${selectedCount>=2?'':'disabled'} title="Copies the prep day of the top ticked row to the other ticked rows" onclick="copyPrepDaysTicked([${idxList.join(',')}])">Copy prep days</button>
     <button class="ghost" type="button" onclick="clearRowSelection()">Clear ticks</button>
   </div>`;
 }
@@ -2416,13 +2579,52 @@ function bulkMoveSelectedToDay(day, scopeIdx){
   if (!scopeIdx) selectedRowIdx.clear();
   render();
   dishesTouched.forEach(d=>autoCopyAfterEdit(d));
-  setStatus('Moved '+moved+' row(s) to '+day+'.', 'ok');
+  setStatus('Moved '+moved+' row(s) to '+dayLabel(day)+'.', 'ok');
 }
 function daySelect(globalIdx, currentVal){
-  return `<select class="rowsel" onchange="setDay(${globalIdx}, this.value)">
+  return `<span class="day-cell" style="display:inline-flex; gap:4px; align-items:center;"><select class="rowsel" onchange="setDay(${globalIdx}, this.value)">
     <option value="" ${!currentVal?'selected':''}>— set day —</option>
-    ${WEEKDAYS.map(w=>`<option value="${w}" ${currentVal===w?'selected':''}>${w}</option>`).join('')}
-  </select>`;
+    ${WEEKDAYS.map(w=>`<option value="${w}" ${currentVal===w?'selected':''}>${dayLabel(w)}</option>`).join('')}
+  </select>${classicDays() ? '' : `<button type="button" class="ghost no-print copy-day-down" title="Copy this prep day to the row below" aria-label="Copy this prep day to the row below" onclick="copyDayDown(this, ${globalIdx})" style="padding:4px 8px; min-width:30px;">↓</button>`}</span>`;
+}
+// ---- v3.4.8: Copy prep days (like dragging a prep day down over the rows below in a spreadsheet)
+//  * the ↓ next to a row's prep day copies it to the row below; press again on that row to keep filling down;
+//  * "Copy prep days" in a list's toolbar copies the prep day of the TOP ticked row to every other ticked row.
+// Both offer Undo, and both follow Auto-apply (same dish, same date) like any other prep-day edit.
+function dayUndoSnapshot(){ similarUndo = {before: ROWS.map(r=>({day:r.day, section:r.section, flagged:r.flagged})), beforeLen: ROWS.length}; }
+function offerUndo(msg){
+  setStatus(msg + ' ', 'ok');
+  const el = document.getElementById('statusMsg');
+  const b = document.createElement('button'); b.type='button'; b.className='ghost'; b.id='undoSimilarBtn'; b.textContent='Undo'; b.onclick = undoCopyToSimilar; el.appendChild(b);
+}
+function copyDayDown(btn, srcIdx){
+  const src = ROWS[srcIdx]; if (!src) return;
+  if (!src.day){ setStatus('Set a prep day on this row first, then copy it down.', 'err'); return; }
+  const tr = btn.closest('tr'); let nx = tr && tr.nextElementSibling, sel = null;
+  while (nx && !(sel = nx.querySelector('select.rowsel[onchange^="setDay"]'))) nx = nx.nextElementSibling;
+  if (!sel){ setStatus('This is the last row of the list: nothing below to copy to.', 'err'); return; }
+  const dstIdx = Number((sel.getAttribute('onchange').match(/setDay\((\d+)/)||[])[1]);
+  if (!ROWS[dstIdx]) return;
+  dayUndoSnapshot();
+  const dst = ROWS[dstIdx]; dst.day = src.day;
+  render();
+  // keep the finger/keyboard where the fill is going: focus the ↓ on the row just filled
+  const nb = document.querySelector(`button.copy-day-down[onclick="copyDayDown(this, ${dstIdx})"]`); if (nb){ try{ nb.focus({preventScroll:true}); }catch(e){} }
+  autoCopyAfterEdit(dst.dish);
+  if (!document.getElementById('undoSimilarBtn')) offerUndo('Copied '+dayLabel(src.day)+' to the row below ('+dst.task+').');
+}
+function copyPrepDaysTicked(scopeIdx){
+  const ticked = scopeIdx.filter(i=>selectedRowIdx.has(i));
+  if (ticked.length < 2){ setStatus('Tick the row to copy FROM (the top ticked row) and at least one row to copy to.', 'err'); return; }
+  const src = ROWS[ticked[0]];
+  if (!src.day){ setStatus('The top ticked row has no prep day yet: set one first.', 'err'); return; }
+  dayUndoSnapshot();
+  const dishes = new Set();
+  ticked.slice(1).forEach(i=>{ ROWS[i].day = src.day; dishes.add(ROWS[i].dish); selectedRowIdx.delete(i); });
+  selectedRowIdx.delete(ticked[0]);
+  render();
+  dishes.forEach(d=>autoCopyAfterEdit(d));
+  if (!document.getElementById('undoSimilarBtn')) offerUndo('Copied '+dayLabel(src.day)+' from "'+src.task+'" to '+(ticked.length-1)+' ticked row(s).');
 }
 // Manually picking a weekday on a row is a deliberate override — it sticks even if the
 // event day changes later, unless the person picks a fresh weekday again.
@@ -2792,6 +2994,15 @@ function routeFiles(fileList, opts){
   if (!files.length) return;
   const pdfs = files.filter(f=>f.name.toLowerCase().endsWith('.pdf'));
   if (opts.append && !pdfs.length){ setStatus('Append works with production tool PDFs only.', 'err'); return; }
+  if (pdfs.length && !opts.__poSplit){
+    splitPoFiles(pdfs).then(({pts, pos})=>{
+      const others = files.filter(f=>!f.name.toLowerCase().endsWith('.pdf'));
+      const msg = pos.length ? 'Read '+pos.length+' purchase order'+(pos.length>1?'s':'')+' ('+pos.reduce((n,p)=>n+p.items.length,0)+' lines). ' : '';
+      if (pts.length || others.length) routeFiles([...pts, ...others], Object.assign({}, opts, {__poSplit:true, __poMsg: msg}));
+      else { render(); setStatus(msg + (ROWS.length ? 'Matched to the current list.' : 'Now upload the production tools.'), 'ok'); }
+    });
+    return;
+  }
   if (pdfs.length){
     let use = pdfs, extra = '';
     if (pdfs.length>1 && LICENSE_CONFIG.freeLimits && LICENSE_CONFIG.freeLimits.onePdfPerSort && !proActive()){
@@ -2800,11 +3011,220 @@ function routeFiles(fileList, opts){
       extra = ' Only "'+pdfs[0].name+'" was loaded: the free version sorts one PDF at a time. Pro can combine several PDFs into one list.';
       setTimeout(()=>AutoprodLicence.openUpgrade('Combining several PDFs into one list is a Pro feature.'), 50);
     }
-    handlePdfFiles(use, opts).then(()=>{ if (extra){ const el = document.getElementById('statusMsg'); el.textContent += extra; } });
+    handlePdfFiles(use, opts).then(()=>{ const el = document.getElementById('statusMsg'); if (opts.__poMsg && el) el.textContent = opts.__poMsg + el.textContent; if (extra){ el.textContent += extra; } });
     return;
   }
   handleFile(files[0]);
 }
+
+// ---------- v3.4.9: purchase orders (requisitions) matched to ingredients ----------
+// Upload the week's PO / requisition PDFs together with (or after) the production tools.
+// Each PO is read for its number(s), required delivery date, and line items (supplier, SKU,
+// description, qty, unit, price). Every ingredient is then matched to its best PO line by
+// name: names are normalised (lower case, pack sizes, codes, brand/supplier tails and filler
+// words removed, plurals folded), then compared word by word with small-typo tolerance.
+// Good matches show the supplier + PO; weak ones are marked "check"; none are flagged.
+const PO_KEY = 'prepline.pos.v1';
+let POS = (function(){ try{ return JSON.parse(localStorage.getItem(PO_KEY)||'[]') || []; }catch(e){ return []; } })();
+function savePOs(){ try{ localStorage.setItem(PO_KEY, JSON.stringify(POS)); }catch(e){} poMatchCache = null; if (typeof syncPoCol==='function') syncPoCol(); }
+function clearPOs(){ POS = []; savePOs(); render(); setStatus('Purchase orders cleared.', 'ok'); }
+function poLines(items){
+  const rows = [];
+  items.filter(w=>String(w.str).trim()).slice().sort((a,b)=>(a.top-b.top)||(a.x0-b.x0)).forEach(w=>{
+    const L = rows.length ? rows[rows.length-1] : null;
+    if (L && Math.abs(L.top - w.top) <= 3) L.items.push(w); else rows.push({top:w.top, items:[w]});
+  });
+  rows.forEach(L=>{ L.items.sort((a,b)=>a.x0-b.x0); L.text = L.items.map(w=>w.str).join(' ').replace(/\s+/g,' ').trim(); });
+  return rows;
+}
+function isPoText(t){ return /PURCHASE\s+(REQUISITION|ORDER)/i.test(t) && /Item\s*SKU|Product\s*Desc/i.test(t); }
+function parsePoPages(pagesItems, fileName){
+  const po = {file: fileName, req:'', poNumbers:[], delivery:'', reqDate:'', subject:'', items:[]};
+  pagesItems.forEach(items=>{
+    const lines = poLines(items), all = lines.map(l=>l.text).join('\n');
+    const g = (re)=>{ const m = all.match(re); return m ? m[1].trim() : ''; };
+    po.req = po.req || g(/REQ(?:UISITION)?\s*NUMBER\s*:\s*([A-Z]*\d+)/i) || g(/\bPO\s*NUMBER\s*:\s*(PO\d+)/i);
+    po.delivery = po.delivery || g(/Required\s+Delivery\s+Date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i) || g(/Delivery\s+Date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+    po.reqDate = po.reqDate || g(/REQ\s+date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+    po.subject = po.subject || g(/Subject\s*:\s*([^\n]+)/i).replace(/\s{2,}.*/,'');
+    const pn = all.match(/PO\s*number\s*:\s*((?:PO\d+[,\s]*)+)/i);
+    if (pn) pn[1].match(/PO\d+/g).forEach(x=>{ if (!po.poNumbers.includes(x)) po.poNumbers.push(x); });
+    // item table: columns from the header line
+    const hi = lines.findIndex(l=>/Supplier/.test(l.text) && /Item\s*SKU/.test(l.text) && /Product\s*Desc/.test(l.text));
+    if (hi < 0) return;
+    const H = lines[hi].items, xOf = re => { const w = H.find(w=>re.test(w.str)); return w ? w.x0 : null; };
+    const xSup = xOf(/Supplier/), xSku = xOf(/Item|SKU/), xDesc = xOf(/Product|Desc/), xQty = xOf(/^Qty/);
+    if (xSku===null || xDesc===null) return;
+    let cur = null;
+    for (let i = hi+1; i < lines.length; i++){
+      const L = lines[i];
+      if (/^(Sub\s*Total|Freight|Tax\s*Amount|Total\s+amount)/i.test(L.text.replace(/^\s+/,'')) || /Sub\s*Total:/i.test(L.text)) { cur = null; if (/Total\s+amount/i.test(L.text)) break; continue; }
+      if (/^Amount$/i.test(L.text) || /^https?:/i.test(L.text)) continue;
+      const first = L.items[0];
+      const startsRow = /^\d{1,3}$/.test(String(first.str).trim()) && first.x0 < (xSup!==null ? xSup + 4 : xSku);
+      const col = w => w.x0 < xSku - 2 ? 'sup' : (w.x0 < xDesc - 2 ? 'sku' : 'rest');
+      const parts = {sup:[], sku:[], rest:[]};
+      L.items.forEach((w, k)=>{ if (startsRow && k===0) return; const t = String(w.str).trim(); if (!t || /^(Edit|Line)$/i.test(t)) return; parts[col(w)].push(t); });
+      if (startsRow){
+        const rest = parts.rest.join(' ').replace(/\s+/g,' ');
+        const m = rest.match(/^(.*?)\s+(\d+(?:\.\d+)?)\s+([A-Za-z]{1,6})\s+\$\s?([\d,]+(?:\.\d+)?)\s+\$\s?([\d,]+(?:\.\d+)?)/);
+        cur = {n: Number(first.str), supplier: parts.sup.join(' '), sku: parts.sku.join(' '), desc: m ? m[1] : rest, qty: m ? Number(m[2]) : null, uom: m ? m[3].toUpperCase() : '', price: m ? Number(m[4].replace(/,/g,'')) : null};
+        po.items.push(cur);
+      } else if (cur){
+        if (parts.sup.length) cur.supplier += ' ' + parts.sup.join(' ');
+        if (parts.rest.length && !/^\$/.test(parts.rest[0])) cur.desc += ' ' + parts.rest.filter(t=>!/^\$[\d,.]+$/.test(t)).join(' ');
+      }
+    }
+  });
+  po.items.forEach(it=>{ it.supplier = it.supplier.replace(/\s+/g,' ').trim(); it.desc = it.desc.replace(/^\d{6,10}\s+/,'').replace(/\s+/g,' ').trim(); });
+  return po;
+}
+// --- name matching
+const PO_STOP = new Set('pb bch bun bunch pun punnet ctn carton ea each pk pack packet box bag tub tin can jar btl bottle per x and the of with in fresh frozen tip top krio krush masterfoods canister sub item add to bs placeholder name peeled'.split(' '));
+function poSingular(w){ return w.length > 4 && /ies$/.test(w) ? w.slice(0,-3)+'y' : (w.length > 3 && /(ss)$/.test(w) ? w : (w.length > 3 && /s$/.test(w) ? w.slice(0,-1) : w)); }
+// Confirmed equivalents: River Mint is mint (confirmed by the kitchen).
+const PO_SYNONYMS = [[/\briver\s+mint\b/g, 'mint']];
+function poTokens(name){
+  let t = String(name||'').toLowerCase();
+  t = t.replace(/\s+-\s+[^-]*$/, ' ');                               // " - Supplier" tail on production-tool names
+  t = t.replace(/^\d{6,10}\s+/, ' ');                                // GL / category code
+  PO_SYNONYMS.forEach(([re, to])=>{ t = t.replace(re, to); });          // confirmed same item (kitchen name -> PO name)
+  t = t.replace(/\(\s*[^)]*\)/g, ' ');                               // (12), (Crinkle Chips), (SUB)
+  t = t.replace(/\b\d+(\.\d+)?\s*(x\s*\d+(\.\d+)?)?\s*(kg|k|g|gm|grams?|kilograms?|ml|l|lt|ltr|litres?|liters?|ea|each|pc|pcs|per)?\b/g, ' ');
+  t = t.replace(/[^a-z\s]/g, ' ');
+  return [...new Set(t.split(/\s+/).filter(w=>w.length>=2 && !PO_STOP.has(w)).map(poSingular))];
+}
+function poLev1(a, b){   // true if edit distance <= 1
+  if (Math.abs(a.length-b.length) > 1) return false;
+  let i = 0, j = 0, e = 0;
+  while (i < a.length && j < b.length){
+    if (a[i]===b[j]){ i++; j++; continue; }
+    if (++e > 1) return false;
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+  }
+  return e + (a.length-i) + (b.length-j) <= 1;
+}
+function poTokEq(a, b){ return a===b || (a.length>=4 && b.length>=4 && (a.startsWith(b) || b.startsWith(a))) || (a.length>=5 && b.length>=5 && poLev1(a,b)); }
+// Generic words (herb, micro, sauce, gluten free ...) count for little: "Herb Chives" is not "Herb Mint".
+const PO_GENERIC = new Set('herb micro sauce gluten free sliced slice pickle pickled green red white black whole wholemeal mix mixed fine large small baby raw cooked plain natural organic'.split(' '));
+function poW(t){ return PO_GENERIC.has(t) ? 0.25 : 1; }
+function poScore(A, B){
+  if (!A.length || !B.length) return 0;
+  let hitA = 0, hitB = 0;
+  A.forEach(a=>{ if (B.some(b=>poTokEq(a,b))) hitA += poW(a); });
+  B.forEach(b=>{ if (A.some(a=>poTokEq(a,b))) hitB += poW(b); });
+  const wA = A.reduce((n,t)=>n+poW(t),0), wB = B.reduce((n,t)=>n+poW(t),0);
+  if (!hitA || (hitA < 1 && hitB < 1)) return 0;            // only generic words in common: never a match
+  const dice = (hitA+hitB)/(wA+wB), cont = Math.min(hitA/wA, hitB/wB) > 0 ? Math.max(hitA/wA, hitB/wB) : 0;
+  return Math.max(dice, Math.min(wA, wB) >= 2 ? cont*0.85 : 0);
+}
+function poIsInHouse(task){ return /\(\s*sub\s*\)/i.test(String(task||"")); }   // REF left completely blank for these (screen, prints, Order sheet)   // sub-recipes are made in the kitchen, not ordered
+const PO_OK = 0.6, PO_CHECK = 0.4;
+let poMatchCache = null;
+function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((it, ii)=>out.push(Object.assign({pi, ii, po}, it, {tok: poTokens(it.desc)})))); return out; }
+// manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
+const PO_LINK_KEY = 'prepline.poLinks.v1';
+let poLinks = (function(){ try{ return JSON.parse(localStorage.getItem(PO_LINK_KEY)||'{}') || {}; }catch(e){ return {}; } })();
+function poMatchFor(task){
+  if (!POS.length) return null;
+  if (!poMatchCache) poMatchCache = {items: poAllItems(), byKey: {}};
+  const key = ingKey(task);
+  if (poMatchCache.byKey[key] !== undefined) return poMatchCache.byKey[key];
+  if (poIsInHouse(task)) return (poMatchCache.byKey[key] = {status:'sub'});
+  const tok = poTokens(task); let best = null;
+  poMatchCache.items.forEach(it=>{ const sc = poScore(tok, it.tok); if (sc > 0 && (!best || sc > best.score)) best = {item: it, score: sc}; });
+  const link = poLinks[key];
+  let res;
+  if (link === 'none') res = {status:'none', manual:true};
+  else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)) res = {status:'ok', item: poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link), score:1, manual:true};
+  else res = !best || best.score < PO_CHECK ? {status:'none', best} : {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score};
+  return (poMatchCache.byKey[key] = res);
+}
+const PO_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function poLongDate(d){ const m = String(d||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? Number(m[1])+' '+PO_MONTHS[Number(m[2])-1] : (d||''); }
+function poTitle(t){ return String(t||'').toLowerCase().replace(/(^|\s)([a-z])/g, (m,a,c)=>a+c.toUpperCase()); }
+// REF format: "Supplier, 13 October, ingredient, qty unit" + the PO number(s) only
+// r3: the PO number for a line. A requisition's header lists its PO number(s) ("PO number : PO1, PO2, PO3");
+// the document never ties a number to a line. One number = that number. Several numbers and as many suppliers
+// = best mapping by supplier order in the document, flagged unverified. Otherwise all numbers, unverified.
+// The REQ (RQ...) number is NEVER used. No PO number in the header = blank.
+function poNumFor(it){
+  const po = it.po, nums = (po && po.poNumbers) || [];
+  if (!nums.length) return {txt:'', ok:true};
+  if (nums.length === 1) return {txt:nums[0], ok:true};
+  const sups = []; (po.items||[]).forEach(i=>{ const k = String(i.supplier||'').toLowerCase(); if (!sups.includes(k)) sups.push(k); });
+  const idx = sups.indexOf(String(it.supplier||'').toLowerCase());
+  if (sups.length === nums.length && idx >= 0) return {txt:nums[idx], ok:false};
+  return {txt:nums.join(', '), ok:false};
+}
+// FINAL spec: the Ref # box on the original production tool page gets ONLY "Supplier dd/mm/yyyy"
+// (supplier name as plain text, delivery date as numbers from the requisition's Required Delivery Date).
+// No codes, labels, PO / REQ numbers, prices, quantities or hint that it came from a requisition.
+function poSupplierShort(n){ return String(n||'').replace(/\b(pty\.?|ltd\.?|limited|inc\.?|p\/l)\b/gi,' ').replace(/\bprovidores?\b/gi,' ').replace(/[,.]+\s*$/,'').replace(/\s+/g,' ').trim(); }
+function poBoxText(it){ const d = it.po && it.po.delivery ? it.po.delivery.replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*$/, (m,a,b,c)=>String(a).padStart(2,'0')+'/'+String(b).padStart(2,'0')+'/'+c) : ''; return [poSupplierShort(it.supplier), d].filter(Boolean).join(' '); }
+function poRefText(it){
+  const po = it.po, n = poNumFor(it);
+  return [it.supplier, poLongDate(po.delivery), poTitle(it.desc), it.qty!==null ? fmtNum(it.qty)+' '+it.uom : ''].filter(Boolean).join(', ') + (n.txt ? ' · ' + n.txt + (n.ok ? '' : ' (unverified)') : '');
+}
+function poNumberText(po){ return po.poNumbers.length ? po.poNumbers.join(', ') : ''; }
+function poShortDate(d){ const m = String(d||'').match(/^(\d{1,2})\/(\d{1,2})/); return m ? m[1]+'/'+m[2] : d; }
+const PO_VIEWS_KEY = 'prepline.poInViews.v1';
+const poInViews = false;   // r3 (spec): NO supplier / PO details in By dish, By team section, By prep day or the Order sheet; REF lives in the Ref # box on View original + its print
+function poChipHtml(r){
+  if (!poInViews) return '';
+  const m = poMatchFor(r.task); if (!m || m.status==='sub') return '';
+  if (m.status==='none') return ' <span class="po-chip none" title="No line on the uploaded purchase orders matches this ingredient.">no PO</span>';
+  const it = m.item, po = it.po;
+  const tip = `${it.supplier}${po.poNumbers.length?' · PO '+poNumberText(po):''} · line ${it.n}: ${it.desc} · ${it.qty!==null?it.qty+' '+it.uom:''} · delivery ${po.delivery}${m.status==='check'?' — weak name match, please check':''}`;
+  return ` <span class="po-chip ${m.status}" title="${escapeHtml(tip)}"><b class="po-ref-l">REF</b> ${escapeHtml(poRefText(it))}${m.status==='check'?' (check)':''}</span>`;
+}
+function poStats(){
+  const keys = new Set(), used = new Set(); let ok = 0, check = 0, none = 0;
+  ROWS.forEach(r=>{ const k = ingKey(r.task); if (!k || keys.has(k)) return; keys.add(k); const m = poMatchFor(r.task); if (!m || m.status==='sub') return;
+    if (m.status==='ok'){ ok++; used.add(m.item.po.req+'#'+m.item.n); } else if (m.status==='check'){ check++; used.add(m.item.po.req+'#'+m.item.n); } else none++; });
+  const unusedLines = poAllItems().filter(it=>!used.has(it.po.req+'#'+it.n));
+  return {total: keys.size, ok, check, none, unusedLines};
+}
+function poLinkSet(encTask, val){ const k = ingKey(decodeURIComponent(encTask)); if (val) poLinks[k] = val; else delete poLinks[k]; try{ localStorage.setItem(PO_LINK_KEY, JSON.stringify(poLinks)); }catch(e){} poMatchCache = null; render(); }
+function poPanelHtml(){
+  if (!POS.length) return '';
+  const st = ROWS.length ? poStats() : null;
+  const opts = poAllItems();
+  const listRows = st ? [...new Set(ROWS.map(r=>r.task))].filter(t=>{ const m = poMatchFor(t); return m && (m.status==='check' || m.status==='none'); }) : [];
+  return `<div class="panel po-panel no-print" id="poPanel">
+    <div class="row" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+      <h3 style="margin:0;">🧾 Requisitions (${POS.length})</h3>
+      <button class="ghost" type="button" onclick="clearPOs()">Clear requisitions</button>
+    </div>
+    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box on each production tool page: see the <b>📖 Original PTs</b> tab or <b>📖 View original</b> (both print).</div>
+    <table class="po-table"><thead><tr><th>PO number(s)</th><th>Delivery</th><th>Suppliers</th><th>Lines</th><th>File</th></tr></thead><tbody>
+    ${POS.map(po=>`<tr><td><b>${po.poNumbers.length?escapeHtml(poNumberText(po)):'no PO number'}</b>${po.req?'<div class="meta">'+escapeHtml(po.req)+'</div>':''}${po.subject?'<div class="meta">'+escapeHtml(po.subject)+'</div>':''}</td><td>${escapeHtml(po.delivery||'—')}</td><td>${escapeHtml([...new Set(po.items.map(i=>i.supplier))].join(', '))}</td><td>${po.items.length}</td><td class="meta">${escapeHtml(po.file||'')}</td></tr>`).join('')}
+    </tbody></table>
+    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
+    ${listRows.length ? `<details class="po-fix"><summary>Check or link ingredients (${listRows.length})</summary>
+      ${listRows.map(t=>{ const m = poMatchFor(t); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${m.status==='check'?'<span class="po-chip check">check</span>':'<span class="po-chip none">no PO</span>'}</span>
+        <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):'— not on a PO —'}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+')')}</option>`).join('')}</select></div>`; }).join('')}
+    </details>` : ''}
+    ${st && st.unusedLines.length ? `<details class="po-fix"><summary>PO lines not used by any recipe (${st.unusedLines.length})</summary><ul>${st.unusedLines.map(i=>`<li>${escapeHtml(i.supplier)} · ${escapeHtml(i.desc)} · ${i.qty!==null?escapeHtml(i.qty+' '+i.uom):''} <span class="meta">(${escapeHtml(i.po.req)})</span></li>`).join('')}</ul></details>` : ''}
+  </div>`;
+}
+async function splitPoFiles(pdfs){
+  if (!(await ensurePdfJsLoaded())) return {pts: pdfs, pos: []};
+  const pts = [], found = [];
+  for (const f of pdfs){
+    try{
+      const pdf = await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+      const p1 = await pdfExtractPageItems(await pdf.getPage(1));
+      if (!isPoText(p1.map(w=>w.str).join(' '))){ pts.push(f); continue; }
+      const pages = [p1]; for (let i=2; i<=pdf.numPages; i++) pages.push(await pdfExtractPageItems(await pdf.getPage(i)));
+      found.push(parsePoPages(pages, f.name));
+    }catch(e){ pts.push(f); }
+  }
+  found.forEach(po=>{ const i = POS.findIndex(x=>x.req && x.req===po.req); if (i>=0) POS[i] = po; else POS.push(po); });
+  if (found.length) savePOs();
+  return {pts, pos: found};
+}
+
 // ---------- production tool PDF parsing ----------
 // A production tool PDF is a bundle of recipe pages: one "main" dish front page,
 // each with a right-hand Ingredients: table, optionally followed by that dish's own
@@ -3053,7 +3473,7 @@ function pdfExtractIngredientRows(items){
         if (sp){ name.splice(name.indexOf(t), 1, sp.name); qty.push(sp.qty); break; }
       }
     }
-    if (qty.length||name.length||cost.length) parsedLines.push({qty,name,cost});
+    if (qty.length||name.length||cost.length) parsedLines.push({qty,name,cost,top:line.top,sz:Math.max(...line.items.map(w=>w.size||10))});
   }
   const rows = [];
   let cur = null;
@@ -3067,7 +3487,7 @@ function pdfExtractIngredientRows(items){
     const nameStr = r.map(pl=>pl.name.join(' ')).join(' ').trim().replace(/\s+/g,' ');
     const cost = r.map(pl=>pl.cost[0]).find(Boolean) || null;
     const raw = [qtyStr, nameStr, cost].filter(Boolean).join(' ');
-    return {qtyRaw:qtyStr, name:nameStr, cost, raw};
+    return {qtyRaw:qtyStr, name:nameStr, cost, raw, top:r[0].top, bot:r[r.length-1].top+12, sz:r[0].sz};
   });
 }
 function pdfParseQtyString(qtyStr){
@@ -3372,7 +3792,9 @@ async function handlePdfFiles(fileList, opts){
       const rendered = await pdfRenderPageImage(snap.pages[snap.pageIndex], snap.dishTitle+' — '+snap.pageLabel);
       if (rendered){
         if (!originalPageImages[snap.dishTitle]) originalPageImages[snap.dishTitle] = [];
-        originalPageImages[snap.dishTitle].push({dataUrl: rendered.url, pageLabel: snap.pageLabel+' ('+snap.fileName+', page '+(snap.pageIndex+1)+')'});
+        const ent = {dataUrl: rendered.url, pageLabel: snap.pageLabel+' ('+snap.fileName+', page '+(snap.pageIndex+1)+')'};
+        try{ const geo = pdfRefGeometry(snap.items[snap.pageIndex], rendered.scale); if (geo) Object.assign(ent, geo); }catch(e){}
+        originalPageImages[snap.dishTitle].push(ent);
         const region = pdfFindMethodRegion(snap.items[snap.pageIndex]);
         const cropUrl = cropMethodRegion(rendered.canvas, rendered.scale, region);
         if (cropUrl){
@@ -3698,7 +4120,7 @@ function dishStaffingByDay(dish){
     const d = r.day || 'Unscheduled';
     byDay[d] = (byDay[d]||0) + estimateMinutes(r);
   });
-  const order = [...WEEKDAYS, 'Unscheduled'];
+  const order = [...dayOrderList(), 'Unscheduled'];
   return order.filter(d=>byDay[d]).map(d=>({day:d, minutes:byDay[d], chefs:chefsNeededForMinutes(byDay[d])}));
 }
 function staffingLineHtml(dish){
@@ -3760,7 +4182,7 @@ function similarBarHtml(dish){
   const names = sims.map(d=>{ const p = paxByDish[d]; return escapeHtml(cleanDishName(d)) + (p!==undefined ? ' ('+p+' pax)' : ''); }).join(', ');
   return `<div class="row no-print similar-bar" style="gap:8px; align-items:center; margin:10px 0 0; flex-wrap:wrap; font-size:12px;">
     <span class="meta">Same dish, same date: ${names}</span>
-    <button class="secondary" type="button" onclick="copyToSimilar('${enc}')" title="Copies this dish's prep days and its garnish section to the matching dishes. Quantities follow each dish's own pax.">Copy to similar dishes</button>
+    <button class="secondary copy-preplist-btn" type="button" onclick="openCopyPreplist(this, '${enc}')" title="Copies this dish's prep days and sections to the matching dishes. Each keeps its own pax and quantities.">📋 Copy prep list to similar dishes</button>
     <label style="display:inline-flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" class="auto-copy-toggle" ${autoCopyOn()?'checked':''} onchange="setAutoCopy(this.checked)" style="width:auto;"> Auto-apply</label>
   </div>`;
 }
@@ -3773,9 +4195,23 @@ function roundSensible(n){
 }
 function taskKey(r){ return String(r.task||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function isGarnishRow(r){ return r.section==='Garnishes, Herbs, Powders, Oils Etc.'; }
-function copyToSimilar(encDish, auto){
+function openCopyPreplist(btn, encDish){
+  const bar = btn.closest('.similar-bar'); const old = bar.querySelector('.copy-preplist-pick'); if (old){ old.remove(); return; }
+  const src = decodeURIComponent(encDish), sims = similarDishesOf(src);
+  const box = document.createElement('div'); box.className = 'copy-preplist-pick';
+  box.style.cssText = 'flex-basis:100%; margin-top:6px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper2);';
+  box.innerHTML = `<div style="font-weight:600; margin-bottom:6px;">Copy the prep days and sections of ${escapeHtml(cleanDishName(src))} to:</div>`
+    + sims.map(d=>{ const pp = paxByDish[d]; return `<label style="display:flex; gap:6px; align-items:center; margin:3px 0; cursor:pointer;"><input type="checkbox" class="cpl-target" value="${encName(d)}" checked style="width:auto;"> ${escapeHtml(cleanDishName(d))}${pp!==undefined?' ('+pp+' pax)':''}</label>`; }).join('')
+    + `<div class="meta" style="margin:4px 0 8px;">Each dish keeps its own pax and quantities.</div>
+    <button type="button" class="cpl-apply">Apply to ticked dishes</button> <button type="button" class="ghost cpl-cancel">Cancel</button>`;
+  bar.appendChild(box);
+  box.querySelector('.cpl-cancel').onclick = ()=>box.remove();
+  box.querySelector('.cpl-apply').onclick = ()=>{ const t = [...box.querySelectorAll('.cpl-target:checked')].map(c=>decodeURIComponent(c.value));
+    if (!t.length){ setStatus('Tick at least one dish to copy to.', 'err'); return; } copyToSimilar(encDish, false, t); };
+}
+function copyToSimilar(encDish, auto, only){
   const src = decodeURIComponent(encDish);
-  const sims = similarDishesOf(src);
+  const sims = similarDishesOf(src).filter(d=>!only || only.includes(d));
   if (!sims.length){ setStatus('No similar dishes on the same date to copy to.', 'err'); return; }
   const before = ROWS.map(r=>({day:r.day, section:r.section, flagged:r.flagged}));
   const beforeLen = ROWS.length;
@@ -3978,6 +4414,7 @@ function printViaIframe(fullHtml){
 // v3.4.6: every printout (each Print button and every "Print all" document) carries the notice.
 const COPYRIGHT_NOTICE = '© 2026 Autoprod. All rights reserved. Not for resale or redistribution.';
 function withCopyright(html){
+  try{ const d = new DOMParser().parseFromString(html, 'text/html'); numberDaysIn(d.body); html = '<!DOCTYPE html>' + d.documentElement.outerHTML; }catch(e){}
   if (html.includes('ap-print-copy')) return html;
   const line = '<div class="ap-print-copy" style="margin-top:16px; padding-top:6px; border-top:1px solid #ccc; font:10px/1.4 system-ui,sans-serif; color:#555; text-align:center;">' + COPYRIGHT_NOTICE + '</div>';
   const i = html.lastIndexOf('</body>');
@@ -4221,7 +4658,7 @@ function exportSectionsToXlsx(){
 // By prep day — one sheet per weekday actually in use (plus "Unscheduled" for anything
 // with no day set), tab named after the day.
 function exportDaysToXlsx(){
-  const order = [...WEEKDAYS, 'Unscheduled'];
+  const order = [...dayOrderList(), 'Unscheduled'];
   exportGroupedToXlsx(
     r => r.day || 'Unscheduled',
     key => key,
@@ -4246,18 +4683,19 @@ function render(){
     const emptyMsg = (toolMode==='database' && appMode==='weekly')
       ? 'Tick some dishes and hit Generate above to build this week\'s preplist.'
       : 'Upload a preplist workbook or paste rows above to get started.';
-    area.innerHTML = `<div class="panel"><div class="empty"><div class="big">Nothing generated yet</div>${emptyMsg}</div></div>`;
+    area.innerHTML = versionSwitchHtml() + poPanelHtml() + `<div class="panel"><div class="empty"><div class="big">Nothing generated yet</div>${emptyMsg}</div></div>`;
     return;
   }
 
   maybeSurveyPrompt();
-  let html = sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + blockedDaysPanelHtml() + costSummaryHtml();
+  let html = versionSwitchHtml() + sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + poPanelHtml() + yieldPanelHtml() + blockedDaysPanelHtml() + costSummaryHtml();
 
   html += `<div class="viewtoggle no-print">
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
     <button class="${viewMode==='section'?'':'secondary'}" onclick="setView('section')" type="button">By team section</button>
     <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
     <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet (by supplier)</button>
+    ${Object.keys(originalPageImages).length ? `<button class="${viewMode==='orig'?'':'secondary'}" onclick="setView('orig')" type="button" id="origViewBtn">📖 Original PTs (Ref # filled)</button>` : ''}
   </div>
   <div class="row no-print" style="margin-bottom:10px; gap:8px;">
     ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="Exports this view (By dish) as an editable .xlsx">📊 Export to Excel (editable)</button>`
@@ -4272,9 +4710,9 @@ function render(){
   </div>
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
-  html += searchBarHtml();
-  html += printOrderControlHtml();   // v3.4.5: the Order sheet view has it too
-  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : renderByPriority()));
+  if (viewMode!=='orig'){ html += searchBarHtml();
+  html += printOrderControlHtml(); }   // v3.4.5: the Order sheet view has it too
+  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : (viewMode==='orig' && Object.keys(originalPageImages).length ? renderOriginalsTab() : renderByPriority())));
   // v3.4.4: re-rendering after a manual edit keeps the page where it was and keeps focus
   // on the control that was just changed (it used to jump back to the top).
   const keepY = window.scrollY, keepX = window.scrollX, ae = document.activeElement;
@@ -4285,6 +4723,7 @@ function render(){
   area.style.minHeight = '';
   if (focusKey){ const el = [...area.querySelectorAll(focusKey.tag)].find(e=>e.getAttribute(focusKey.attr)===focusKey.val); if (el){ try{ el.focus({preventScroll:true}); }catch(e){} } }
   if (window.scrollY !== keepY || window.scrollX !== keepX) window.scrollTo(keepX, keepY);
+  try{ numberDaysIn(document.getElementById('preplistTab') || document.body); }catch(e){}
 }
 
 function setView(v){ viewMode = v; render(); }
@@ -4413,7 +4852,7 @@ function renderByDish(){
     const encDish = encName(dish);
     const eventDay = getEventDay(dish);
     const eventDateStr = getEventDateStr(dish);
-    const prepSpan = eventDay ? `${calendarDayForPrepNum(eventDay,1)} → ${eventDay}` : null;
+    const prepSpan = eventDay ? `${dayLabel(calendarDayForPrepNum(eventDay,1))} → ${dayLabel(eventDay)}` : null;
     html += `<div class="dish-block">
       <div class="dish-head no-print">
         <div>
@@ -4523,7 +4962,7 @@ function renderByPriority(){
   // Groups by the ACTUAL calendar weekday each task needs to happen — resolved from
   // that task's own dish event-day plus its Day 1-4 prep stage. Dishes with no event
   // day detected/set yet fall into "Unscheduled" so they're never silently lost.
-  const order = [...WEEKDAYS, 'Unscheduled'];
+  const order = [...dayOrderList(), 'Unscheduled'];
   const dayKeyMap = {'Monday':'day1','Tuesday':'day2','Wednesday':'day3','Thursday':'day4',
     'Friday':'day1','Saturday':'day2','Sunday':'day3','Unscheduled':'review'};
   const rowsByDay = {}; order.forEach(d=>rowsByDay[d]=[]);
@@ -4977,10 +5416,11 @@ function sortGroups(groups, view){
     case 'task': return String(g.taskLabel||'').toLowerCase();
     case 'total': return g.hasTotal ? g.total : -Infinity;
     case 'section': return String(g.section||'').toLowerCase();
-    case 'day': return g.day ? WEEKDAYS.indexOf(g.day) : 99;
+    case 'day': return dayRank(g.day);
     case 'lead': return (leaderBySection[g.section]||'').toLowerCase();
   } return 0; };
-  return groups.map((g,i)=>[g,i]).sort((A,B)=>{ const a=val(A[0]), b=val(B[0]); return a<b ? -mult : a>b ? mult : A[1]-B[1]; }).map(x=>x[0]);
+  const m2 = s.col==='day' ? 1 : mult;
+  return groups.map((g,i)=>[g,i]).sort((A,B)=>{ const mult = m2; const a=val(A[0]), b=val(B[0]); return a<b ? -mult : a>b ? mult : A[1]-B[1]; }).map(x=>x[0]);
 }
 function consolidateToggleHtml(){
   return `<label class="no-print" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; cursor:pointer;">
@@ -5599,13 +6039,14 @@ function alChipsFor(tags, confirmed){
 }
 function alChipsHtml(r){
   const a = alForTask(r.task);
-  return a.tags.length ? ' ' + alChipsFor(a.tags, a.confirmed) : '';
+  return (a.tags.length ? ' ' + alChipsFor(a.tags, a.confirmed) : '') + poChipHtml(r);
 }
-function alChipsRowsHtml(rows){
+function alChipsRowsHtml(rows, noPo){
   const conf = [], sug = [];
   rows.forEach(r=>{ const a = alForTask(r.task); a.tags.forEach(t=>{ const L = a.confirmed ? conf : sug; if (!L.includes(t)) L.push(t); }); });
   const sugOnly = sug.filter(t=>!conf.includes(t));
-  return (conf.length||sugOnly.length) ? ' ' + alChipsFor(conf, true) + alChipsFor(sugOnly, false) : '';
+  const po = noPo ? '' : [...new Set(rows.map(r=>poChipHtml(r)).filter(Boolean))].join('');   // v3.4.9: PO tag on grouped lines too
+  return ((conf.length||sugOnly.length) ? ' ' + alChipsFor(conf, true) + alChipsFor(sugOnly, false) : '') + po;
 }
 function dishAllergens(dish, rows){
   const conf = [], sug = [];
@@ -5773,6 +6214,8 @@ function orderLines(){
   });
   list.forEach(L=>{
     L.supplier = (INGINFO.items[L.key]||{}).sup || '';
+    L.po = poMatchFor(L.task);
+    if (poInViews && !L.supplier && L.po && L.po.status==='ok') { L.supplier = L.po.item.supplier; L.supFromPo = true; }
     if (L.hasQty){
       L.qty = Math.round(L.qty*1e9)/1e9;
       const d = dispQty(L.qty, L.baseUnit);
@@ -5793,6 +6236,113 @@ function orderGroups(){
 }
 const ORDER_EXTRA_COLS = [];   // feature 6 adds price / cost columns: {th, td(L), print(L)}
 const ORDER_GROUP_FOOT = [];   // feature 6 adds a cost total line: (group) => html
+function poOrderCell(L, print){
+  const m = L.po; if (!m || m.status==='sub') return '';
+  if (m.status==='none') return print ? 'not on a PO' : '<span class="po-chip none">no PO</span>';
+  const it = m.item, po = it.po;
+  const txt = poRefText(it) + (m.status==='check'?' (check)':'');
+  return print ? escapeHtml(txt) : `<span class="po-chip ${m.status}" title="${escapeHtml(it.supplier+' · '+it.desc)}">🧾 ${escapeHtml(txt)}</span>`;
+}
+const PO_ORDER_COL = {th:'On PO', td:L=>poOrderCell(L, false), print:L=>poOrderCell(L, true), poCol:true};
+
+// ---------- v3.4.9: cooking yield check (raw PO kilos vs cooked / required weight) ----------
+// Each ingredient gets a category with an expected yield range (cooked weight ÷ raw weight).
+// When a matched PO line gives the raw delivered weight and the lists give the cooked or
+// required weight, the implied yield is shown as OK, Low or High against that range.
+// Defaults come from published yield tables (USDA cooking yields for meat and poultry 2014,
+// USDA Food Buying Guide, FAO/Bognár weight-yield tables); see yield-research.md. Editable.
+const YIELD_KEY = 'prepline.yieldRanges.v1', YIELD_CAT_KEY = 'prepline.yieldCats.v1';
+const YIELD_DEFAULTS = [
+  {id:'veg_boil', label:'Vegetables, boiled / steamed', min:85, max:110, words:'broccoli broccolini cauliflower carrot bean pea asparagus corn brussels cabbage'},
+  {id:'veg_leafy', label:'Leafy greens, wilted / boiled', min:75, max:95, words:'spinach kale chard silverbeet bok choy pak choy'},
+  {id:'veg_roast', label:'Vegetables, roasted / grilled', min:60, max:85, words:'pumpkin butternut zucchini capsicum pepper eggplant onion mushroom sweet potato beetroot fennel'},
+  {id:'potato_boil', label:'Potato, boiled / steamed', min:95, max:105, words:'potato'},
+  {id:'veg_trim', label:'Vegetables, trim / peel only (raw prep)', min:70, max:90, words:''},
+  {id:'beef_roast', label:'Beef, roast / grill', min:72, max:85, words:'beef sirloin striploin rump tenderloin eye fillet scotch'},
+  {id:'beef_braise', label:'Beef, braise / stew', min:60, max:72, words:'brisket cheek chuck short rib oxtail shin'},
+  {id:'lamb_roast', label:'Lamb, roast / grill', min:68, max:80, words:'lamb rack lamb leg lamb rump lamb loin'},
+  {id:'lamb_braise', label:'Lamb, braise / stew', min:55, max:66, words:'lamb shoulder lamb shank lamb neck'},
+  {id:'pork_roast', label:'Pork, roast / grill', min:74, max:84, words:'pork loin pork rack pork fillet pork chop'},
+  {id:'pork_braise', label:'Pork, braise / stew', min:70, max:80, words:'pork belly pork shoulder pork neck pork cheek'},
+  {id:'poultry_roast', label:'Poultry, roast / grill', min:66, max:78, words:'chicken turkey duck thigh breast drumstick'},
+  {id:'poultry_poach', label:'Poultry, poach / braise', min:68, max:78, words:''},
+  {id:'fish', label:'Fish fillet, poach / steam / pan', min:75, max:85, words:'salmon barramundi snapper cod hake kingfish fish trout ling'},
+  {id:'rice', label:'Rice, boiled / steamed (weight goes UP)', min:250, max:320, words:'rice'},
+  {id:'pasta', label:'Dry pasta / noodles, boiled (UP)', min:200, max:270, words:'pasta spaghetti penne fettuccine linguine macaroni noodle orzo'},
+  {id:'grain', label:'Grains & pulses, boiled (UP)', min:230, max:350, words:'quinoa barley freekeh farro couscous bulgur lentil chickpea millet'},
+];
+let yieldRanges = (function(){ let o = {}; try{ o = JSON.parse(localStorage.getItem(YIELD_KEY)||'{}') || {}; }catch(e){}
+  return YIELD_DEFAULTS.map(d=>Object.assign({}, d, o[d.id] ? {min:o[d.id].min, max:o[d.id].max} : {})); })();
+let yieldCats = (function(){ try{ return JSON.parse(localStorage.getItem(YIELD_CAT_KEY)||'{}') || {}; }catch(e){ return {}; } })();
+function saveYield(){ try{ const o = {}; yieldRanges.forEach(r=>{ const d = YIELD_DEFAULTS.find(x=>x.id===r.id); if (d.min!==r.min || d.max!==r.max) o[r.id] = {min:r.min, max:r.max}; }); localStorage.setItem(YIELD_KEY, JSON.stringify(o)); localStorage.setItem(YIELD_CAT_KEY, JSON.stringify(yieldCats)); }catch(e){} }
+function setYieldRange(id, which, val){ const r = yieldRanges.find(x=>x.id===id), n = Number(val); if (!r || !Number.isFinite(n) || n<=0 || n>1000){ setStatus('Yield % must be a number between 1 and 1000.', 'err'); render(); return; } r[which] = n; if (r.min > r.max){ const t = r.min; r.min = r.max; r.max = t; } saveYield(); render(); }
+function resetYieldRanges(){ yieldRanges = YIELD_DEFAULTS.map(d=>Object.assign({}, d)); saveYield(); render(); }
+function setYieldCat(encTask, id){ const k = ingKey(decodeURIComponent(encTask)); if (id) yieldCats[k] = id; else delete yieldCats[k]; saveYield(); render(); }
+// guess a category from the ingredient name (+ any cooking word in it); the user can change it
+function yieldGuess(task){
+  const t = ' ' + String(task||'').toLowerCase().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ') + ' ';
+  const has = w => t.includes(' '+w+' ') || t.includes(' '+w+'s ');
+  const braise = /\b(braise|braised|stew|stewed|confit|slow|pulled)\b/.test(t), poach = /\b(poach|poached|boiled|simmer)\b/.test(t), roast = /\b(roast|roasted|grill|grilled|chargrill|bbq)\b/.test(t);
+  let best = null, bl = 0;
+  for (const r of yieldRanges){
+    const phrases = [];
+    const w = (r.words||'').split(' ');
+    for (let i=0;i<w.length;i++){ if (!w[i]) continue; if (['lamb','pork','sweet','short','bok','pak','eye','brussels'].includes(w[i]) && w[i+1]) { phrases.push(w[i]+' '+w[i+1]); i++; } else phrases.push(w[i]); }
+    for (const ph of phrases){ if (has(ph) && ph.length > bl){ best = r.id; bl = ph.length; } }
+  }
+  if (!best) return null;
+  if (roast && best==='veg_boil') best = 'veg_roast';
+  if (braise && /_roast$/.test(best)) best = best.replace('_roast', best==='poultry_roast' ? '_poach' : '_braise');
+  if (poach && best==='poultry_roast') best = 'poultry_poach';
+  if (/^lamb_/.test(best) || best==='pork_roast' || best==='pork_braise') return best;
+  if (has('lamb')) return braise ? 'lamb_braise' : 'lamb_roast';
+  return best;
+}
+function yieldCatFor(task){ const k = ingKey(task); return yieldCats[k] || yieldGuess(task); }
+function poKg(it){ const u = String(it.uom||'').toUpperCase(); if (!Number.isFinite(it.qty)) return null;
+  return u==='KG' ? it.qty*1000 : u==='G' ? it.qty : (u==='L' || u==='LT' || u==='LTR') ? it.qty*1000 : u==='ML' ? it.qty : null; }   // grams (or ml)
+// L = an order line (one ingredient, summed over every ticked dish)
+function yieldCheck(L){
+  const m = L.po; if (!m || m.status!=='ok') return null;   // only confirmed matches: a 'check' guess could compare the wrong item
+  const raw = poKg(m.item); if (!raw) return {status:'na', why:'PO unit is not a weight'};
+  if (!L.hasQty || (L.fam!=='g' && L.fam!=='ml')) return {status:'na', why:'no cooked/required weight'};
+  const cat = yieldCatFor(L.task), r = yieldRanges.find(x=>x.id===cat);
+  const y = Math.round(L.qty / raw * 1000)/10;   // %
+  if (!r) return {status:'nocat', y, raw, cooked:L.qty};
+  return {status: y < r.min ? 'low' : y > r.max ? 'high' : 'ok', y, raw, cooked:L.qty, r};
+}
+function yieldCellHtml(L, print){
+  const c = yieldCheck(L); if (!c) return '';
+  if (c.status==='na') return print ? '' : `<span class="meta" title="${escapeHtml(c.why)}">—</span>`;
+  const kg = g => fmtNum(Math.round(g/100)/10)+' kg';
+  const base = `${fmtNum(c.y)}% (${kg(c.cooked)} of ${kg(c.raw)} raw)`;
+  if (c.status==='nocat') return print ? escapeHtml(base+' · no category') : `<span class="yl-chip nocat">${escapeHtml(base)} · set category</span>`;
+  const lab = {ok:'OK', low:'LOW', high:'HIGH'}[c.status];
+  const txt = `${lab} ${base} · expected ${c.r.min}–${c.r.max}%`;
+  return print ? escapeHtml(txt) : `<span class="yl-chip ${c.status}" title="${escapeHtml(c.r.label)}">${escapeHtml(txt)}</span>`;
+}
+const YIELD_ORDER_COL = {th:'Yield check', td:L=>yieldCellHtml(L, false), print:L=>yieldCellHtml(L, true), yieldCol:true};
+function yieldPanelHtml(){
+  if (!POS.length || !ROWS.length) return '';
+  const lines = orderLines().filter(L=>{ const c = yieldCheck(L); return c && c.status!=='na'; });
+  const n = {ok:0, low:0, high:0, nocat:0}; lines.forEach(L=>n[yieldCheck(L).status]++);
+  return `<div class="panel no-print yield-panel" id="yieldPanel">
+    <h3 style="margin:0 0 6px;">⚖️ Cooking yield check</h3>
+    <div class="meta">Raw weight on the PO compared with the cooked / required weight in these lists (cooked ÷ raw). ${lines.length ? `<b>${n.ok}</b> OK, <b style="color:#9B2C2C">${n.low}</b> low, <b style="color:#7A5A00">${n.high}</b> high${n.nocat?`, ${n.nocat} without a category`:''}.` : 'No ingredient has both a PO weight and a list weight yet.'}</div>
+    ${lines.length ? `<table class="po-table yield-table"><thead><tr><th>Ingredient</th><th>Category</th><th>Raw (PO)</th><th>Cooked / required</th><th>Yield</th></tr></thead><tbody>
+      ${lines.map(L=>{ const c = yieldCheck(L), cat = yieldCatFor(L.task); return `<tr data-yl="${escapeHtml(L.key)}"><td>${escapeHtml(L.task)}</td><td><select class="yl-cat" onchange="setYieldCat('${encName(L.task)}', this.value)"><option value="">— choose —</option>${yieldRanges.map(r=>`<option value="${r.id}" ${cat===r.id?'selected':''}>${escapeHtml(r.label)}</option>`).join('')}</select></td><td>${fmtNum(Math.round(c.raw/100)/10)} kg</td><td>${fmtNum(Math.round(c.cooked/100)/10)} kg</td><td>${yieldCellHtml(L, false)}</td></tr>`; }).join('')}
+    </tbody></table>` : ''}
+    <details class="po-fix yield-settings"><summary>Expected yield ranges (edit)</summary>
+      <table class="po-table"><thead><tr><th>Category</th><th>Min %</th><th>Max %</th></tr></thead><tbody>
+      ${yieldRanges.map(r=>`<tr data-yr="${r.id}"><td>${escapeHtml(r.label)}</td><td><input type="number" class="yl-min" style="width:80px" value="${r.min}" onchange="setYieldRange('${r.id}','min',this.value)"></td><td><input type="number" class="yl-max" style="width:80px" value="${r.max}" onchange="setYieldRange('${r.id}','max',this.value)"></td></tr>`).join('')}
+      </tbody></table>
+      <button class="ghost" type="button" onclick="resetYieldRanges()">Reset to published defaults</button>
+      <div class="meta">Defaults from USDA Table of Cooking Yields for Meat and Poultry (2014), USDA Food Buying Guide and FAO/Bognár weight-yield tables. Kitchens differ: set these to your own measured yields.</div>
+    </details>
+  </div>`;
+}
+function syncPoCol(){ [PO_ORDER_COL, YIELD_ORDER_COL].forEach(c=>{ const i = ORDER_EXTRA_COLS.indexOf(c); const want = POS.length && (c!==PO_ORDER_COL || poInViews); if (want && i<0) ORDER_EXTRA_COLS.push(c); if (!want && i>=0) ORDER_EXTRA_COLS.splice(i,1); }); }
+syncPoCol();
 function orderQtyText(L){ return L.hasQty ? `${fmtNum(L.order.n)} ${escapeHtml(L.order.u)}` : '<span class="needpax">set pax</span>'; }
 function needQtyText(L){ return L.hasQty ? `${fmtNum(L.need.n)} ${escapeHtml(L.need.u)}` : '<span class="needpax">set pax</span>'; }
 function renderOrderSheet(){
@@ -5817,7 +6367,7 @@ function renderOrderSheet(){
       <div class="section-actions"><button class="secondary" type="button" onclick="openPrintWindow('print-${gid}')">Print order sheet</button></div>
     </div>
     <div class="section-table-wrap no-print"><table class="order-table"><thead><tr><th>Item</th><th>Needed</th><th>Order qty</th><th>Used in</th>${extraTh}${g.supplier?'':'<th>Supplier</th>'}</tr></thead><tbody>
-    ${g.lines.map(L=>`<tr data-line="${escapeHtml(L.id)}"><td class="task">${escapeHtml(L.task)}${alChipsRowsHtml(L.rows)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.td(L)}</td>`).join('')}${g.supplier?'':`<td>${supplierInputHtml(L.task, 'osup')}</td>`}</tr>`).join('')}
+    ${g.lines.map(L=>`<tr data-line="${escapeHtml(L.id)}"><td class="task">${escapeHtml(L.task)}${alChipsRowsHtml(L.rows, true)}</td><td class="qty">${needQtyText(L)}</td><td class="qty"><b>${orderQtyText(L)}</b></td><td class="dish">${L.dishes.map(d=>escapeHtml(cleanDishName(d))).join(', ')}</td>${ORDER_EXTRA_COLS.map(c=>`<td class="qty">${c.td(L)}</td>`).join('')}${g.supplier?'':`<td>${supplierInputHtml(L.task, 'osup')}</td>`}</tr>`).join('')}
     </tbody></table></div>
     <div class="print-only" id="print-${gid}">
       <div class="print-head"><h2>Order sheet — ${escapeHtml(title)}</h2><div class="meta">${g.lines.length} item${g.lines.length===1?'':'s'} · printed ${escapeHtml(fmtDMY(new Date()))}${ORDER_GROUP_FOOT.map(f=>f(g, true)).join('')}</div></div>
@@ -6739,6 +7289,7 @@ function pwaShowUpdate(reg){
   document.body.appendChild(bar);
   document.getElementById('pwaReloadBtn').onclick = () => {
     const w = reg.waiting;
+    window.__pwaReloadAsked = true;
     if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
   };
 }
@@ -6749,7 +7300,7 @@ function pwaInit(){
   let reloading = false;
   const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController || reloading) return;     // first install: no reload needed
+    if (!hadController || reloading || !window.__pwaReloadAsked) return;     // first install, or another tab updated: never reload this one
     reloading = true; location.reload();
   });
   navigator.serviceWorker.register(PWA_CONFIG.basePath + 'sw.js', {scope: PWA_CONFIG.basePath}).then(reg => {
@@ -6784,5 +7335,6 @@ openSharedViewFromHash();   // v3.3: a team-share link opens the read-only list 
 
 </script>
 <footer class="ap-copy" id="apCopyright" style="text-align:center; margin:24px 12px 18px; font-size:11px; opacity:.75;">© 2026 Autoprod. All rights reserved. Not for resale or redistribution.</footer>
+<script>(function(){ try{ if (typeof render === 'function'){ var b = document.getElementById('apJsBanner'); if (b) b.remove(); } }catch(e){} })();</script>
 </body>
 </html>
