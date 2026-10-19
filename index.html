@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.9-r6">
+<meta name="prepline-version" content="3.4.9-r7">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1204,7 +1204,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r6</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r7</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1300,7 +1300,7 @@ var LICENSE_CONFIG = {
     <div class="help-num">03</div>
     <div class="help-body">
       <h3>Review the sorted categories</h3>
-      <p>The tool splits every task into Vegetables, Proteins, Sauces/Purees/Gels, Garnishes, Big Jobs, and Box off — assign a team leader to each and switch to the "By prep day" view to see tasks grouped by real weekday.</p>
+      <p>The tool splits every task into Sauces/Purees/Gels, Vegetables, Garnishes, Starch, Proteins and Box off (a colour legend in your spreadsheet is followed when there is one) — assign a team leader to each and switch to the "By prep day" view to see tasks grouped by real weekday.</p>
     </div>
   </div>
   <div class="help-step">
@@ -1414,13 +1414,15 @@ function switchShellTab(name){
 }
 
 
-const BASE_CATEGORIES = ['Vegetables','Proteins','Sauce, Purees and Gels','Garnishes, Herbs, Powders, Oils Etc.','Big Jobs','Box off/ Trolley organising team'];
+// v3.4.9-r7: 'Big Jobs' is now 'Starch', and stations follow the kitchen's legend order: 1 Sauce, 2 Vege, 3 Garnish, 4 Starch, 5 Protein.
+const BASE_CATEGORIES = ['Sauce, Purees and Gels','Vegetables','Garnishes, Herbs, Powders, Oils Etc.','Starch','Proteins','Box off/ Trolley organising team'];
+function secLegacy(v){ return v==='Big Jobs' ? 'Starch' : v; }   // lists, templates and exports saved before r7
 const SECTIONS = BASE_CATEGORIES;
 const SECTION_KEY = {
   'Vegetables':'veg1','Proteins':'prot',
   'Sauce, Purees and Gels':'sauce1',
   'Garnishes, Herbs, Powders, Oils Etc.':'garn',
-  'Big Jobs':'big1',
+  'Starch':'big1',
   'Box off/ Trolley organising team':'box'
 };
 
@@ -1547,21 +1549,21 @@ function origComposed(entry){
         const c = cv.getContext('2d'); c.drawImage(img, 0, 0);
         const S = entry.refScale || 1.35, bx = entry.refBox, pad = 1.5;
         lines.forEach(({row, text})=>{
-          const x = bx.x0 * S, w = Math.max(40, (Math.min(bx.x1, cv.width / S - 3) - bx.x0)) * S, y = (row.top + 1) * S, h = Math.max(9, row.bot - row.top - 1) * S;
+          const x = bx.x0 * S, w = Math.max(40, (Math.min(bx.x1, cv.width / S - 3) - bx.x0)) * S, y = (row.top + 0.5) * S, h = Math.max(9, row.bot - row.top - 1) * S;
           c.fillStyle = '#fff'; c.fillRect(x - 1, y, w + 2, h);
           let out = null;
-          for (let fs = 6.2; fs >= 3.6; fs -= 0.2){
+          for (let fs = 12.4; fs >= 3.6; fs -= 0.2){   // v3.4.9-r7: starts at twice the r6 size (12.4 pt) and uses the biggest that fits the row; only very thin rows go below 7.2 pt so nothing is cut off
             const px = fs * S; c.font = '600 ' + px + 'px Arial, Helvetica, sans-serif';
             const words = text.split(' '), ls = []; let cur = '';
             words.forEach(wd=>{ const t = cur ? cur + ' ' + wd : wd; if (c.measureText(t).width <= w - 2 || !cur) { cur = t; } else { ls.push(cur); cur = wd; } });
             if (cur) ls.push(cur);
-            if (ls.length * px * 1.08 <= h && ls.every(l=>c.measureText(l).width <= w)) { out = {px, ls}; break; }
+            if (ls.length * px * 1.04 <= h && ls.every(l=>c.measureText(l).width <= w)) { out = {px, ls}; break; }
           }
-          if (!out){ const px = 3.6 * S; c.font = '600 ' + px + 'px Arial'; const max = Math.max(1, Math.floor(h / (px * 1.08))); let ls = [], cur = '';
+          if (!out){ const px = 3.6 * S; c.font = '600 ' + px + 'px Arial'; const max = Math.max(1, Math.floor(h / (px * 1.04))); let ls = [], cur = '';
             text.split(' ').forEach(wd=>{ const t = cur ? cur + ' ' + wd : wd; if (c.measureText(t).width <= w - 2 || !cur) cur = t; else { ls.push(cur); cur = wd; } }); if (cur) ls.push(cur);
             ls = ls.slice(0, max); if (ls.length) ls[ls.length-1] = ls[ls.length-1].replace(/\s*\S{0,3}$/, '') + '…'; out = {px, ls}; }
           c.fillStyle = '#0B3D91'; c.textBaseline = 'top';
-          out.ls.forEach((l, i)=>c.fillText(l, x, y + i * out.px * 1.08));
+          out.ls.forEach((l, i)=>c.fillText(l, x, y + i * out.px * 1.04));
         });
         const u = cv.toDataURL('image/jpeg', 0.85); origCompCache[key] = u; res(u);
       }catch(e){ rej(e); }
@@ -1641,8 +1643,8 @@ function categorize(itemText, sheetTitle){
   const t = norm(itemText), st = norm(sheetTitle);
   if (isNote(t)) return null;
   if (kwHit(t, BOX_OFF_KW)) return 'Box off/ Trolley organising team';
-  if ((st.includes('hasselback') || st.includes('hassleback') || st.includes('twice cooked')) && t.includes('potat')) return 'Big Jobs';
-  if (kwHit(t, BIG_JOB_PHRASES)) return 'Big Jobs';
+  if ((st.includes('hasselback') || st.includes('hassleback') || st.includes('twice cooked')) && t.includes('potat')) return 'Starch';
+  if (kwHit(t, BIG_JOB_PHRASES)) return 'Starch';
   // Eggplant "eye fillet"/"eye fillets" is the vegetarian dish's centrepiece, not a meat
   // cut — check this before PROTEIN_KW, since "fillet" would otherwise wrongly win.
   if (t.includes('eggplant') || t.includes('aubergine')) return 'Vegetables';
@@ -1650,11 +1652,11 @@ function categorize(itemText, sheetTitle){
   if (kwHit(t, GARNISH_KW)) return 'Garnishes, Herbs, Powders, Oils Etc.';
   // v3.2.1: desserts/pastry before sauces ("ice cream", "lemon curd tart" aren't sauces), but a
   // savoury item ("chicken liver parfait", "salmon mousse", "beef wellington pastry") stays a protein.
-  if (kwHit(t, DESSERT_KW) && !kwHit(t, PROTEIN_KW)) return 'Big Jobs';
+  if (kwHit(t, DESSERT_KW) && !kwHit(t, PROTEIN_KW)) return 'Starch';
   if (kwHit(t, SAUCE_KW)) return 'Sauce, Purees and Gels';
   // v3.2.1: rice, grains and starch prep (not "rice wine/vinegar", which are condiments)
-  if (kwHit(t, STARCH_KW) && !/\brice (wine|vinegar)\b/.test(t)) return 'Big Jobs';
-  if (kwHit(t, PROTEIN_KW)) return SHEET_BIG_JOB_OVERRIDE.some(k=>st.includes(k)) ? 'Big Jobs' : 'Proteins';
+  if (kwHit(t, STARCH_KW) && !/\brice (wine|vinegar)\b/.test(t)) return 'Starch';
+  if (kwHit(t, PROTEIN_KW)) return SHEET_BIG_JOB_OVERRIDE.some(k=>st.includes(k)) ? 'Starch' : 'Proteins';
   if (kwHit(t, VEGETABLE_KW)) return 'Vegetables';
   return 'REVIEW';
 }
@@ -1700,6 +1702,7 @@ function sanitizeDatabase(raw){
     const items = [];
     entry.items.forEach(it=>{
       if (!isObj(it) || typeof it.task!=='string' || !it.task.trim()) return;
+      it.section = secLegacy(it.section); it.baseCategory = secLegacy(it.baseCategory);
       const known = SECTIONS.includes(it.section);
       const section = known ? it.section : 'Vegetables';
       const clean = {task: it.task, qty: it.qty==null ? '' : it.qty, unit: it.unit==null ? '' : it.unit,
@@ -1766,6 +1769,8 @@ function loadOnetimeSession(){
       && typeof r.section==='string';
     // A list saved by another build may use a station this build doesn't have (e.g. a Pro custom
     // station while Pro is off): keep the row, in its base section (or Vegetables), flagged.
+    if (isObj(s) && Array.isArray(s.ROWS)) s.ROWS.forEach(r=>{ if (r && typeof r==='object'){ r.section = secLegacy(r.section); r.baseCategory = secLegacy(r.baseCategory); } });
+    if (isObj(s) && isObj(s.leaderBySection) && s.leaderBySection['Big Jobs']!==undefined && s.leaderBySection['Starch']===undefined){ s.leaderBySection['Starch'] = s.leaderBySection['Big Jobs']; delete s.leaderBySection['Big Jobs']; }
     const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
@@ -2171,7 +2176,7 @@ let MINUTES_PER_TASK = {   // fixed setup/handling time per task, before batch-s
   'Proteins': 12.6,
   'Sauce, Purees and Gels': 16.8,
   'Garnishes, Herbs, Powders, Oils Etc.': 7,
-  'Big Jobs': 28,
+  'Starch': 28,
   'Box off/ Trolley organising team': 11.2,
 };
 let QTY_SCALING_ON = true;
@@ -2191,7 +2196,7 @@ function applyStaffingPreset(key){
   if (!preset) return;
   BASE_CATEGORIES.forEach(cat=>{
     const base = {'Vegetables':6,'Proteins':9,'Sauce, Purees and Gels':12,
-      'Garnishes, Herbs, Powders, Oils Etc.':5,'Big Jobs':20,'Box off/ Trolley organising team':8}[cat];
+      'Garnishes, Herbs, Powders, Oils Etc.':5,'Starch':20,'Box off/ Trolley organising team':8}[cat];
     MINUTES_PER_TASK[cat] = Math.round(base * preset.mult * 10)/10;
   });
   render();
@@ -2401,7 +2406,7 @@ const CATEGORY_DAY_DEFAULT = {
   'Proteins':'Day 1',
   'Sauce, Purees and Gels':'Day 2',
   'Garnishes, Herbs, Powders, Oils Etc.':'Day 3',
-  'Big Jobs':'Day 1',
+  'Starch':'Day 1',
   'Box off/ Trolley organising team':'Day 3',
 };
 
@@ -2599,7 +2604,13 @@ function copyPrepDaysTicked(scopeIdx){
   if (!src.day){ setStatus('The top ticked row has no prep day yet: set one first.', 'err'); return; }
   dayUndoSnapshot();
   const dishes = new Set();
-  ticked.slice(1).forEach(i=>{ ROWS[i].day = src.day; dishes.add(ROWS[i].dish); selectedRowIdx.delete(i); });
+  // r7: ticked rows from several dishes: each row takes the day of the MATCHING component (same task) of the top ticked row's dish
+  // (rows of the top row's own dish are the sources and stay as they are when other dishes are ticked too)
+  const srcDishRows = ticked.map(i=>ROWS[i]).filter(r=>r.dish===src.dish).map(r=>({k:taskKey(r), day:r.day}));
+  const multiDish = ticked.some(i=>ROWS[i].dish!==src.dish);
+  ticked.slice(1).forEach(i=>{ const r = ROWS[i]; selectedRowIdx.delete(i);
+    if (multiDish && r.dish===src.dish) return;
+    const m = r.dish!==src.dish ? srcDishRows.find(x=>x.k===taskKey(r) && x.day) : null; r.day = m ? m.day : src.day; dishes.add(r.dish); });
   selectedRowIdx.delete(ticked[0]);
   render();
   dishes.forEach(d=>autoCopyAfterEdit(d));
@@ -2723,6 +2734,7 @@ function addRows(dish, items){
     // A Section column in the file (e.g. this tool's own Excel export, re-uploaded with
     // values edited or untouched) wins over auto-categorization — it's what the person
     // actually set, not a guess from the task's wording.
+    if (typeof it.section==='string') it.section = secLegacy(it.section.trim());
     const sectionOverride = (typeof it.section==='string' && SECTIONS.includes(it.section)) ? it.section : null;
     let cat = sectionOverride || categorize(it.item, dish);
     if (cat === null) continue;
@@ -2785,7 +2797,7 @@ function extractAllBlocks(aoa){
       if (isBlankCell(item)){ blank++; if (blank>6){ endRow=r; break; } continue; }
       blank = 0; endRow = r;
       const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
-      if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim();
+      if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim().replace(/^[1-7]\s*[.)-]?\s+(?=(mon|tue|wed|thu|fri|sat|sun))/i, '');   // r7: '1 Monday' from an export reads back as Monday
       if (sectionCol!=null && !isBlankCell(row[sectionCol])) entry.section = String(row[sectionCol]).trim();
       if (sourceCol!=null && !isBlankCell(row[sourceCol])) entry.srcSheet = String(row[sourceCol]);   // exact, not trimmed
       items.push(entry);
@@ -2902,7 +2914,80 @@ function extractAllBlocks(aoa){
   return blocks;
 }
 
+
+// ---- v3.4.9-r7: colour-coded job types. A spreadsheet can carry a colour legend (cells such as
+// "1. Sauce, Purees, Gels", "2. Vege", "3. Garnish", "4. Starch", "5. Protein", each filled with its colour,
+// or with a coloured swatch cell right beside it). When at least two legend colours are found, every job
+// whose cell (or row) has one of those fills goes to that station; anything else is sorted by its wording
+// as before. Legend cells themselves are not jobs.
+const LEGEND_LABELS = [
+  [/^(sauces?|pur[eé]es?|gels?)([\s,&\/+]+(and\s+)?(sauces?|pur[eé]es?|gels?))*$/i, 'Sauce, Purees and Gels'],
+  [/^(veg|vege|veges|veggies?|vegetables?|vegs)$/i, 'Vegetables'],
+  [/^garnish(es)?([\s,&\/]+.*)?$/i, 'Garnishes, Herbs, Powders, Oils Etc.'],
+  [/^(starch(es)?|big\s+jobs?)$/i, 'Starch'],
+  [/^(proteins?|meats?)$/i, 'Proteins']
+];
+function legendLabelCategory(text){
+  let t = String(text == null ? '' : text).trim().replace(/^\d{1,2}\s*[.):-]?\s*/, '').replace(/\s+/g, ' ').replace(/[.:]$/, '');
+  if (!t || t.length > 40) return null;
+  for (const [re, cat] of LEGEND_LABELS) if (re.test(t)) return cat;
+  return null;
+}
+function cellFillKey(cell){
+  const st = cell && cell.s; if (!st) return null;
+  if (st.patternType && st.patternType === 'none') return null;
+  const c = st.fgColor || {};
+  if (typeof c.rgb === 'string' && c.rgb){ const hx = c.rgb.slice(-6).toUpperCase(); return (hx === 'FFFFFF' || hx === '000000' && !st.patternType) ? null : 'rgb:' + hx; }
+  if (c.theme != null) return 'th:' + c.theme + ':' + (Math.round((c.tint || 0) * 100) / 100);
+  if (c.indexed != null && c.indexed !== 64) return 'ix:' + c.indexed;
+  return null;
+}
+function readColourLegend(wbObj){
+  const legend = {}, labels = new Set(), found = [];
+  (wbObj.SheetNames || []).forEach(name=>{
+    const ws = wbObj.Sheets[name]; if (!ws) return;
+    Object.keys(ws).forEach(addr=>{
+      if (addr[0] === '!') return; const cell = ws[addr];
+      if (!cell || cell.t !== 's') return;
+      const cat = legendLabelCategory(cell.v); if (!cat) return;
+      let key = cellFillKey(cell);
+      if (!key){ const rc = XLSX.utils.decode_cell(addr);
+        for (const dc of [-1, 1, -2, 2]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && (nb.v == null || String(nb.v).trim() === '') && (key = cellFillKey(nb))) break; } }
+      if (!key) return;
+      labels.add(String(cell.v).trim().toLowerCase());
+      if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); }
+    });
+  });
+  const cats = new Set(Object.values(legend));
+  return cats.size >= 2 ? {legend, labels, found} : null;
+}
+function sheetFillByText(ws){
+  // a job's colour = its own cell's fill, or the fill of its qty / unit cells right beside it (whole-row colouring)
+  const map = {};
+  Object.keys(ws).forEach(addr=>{ if (addr[0] === '!') return; const cell = ws[addr];
+    if (!cell || cell.t !== 's' || !String(cell.v).trim()) return;
+    const t = String(cell.v).trim().toLowerCase().replace(/\s+/g, ' '); if (map[t] !== undefined) return;
+    let k = cellFillKey(cell);
+    if (!k){ const rc = XLSX.utils.decode_cell(addr); for (const dc of [1, 2, -1]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && !legendLabelCategory(nb.v) && (k = cellFillKey(nb))) break; } }
+    if (k) map[t] = k; });
+  return map;
+}
+let lastColourSort = null;   // {colours, jobs, found} for the status line
+function applyColourLegend(ws, items, info){
+  if (!info) return items;
+  const byText = sheetFillByText(ws);
+  return items.filter(it=>{
+    const t = String(it.item || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (info.labels.has(t) && legendLabelCategory(it.item)) return false;   // a legend cell, not a job
+    if (typeof it.section === 'string' && it.section.trim()) return true;    // a Section column wins
+    const k = byText[t], cat = k && info.legend[k];
+    if (cat){ it.section = cat; it.colourSorted = true; lastColourSort.jobs++; }
+    return true;
+  });
+}
 function processWorkbook(wbObj){
+  const colourInfo = (()=>{ try{ return readColourLegend(wbObj); }catch(e){ return null; } })();
+  lastColourSort = colourInfo ? {colours: Object.keys(colourInfo.legend).length, jobs: 0, found: colourInfo.found} : null;
   let sheetsUsed=0, itemsFound=0;
   const skipped = [];
   const errored = [];
@@ -2951,6 +3036,7 @@ function processWorkbook(wbObj){
         sheetsUsed++; itemsFound += block.items.length;
         if (block.pax!=null && paxByDish[dishTitle]===undefined){ const bp = parsePaxInput(block.pax); if (bp.ok && bp.n!==undefined) paxByDish[dishTitle] = bp.n; }
         const rowsBefore = ROWS.length;
+        if (colourInfo) block.items = applyColourLegend(ws, block.items, colourInfo);
         addRows(dishTitle, block.items);
         // v3.1: remember the workbook tab each row came from, so every Excel export can
         // name its tabs after the imported file's own tabs (see exportDishesToXlsx).
@@ -3839,7 +3925,7 @@ function handleFile(file){
   reader.onload = ev => {
     try{
       const data = new Uint8Array(ev.target.result);
-      const wbObj = XLSX.read(data, {type:'array', cellDates:false, sheetStubs:false});
+      const wbObj = XLSX.read(data, {type:'array', cellDates:false, sheetStubs:false, cellStyles:true});   // r7: cellStyles = cell fill colours (colour legend)
       const prev = {ROWS, paxByDish, eventDateByDish};   // restored if this file turns out unreadable
       ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};  // a spreadsheet has no page image or method text to keep
       const {sheetsUsed, itemsFound, skipped, errored} = processWorkbook(wbObj);
@@ -3855,6 +3941,7 @@ function handleFile(file){
       if (toolMode==='onetime'){
         sourceInfo = {name: file.name, loadedAt: new Date()};
         let msg = 'Sorted '+itemsFound+' tasks into '+dishNames.length+' dishes: '+dishNames.join(', ')+'.';
+        if (lastColourSort) msg += ' Colour legend found ('+lastColourSort.found.map(f=>f.label+' = '+(f.cat==='Garnishes, Herbs, Powders, Oils Etc.'?'Garnish':f.cat)).join(', ')+'): '+lastColourSort.jobs+' job(s) sorted by colour, the rest by name.';
         if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
         if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
         setStatus(msg, errored.length ? 'err' : 'ok');
@@ -4277,6 +4364,7 @@ function renderMasterSummary(){
     <div class="row no-print" style="gap:8px; margin-bottom:8px;">
       <button class="ghost" type="button" onclick="setAllDishesIncluded(true)">Tick all</button>
       <button class="ghost" type="button" onclick="setAllDishesIncluded(false)">Untick all</button>
+      ${classicDays() ? '' : '<button class="secondary copy-days-dishes" type="button" onclick="copyPrepDaysBetweenTickedDishes()" title="Copies the prep days of the first ticked dish to the matching components (same task) of the other ticked dishes">📅 Copy prep days to matching components of ticked dishes</button>'}
     </div>
     <div class="no-print summary-table-wrap" style="border:1px solid var(--line); border-radius:6px; overflow-x:auto; -webkit-overflow-scrolling:touch;">
       <table><thead><tr><th style="width:5%"></th><th style="width:13%">Day</th><th style="width:13%">Date</th><th style="width:49%">Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
@@ -4291,6 +4379,23 @@ function renderMasterSummary(){
     </div>
     <table><thead><tr><th>Day</th><th>Date</th><th>Dish</th><th>Pax</th></tr></thead><tbody>${printRowsHtml}</tbody></table>
   </div>`;
+}
+
+// v3.4.9-r7: Copy prep days between the ticked dishes in the summary: the first ticked dish (summary order) is the
+// source; every other ticked dish gets the prep day of each MATCHING component (same task wording). Others untouched.
+function copyPrepDaysBetweenTickedDishes(){
+  const order = summaryDishOrder().filter(d=>dishIncluded[d]!==false);
+  if (order.length < 2){ setStatus('Tick at least two dishes in the summary: the first one is copied to the others.', 'err'); return; }
+  const src = order[0], srcRows = ROWS.filter(r=>r.dish===src && r.day);
+  if (!srcRows.length){ setStatus('"'+cleanDishName(src)+'" (the first ticked dish) has no prep days set yet.', 'err'); return; }
+  dayUndoSnapshot();
+  let changed = 0, dishes = 0;
+  order.slice(1).forEach(d=>{ let n = 0; const used = new Set();
+    ROWS.filter(r=>r.dish===d).forEach(r=>{ const m = srcRows.find(x=>!used.has(x) && taskKey(x)===taskKey(r)); if (m){ used.add(m); if (r.day!==m.day){ r.day = m.day; n++; } } });
+    if (n){ changed += n; dishes++; } });
+  render();
+  if (!changed){ setStatus('The ticked dishes already have the same prep days as "'+cleanDishName(src)+'" for every matching component.', 'ok'); similarUndo = null; return; }
+  offerUndo('Copied prep days from "'+cleanDishName(src)+'" to '+changed+' matching component(s) in '+dishes+' other ticked dish(es).');
 }
 function setDishIncluded(encodedDish, checked){
   dishIncluded[decodeURIComponent(encodedDish)] = !!checked;
@@ -4534,7 +4639,7 @@ function appendDishBlock(aoa, formulaCells, dish, rows){
       }
     }
     if (!paxSet && totalFormula && totalFormula.indexOf('IF(')!==0) totalFormula = 'IF(D'+n+'="","",'+totalFormula+')';
-    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day || '', srcName(r), ...EXPORT_EXTRA_COLS.map(c=>c.value(r, unit))]);   // v3.2: exact original tab / PDF title
+    aoa.push([r.task, perPax, unit, '', totalCell, r.section || '', r.day ? dayLabel(r.day) : '', srcName(r), ...EXPORT_EXTRA_COLS.map(c=>c.value(r, unit))]);   // v3.2: exact original tab / PDF title
     if (paxFormula) put(rowIdx, 3, paxSet ? paxAbs : 'IF('+paxAbs+'="","",'+paxAbs+')', paxSet ? pax : '');
     if (totalFormula) put(rowIdx, 4, totalFormula, totalPreview);
     EXPORT_EXTRA_COLS.forEach((c, ci)=>{ if (c.formula){ const f = c.formula(r, n, unit, paxRowNum); if (f) put(rowIdx, 8+ci, f.f, f.v); } });
@@ -4635,7 +4740,7 @@ function exportDaysToXlsx(){
   const order = [...dayOrderList(), 'Unscheduled'];
   exportGroupedToXlsx(
     r => r.day || 'Unscheduled',
-    key => key,
+    key => key==='Unscheduled' ? key : dayLabel(key),
     'Preplist_By_Day',
     'Nothing to export yet — load a preplist first.',
     (a,b) => order.indexOf(a) - order.indexOf(b)
@@ -5658,6 +5763,7 @@ function loadTemplate(enc){
   const isObj = v => v && typeof v==='object' && !Array.isArray(v);
   originalPageImages = {}; methodCrops = {};   // v3: a template keeps the list only, not page images
   ROWS = t.ROWS.filter(r=>r && typeof r.task==='string' && typeof r.dish==='string').map(r=>{
+    r = Object.assign({}, r, {section: secLegacy(r.section), baseCategory: secLegacy(r.baseCategory)});
     const ok = SECTIONS.includes(r.section);
     return {...r, section: ok ? r.section : 'Vegetables', baseCategory: SECTIONS.includes(r.baseCategory) ? r.baseCategory : (ok ? r.section : 'Vegetables'), flagged: ok ? !!r.flagged : true};
   });
