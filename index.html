@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.9-r7">
+<meta name="prepline-version" content="3.4.9-r7.1">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1204,7 +1204,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r7</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r7.1</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1551,19 +1551,15 @@ function origComposed(entry){
         lines.forEach(({row, text})=>{
           const x = bx.x0 * S, w = Math.max(40, (Math.min(bx.x1, cv.width / S - 3) - bx.x0)) * S, y = (row.top + 0.5) * S, h = Math.max(9, row.bot - row.top - 1) * S;
           c.fillStyle = '#fff'; c.fillRect(x - 1, y, w + 2, h);
-          let out = null;
-          for (let fs = 12.4; fs >= 3.6; fs -= 0.2){   // v3.4.9-r7: starts at twice the r6 size (12.4 pt) and uses the biggest that fits the row; only very thin rows go below 7.2 pt so nothing is cut off
-            const px = fs * S; c.font = '600 ' + px + 'px Arial, Helvetica, sans-serif';
-            const words = text.split(' '), ls = []; let cur = '';
-            words.forEach(wd=>{ const t = cur ? cur + ' ' + wd : wd; if (c.measureText(t).width <= w - 2 || !cur) { cur = t; } else { ls.push(cur); cur = wd; } });
-            if (cur) ls.push(cur);
-            if (ls.length * px * 1.04 <= h && ls.every(l=>c.measureText(l).width <= w)) { out = {px, ls}; break; }
-          }
-          if (!out){ const px = 3.6 * S; c.font = '600 ' + px + 'px Arial'; const max = Math.max(1, Math.floor(h / (px * 1.04))); let ls = [], cur = '';
-            text.split(' ').forEach(wd=>{ const t = cur ? cur + ' ' + wd : wd; if (c.measureText(t).width <= w - 2 || !cur) cur = t; else { ls.push(cur); cur = wd; } }); if (cur) ls.push(cur);
-            ls = ls.slice(0, max); if (ls.length) ls[ls.length-1] = ls[ls.length-1].replace(/\s*\S{0,3}$/, '') + '…'; out = {px, ls}; }
+          // v3.4.9-r7.1: ONE line, the largest size that fits inside its own box (width and height), never below 8 pt;
+          // a name too long even at 8 pt is narrowed (condensed) to the box width instead of spilling over.
+          const REF_MIN = 8, REF_MAX = 14;
+          let fs = Math.min(REF_MAX, (h / S) / 1.04);
+          for (; fs > REF_MIN; fs -= 0.2){ c.font = '600 ' + (fs * S) + 'px Arial, Helvetica, sans-serif'; if (c.measureText(text).width <= w - 2) break; }
+          fs = Math.max(REF_MIN, fs); const px = fs * S; c.font = '600 ' + px + 'px Arial, Helvetica, sans-serif';
           c.fillStyle = '#0B3D91'; c.textBaseline = 'top';
-          out.ls.forEach((l, i)=>c.fillText(l, x, y + i * out.px * 1.04));
+          const ty = y + Math.max(0, (h - px * 1.04) / 2);
+          c.fillText(text, x, ty, w - 2);   // maxWidth: condensed to fit when needed, never wider than the box
         });
         const u = cv.toDataURL('image/jpeg', 0.85); origCompCache[key] = u; res(u);
       }catch(e){ rej(e); }
