@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.9-r7.1">
+<meta name="prepline-version" content="3.4.9-r8">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -332,6 +332,14 @@ var LICENSE_CONFIG = {
   #preplistTab .viewtoggle button.secondary:hover{background:rgba(28,30,27,0.07); opacity:1; transform:none;}
 
   #preplistTab .dish-block{margin-bottom:32px;}
+  .copy-tick{display:inline-flex; align-items:center; gap:4px; font:600 11px 'IBM Plex Mono',monospace; vertical-align:middle; margin-right:4px; cursor:pointer;}
+  .copy-tick input{width:20px; height:20px; cursor:pointer;}
+  .copy-badge{padding:1px 5px; border-radius:4px; border:1px dashed #B5D3BC; color:var(--ink-soft);}
+  .copy-badge.src{background:#1F6F3F; color:#fff; border-color:#1F6F3F;}
+  .copy-badge.to{background:#E4F0E6; color:#22543D; border-style:solid;}
+  .copy-make-src{font-size:11px; padding:1px 6px;}
+  .copy-tick-row{display:flex; align-items:center; gap:6px; margin-bottom:4px;}
+  .copy-tick-bar{position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:#FFF8E6; border:2px solid #C97A2E; border-radius:8px; padding:8px 10px; margin:0 0 12px; font-size:13px;}
   #preplistTab .dish-head {
     display:flex; justify-content:space-between; align-items:center; gap:14px;
     padding:16px 20px; border-radius:var(--radius) var(--radius) 0 0; flex-wrap:wrap;
@@ -816,7 +824,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r7.1</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r8</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -2541,14 +2549,42 @@ function legendLabelCategory(text){
   for (const [re, cat] of LEGEND_LABELS) if (re.test(t)) return cat;
   return null;
 }
+// r8: theme colours are turned into real RGB (using the workbook's own theme, else Office defaults) so a legend
+// filled with a standard colour still matches jobs filled with the same colour picked from the theme row.
+let wbThemeRgb = null;
+const OFFICE_THEME = ['FFFFFF','000000','E7E6E6','44546A','4472C4','ED7D31','A5A5A5','FFC000','5B9BD5','70AD47'];
+const XL_INDEXED = {8:'000000',9:'FFFFFF',10:'FF0000',11:'00FF00',12:'0000FF',13:'FFFF00',14:'FF00FF',15:'00FFFF',16:'800000',17:'008000',18:'000080',19:'808000',20:'800080',21:'008080',22:'C0C0C0',23:'808080',40:'00CCFF',41:'CCFFFF',42:'CCFFCC',43:'FFFF99',44:'99CCFF',45:'FF99CC',46:'CC99FF',47:'FFCC99',48:'3366FF',49:'33CCCC',50:'99CC00',51:'FFCC00',52:'FF9900',53:'FF6600'};
+function setWorkbookTheme(wbObj){
+  wbThemeRgb = null;
+  try{ const cs = wbObj && wbObj.Themes && wbObj.Themes.themeElements && wbObj.Themes.themeElements.clrScheme;
+    if (Array.isArray(cs) && cs.length >= 10){ const g = i=>String((cs[i]||{}).rgb||'').slice(-6).toUpperCase();
+      // SheetJS already lists them in cell theme-index order: lt1 dk1 lt2 dk2 accent1..6
+      const t = [0,1,2,3,4,5,6,7,8,9].map(g); if (t.every(x=>/^[0-9A-F]{6}$/.test(x))) wbThemeRgb = t; } }catch(e){}
+}
+function tintHex(hx, tint){
+  if (!tint) return hx;
+  return [0,2,4].map(i=>{ let v = parseInt(hx.substr(i,2),16); v = tint < 0 ? v * (1 + tint) : v + (255 - v) * tint; return ('0' + Math.round(Math.max(0,Math.min(255,v))).toString(16)).slice(-2); }).join('').toUpperCase();
+}
 function cellFillKey(cell){
   const st = cell && cell.s; if (!st) return null;
   if (st.patternType && st.patternType === 'none') return null;
   const c = st.fgColor || {};
-  if (typeof c.rgb === 'string' && c.rgb){ const hx = c.rgb.slice(-6).toUpperCase(); return (hx === 'FFFFFF' || hx === '000000' && !st.patternType) ? null : 'rgb:' + hx; }
-  if (c.theme != null) return 'th:' + c.theme + ':' + (Math.round((c.tint || 0) * 100) / 100);
-  if (c.indexed != null && c.indexed !== 64) return 'ix:' + c.indexed;
-  return null;
+  let hx = null;
+  if (typeof c.rgb === 'string' && c.rgb) hx = c.rgb.slice(-6).toUpperCase();
+  else if (c.theme != null){ const base = (wbThemeRgb || OFFICE_THEME)[c.theme]; if (!base) return 'th:' + c.theme + ':' + (Math.round((c.tint || 0) * 100) / 100); hx = tintHex(base, c.tint || 0); }
+  else if (c.indexed != null && c.indexed !== 64){ hx = XL_INDEXED[c.indexed]; if (!hx) return 'ix:' + c.indexed; }
+  if (!hx || !/^[0-9A-F]{6}$/.test(hx)) return null;
+  return (hx === 'FFFFFF' || hx === '000000') ? null : 'rgb:' + hx;
+}
+// r8: a fill that is not exactly a legend colour still counts when it is very close to one (e.g. a slightly
+// different red); anything further away (cream item cells, pink comment cells) is ignored.
+function legendCatFor(key, legend){
+  if (!key) return null; if (legend[key]) return legend[key];
+  const m = /^rgb:([0-9A-F]{6})$/.exec(key); if (!m) return null;
+  const rgb = h=>[0,2,4].map(i=>parseInt(h.substr(i,2),16)); const a = rgb(m[1]);
+  let best = null, bd = 1e9;
+  Object.keys(legend).forEach(k=>{ const n = /^rgb:([0-9A-F]{6})$/.exec(k); if (!n) return; const b = rgb(n[1]); const d = Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]); if (d < bd){ bd = d; best = legend[k]; } });
+  return bd <= 48 ? best : null;
 }
 function readColourLegend(wbObj){
   const legend = {}, labels = new Set(), found = [];
@@ -2569,31 +2605,44 @@ function readColourLegend(wbObj){
   const cats = new Set(Object.values(legend));
   return cats.size >= 2 ? {legend, labels, found} : null;
 }
-function sheetFillByText(ws){
-  // a job's colour = its own cell's fill, or the fill of its qty / unit cells right beside it (whole-row colouring)
+function mergedTopLeft(ws, r, c){
+  const ms = ws['!merges']; if (!ms) return null;
+  for (const m of ms) if (r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c) return ws[XLSX.utils.encode_cell(m.s)];
+  return null;
+}
+function sheetFillByText(ws, legend){
+  // A job's colour: the first LEGEND colour found on the narrow coloured marker cell(s) just LEFT of the item name
+  // (the kitchen layout: column A), else its own cell, else its qty / unit cells.
+  // Fills that are not legend colours (e.g. cream item cells, pink comment cells) are skipped, not taken.
   const map = {};
   Object.keys(ws).forEach(addr=>{ if (addr[0] === '!') return; const cell = ws[addr];
     if (!cell || cell.t !== 's' || !String(cell.v).trim()) return;
     const t = String(cell.v).trim().toLowerCase().replace(/\s+/g, ' '); if (map[t] !== undefined) return;
-    let k = cellFillKey(cell);
-    if (!k){ const rc = XLSX.utils.decode_cell(addr); for (const dc of [1, 2, -1]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && !legendLabelCategory(nb.v) && (k = cellFillKey(nb))) break; } }
-    if (k) map[t] = k; });
+    const rc = XLSX.utils.decode_cell(addr);
+    for (const dc of [-1, -2, 0, 1, 2]){   // the narrow marker column LEFT of the item first
+      if (rc.c + dc < 0) continue;
+      const nb = dc === 0 ? cell : (ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})] || mergedTopLeft(ws, rc.r, rc.c + dc));
+      if (!nb || (dc !== 0 && legendLabelCategory(nb.v))) continue;
+      const k = cellFillKey(nb), cat = legendCatFor(k, legend);
+      if (cat){ map[t] = cat; break; }
+    } });
   return map;
 }
 let lastColourSort = null;   // {colours, jobs, found} for the status line
 function applyColourLegend(ws, items, info){
   if (!info) return items;
-  const byText = sheetFillByText(ws);
+  const byText = sheetFillByText(ws, info.legend);
   return items.filter(it=>{
     const t = String(it.item || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (info.labels.has(t) && legendLabelCategory(it.item)) return false;   // a legend cell, not a job
     if (typeof it.section === 'string' && it.section.trim()) return true;    // a Section column wins
-    const k = byText[t], cat = k && info.legend[k];
+    const cat = byText[t];
     if (cat){ it.section = cat; it.colourSorted = true; lastColourSort.jobs++; }
     return true;
   });
 }
 function processWorkbook(wbObj){
+  setWorkbookTheme(wbObj);
   const colourInfo = (()=>{ try{ return readColourLegend(wbObj); }catch(e){ return null; } })();
   lastColourSort = colourInfo ? {colours: Object.keys(colourInfo.legend).length, jobs: 0, found: colourInfo.found} : null;
   let sheetsUsed=0, itemsFound=0;
@@ -3972,7 +4021,7 @@ function renderMasterSummary(){
     <div class="row no-print" style="gap:8px; margin-bottom:8px;">
       <button class="ghost" type="button" onclick="setAllDishesIncluded(true)">Tick all</button>
       <button class="ghost" type="button" onclick="setAllDishesIncluded(false)">Untick all</button>
-      ${classicDays() ? '' : '<button class="secondary copy-days-dishes" type="button" onclick="copyPrepDaysBetweenTickedDishes()" title="Copies the prep days of the first ticked dish to the matching components (same task) of the other ticked dishes">📅 Copy prep days to matching components of ticked dishes</button>'}
+      ${classicDays() ? '' : '<button class="secondary copy-days-dishes" type="button" onclick="copyPrepDaysBetweenTickedDishes()" title="Copies the Section and Prep day of the first ticked dish to the matching components (same task) of the other ticked dishes">📅 Copy Section + Prep days to matching components of ticked dishes</button>'}
     </div>
     <div class="no-print summary-table-wrap" style="border:1px solid var(--line); border-radius:6px; overflow-x:auto; -webkit-overflow-scrolling:touch;">
       <table><thead><tr><th style="width:5%"></th><th style="width:13%">Day</th><th style="width:13%">Date</th><th style="width:49%">Dish</th><th>Pax</th></tr></thead><tbody>${rowsHtml}</tbody></table>
@@ -3993,6 +4042,7 @@ function renderMasterSummary(){
 // source; every other ticked dish gets the prep day of each MATCHING component (same task wording). Others untouched.
 function copyPrepDaysBetweenTickedDishes(){
   const order = summaryDishOrder().filter(d=>dishIncluded[d]!==false);
+  if (order.length >= 2){ copyTicks = order.slice(); return copySectionDaysFromSource(); }   // r8: same copy (Section + Prep day) as the dish tick boxes
   if (order.length < 2){ setStatus('Tick at least two dishes in the summary: the first one is copied to the others.', 'err'); return; }
   const src = order[0], srcRows = ROWS.filter(r=>r.dish===src && r.day);
   if (!srcRows.length){ setStatus('"'+cleanDishName(src)+'" (the first ticked dish) has no prep days set yet.', 'err'); return; }
@@ -4004,6 +4054,43 @@ function copyPrepDaysBetweenTickedDishes(){
   render();
   if (!changed){ setStatus('The ticked dishes already have the same prep days as "'+cleanDishName(src)+'" for every matching component.', 'ok'); similarUndo = null; return; }
   offerUndo('Copied prep days from "'+cleanDishName(src)+'" to '+changed+' matching component(s) in '+dishes+' other ticked dish(es).');
+}
+// v3.4.9-r8: tick boxes beside the dish names (By dish view). The FIRST dish you tick is the source (marked SOURCE);
+// every other ticked dish gets the Section AND the Prep day of each matching component (same task wording).
+let copyTicks = [];   // dish names in the order they were ticked; [0] = source
+function setCopyTick(encodedDish, checked){
+  const d = decodeURIComponent(encodedDish);
+  copyTicks = copyTicks.filter(x=>x!==d); if (checked) copyTicks.push(d);
+  render();
+}
+function makeCopySource(encodedDish){ const d = decodeURIComponent(encodedDish); copyTicks = [d].concat(copyTicks.filter(x=>x!==d)); render(); }
+function clearCopyTicks(){ copyTicks = []; render(); }
+function copyTickBarHtml(){
+  copyTicks = copyTicks.filter(d=>ROWS.some(r=>r.dish===d));
+  if (!copyTicks.length) return '';
+  const src = copyTicks[0], n = copyTicks.length - 1;
+  return `<div class="copy-tick-bar no-print" id="copyTickBar"><span>📋 Copy from <b class="copy-src-name">${escapeHtml(cleanDishName(src))}</b> (SOURCE)${n ? ' to <b>'+n+'</b> ticked dish'+(n>1?'es':'') : ': now tick the dishes to copy to'}: Section + Prep day of every matching component.</span>
+    <button type="button" class="copy-ticked-btn" onclick="copySectionDaysFromSource()" ${n ? '' : 'disabled'}>Copy Section + Prep days</button>
+    <button type="button" class="ghost" onclick="clearCopyTicks()">Clear ticks</button></div>`;
+}
+function copyTickHtml(dish){
+  const encDish = encName(dish), i = copyTicks.indexOf(dish);
+  return `<label class="copy-tick no-print" title="Tick to copy Section + Prep days. The first dish you tick is the source."><input type="checkbox" class="copy-dish-tick" ${i>=0?'checked':''} onchange="setCopyTick('${encDish}', this.checked)"> ${i===0 ? '<span class="copy-badge src">SOURCE</span>' : i>0 ? '<span class="copy-badge to">copy to</span>' : '<span class="copy-badge">copy</span>'}</label>${i>0 ? ` <button type="button" class="ghost copy-make-src no-print" onclick="makeCopySource('${encDish}')">make source</button>` : ''}`;
+}
+function copySectionDaysFromSource(){
+  if (copyTicks.length < 2){ setStatus('Tick the source dish first, then the dishes to copy to.', 'err'); return; }
+  const src = copyTicks[0], srcRows = ROWS.filter(r=>r.dish===src);
+  dayUndoSnapshot();
+  let changed = 0, dishes = 0, unmatched = 0;
+  copyTicks.slice(1).forEach(d=>{ let n = 0; const used = new Set();
+    ROWS.filter(r=>r.dish===d).forEach(r=>{ const m = srcRows.find(x=>!used.has(x) && taskKey(x)===taskKey(r));
+      if (!m){ unmatched++; return; } used.add(m);
+      let ch = false; if (m.section && r.section!==m.section){ r.section = m.section; ch = true; } if ((r.day||'')!==(m.day||'')){ r.day = m.day; ch = true; } if (ch) n++; });
+    if (n){ changed += n; dishes++; } });
+  render();
+  const extra = unmatched ? ' '+unmatched+' component(s) with no match in the source were left as they were.' : '';
+  if (!changed){ setStatus('The ticked dishes already match "'+cleanDishName(src)+'" for every matching component.'+extra, 'ok'); similarUndo = null; return; }
+  offerUndo('Copied Section + Prep day from "'+cleanDishName(src)+'" to '+changed+' matching component(s) in '+dishes+' dish(es).'+extra);
 }
 function setDishIncluded(encodedDish, checked){
   dishIncluded[decodeURIComponent(encodedDish)] = !!checked;
@@ -4532,6 +4619,7 @@ function renderByDish(){
   if (searchQuery.trim()){
     html += `<div class="meta" style="font-size:12px; color:var(--ink-soft); margin-bottom:12px;">${dishes.length} of ${totalDishCount} dishes have a match</div>`;
   }
+  html += copyTickBarHtml();
   dishes.forEach(dish=>{
     const rows = applySort(activeRows().filter(r=>r.dish===dish && rowMatchesSearch(r)), 'dish');
     const pax = paxByDish[dish];
@@ -4543,6 +4631,7 @@ function renderByDish(){
     html += `<div class="dish-block">
       <div class="dish-head no-print">
         <div>
+          <div class="copy-tick-row no-print">${copyTickHtml(dish)}</div>
           <h3>${escapeHtml(cleanDishName(dish))}</h3>
           <div class="meta">${rows.length} ingredients/tasks${prepSpan ? ' · Prep window: '+prepSpan : ''}${eventDateStr ? ' · Event date: '+escapeHtml(eventDateStr) : ''}</div>
           ${staffingLineHtml(dish) ? `<div class="staffing-line">${staffingLineHtml(dish)}</div>` : ''}

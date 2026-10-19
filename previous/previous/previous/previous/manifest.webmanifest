@@ -1,0 +1,44 @@
+{
+  "name": "Prepline: prep list sorter",
+  "short_name": "Prepline",
+  "description": "Sort a kitchen preplist into prep lists by dish, station and team section. Works offline once installed. By Autoprod.",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6F1E7",
+  "theme_color": "#1C1E1B",
+  "lang": "en-AU",
+  "categories": [
+    "food",
+    "productivity",
+    "business"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
