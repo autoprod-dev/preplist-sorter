@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.0.0-ubs">
+<meta name="prepline-version" content="4.0.1-ubs">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -738,7 +738,8 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
 </head>
 <body>
 <!-- 4.0.0-ubs launcher: the only addition to the sorter page (everything else is 3.4.9-r8-builder3 as before) -->
-<div id="ubsLaunch" style="position:sticky;top:0;z-index:9999;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:#0b5394;color:#fff;font:600 14px/1.3 system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+<style>body.asis-open #ubsLaunch,body.pb-open #ubsLaunch{display:none!important}@media print{#ubsLaunch{display:none!important}}</style>
+<div id="ubsLaunch" class="no-print" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 14px;background:#0b5394;color:#fff;font:600 14px/1.3 system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
  <span>NEW: drop the UBS week → work orders, allocations and checks in one go</span>
  <a href="ubs/" style="background:#fff;color:#0b5394;padding:5px 12px;border-radius:6px;text-decoration:none">Open UBS work orders &amp; allocations</a>
  <a href="classic/" style="color:#cfe2ff;margin-left:auto;font-weight:400">Revert to previous version (before UBS)</a>
