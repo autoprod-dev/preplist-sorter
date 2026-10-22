@@ -12,7 +12,7 @@
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '4.0.1-ubs';
+const VERSION = '4.1.0';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
 // The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
 const NO_CDN = SCOPE_PATH === '/prepline-team/';
@@ -77,9 +77,25 @@ async function networkFirstPage(request){
   try {
     return await Promise.race([net, timeout(6000)]);
   } catch (e) {
-    const hit = await cache.match(key, {ignoreSearch: true}) || await cache.match(SCOPE_PATH + 'index.html');
+    // 4.1.0: only the root page falls back to the root copy; sub-pages (pipeline/, classic/, previous/) never get the wrong page
+    const hit = await cache.match(key, {ignoreSearch: true}) || (!key.slice(SCOPE_PATH.length).includes('/') ? await cache.match(SCOPE_PATH + 'index.html') : null);
     if (hit) return hit;
     return net;   // nothing cached: wait for the network after all
+  }
+}
+
+async function networkFirstAsset(request){
+  const cache = await caches.open(CACHE);
+  const net = fetch(request, {cache: 'no-cache'}).then(res => {
+    if (res && res.ok) cache.put(request, res.clone());
+    return res;
+  });
+  try {
+    return await Promise.race([net, timeout(8000)]);
+  } catch (e) {
+    const hit = await cache.match(request);
+    if (hit) return hit;
+    return net;
   }
 }
 
@@ -110,7 +126,7 @@ self.addEventListener('fetch', event => {
     if (!url.pathname.startsWith(SCOPE_PATH)) return;          // never touch the live app or other paths
     if (req.mode === 'navigate') { event.respondWith(networkFirstPage(req)); return; }
     if (url.pathname === SCOPE_PATH + 'sw.js') return;
-    event.respondWith(staleWhileRevalidate(req));
+    event.respondWith(networkFirstAsset(req));   // 4.1.0: same-site files always fresh when online (no old/new mix)
     return;
   }
   if (NO_CDN) return;   // team site: nothing outside the site is ever handled (or requested) here
