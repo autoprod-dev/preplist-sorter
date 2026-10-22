@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.9-r8">
+<meta name="prepline-version" content="3.4.9-r8-builder3">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -659,6 +659,82 @@ var LICENSE_CONFIG = {
   .share-survey .qr-svg{width:84px; height:84px; flex:0 0 84px; border:1px solid #ddd;}
   .sv-survey{margin-top:10px;}
 </style>
+<style id="pbStyles">
+/* ===== builder (Prepline by Autoprod) ===== */
+#pbPanel{position:fixed;inset:0;z-index:9000;background:var(--paper,#F4F1EA);overflow:auto;-webkit-overflow-scrolling:touch}
+#pbPanel[hidden]{display:none}
+body.pb-open{overflow:hidden}
+.pb-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:12px 18px;background:#1C1E1B;color:#fff}
+.pb-top h2{font-size:18px;margin:0;flex:1}.pb-top .pb-brand{opacity:.75;font-size:12px}
+.pb-top button{background:#fff;color:#1C1E1B;border:0;border-radius:6px;padding:8px 12px;font-weight:700;cursor:pointer}
+#pbBody{max-width:1200px;margin:0 auto;padding:14px 16px 80px}
+.pb-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pb-tab{border:1px solid #bbb;background:#fff;border-radius:8px 8px 0 0;padding:9px 14px;font-weight:600;cursor:pointer;min-height:42px}
+.pb-tab.on{background:#1C1E1B;color:#fff;border-color:#1C1E1B}.pb-add{border-style:dashed}
+.pb-dishbar{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:10px}
+.pb-dishbar label{display:flex;flex-direction:column;font-size:12px;font-weight:600;gap:3px}
+.pb-dishbar input{font-size:16px;padding:8px;border:1px solid #bbb;border-radius:6px;min-width:220px}
+.pb-dishbar .pb-pax input{min-width:0;width:110px;background:#FFF2CC;font-weight:700}
+.pb-legend{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 12px}
+.pb-chip{padding:5px 10px;font-weight:700;font-size:12px;border:1px solid #888;border-radius:4px}
+.pb-note{font-size:12px;color:#555;flex-basis:100%}
+.pb-rows{background:#fff;border:1px solid #ccc;border-radius:8px;overflow:hidden}
+.pb-row{display:grid;grid-template-columns:150px 1.6fr 100px 80px 100px 1.3fr 120px 110px 100px;gap:0;border-top:1px solid #e3e3e3;align-items:center}
+.pb-row.pb-head{background:#333;color:#fff;font-size:12px;font-weight:700;border-top:0}.pb-head span{padding:8px 6px}
+.pb-cell{padding:4px 6px;display:flex;align-items:center;gap:4px;min-width:0}
+.pb-cell input,.pb-cell select{width:100%;min-width:0;font-size:15px;padding:7px 6px;border:1px solid #ccc;border-radius:5px;min-height:38px;background:#fff}
+.pb-swatch{flex:0 0 18px;height:30px;border:1px solid #999;border-radius:3px}
+.pb-total{font-family:'IBM Plex Mono',monospace;font-weight:700;justify-content:flex-end}
+.pb-acts{justify-content:flex-end}.pb-acts button{min-width:30px;min-height:36px;padding:2px 6px}
+.pb-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-top:12px}
+.pb-paste{flex-basis:100%;background:#fff;border:1px dashed #aaa;border-radius:8px;padding:8px}
+.pb-paste textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:14px;margin:6px 0}
+.pb-done{background:#1F6F3F;color:#fff;border:0;border-radius:8px;padding:11px 18px;font-weight:800;font-size:15px;cursor:pointer;min-height:44px}
+.pb-toast{margin-top:12px;padding:10px 12px;background:#E4F0E6;border-radius:8px}.pb-toast.err{background:#FBE3E3}
+.out-choice{margin:14px 0;padding:16px;border:3px solid #1F6F3F;border-radius:12px;background:#fff}
+.oc-title{font-weight:800;font-size:17px;margin-bottom:10px}
+.oc-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.oc-btn{display:flex;flex-direction:column;gap:4px;text-align:left;padding:14px 16px;border-radius:10px;border:2px solid #1C1E1B;background:#FFF8E6;cursor:pointer;font-size:16px;min-height:72px}
+.oc-btn span{font-size:13px;color:#444}.oc-sort{background:#E4F0E6}
+#outputChoice[hidden]{display:none}
+#asisView{position:fixed;inset:0;z-index:9500;background:#e9e9e9;overflow:auto}#asisView[hidden]{display:none}
+.asis-bar{position:sticky;top:0;display:flex;gap:10px;align-items:center;padding:10px 16px;background:#1C1E1B;color:#fff}.asis-bar b{flex:1}
+.asis-bar .ghost{color:#fff}
+.asis-wrap{padding:16px}.asis-wrap .asis-page{background:#fff;max-width:1100px;margin:0 auto 18px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.15);overflow-x:auto}
+body.asis-open{overflow:hidden}
+@media (max-width:760px){
+  .pb-row.pb-head{display:none}
+  .pb-row{grid-template-columns:1fr 1fr;padding:8px 6px;border-top:6px solid #f1efe9}
+  .pb-cell{flex-direction:column;align-items:stretch}
+  .pb-cell::before{content:attr(data-l);font-size:11px;font-weight:700;color:#666}
+  .pb-colour{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center}.pb-colour::before{flex-basis:100%}
+  .pb-cell:nth-child(2){grid-column:1/-1}
+  .pb-total{align-items:flex-start;font-size:16px}
+  .pb-acts{grid-column:1/-1;flex-direction:row;justify-content:flex-end}.pb-acts::before{display:none}
+  .oc-btns{grid-template-columns:1fr}
+  .pb-dishbar input{min-width:0;width:100%}.pb-dishbar label{flex:1 1 140px}
+}
+@media print{ #pbPanel,#outputChoice,#asisView{display:none!important} }
+/* beat the site's global button colours */
+.out-choice button.oc-btn{background:#FFF8E6!important;color:#1C1E1B!important;border:2px solid #1C1E1B!important;box-shadow:none!important}
+.out-choice button.oc-btn.oc-sort{background:#E4F0E6!important}
+.out-choice button.oc-btn span{color:#333!important;font-weight:500}
+.asis-bar button#asisCloseBtn{background:#fff!important;color:#1C1E1B!important;border:1px solid #fff!important;padding:8px 14px!important;border-radius:8px;font-weight:700}
+#pbPanel input,#pbPanel select,#pbPanel textarea{box-sizing:border-box;max-width:100%;min-width:0}
+.pb-row>*{min-width:0}
+/* the survey toast and floating buttons must not cover the builder or the as-is preview */
+body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBtn,body.asis-open #revertPrevBtn{display:none!important}
+#pbBody{padding-bottom:110px}
+/* r8-builder3: open an existing spreadsheet */
+.pb-open-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 12px;padding:10px 12px;border:2px dashed #8A6A3B;border-radius:10px;background:#FFFDF6}
+.pb-open-bar .pb-note{margin:0}
+#pbPanel.pb-drag .pb-open-bar{background:#E4F0E6;border-color:#1F6F3F}
+#pbPanel.pb-drag::after{content:"Drop the spreadsheet to open it in the builder";position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font:800 26px Arial,sans-serif;color:#1F6F3F;background:rgba(228,240,230,.85);border:6px dashed #1F6F3F;pointer-events:none;z-index:9600}
+.pb-map{margin:14px 0;padding:14px;border:3px solid #8A6A3B;border-radius:12px;background:#fff}
+.pb-map-prev{overflow-x:auto;margin:8px 0}.pb-map-prev table{border-collapse:collapse;font-size:12px}.pb-map-prev td,.pb-map-prev th{border:1px solid #ccc;padding:3px 6px;white-space:nowrap}
+.pb-map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin:10px 0}.pb-map-grid label{display:flex;flex-direction:column;font-size:12px;font-weight:600;gap:3px}
+.pb-map-grid select{font-size:15px;padding:6px;min-height:38px}
+</style>
 </head>
 <body>
 <div id="apJsBanner" role="alert" style="display:block; position:relative; z-index:2147483647; margin:0; padding:14px 16px; background:#FFF4C2; color:#1C1E1B; border-bottom:2px solid #C9A227; font:15px/1.45 Arial, Helvetica, sans-serif; text-align:center;"><b>Prepline by Autoprod.</b> If this page looks blank or buttons don&#39;t work, save the file and open it in Chrome or Edge, or use the online version: <a href="https://autoprod-dev.github.io/prepline-free/" style="color:#1A4D8F; font-weight:bold; word-break:break-all;">https://autoprod-dev.github.io/prepline-free/</a></div>
@@ -705,6 +781,7 @@ var LICENSE_CONFIG = {
     </div>
     <div class="row no-print sample-row" id="sampleRow">
       <button class="secondary" id="sampleMenuBtn" type="button" onclick="loadSampleMenu()">✨ Try with sample menu</button>
+      <button class="secondary" id="openBuilderBtn" type="button" onclick="openBuilder()">🧾 Build a prep sheet</button>
       <span class="small">No file handy? Load a made-up kitchen menu (5 dishes) and see a full prep list in seconds. Clearly marked as sample data; clear it any time.</span>
     </div>
     <div class="row no-print" id="appendRow" style="margin-top:10px; display:none; align-items:center;">
@@ -718,6 +795,7 @@ var LICENSE_CONFIG = {
       <button id="parsePasteBtn">Sort pasted rows</button>
       <button class="ghost" id="clearBtn" type="button">Clear this form</button>
       <div class="status" id="statusMsg" style="flex:1 1 auto;"></div>
+      <div id="outputChoice" class="no-print" hidden style="flex-basis:100%;"></div>
     </div>
     <div class="row no-print" id="dbManageRow" style="margin-top:16px; display:none; align-items:center; border-top:1px solid var(--line); padding-top:14px;">
       <div class="meta" id="dbCountMeta" style="font-size:12px; color:var(--ink-soft); flex:1 1 auto;"></div>
@@ -824,7 +902,7 @@ var LICENSE_CONFIG = {
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r8</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r8-builder3</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -3603,6 +3681,7 @@ function handleFile(file){
         if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
         setStatus(msg, errored.length ? 'err' : 'ok');
         renderApp();
+        if (typeof showOutputChoice==='function'){ if (pbSorting){ pbSorting = false; const oc=document.getElementById('outputChoice'); if (oc){ oc.hidden = true; oc.innerHTML=''; } const v=document.getElementById('preplistTab'); if (v) v.scrollIntoView(); } else showOutputChoice('upload'); }
         return;
       }
 
@@ -7102,5 +7181,421 @@ openSharedViewFromHash();   // v3.3: a team-share link opens the read-only list 
 </script>
 <footer class="ap-copy" id="apCopyright" style="text-align:center; margin:24px 12px 18px; font-size:11px; opacity:.75;">© 2026 Autoprod. All rights reserved. Not for resale or redistribution.</footer>
 <script>(function(){ try{ if (typeof render === 'function'){ var b = document.getElementById('apJsBanner'); if (b) b.remove(); } }catch(e){} })();</script>
+<div id="pbPanel" hidden role="dialog" aria-label="Prep sheet builder"><div class="pb-top"><h2>🧾 Build a prep sheet <span class="pb-brand">Prepline by Autoprod · saved on this device</span></h2><button type="button" onclick="closeBuilder()">Close</button></div><div id="pbBody"></div><input type="file" id="pbFileInput" accept=".xlsx,.xlsm,.xls,.csv" hidden></div>
+<script>
+// ===== Prepline by Autoprod: built-in prep-sheet builder (builder-from-r8) =====
+// Tabs per dish, a PAX cell per dish, rows (item, qty per pax, unit, live total, section, prep day, optional Ref #),
+// a per-row colour/category picker using the colour legend (Sauce/Puree/Gels, Vege, Garnish, Starch, Protein;
+// "Big Jobs" is now Starch), saved on this device. "Sort it with Prepline" sends the sheet through the normal
+// upload pipeline (the same .xlsx that Export writes), so every view, export and print works unchanged.
+const PB_KEY = 'prepline.builder.v1';
+const PB_CATS = [
+  {k:'sauce',  label:'Sauce, Puree, Gels', hex:'4A86E8', fg:'FFFFFF', sec:'Sauce, Purees and Gels'},
+  {k:'vege',   label:'Vege',               hex:'00FF00', fg:'000000', sec:'Vegetables'},
+  {k:'garnish',label:'Garnish',            hex:'FF9900', fg:'000000', sec:'Garnishes, Herbs, Powders, Oils Etc.'},
+  {k:'starch', label:'Starch',             hex:'FFFF00', fg:'000000', sec:'Starch'},
+  {k:'protein',label:'Protein',            hex:'FF0000', fg:'FFFFFF', sec:'Proteins'}
+];
+const PB_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const pbCat = k => PB_CATS.find(c=>c.k===k) || null;
+const pbCatForSection = s => PB_CATS.find(c=>c.sec===s) || null;
+let PB = null, pbActive = 0;
+function pbBlank(){ return {v:1, dishes:[{name:'Dish 1', pax:'', rows:[pbRow()]}]}; }
+function pbRow(){ return {item:'', qty:'', unit:'', cat:'', section:'', day:'', ref:''}; }
+function pbLoad(){
+  try{ const o = JSON.parse(localStorage.getItem(PB_KEY) || 'null');
+    if (o && o.v===1 && Array.isArray(o.dishes) && o.dishes.length){
+      o.dishes = o.dishes.filter(d=>d && typeof d==='object').map(d=>({name:String(d.name||'Dish').slice(0,60), pax:(d.pax===''||d.pax==null)?'':Number(d.pax)||'',
+        rows:(Array.isArray(d.rows)?d.rows:[]).filter(r=>r&&typeof r==='object').map(r=>Object.assign(pbRow(), {item:String(r.item||''), qty:r.qty===''||r.qty==null?'':Number(r.qty), unit:String(r.unit||''), cat:pbCat(r.cat)?r.cat:'', section:String(r.section||''), day:PB_DAYS.includes(r.day)?r.day:'', ref:String(r.ref||'')}))}));
+      if (o.dishes.length){ PB = o; return; } }
+  }catch(e){}
+  PB = pbBlank();
+}
+function pbSave(){ try{ localStorage.setItem(PB_KEY, JSON.stringify(PB)); }catch(e){} }
+const pbEsc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function pbNum(v){ const n = typeof v==='number' ? v : parseFloat(String(v||'').replace(/,/g,'')); return Number.isFinite(n) ? n : null; }
+function pbTotal(d, r){ const q = pbNum(r.qty), p = pbNum(d.pax); return (q===null || p===null) ? '' : Math.round(q*p*1000)/1000; }
+function pbSection(r){ return r.section || (pbCat(r.cat) ? pbCat(r.cat).sec : ''); }
+
+// ---------- UI ----------
+function openBuilder(){ if (!PB) pbLoad(); document.getElementById('pbPanel').hidden = false; document.body.classList.add('pb-open'); pbRender(); window.scrollTo(0,0); }
+function closeBuilder(){ document.getElementById('pbPanel').hidden = true; document.body.classList.remove('pb-open'); }
+function pbRender(){
+  const el = document.getElementById('pbBody'); if (!el) return;
+  if (pbActive >= PB.dishes.length) pbActive = PB.dishes.length - 1;
+  const d = PB.dishes[pbActive];
+  const secList = (typeof SECTIONS!=='undefined'?SECTIONS:PB_CATS.map(c=>c.sec));
+  const secOpts = (sel)=>['<option value="">(from colour)</option>'].concat((sel && !secList.includes(sel) ? [sel] : []).concat(secList).map(s=>`<option ${s===sel?'selected':''}>${pbEsc(s)}</option>`)).join('');
+  const dayOpts = (sel)=>['<option value="">—</option>'].concat(PB_DAYS.map(x=>`<option ${x===sel?'selected':''}>${x}</option>`)).join('');
+  const catOpts = (sel)=>['<option value="">no colour</option>'].concat(PB_CATS.map(c=>`<option value="${c.k}" ${c.k===sel?'selected':''}>${pbEsc(c.label)}</option>`)).join('');
+  el.innerHTML = `
+  <div class="pb-open-bar"><button type="button" class="secondary" id="pbOpenBtn" onclick="pbOpenClick()">📂 Open existing spreadsheet</button>
+    <span class="pb-note">or drag an old prep sheet (.xlsx, .xls, .csv) anywhere here to edit it. Sections, prep days, colours and PAX are kept where possible.</span></div>
+  <div class="pb-tabs" role="tablist">${PB.dishes.map((x,i)=>`<button type="button" role="tab" class="pb-tab ${i===pbActive?'on':''}" aria-selected="${i===pbActive}" onclick="pbSelect(${i})">${pbEsc(x.name)}</button>`).join('')}
+    <button type="button" class="pb-tab pb-add" onclick="pbAddDish()" title="Add a dish tab">+ Dish</button></div>
+  <div class="pb-dishbar">
+    <label>Dish name <input id="pbName" value="${pbEsc(d.name)}" maxlength="60" oninput="pbSetName(this.value)"></label>
+    <label class="pb-pax">PAX <input id="pbPax" type="number" inputmode="numeric" min="0" value="${pbEsc(d.pax)}" oninput="pbSetPax(this.value)"></label>
+    <button type="button" class="ghost" onclick="pbDeleteDish()">Delete dish</button>
+  </div>
+  <div class="pb-legend" aria-label="Colour legend">${PB_CATS.map(c=>`<span class="pb-chip" style="background:#${c.hex};color:#${c.fg}">${pbEsc(c.label)}</span>`).join('')}
+    <span class="pb-note">Pick a colour on each row: it sets the group (Section). "Big Jobs" is now <b>Starch</b>. A Section you choose yourself always wins.</span></div>
+  <div class="pb-rows" id="pbRows">
+    <div class="pb-row pb-head" aria-hidden="true"><span>Colour</span><span>Item</span><span>Qty per pax</span><span>Unit</span><span>Total</span><span>Section</span><span>Prep day</span><span>Ref # (optional)</span><span></span></div>
+    ${d.rows.map((r,i)=>{ const c = pbCat(r.cat); return `<div class="pb-row" data-i="${i}">
+      <label class="pb-cell pb-colour" data-l="Colour"><span class="pb-swatch" style="background:${c?'#'+c.hex:'transparent'}"></span><select aria-label="Colour" onchange="pbSet(${i},'cat',this.value)">${catOpts(r.cat)}</select></label>
+      <label class="pb-cell" data-l="Item"><input aria-label="Item" class="pb-item" value="${pbEsc(r.item)}" oninput="pbSet(${i},'item',this.value,1)" placeholder="e.g. Chicken jus"></label>
+      <label class="pb-cell" data-l="Qty per pax"><input aria-label="Qty per pax" class="pb-qty" type="number" inputmode="decimal" step="any" value="${pbEsc(r.qty)}" oninput="pbSet(${i},'qty',this.value,1)"></label>
+      <label class="pb-cell" data-l="Unit"><input aria-label="Unit" class="pb-unit" value="${pbEsc(r.unit)}" oninput="pbSet(${i},'unit',this.value,1)" placeholder="g, ml, each"></label>
+      <span class="pb-cell pb-total" data-l="Total">${pbEsc(pbTotal(d,r))}${pbTotal(d,r)!==''&&r.unit?' '+pbEsc(r.unit):''}</span>
+      <label class="pb-cell" data-l="Section"><select aria-label="Section" onchange="pbSet(${i},'section',this.value)">${secOpts(r.section)}</select></label>
+      <label class="pb-cell" data-l="Prep day"><select aria-label="Prep day" onchange="pbSet(${i},'day',this.value)">${dayOpts(r.day)}</select></label>
+      <label class="pb-cell" data-l="Ref # (optional)"><input aria-label="Ref #" value="${pbEsc(r.ref)}" oninput="pbSet(${i},'ref',this.value,1)"></label>
+      <span class="pb-cell pb-acts"><button type="button" class="ghost" title="Move up" onclick="pbMove(${i},-1)">↑</button><button type="button" class="ghost" title="Move down" onclick="pbMove(${i},1)">↓</button><button type="button" class="ghost pb-del" title="Delete row" onclick="pbDelRow(${i})">✕</button></span>
+    </div>`; }).join('')}
+  </div>
+  <div class="pb-actions"><button type="button" class="secondary" onclick="pbAddRow()">+ Row</button>
+    <details class="pb-paste"><summary>Paste rows from Google Sheets or Excel</summary>
+      <textarea id="pbPasteBox" rows="4" placeholder="Copy rows from your sheet and paste here: Item, Qty per pax, Unit (then optional Section, Prep day). Tabs or commas."></textarea>
+      <button type="button" class="secondary" onclick="pbPaste()">Add pasted rows to this dish</button></details>
+    <button type="button" class="ghost" onclick="pbNew()">New / Clear</button>
+    <button type="button" class="ghost" onclick="pbExport()">⬇ Export .xlsx</button>
+    <button type="button" class="pb-done" onclick="pbDone()">I'm done →</button></div>
+  <div id="pbChoice"></div>`;
+}
+function pbSelect(i){ pbActive = i; pbRender(); }
+function pbAddDish(){ PB.dishes.push({name:'Dish '+(PB.dishes.length+1), pax:'', rows:[pbRow()]}); pbActive = PB.dishes.length-1; pbSave(); pbRender(); const n=document.getElementById('pbName'); if(n){ n.focus(); n.select(); } }
+function pbSetName(v){ PB.dishes[pbActive].name = v.slice(0,60) || 'Dish'; pbSave(); const t=document.querySelectorAll('.pb-tab')[pbActive]; if (t) t.textContent = PB.dishes[pbActive].name; }
+function pbSetPax(v){ PB.dishes[pbActive].pax = v==='' ? '' : Number(v); pbSave(); pbRefreshTotals(); }
+function pbDeleteDish(){ if (!confirm('Delete the dish "'+PB.dishes[pbActive].name+'" and its rows?')) return; PB.dishes.splice(pbActive,1); if (!PB.dishes.length) PB = pbBlank(); pbActive = Math.max(0, pbActive-1); pbSave(); pbRender(); }
+function pbSet(i, k, v, soft){ const r = PB.dishes[pbActive].rows[i]; if (!r) return; r[k] = (k==='qty') ? (v===''?'':Number(v)) : v; pbSave();
+  if (soft){ if (k==='qty'||k==='unit') pbRefreshTotals(); return; } pbRender(); }
+function pbRefreshTotals(){ const d = PB.dishes[pbActive]; document.querySelectorAll('#pbRows .pb-row[data-i]').forEach(el=>{ const r = d.rows[+el.dataset.i]; const t = pbTotal(d,r); el.querySelector('.pb-total').textContent = t==='' ? '' : t + (r.unit?' '+r.unit:''); }); }
+function pbAddRow(){ PB.dishes[pbActive].rows.push(pbRow()); pbSave(); pbRender(); const ins = document.querySelectorAll('.pb-item'); if (ins.length) ins[ins.length-1].focus(); }
+function pbDelRow(i){ const rs = PB.dishes[pbActive].rows; rs.splice(i,1); if (!rs.length) rs.push(pbRow()); pbSave(); pbRender(); }
+function pbMove(i, dir){ const rs = PB.dishes[pbActive].rows, j = i+dir; if (j<0||j>=rs.length) return; [rs[i],rs[j]]=[rs[j],rs[i]]; pbSave(); pbRender(); }
+function pbNew(){ if (!confirm('Clear the whole sheet (all dishes) and start again?')) return; PB = pbBlank(); pbActive = 0; pbSave(); pbRender(); }
+function pbPaste(){
+  const box = document.getElementById('pbPasteBox'); const lines = String(box.value||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const d = PB.dishes[pbActive]; let n = 0;
+  lines.forEach(l=>{ const c = (l.includes('\t') ? l.split('\t') : l.split(/\s*,\s*/)).map(x=>x.trim());
+    if (!c[0] || /^(item|ingredient|task)s?$/i.test(c[0])) return;
+    const r = pbRow(); r.item = c[0]; const q = pbNum(c[1]); r.qty = q===null?'':q; r.unit = c[2]||'';
+    const s4 = c[3]||'', s5 = c[4]||'';
+    [s4, s5].forEach(v=>{ if (!v) return; const day = PB_DAYS.find(x=>x.toLowerCase().startsWith(v.toLowerCase().replace(/^[1-7]\s*/,'').slice(0,3)) && v.length>=3);
+      const cat = PB_CATS.find(x=>x.sec.toLowerCase()===v.toLowerCase() || x.label.toLowerCase()===v.toLowerCase() || (typeof legendLabelCategory==='function' && legendLabelCategory(v)===x.sec));
+      if (cat) r.cat = cat.k; else if (day) r.day = day; });
+    if (d.rows.length===1 && !d.rows[0].item) d.rows = [];
+    d.rows.push(r); n++; });
+  pbSave(); pbRender(); pbToast(n ? 'Added '+n+' pasted row(s) to "'+d.name+'".' : 'Nothing to add: paste rows as Item, Qty per pax, Unit.');
+}
+function pbToast(msg){ const c = document.getElementById('pbChoice'); if (c) c.innerHTML = `<div class="pb-toast">${pbEsc(msg)}</div>`; }
+function pbValid(){ const ds = PB.dishes.filter(d=>d.rows.some(r=>r.item.trim())); return ds; }
+function pbDone(){
+  const ds = pbValid(); const c = document.getElementById('pbChoice');
+  if (!ds.length){ c.innerHTML = '<div class="pb-toast err">Add at least one item first.</div>'; return; }
+  c.innerHTML = outputChoiceHtml('builder');
+  c.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+// ---------- the two-output choice (after building, and after an upload) ----------
+let pbLastSource = 'builder';
+function outputChoiceHtml(src){
+  return `<div class="out-choice" id="outChoice-${src}" role="group" aria-label="Choose an output">
+    <div class="oc-title">What would you like to do with this sheet?</div>
+    <div class="oc-btns">
+      <button type="button" class="oc-btn oc-asis" onclick="printAsIs('${src}')"><b>🖨 Print my prep sheet as-is</b><span>Spreadsheet style, with your colours, one page per dish</span></button>
+      <button type="button" class="oc-btn oc-sort" onclick="sortWithPrepline('${src}')"><b>⚡ Sort it with Prepline</b><span>By dish, by team section and by prep day, ready to print or export</span></button>
+    </div></div>`;
+}
+function showOutputChoice(src){
+  const host = document.getElementById('outputChoice'); if (!host) return;
+  host.innerHTML = outputChoiceHtml(src); host.hidden = false;
+}
+function sortWithPrepline(src){
+  if (src==='builder'){
+    const ds = pbValid(); if (!ds.length) return;
+    const bytes = pbXlsxBytes(ds);
+    const f = new File([bytes], 'Prepline-built-sheet.xlsx', {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    pbSorting = true; closeBuilder();
+    // Fix: in Recipe database mode handleFile saves dishes to the database instead of sorting,
+    // so no prep list (and no dish tick boxes) appeared. The builder always sorts as a one-time list.
+    if (typeof toolMode!=='undefined' && toolMode!=='onetime' && typeof setToolMode==='function') setToolMode('onetime');
+    handleFile(f);
+    return;
+  }
+  const v = document.getElementById('preplistTab') || document.querySelector('.view-tabs'); if (v) v.scrollIntoView({behavior:'smooth'});
+}
+let pbSorting = false;
+
+// ---------- print as-is ----------
+function asIsModelFromRows(){
+  // from an uploaded sheet: the rows as read, colour from each row's group
+  const dishes = [];
+  (typeof ROWS!=='undefined'?ROWS:[]).forEach(r=>{ let d = dishes.find(x=>x.name===r.dish); if (!d){ d = {name:r.dish, pax:(typeof paxByDish!=='undefined' && paxByDish[r.dish]!=null)?paxByDish[r.dish]:'', rows:[]}; dishes.push(d); }
+    const c = pbCatForSection(r.section); d.rows.push({item:r.task, qty:r.qty, unit:r.unit||'', cat:c?c.k:'', section:r.section||'', day:r.day||'', ref:''}); });
+  return dishes;
+}
+function asIsHtml(dishes){
+  const leg = PB_CATS.map(c=>`<span class="lg" style="background:#${c.hex};color:#${c.fg}">${pbEsc(c.label)}</span>`).join('');
+  return dishes.map(d=>`<section class="asis-page"><div class="asis-head"><h1>${pbEsc(typeof cleanDishName==='function'?cleanDishName(d.name):d.name)}</h1><div class="asis-pax">PAX <b>${pbEsc(d.pax)}</b></div></div>
+    <table class="asis"><thead><tr><th class="mk"></th><th>Item</th><th>Qty per pax</th><th>Unit</th><th>Total needed</th><th>Section</th><th>Prep day</th><th>Ref #</th></tr></thead><tbody>
+    ${d.rows.filter(r=>String(r.item||'').trim()).map(r=>{ const c = pbCat(r.cat); return `<tr><td class="mk" style="background:${c?'#'+c.hex:'#fff'}"></td><td>${pbEsc(r.item)}</td><td class="n">${pbEsc(r.qty)}</td><td>${pbEsc(r.unit)}</td><td class="n">${pbEsc(pbTotal(d,r))}</td><td>${pbEsc(pbSection(r))}</td><td>${pbEsc(r.day ? (typeof dayLabel==='function'?dayLabel(r.day):r.day) : '')}</td><td class="ref">${pbEsc(r.ref)}</td></tr>`; }).join('')}
+    </tbody></table><div class="asis-legend">${leg}</div><div class="asis-foot">Prepline by Autoprod · printed as-is</div></section>`).join('');
+}
+const ASIS_CSS = `@page{size:A4 landscape;margin:12mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0}.asis-page{page-break-after:always;break-after:page;padding:4px}.asis-page:last-child{page-break-after:auto;break-after:auto}
+.asis-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #111;margin-bottom:8px}.asis-head h1{font-size:22px;margin:0 0 4px}.asis-pax{font-size:16px}
+table.asis{width:100%;border-collapse:collapse;font-size:13px}table.asis th{background:#333;color:#fff;text-align:left;padding:6px}table.asis td{border:1px solid #bbb;padding:6px;height:22px}
+table.asis .mk{width:14px;padding:0}table.asis .n{text-align:right}table.asis .ref{min-width:110px}
+.asis-legend{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}.lg{padding:4px 10px;border:1px solid #888;font-weight:700;font-size:12px}.asis-foot{margin-top:8px;font-size:10px;color:#666}`;
+function printAsIs(src){
+  const dishes = src==='builder' ? pbValid() : asIsModelFromRows();
+  if (!dishes.length) return;
+  let v = document.getElementById('asisView');
+  if (!v){ v = document.createElement('div'); v.id = 'asisView'; document.body.appendChild(v); }
+  v.innerHTML = `<div class="asis-bar no-print"><b>Print as-is preview</b><button type="button" class="pb-done" id="asisPrintBtn">🖨 Print</button><button type="button" class="ghost" id="asisCloseBtn">Close</button></div><div class="asis-wrap"><style>${ASIS_CSS.replace('@page{size:A4 landscape;margin:12mm}','')}</style>${asIsHtml(dishes)}</div>`;
+  v.hidden = false; document.body.classList.add('asis-open');
+  document.getElementById('asisCloseBtn').onclick = ()=>{ v.hidden = true; document.body.classList.remove('asis-open'); };
+  document.getElementById('asisPrintBtn').onclick = ()=>{
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Prep sheet (as-is)</title><style>${ASIS_CSS}</style></head><body>${asIsHtml(dishes)}</body></html>`;
+    window.__lastAsIsPrint = html;
+    if (typeof printViaIframe==='function') printViaIframe(html); else window.print();
+  };
+}
+
+// ---------- .xlsx export with real formulas, marker column and legend (own small writer: no extra library) ----------
+function pbExport(){
+  const ds = pbValid(); if (!ds.length){ pbToast('Add at least one item first.'); return; }
+  const bytes = pbXlsxBytes(ds);
+  const blob = new Blob([bytes], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Prepline-prep-sheet.xlsx'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  window.__lastPbExport = bytes;
+  pbToast('Exported Prepline-prep-sheet.xlsx: formulas, colour marker column and legend included. Upload it any time.');
+}
+function pbSheetName(n, used){ let s = String(n||'Dish').replace(/[\[\]:*?\/\\]/g,' ').trim().slice(0,31) || 'Dish'; let t = s, i = 2; while (used.has(t.toLowerCase())) t = s.slice(0,28)+' '+(i++); used.add(t.toLowerCase()); return t; }
+const pbX = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
+function pbXlsxBytes(dishes){
+  // styles: 0 normal, 1 bold, 2 header (white on dark), 3..7 category fills (marker + legend), 8 PAX cell
+  const fills = ['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>','<fill><patternFill patternType="solid"><fgColor rgb="FF333333"/><bgColor indexed="64"/></patternFill></fill>']
+    .concat(PB_CATS.map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c.hex}"/><bgColor indexed="64"/></patternFill></fill>`)).concat(['<fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill>']);
+  const xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>','<xf numFmtId="0" fontId="1" fillId="0" borderId="0" applyFont="1"/>','<xf numFmtId="0" fontId="2" fillId="2" borderId="0" applyFont="1" applyFill="1"/>']
+    .concat(PB_CATS.map((c,i)=>`<xf numFmtId="0" fontId="${c.fg==='FFFFFF'?2:1}" fillId="${3+i}" borderId="0" applyFont="1" applyFill="1"/>`)).concat(['<xf numFmtId="0" fontId="1" fillId="8" borderId="0" applyFont="1" applyFill="1"/>']);
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const catStyle = k => 3 + PB_CATS.findIndex(c=>c.k===k);
+  const used = new Set(), names = [];
+  const sheets = dishes.map(d=>{
+    const nm = pbSheetName(d.name, used); names.push(nm);
+    const rows = {};   // r -> [xml cells]
+    const put = (ref, xml)=>{ const r = +ref.match(/\d+/)[0]; (rows[r] = rows[r] || []).push([ref, xml]); };
+    const str = (ref, v, s)=>put(ref, `<c r="${ref}" t="inlineStr"${s?` s="${s}"`:''}><is><t xml:space="preserve">${pbX(v)}</t></is></c>`);
+    const num = (ref, v, s)=>put(ref, `<c r="${ref}"${s?` s="${s}"`:''}><v>${v}</v></c>`);
+    const blank = (ref, s)=>put(ref, `<c r="${ref}" s="${s}"/>`);
+    str('B1', d.name, 1); str('B2', 'Made with Prepline by Autoprod. Quantities are per pax; Total needed = Qty per pax x PAX.', 0);
+    str('B3', 'PAX', 1); const pax = pbNum(d.pax); if (pax!==null) num('C3', pax, 8); else blank('C3', 8);
+    blank('A5', 2); ['Item','Quantity per pax','Unit','Total needed','Section','Prep day','Ref # (optional)'].forEach((h,i)=>str('BCDEFGH'[i]+'5', h, 2));
+    let r = 6;
+    d.rows.filter(x=>String(x.item||'').trim()).forEach(x=>{
+      if (pbCat(x.cat)) blank('A'+r, catStyle(x.cat));
+      str('B'+r, x.item); const q = pbNum(x.qty); if (q!==null) num('C'+r, q);
+      if (x.unit) str('D'+r, x.unit);
+      const t = pbTotal(d, x); put('E'+r, `<c r="E${r}"><f>C${r}*$C$3</f>${t===''?'':`<v>${t}</v>`}</c>`);
+      if (x.section) str('F'+r, x.section); if (x.day) str('G'+r, x.day); if (x.ref) str('H'+r, x.ref);
+      r++; });
+    str('I5', 'Colour legend', 1); PB_CATS.forEach((c,i)=>str('I'+(6+i), c.label, catStyle(c.k)));
+    const sd = Object.keys(rows).map(Number).sort((a,b)=>a-b).map(rr=>`<row r="${rr}">${rows[rr].sort((a,b)=>pbColN(a[0])-pbColN(b[0])).map(x=>x[1]).join('')}</row>`).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="3" customWidth="1"/><col min="2" max="2" width="28" customWidth="1"/><col min="3" max="3" width="16" customWidth="1"/><col min="4" max="4" width="8" customWidth="1"/><col min="5" max="5" width="14" customWidth="1"/><col min="6" max="6" width="30" customWidth="1"/><col min="7" max="7" width="12" customWidth="1"/><col min="8" max="8" width="16" customWidth="1"/><col min="9" max="9" width="20" customWidth="1"/></cols><sheetData>${sd}</sheetData></worksheet>`;
+  });
+  const files = [
+    ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+    ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${names.map((n,i)=>`<sheet name="${pbX(n)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>`],
+    ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${names.map((n,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${names.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml', styles]
+  ].concat(sheets.map((s,i)=>['xl/worksheets/sheet'+(i+1)+'.xml', s]));
+  return pbZip(files);
+}
+function pbColN(ref){ const m = ref.match(/^[A-Z]+/)[0]; let n = 0; for (const ch of m) n = n*26 + ch.charCodeAt(0) - 64; return n; }
+let PB_CRC = null;
+function pbCrc(b){ if (!PB_CRC){ PB_CRC = new Uint32Array(256); for (let n=0;n<256;n++){ let c=n; for (let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; PB_CRC[n]=c>>>0; } }
+  let c = 0xFFFFFFFF; for (let i=0;i<b.length;i++) c = PB_CRC[(c^b[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function pbZip(files){
+  // a plain "stored" (uncompressed) ZIP: every spreadsheet app reads it
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = v=>[v&255,(v>>>8)&255], u32 = v=>[v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255];
+  files.forEach(([name, text])=>{ const nb = enc.encode(name), db = enc.encode(text), crc = pbCrc(db);
+    const lh = new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(db.length),...u32(db.length),...u16(nb.length),...u16(0)]);
+    parts.push(lh, nb, db);
+    cen.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(db.length),...u32(db.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]), nb);
+    off += lh.length + nb.length + db.length; });
+  const cenLen = cen.reduce((a,b)=>a+b.length,0);
+  const end = new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cenLen),...u32(off),...u16(0)]);
+  const all = parts.concat(cen, [end]); const out = new Uint8Array(all.reduce((a,b)=>a+b.length,0)); let p = 0; all.forEach(b=>{ out.set(b,p); p+=b.length; }); return out;
+}
+document.addEventListener('DOMContentLoaded', ()=>{ pbLoad(); });
+
+// ---------- 3.4.9-r8-builder3: open an existing spreadsheet (.xlsx/.xls/.csv) in the builder to edit ----------
+// The main-screen drop still sorts. Inside the builder a drop (or "Open existing spreadsheet") loads the sheet
+// into the grid: one tab per dish, with sections, prep days, colours, PAX and Ref # kept where they can be read.
+// When the columns can't be recognised a quick mapping step asks which column is which.
+let pbPendingWb = null;
+const PB_FIELDS = [['item','Item'],['qty','Qty per pax'],['unit','Unit'],['total','Total (used only if there is no qty per pax)'],['section','Section'],['day','Prep day'],['ref','Ref #'],['dish','Dish name (one sheet, many dishes)']];
+function pbHeaderField(t){
+  t = String(t==null?'':t).trim().toLowerCase().replace(/\s+/g,' ').replace(/[:.]$/,'');
+  if (!t || t.length > 40) return null;
+  if (/^ref\b|ref ?#|^ref ?no|^reference|^req\b|^recipe ref/.test(t)) return 'ref';
+  if (/total|needed|to make|required/.test(t)) return 'total';
+  if (/^(dish|menu item|plate|recipe|dish name|menu)$/.test(t)) return 'dish';
+  if (/^(items?|ingredients?|tasks?|components?|prep( items?| tasks?| list)?|description|products?|mise en place|job|jobs)$/.test(t)) return 'item';
+  if (/qty|quantity|per ?pax|per person|per portion|per serve|amount|portion/.test(t)) return 'qty';
+  if (/^(units?|uom|measure|u\/m|unit of measure)$/.test(t)) return 'unit';
+  if (/^(sections?|station|stations|category|group|team|team section|area|dept|department|colour|color)$/.test(t)) return 'section';
+  if (/prep ?day|^day$|^days$|^when$|^prep on$/.test(t)) return 'day';
+  return null;
+}
+function pbDay(v){
+  let t = String(v==null?'':v).trim().toLowerCase().replace(/^[1-7]\s*[.)-]?\s*/, '');
+  if (t.length < 3) return '';
+  return PB_DAYS.find(d=>d.toLowerCase().startsWith(t.slice(0,3))) || '';
+}
+function pbAoa(ws){ return XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:'', blankrows:true}); }
+function pbGuessMap(aoa){
+  // the header row = the row (in the first 25) with the most recognised headers, an Item column among them
+  let best = null;
+  for (let r = 0; r < Math.min(25, aoa.length); r++){
+    const map = {}; let n = 0;
+    (aoa[r]||[]).forEach((v,c)=>{ const f = pbHeaderField(v); if (f && map[f]==null){ map[f] = c; n++; } });
+    if (map.item!=null && n >= 2 && (!best || n > best.n)) best = {row:r, map, n};
+  }
+  return best;
+}
+function pbFindPax(ws, aoa, upto){
+  for (let r = 0; r < Math.min(upto==null?12:upto, aoa.length); r++){
+    const row = aoa[r]||[];
+    for (let c = 0; c < row.length; c++){
+      const t = String(row[c]==null?'':row[c]).trim();
+      const m = /^(pax|covers|guests|no\.? ?of ?pax|pax count|number of guests)\b\s*[:=-]?\s*(\d+(\.\d+)?)?/i.exec(t);
+      if (!m) continue;
+      if (m[2]) return Number(m[2]);
+      for (let k = 1; k <= 3; k++){ const n = pbNum(row[c+k]); if (n!==null) return n; }
+      const below = pbNum((aoa[r+1]||[])[c]); if (below!==null) return below;
+    }
+  }
+  return '';
+}
+function pbSheetTitle(aoa, upto, fallback){
+  for (let r = 0; r < Math.min(upto, aoa.length); r++){ for (const v of (aoa[r]||[])){ const t = String(v==null?'':v).trim();
+    if (t && isNaN(Number(t)) && !/^(pax|covers|guests)\b/i.test(t) && t.length <= 60 && !/prepline|made with|quantities are/i.test(t)) return t; } }
+  return fallback;
+}
+function pbSectionFromText(v){
+  const t = String(v==null?'':v).trim(); if (!t) return {section:'', cat:''};
+  const list = (typeof SECTIONS!=='undefined' ? SECTIONS : PB_CATS.map(c=>c.sec));
+  const exact = list.find(s=>s.toLowerCase()===t.toLowerCase());
+  const viaLabel = (typeof legendLabelCategory==='function') ? legendLabelCategory(t) : null;
+  const pc = PB_CATS.find(c=>c.label.toLowerCase()===t.toLowerCase() || c.sec.toLowerCase()===t.toLowerCase()) || pbCatForSection(exact||viaLabel||'');
+  return {section: exact || viaLabel || t, cat: pc ? pc.k : ''};
+}
+function pbRowColour(ws, r, cols, legend){
+  if (typeof cellFillKey!=='function' || typeof legendCatFor!=='function') return '';
+  const ic = cols.item;
+  const tryCols = [ic-1, ic-2, ic, cols.qty, cols.unit].filter(c=>c!=null && c>=0);
+  for (const c of tryCols){ const cell = ws[XLSX.utils.encode_cell({r, c})]; const k = cellFillKey(cell); const sec = legendCatFor(k, legend);
+    if (sec){ const pc = pbCatForSection(sec); if (pc) return pc.k; } }
+  return '';
+}
+function pbDefaultLegend(){ const l = {}; PB_CATS.forEach(c=>{ l['rgb:'+c.hex] = c.sec; }); return l; }
+function pbImportWorkbook(wb, forced){
+  if (typeof setWorkbookTheme==='function') setWorkbookTheme(wb);
+  let info = null; try{ info = typeof readColourLegend==='function' ? readColourLegend(wb) : null; }catch(e){}
+  const legend = Object.assign(pbDefaultLegend(), info ? info.legend : {});
+  const dishes = [], unknown = [];
+  wb.SheetNames.forEach(name=>{
+    const ws = wb.Sheets[name]; if (!ws || !ws['!ref']) return;
+    const aoa = pbAoa(ws); if (!aoa.length) return;
+    const g = forced ? {row: forced.row, map: forced.map} : pbGuessMap(aoa);
+    if (!g){ if (aoa.some(r=>r.some(v=>String(v).trim()))) unknown.push(name); return; }
+    const m = g.map, pax = pbFindPax(ws, aoa, Math.max(g.row, 12));
+    const title = /^(sheet|tab|page)\s*\d*$/i.test(name) || name === 'Prepline-built-sheet' ? pbSheetTitle(aoa, g.row, name) : name;
+    const byDish = {}; const order = []; let curDish = title;
+    for (let r = g.row + 1; r < aoa.length; r++){
+      const row = aoa[r]||[], cell = k => m[k]==null ? '' : row[m[k]];
+      const item = String(cell('item')==null?'':cell('item')).trim();
+      if (m.dish!=null && String(cell('dish')).trim()) curDish = String(cell('dish')).trim();
+      if (!item) continue;
+      if (typeof legendLabelCategory==='function' && legendLabelCategory(item) && pbNum(cell('qty'))===null && pbNum(cell('total'))===null) continue;  // a legend cell, not a job
+      const x = pbRow(); x.item = item.slice(0,200);
+      let q = pbNum(cell('qty'));
+      if (q===null && m.qty==null){ const t = pbNum(cell('total')), p = pbNum(pax); if (t!==null && p) q = Math.round(t/p*10000)/10000; }
+      x.qty = q===null ? '' : q; x.unit = String(cell('unit')||'').trim().slice(0,20);
+      const s = pbSectionFromText(cell('section')); x.section = s.section;
+      x.cat = pbRowColour(ws, r, m, legend) || s.cat;
+      if (x.cat && pbCat(x.cat).sec === x.section) x.section = '';      // the colour already says it
+      x.day = pbDay(cell('day')); x.ref = String(cell('ref')||'').trim().slice(0,40);
+      if (!byDish[curDish]){ byDish[curDish] = []; order.push(curDish); }
+      byDish[curDish].push(x);
+    }
+    order.forEach(dn=>dishes.push({name:String(dn).slice(0,60), pax: order.length===1 ? pax : '', rows: byDish[dn]}));
+  });
+  return {dishes, unknown};
+}
+function pbOpenClick(){ const i = document.getElementById('pbFileInput'); if (i){ i.value = ''; i.click(); } }
+function pbOpenFile(file){
+  if (!file) return;
+  if (!/\.(xlsx|xlsm|xls|csv)$/i.test(file.name)){ pbToast('Open a spreadsheet: .xlsx, .xls or .csv.'); return; }
+  if (typeof XLSX==='undefined'){ pbToast('The spreadsheet reader could not load.'); return; }
+  const rd = new FileReader();
+  rd.onload = e=>{
+    let wb; try{ wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellStyles:true, cellDates:false}); }catch(err){ pbToast('Could not read '+file.name+'.'); return; }
+    pbPendingWb = {wb, name:file.name};
+    const res = pbImportWorkbook(wb);
+    if (!res.dishes.length){ pbShowMapping(); return; }
+    pbApplyImport(res, file.name);
+  };
+  rd.readAsArrayBuffer(file);
+}
+function pbHasContent(){ return PB && PB.dishes.some(d=>d.rows.some(r=>String(r.item||'').trim())); }
+function pbApplyImport(res, fname){
+  if (pbHasContent() && !confirm('Open "'+fname+'" in the builder?\n\nOK = replace what is in the builder now.\nCancel = add it as extra dish tabs.')) PB.dishes = PB.dishes.filter(d=>d.rows.some(r=>String(r.item||'').trim())).concat(res.dishes);
+  else PB = {v:1, dishes: res.dishes};
+  pbActive = PB.dishes.length - res.dishes.length; pbSave(); pbRender();
+  const n = res.dishes.reduce((a,d)=>a+d.rows.length,0);
+  pbToast('Opened '+fname+': '+res.dishes.length+' dish'+(res.dishes.length>1?'es':'')+', '+n+' rows. Edit away, then "I\'m done →" to print as-is, sort or save as .xlsx.'+(res.unknown.length?' Skipped (no Item column found): '+res.unknown.join(', ')+'.':''));
+}
+function pbShowMapping(){
+  const p = pbPendingWb; if (!p) return;
+  const name = p.wb.SheetNames.find(n=>p.wb.Sheets[n]['!ref']) || p.wb.SheetNames[0];
+  const aoa = pbAoa(p.wb.Sheets[name]).slice(0, 8);
+  const ncol = Math.max(1, ...aoa.map(r=>r.length));
+  const L = c => XLSX.utils.encode_col(c);
+  const colOpts = f => ['<option value="">(none)</option>'].concat([...Array(ncol).keys()].map(c=>`<option value="${c}" ${f==='item'&&c===0?'selected':''}>${L(c)}: ${pbEsc(String((aoa[0]||[])[c]==null?'':(aoa[0]||[])[c]).slice(0,18))}</option>`)).join('');
+  const prev = aoa.map((r,i)=>`<tr><th>${i+1}</th>${[...Array(ncol).keys()].map(c=>`<td>${pbEsc(String(r[c]==null?'':r[c]).slice(0,24))}</td>`).join('')}</tr>`).join('');
+  document.getElementById('pbChoice').innerHTML = `<div class="pb-map" id="pbMap"><div class="oc-title">Which column is which?</div>
+    <p class="pb-note">Prepline couldn't recognise the headings in <b>${pbEsc(p.name)}</b>. Pick the columns once and every tab is read the same way.</p>
+    <div class="pb-map-prev"><table><tr><th></th>${[...Array(ncol).keys()].map(c=>`<th>${L(c)}</th>`).join('')}</tr>${prev}</table></div>
+    <div class="pb-map-grid"><label>Headings are in row <select id="pbMapRow">${aoa.map((r,i)=>`<option value="${i}">${i+1}</option>`).join('')}<option value="-1">no heading row</option></select></label>
+    ${PB_FIELDS.map(([k,l])=>`<label>${pbEsc(l)} <select data-f="${k}">${colOpts(k)}</select></label>`).join('')}</div>
+    <button type="button" class="pb-done" id="pbMapApply" onclick="pbApplyMapping()">Open with these columns</button> <button type="button" class="ghost" onclick="pbToast('Cancelled.')">Cancel</button></div>`;
+  document.getElementById('pbMap').scrollIntoView({block:'center'});
+}
+function pbApplyMapping(){
+  const p = pbPendingWb; if (!p) return;
+  const map = {}; document.querySelectorAll('#pbMap select[data-f]').forEach(s=>{ if (s.value!=='') map[s.dataset.f] = +s.value; });
+  if (map.item==null){ alert('Pick the Item column.'); return; }
+  const res = pbImportWorkbook(p.wb, {row: +document.getElementById('pbMapRow').value, map});
+  if (!res.dishes.length){ pbToast('No rows found with those columns.'); return; }
+  pbApplyImport(res, p.name);
+}
+function pbWireDrop(){
+  const panel = document.getElementById('pbPanel'); if (!panel || panel.__pbDrop) return; panel.__pbDrop = true;
+  ['dragenter','dragover'].forEach(ev=>panel.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); panel.classList.add('pb-drag'); }));
+  panel.addEventListener('dragleave', e=>{ if (e.target===panel) panel.classList.remove('pb-drag'); });
+  panel.addEventListener('drop', e=>{ e.preventDefault(); e.stopPropagation(); panel.classList.remove('pb-drag'); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) pbOpenFile(f); });
+  const inp = document.getElementById('pbFileInput'); if (inp) inp.addEventListener('change', e=>{ const f = e.target.files && e.target.files[0]; if (f) pbOpenFile(f); });
+}
+document.addEventListener('DOMContentLoaded', pbWireDrop);
+
+</script>
 </body>
 </html>
