@@ -12,7 +12,7 @@
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '4.1.1';
+const VERSION = '4.2.0';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
 // The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
 const NO_CDN = SCOPE_PATH === '/prepline-team/';
@@ -26,7 +26,9 @@ const APP_SHELL = ['./', './index.html', './manifest.webmanifest',
 const LOCAL_LIBS = ['./lib/xlsx.full.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js',
   // 4.1.1: the 4-step pipeline and its hidden sorter copy, so pipeline/ also works offline after one online visit
   './pipeline/index.html', './pipeline/sorter/index.html',
-  './pipeline/sorter/vendor/xlsx.full.min.js', './pipeline/sorter/vendor/pdf.min.mjs', './pipeline/sorter/vendor/pdf.worker.min.mjs'];
+  './pipeline/sorter/vendor/xlsx.full.min.js', './pipeline/sorter/vendor/pdf.min.mjs', './pipeline/sorter/vendor/pdf.worker.min.mjs',
+  // 4.2.0: Section 1 work orders + allocation page
+  './allocation/', './allocation/index.html', './allocation/alloc.css', './allocation/alloc-engine.js', './allocation/alloc-ui.js', './allocation/vendor/xlsx-js-style.min.js'];
 const CDN_LIBS = [
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.min.mjs',
