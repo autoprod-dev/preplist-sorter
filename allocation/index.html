@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prepline · Work orders + allocation</title>
+<link rel="stylesheet" href="alloc.css">
+</head><body>
+<header class="noprint"><a href="../" class="back">← Prepline</a><h1>Work orders + allocation</h1><span class="ver">Section 1 · preview</span></header>
+<main class="noprint">
+ <section class="card">
+  <h2>1 · Upload work order</h2>
+  <div id="drop" class="drop" tabindex="0" role="button" aria-label="Upload work order">
+   <strong>Drop the colour-coded work order (.xlsx) here</strong><br>or click to choose a file
+   <input type="file" id="woFile" accept=".xlsx,.xlsm,.xls" hidden>
+  </div>
+  <p id="woStatus" class="status"></p>
+  <div class="row"><button id="printReview" disabled>Print work order review</button>
+  <details><summary>Settings</summary>
+   <p class="hint">Changing settings rebuilds the allocation from the work order (your edits are cleared).</p>
+   <label>Filename date <select id="setFileDate"><option value="lastWorkOrderDate">Last day in the work order</option><option value="weekSunday">Sunday of the week</option></select></label>
+   <label>Prep days ahead <input id="setAhead" type="number" min="1" max="5"></label>
+   <label>Round pax to <input id="setRound" type="number" min="0" step="1"> (0 = off)</label>
+   <label>Cutaway rows <select id="setCut"><option value="section-by-row-colour">Use row colour</option><option value="skip">Skip</option></select></label>
+   <label>Advanced (JSON)<textarea id="setJson" rows="8"></textarea></label>
+   <button id="applySettings">Apply settings</button> <button id="resetSettings">Reset to defaults</button>
+  </details></div>
+ </section>
+ <section class="card" id="allocCard" hidden>
+  <h2>2 · Allocation <small id="saveState"></small></h2>
+  <p class="hint">Tap any dish, pax, date, staff or notes cell to change it. Edits save on this device and go into print and the download.</p>
+  <div class="row"><button id="dlXlsx" class="primary">Download <span id="fname"></span></button>
+   <button id="printDay">Print this day</button><button id="printWeek">Print all 7 days</button>
+   <button id="clearAlloc" class="danger">Clear allocation</button></div>
+  <nav id="tabs" class="tabs"></nav>
+  <div id="editor"></div>
+ </section>
+ <section class="card" id="reviewCard" hidden>
+  <h2>Work order review</h2>
+  <p class="hint">Rows not placed on the allocation, and why.</p>
+  <div id="review"></div>
+ </section>
+</main>
+<div id="printArea"></div>
+<script src="vendor/xlsx-js-style.min.js"></script>
+<script src="alloc-engine.js"></script>
+<script src="alloc-ui.js"></script>
+</body></html>
