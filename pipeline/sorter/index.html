@@ -2796,6 +2796,9 @@ function routeFiles(fileList, opts){
   if (opts.append && !pdfs.length){ setStatus('Append works with production tool PDFs only.', 'err'); return; }
   if (pdfs.length && !opts.__poSplit){
     splitPoFiles(pdfs).then(({pts, pos})=>{
+      // 4.1.1: a new week's production tool (not "append") starts a new set of purchase orders, so last week's POs
+      // can't be matched to this week's ingredients. Uploading POs on their own still adds to the current set.
+      if (pts.length && !opts.append){ const kept = POS.filter(x=>pos.indexOf(x)>=0); if (kept.length !== POS.length){ POS = kept; poLinks = {}; try{ localStorage.setItem(PO_LINK_KEY, '{}'); }catch(e){} savePOs(); } }
       const others = files.filter(f=>!f.name.toLowerCase().endsWith('.pdf'));
       const msg = pos.length ? 'Read '+pos.length+' purchase order'+(pos.length>1?'s':'')+' ('+pos.reduce((n,p)=>n+p.items.length,0)+' lines). ' : '';
       if (pts.length || others.length) routeFiles([...pts, ...others], Object.assign({}, opts, {__poSplit:true, __poMsg: msg}));
