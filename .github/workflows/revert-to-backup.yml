@@ -1,0 +1,78 @@
+# One-action revert for Paula's live preplist-sorter.
+# Restores master's tree to a backup tag as a NEW commit (no force-push).
+name: Revert to backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Backup tag to restore (tree only; new commit on master)'
+        required: true
+        default: backup-pre-copy-publish-20261028
+      mode:
+        description: 'restore = put tag tree on master; restore-latest = re-apply tip of live-backup-4.3.5 (same idea)'
+        required: true
+        default: restore
+        type: choice
+        options:
+          - restore
+          - restore-latest
+
+permissions:
+  contents: write
+
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Resolve restore ref
+        id: ref
+        run: |
+          set -euo pipefail
+          MODE="${{ github.event.inputs.mode }}"
+          TAG="${{ github.event.inputs.tag }}"
+          if [ "$MODE" = "restore-latest" ]; then
+            REF="live-backup-4.3.5"
+          else
+            REF="$TAG"
+          fi
+          git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" 2>/dev/null || true
+          git fetch origin "+refs/heads/${REF}:refs/remotes/origin/${REF}" 2>/dev/null || true
+          if git rev-parse --verify "refs/tags/${REF}" >/dev/null 2>&1; then
+            SHA=$(git rev-parse "refs/tags/${REF}")
+          elif git rev-parse --verify "origin/${REF}" >/dev/null 2>&1; then
+            SHA=$(git rev-parse "origin/${REF}")
+          elif git rev-parse --verify "${REF}" >/dev/null 2>&1; then
+            SHA=$(git rev-parse "${REF}")
+          else
+            echo "Could not resolve restore ref: ${REF}"
+            exit 1
+          fi
+          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "Restoring tree from ${REF} (${SHA})"
+
+      - name: Restore tree as new commit
+        env:
+          REF: ${{ steps.ref.outputs.ref }}
+          SHA: ${{ steps.ref.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "Autoprod"
+          git config user.email "autoprod.help@gmail.com"
+          # Restore every tracked path from the backup tip (new commit, no force)
+          git checkout "${SHA}" -- .
+          if git diff --cached --quiet && git diff --quiet; then
+            echo "Working tree already matches ${REF}; nothing to commit."
+            exit 0
+          fi
+          git add -A
+          git commit -m "Revert live to ${REF} (${SHA:0:7}) via Actions (no force)."
+          git push origin HEAD:master
+          echo "Pushed new revert commit: $(git rev-parse --short HEAD)"
