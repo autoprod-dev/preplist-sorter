@@ -81,7 +81,7 @@
     if (j.status === 'expired') return showBuy();
     if (!OK[j.status]) return showOffline();
     unlock();
-    if (j.status === 'trial' && j.daysLeft > 0) note('Trial: ' + j.daysLeft + (j.daysLeft === 1 ? ' day' : ' days') + ' left');
+    if (j.status === 'trial' && j.daysLeft > 0 && j.showStatus) note('Trial: ' + j.daysLeft + (j.daysLeft === 1 ? ' day' : ' days') + ' left');
   }
   function showBlocked(msg) {
     ready(function () {
