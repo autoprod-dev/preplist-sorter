@@ -31,17 +31,18 @@ else
   exit 1
 fi
 
-echo "Restoring tree from ${REF} (${SHA}) onto ${BRANCH} as a new commit..."
+echo "Restoring full tree from ${REF} (${SHA}) onto ${BRANCH} as a new commit..."
 CUR=$(git rev-parse --abbrev-ref HEAD)
 git checkout "$BRANCH"
 git pull --ff-only "$REMOTE" "$BRANCH" || true
+# Full replace so files added after the backup are removed
+git rm -rf -q .
 git checkout "${SHA}" -- .
-if git diff --cached --quiet && git diff --quiet; then
+if git diff --cached --quiet; then
   echo "Already matches ${REF}; nothing to do."
   git checkout "$CUR" 2>/dev/null || true
   exit 0
 fi
-git add -A
 git -c user.name=Autoprod -c user.email=autoprod.help@gmail.com \
   commit -m "Revert live to ${REF} (${SHA:0:7}) via local script (no force)."
 git push "$REMOTE" "HEAD:${BRANCH}"

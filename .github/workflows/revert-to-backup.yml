@@ -1,5 +1,5 @@
 # One-action revert for Paula's live preplist-sorter.
-# Restores master's tree to a backup tag as a NEW commit (no force-push).
+# Restores master's FULL tree to a backup tag/branch as a NEW commit (no force-push).
 name: Revert to backup
 
 on:
@@ -10,7 +10,7 @@ on:
         required: true
         default: backup-pre-copy-publish-20261028
       mode:
-        description: 'restore = put tag tree on master; restore-latest = re-apply tip of live-backup-4.3.5 (same idea)'
+        description: 'restore = tag tree on master; restore-latest = live-backup-4.3.5 tip'
         required: true
         default: restore
         type: choice
@@ -56,7 +56,7 @@ jobs:
           fi
           echo "ref=${REF}" >> "$GITHUB_OUTPUT"
           echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
-          echo "Restoring tree from ${REF} (${SHA})"
+          echo "Restoring full tree from ${REF} (${SHA})"
 
       - name: Restore tree as new commit
         env:
@@ -66,13 +66,14 @@ jobs:
           set -euo pipefail
           git config user.name "Autoprod"
           git config user.email "autoprod.help@gmail.com"
-          # Restore every tracked path from the backup tip (new commit, no force)
+          # Full tree replace: drop current tracked files, then restore backup tip.
+          # (git checkout <tag> -- . alone leaves files added after the tag.)
+          git rm -rf -q .
           git checkout "${SHA}" -- .
-          if git diff --cached --quiet && git diff --quiet; then
-            echo "Working tree already matches ${REF}; nothing to commit."
+          if git diff --cached --quiet; then
+            echo "Index already matches ${REF}; nothing to commit."
             exit 0
           fi
-          git add -A
           git commit -m "Revert live to ${REF} (${SHA:0:7}) via Actions (no force)."
           git push origin HEAD:master
           echo "Pushed new revert commit: $(git rev-parse --short HEAD)"
