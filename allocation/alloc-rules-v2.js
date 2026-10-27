@@ -10,6 +10,7 @@ const CAN=[[/tofu.*(lettuce|cup|mushroom)/,'tofu lettuce cups'],[/vol.?au.?vent/
 function canName(t){const s=lc(t);for(const [re,n] of CAN)if(re.test(s))return n;return nm(t).split(' ').slice(0,3).join(' ');}
 const SKIP=[[/muesli|energy bar|\(pfd|piece of whole/i,'lunch bag / box filling'],[/rider/i,'rider'],[/promoter/i,'promoter catering'],[/tea ?& ?cof/i,'tea / coffee'],[/^dietary|^dietar/i,'dietary row'],[/^cold items|^hot items/i,'header row'],[/additional canap/i,'canapé station header (party continues)'],[/medjool/i,'medjool dates (not Larder)'],[/skewer/i,'fruit skewers (not listed by Paula)'],[/juice flavour|juicer|fresh juice deliver|^mango, pineapple|^kale, spinach|^carrot, celery/i,'juice station component'],[/crew meal/i,'crew meal'],[/antipasto/i,'antipasto (not listed by Paula — confirm)'],[/^dessert:?$/i,'header row (dessert)']];
 function entity(ev){const p=ev.split('|').map(s=>s.trim()).filter(Boolean);if(p.length>1)return lc(p[p.length-1]);const m=ev.match(/\(([A-Z0-9]{3,})\)/);if(m)return m[1].toLowerCase();return lc(ev.replace(/\b20\d\d\b/g,'').replace(/national convention|conference|summit/ig,'').trim().split(/\s+/).slice(0,2).join(' '));}
+function mins(t){const m=String(t||'').match(/(\d{1,2})[:.](\d{2})\s*(am|pm)?/i);if(!m)return null;let h=+m[1];if(m[3]&&/pm/i.test(m[3])&&h<12)h+=12;if(m[3]&&/am/i.test(m[3])&&h===12)h=0;return h*60+(+m[2]);}
 const DW=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 function build(wo,S,E){const L=wo.lines;const out=new Map();const skipped=[];const trace=[];let ord=0;
  const isAmex=ev=>/american express|amex/i.test(ev);const artists=new Set(L.filter(l=>/ent cent|green room|tiktok/i.test(l.room)&&!l.event.includes('|')).map(l=>lc(l.event.trim())));
@@ -17,7 +18,7 @@ function build(wo,S,E){const L=wo.lines;const out=new Map();const skipped=[];con
  function put(sec,dates,dish,part,o){dates=[].concat(dates).sort();const key=sec+'|'+dates.join(',')+'|'+dish;let g=out.get(key);
   if(!g){g={section:sec,dates,date:dates[0],dish,parts:[],rows:[],first:o.r,kind:o.kind||'dish',fill:o.fill||null,flags:new Set(),round:o.round,raw:null,count:o.count};out.set(key,g);}
   if(part!=null){if(typeof part==='number'){if(!g.parts.some(p=>p.k===o.k))g.parts.push({ev:o.ev,q:part,k:o.k});}else g.raw=part;}
-  if(o.flag)g.flags.add(o.flag);g.rows.push(o.r);g.first=Math.min(g.first,o.r);trace.push({woRow:o.r,dish,section:sec});return g;}
+  if(o.tm){const t=mins(o.tm);if(t!=null&&(g.tm==null||t<g.tm))g.tm=t;}if(o.flag)g.flags.add(o.flag);g.rows.push(o.r);g.first=Math.min(g.first,o.r);trace.push({woRow:o.r,dish,section:sec});return g;}
  const skip=(l,why)=>skipped.push({r:l.r,item:l.item,why});
  let ctx={},buffet={},lastHead=null;const cx0=k=>ctx[k]&&ctx[k].t;
  const nxt={};for(let i=0;i<L.length;i++){for(let j=i+1;j<L.length;j++){if(L[j].date===L[i].date&&L[j].event===L[i].event){nxt[L[i].r]=L[j];break;}}}
@@ -25,7 +26,7 @@ function build(wo,S,E){const L=wo.lines;const out=new Map();const skipped=[];con
  const platEv=new Set(L.filter(x=>x.colour==='C9DAF8'&&/platter/i.test(x.item)&&!/fruit/i.test(x.item)).map(x=>x.date+'|'+x.event));
  let prevL=null;const lead=t=>String(t||'').toLowerCase().replace(/[^a-z]/g,'').slice(0,10);
  for(const l of L){const ek=l.date+'|'+l.event;
-  if(prevL&&l.qty>1&&prevL.qty===l.qty&&prevL.item===l.item&&prevL.room===l.room&&prevL.date===l.date&&prevL.event===l.event&&l.time&&l.cost&&prevL.time===l.time&&prevL.cost===l.cost&&prevL.colour===l.colour&&lead(prevL.notes)!==lead(l.notes)){skip(l,'same order continued on the next row (notes overflow)');prevL=l;continue;}prevL=l;const it=l.item, its=lc(it);const col=l.colour;const ev=l.event;const base={r:l.r,ev:l.r,k:l.r};
+  if(prevL&&l.qty>1&&prevL.qty===l.qty&&prevL.item===l.item&&prevL.room===l.room&&prevL.date===l.date&&prevL.event===l.event&&l.time&&l.cost&&prevL.time===l.time&&prevL.cost===l.cost&&prevL.colour===l.colour&&lead(prevL.notes)!==lead(l.notes)){skip(l,'same order continued on the next row (notes overflow)');prevL=l;continue;}prevL=l;const it=l.item, its=lc(it);const col=l.colour;const ev=l.event;const base={r:l.r,ev:l.r,k:l.r,tm:l.time};
   if(!col){if(l.qty>1){const pb=buffet[ek];const join=pb&&pb.session&&lastHead===pb&&!pb.closed&&/sydney eats/i.test(it);const run=join?pb.run:{id:l.r,room:l.room};
    buffet[ek]={q:l.qty,r:l.r,name:it,run,session:/sydney eats/i.test(it),closed:join&&l.room===run.room};lastHead=buffet[ek];ctx[ek]=null;}skip(l,'event / menu header (pax passed to its dishes)');continue;}
   const sk=SKIP.find(([re])=>re.test(its));if(sk){if(!/additional canap|^cold items/i.test(its)&&!(ctx[ek]&&ctx[ek].t==='canape'&&/dietar/.test(its)));skip(l,sk[1]);continue;}
@@ -103,7 +104,7 @@ function build(wo,S,E){const L=wo.lines;const out=new Map();const skipped=[];con
    else if(g.kind==='count'||g.kind==='mezze'||g.kind==='green')pv=total;else pv=evs.length>1?'='+evs.map(e=>e.q).join('+'):total;}
   if(g.syd&&evs.length>1)g.flags.add('Sum of Sydney Eats sessions per event — Paula sometimes applies a 0.8 ratio or a different figure; confirm');
   if(g.kind==='mezze')pv=evs.length?evs[0].q:null;
-  lines.push({section:g.section,date:dates[0],dates,dish,paxValue:pv,paxTotal:typeof pv==='number'?pv:total,dayWord,fill:g.fill,flag:[...g.flags].join(' · ')||null,woRows:[...new Set(g.rows)],first:g.first,kind:g.kind,syd:!!g.syd});}
+  lines.push({section:g.section,date:dates[0],dates,dish,paxValue:pv,paxTotal:typeof pv==='number'?pv:total,dayWord,fill:g.fill,flag:[...g.flags].join(' · ')||null,woRows:[...new Set(g.rows)],first:g.first,kind:g.kind,syd:!!g.syd,startMin:g.tm==null?null:g.tm});}
  // salad bar parts deduped by header row already (k). Lines that are only 'salad bar' with no salads? fine.
  return {lines,skipped,trace};}
 const API={build,nm,canName,CYAN};root.AllocRulesV2=API;if(typeof module!=='undefined')module.exports=API;
