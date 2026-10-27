@@ -63,7 +63,16 @@ const ALLOC_RATIOS=root.ALLOC_RATIOS||{
 const CYANF='00FFFF';
 function paxNum(v){if(typeof v==='number')return v;const s=String(v==null?'':v).replace(/^=/,'');return /^[\d+\s.]+$/.test(s)?s.split('+').reduce((a,b)=>a+(Number(b)||0),0):0;}
 const pick=(t,p)=>{for(const [u,n] of t)if(p<=u)return n;return t[t.length-1][1];};
-function staffFor(sec,pax,R,o){R=R||ALLOC_RATIOS;o=o||{};const T=(R[o.prep?'prep':'service']||{})[sec];if(!T)return null;const t=o.syd?T.sydEats:(T.other||T.sydEats);let n=pick(t,pax);if(T.max)n=Math.min(n,T.max);return n;}
+function staffFor(sec,pax,R,o){R=R||ALLOC_RATIOS;o=o||{};
+  try{const PR=root.PreplineRules||(typeof window!=='undefined'?window.PreplineRules:null);
+    if(PR&&typeof PR.evaluate==='function'){
+      const out=PR.evaluate({section:sec,pax:pax,task:''},{matchMode:'first'});
+      if(out&&out.staff!=null&&Number.isFinite(Number(out.staff))){
+        let n=Number(out.staff);const T=(R[o.prep?'prep':'service']||{})[sec];if(T&&T.max)n=Math.min(n,T.max);return n;
+      }
+    }
+  }catch(e){}
+  const T=(R[o.prep?'prep':'service']||{})[sec];if(!T)return null;const t=o.syd?T.sydEats:(T.other||T.sydEats);let n=pick(t,pax);if(T.max)n=Math.min(n,T.max);return n;}
 const isLunchbox=l=>/lunch ?box|lunchbag|grab and go|bento/i.test(l.dish||'');
 const isEntree=l=>/\bentr[eé]e\b/i.test(l.dish||'');
 const canItems=(l,R,prep)=>String(l.dish||'').split(' / ').filter(x=>x&&!(prep&&R.canapeNoPrep.test(x))).length;
@@ -116,5 +125,6 @@ function applyStaff(res,R){R=R||ALLOC_RATIOS;
     svc[sec]=svcTotal;}}
   if(!rostered){for(const blk of [...sh.service,...sh.prep])for(const l of blk.lines)if(l&&l.staff){l.notes=(l.notes?l.notes+' · ':'')+'suggested '+l.staff+' (usually closed Sunday; no service or Monday breakfast before 7:30)';l.staff='';}}}
  return res;}
+try{root.ALLOC_RATIOS=ALLOC_RATIOS;}catch(e){}
 const API={ALLOC_RATIOS,applyStaff,staffFor,isRaw,normalise,mondays,defaultWeek,classify};root.AllocRaw=API;if(typeof module!=='undefined')module.exports=API;
 })(typeof window!=='undefined'?window:globalThis);
