@@ -6,6 +6,8 @@
   var BASE = (document.currentScript && document.currentScript.src) || location.href;
   if (!C.enabled || !C.endpoint) return;
   var KEY = 'prepline.account.v2';
+  // the account sign-up replaces the older welcome box: mark it done so only one form ever shows
+  try { if (!localStorage.getItem('prepline.signup.v1')) localStorage.setItem('prepline.signup.v1', JSON.stringify({ d: new Date().toISOString().slice(0, 10), via: 'account' })); } catch (e) {}
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
   function st() { try { return JSON.parse(ls(KEY) || '{}') || {}; } catch (e) { return {}; } }
   function put(s) { ls(KEY, JSON.stringify(s)); }
