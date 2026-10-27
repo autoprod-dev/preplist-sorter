@@ -5,7 +5,7 @@
 <title>Prepline · Work orders + allocation</title>
 <link rel="stylesheet" href="alloc.css">
 </head><body>
-<header class="noprint"><a href="../" class="back">← Prepline</a><h1>Work orders + allocation</h1><span class="ver">Section 1 · 4.2.5</span></header>
+<header class="noprint"><a href="../" class="back">← Prepline</a><h1>Work orders + allocation</h1><span class="ver">Section 1 · 4.2.6</span></header>
 <main class="noprint">
  <section class="card">
   <h2>1 · Upload work order</h2>
@@ -31,7 +31,9 @@
   <p class="hint">Tap any dish, pax, date, staff or notes cell to change it. Edits save on this device and go into print and the download.</p>
   <div class="row"><button id="dlXlsx" class="primary">Download <span id="fname"></span></button>
    <button id="printDay">Print this day</button><button id="printWeek">Print all 7 days</button>
+   <button id="undoEdit" disabled>Undo</button><button id="resetAuto">Reset to automatic</button>
    <button id="clearAlloc" class="danger">Clear allocation</button></div>
+  <p class="hint noprint">Edit mode: tap a cell to change dish, pax, date or staff. Drag ⠿ to move a line within or between sections; hold it over a day tab to move it to that day. × deletes, Undo steps back.</p>
   <nav id="tabs" class="tabs"></nav>
   <div id="editor"></div>
  </section>

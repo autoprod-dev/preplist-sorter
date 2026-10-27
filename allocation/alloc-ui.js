@@ -21,7 +21,7 @@ function readWO(buf){const wb=X.read(buf,{cellStyles:true,cellDates:false});
  return rows;}
 
 function generate(rows,meta){const wo=E.parseWorkOrder(rows);if(!wo.days.length)throw new Error('No day headings (e.g. "Monday, 26 October, 2026") found in column A.');
- const res=E.buildAllocation(wo,settings);
+ const res=E.buildAllocation(wo,settings);if(window.AllocRaw)AllocRaw.applyStaff(res);
  state={v:1,woName:meta.name,woSig:meta.sig,woRows:rows,createdAt:new Date().toISOString(),day:0,res:{week:res.week,fileDate:res.fileDate,lastWO:res.lastWO,sheets:res.sheets,skipped:res.skipped,placed:res.trace.length}};
  save(true);render();}
 
@@ -45,14 +45,15 @@ function render(){if(!state){$('allocCard').hidden=true;$('reviewCard').hidden=t
  renderDay();renderReview();}
 function fmtShort(iso){const[y,m,d]=iso.split('-');return d+'.'+m+'.'+y.slice(2);}
 function cell(path,val,cls){return `<td class="${cls||''}"><div contenteditable="true" data-p="${path}" spellcheck="false">${esc(val)}</div></td>`;}
-function lineRow(base,l,i){const p=base+'.'+i;return `<tr${l.flag?' class="flagged"':''}>${cell(p+'.dish',l.dish,l.fill?'cy':'')}${cell(p+'.paxValue',l.paxValue,'c')}${cell(p+'.dayWord',dayWord(l),'c')}${cell(p+'.staff',l.staff,'c')}${cell(p+'.notes',l.notes)}${cell(p+'.alloc',l.alloc)}<td class="c"><button class="mini" data-del="${base}" data-i="${i}" title="Remove line" aria-label="Remove line">×</button></td></tr>`;}
+const COLOPTS=[['','No colour'],['C9DAF8','Sandwich'],['B6D7A8','Salad'],['D9EAD3','Green room / lunchbox'],['70AD47','Platters'],['FFC000','Fruit'],['D5A6BD','Kiosk'],['F4CCCC','Canapé'],['FFFF00','Entrée']];
+function lineRow(base,l,i){const p=base+'.'+i;return `<tr data-row="${base}" data-i="${i}"${l.flag?' class="flagged"':''}>${cell(p+'.dish',l.dish,l.fill?'cy':'').replace('<div',`<span class="grip" data-grip="${base}" data-i="${i}" title="Drag to move (drop on a day tab to move to that day)" aria-label="Drag to move">⠿</span><div`)}${cell(p+'.paxValue',l.paxValue,'c')}${cell(p+'.dayWord',dayWord(l),'c')}${cell(p+'.staff',l.staff,'c')}${cell(p+'.notes',l.notes)}${cell(p+'.alloc',l.alloc)}<td class="c nowrap"><select class="colSel" data-col="${base}" data-i="${i}" title="Colour / category" aria-label="Colour / category" style="background:#${l.fill||'fff'}">${COLOPTS.map(([c,n])=>`<option value="${c}"${(l.fill||'')===c?' selected':''}>${n}</option>`).join('')}</select><button class="mini" data-del="${base}" data-i="${i}" title="Remove line" aria-label="Remove line">×</button></td></tr>`;}
 function renderDay(){const s=state.res.sheets[state.day];const d=state.day;let h=`<div class="sheetwrap"><table class="ed"><colgroup><col style="width:30%"><col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:16%"><col style="width:17%"><col style="width:4%"></colgroup>`;
  h+=`<tr><td colspan="7" class="datehead">${esc(fmtDate(s.date))}</td></tr><tr><th>Dishes</th><th>No. of pax</th><th>Date of Function</th><th>Staff Required</th><th>Notes</th><th>allocated Staff</th><th></th></tr>`;
  h+=`<tr><td colspan="7" class="black">Service</td></tr>`;
- s.service.forEach((sec,k)=>{const b=`${d}.service.${k}`;h+=`<tr><td colspan="6" class="sec" style="background:#${sec.fill}">${esc(sec.key)}</td><td class="c"><button class="mini" data-add="${b}" title="Add line">+</button></td></tr>`;sec.lines.forEach((l,i)=>h+=lineRow(b,l,i));});
+ s.service.forEach((sec,k)=>{const b=`${d}.service.${k}`;h+=`<tr data-sec="${b}"><td colspan="6" class="sec" style="background:#${sec.fill}"><span contenteditable="true" spellcheck="false" data-secname="${b}" data-f="key">${esc(sec.key)}</span></td><td class="c"><button class="mini" data-add="${b}" title="Add line">+</button></td></tr>`;sec.lines.forEach((l,i)=>h+=lineRow(b,l,i));});
  h+=`<tr><td colspan="7" class="black">Prep <span style="font-weight:400;font-size:12px">(for ${s.aheadDates.map(x=>DAYCAP(E.DAYS[new Date(x+'T00:00').getDay()])).join(', ')})</span></td></tr>`;
  s.prep.forEach((sec,k)=>{const b=`${d}.prep.${k}`;const m=sec.matrix.map((mm,i)=>`<label>${esc(mm[1])} <input type="number" min="0" inputmode="numeric" data-count="${b}" data-i="${i}" value="${esc((sec.counts||[])[i])}"></label>`).join(' ');
-  h+=`<tr><td colspan="6" class="sec" style="background:#${sec.fill}">${esc(sec.title)} <span class="matrix">· staff ${m}</span></td><td class="c"><button class="mini" data-add="${b}" title="Add line">+</button></td></tr>`;sec.lines.forEach((l,i)=>h+=lineRow(b,l,i));});
+  h+=`<tr data-sec="${b}"><td colspan="6" class="sec" style="background:#${sec.fill}"><span contenteditable="true" spellcheck="false" data-secname="${b}" data-f="title">${esc(sec.title)}</span> <span class="matrix">· staff ${m}</span></td><td class="c"><button class="mini" data-add="${b}" title="Add line">+</button></td></tr>`;sec.lines.forEach((l,i)=>h+=lineRow(b,l,i));});
  h+='</table></div>';$('editor').innerHTML=h;}
 function at(path){const p=path.split('.');let o=state.res.sheets[+p[0]][p[1]][+p[2]];return o;}
 function renderReview(){const R=state.res;$('reviewCard').hidden=false;const fl=[];for(const sh of R.sheets)for(const blk of ['service','prep'])for(const sec of sh[blk])for(const l of sec.lines)if(l.flag)fl.push(`<tr><td>${DAYCAP(sh.dayName).slice(0,3)} ${blk}</td><td>${esc(l.dish)}</td><td>⚑ ${esc(l.flag)}</td></tr>`);
@@ -121,9 +122,11 @@ drop.addEventListener('drop',e=>onFile(e.dataTransfer.files[0]));
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(!b)return;state.day=+b.dataset.i;save(true);render();});
 $('editor').addEventListener('input',e=>{const t=e.target;if(t.dataset.p){const p=t.dataset.p.split('.');const field=p.pop();const line=at(p.slice(0,3).join('.')).lines[+p[3]];let v=t.innerText.replace(/\n+$/,'');
   if(field==='paxValue'&&/^\s*\d+(\.\d+)?\s*$/.test(v))v=Number(v);line[field]=v===''&&field==='paxValue'?null:v;state.edited=true;save();}
+ else if(t.dataset.secname){at(t.dataset.secname)[t.dataset.f]=t.innerText.trim();state.edited=true;save();}
  else if(t.dataset.count){at(t.dataset.count).counts[+t.dataset.i]=t.value;state.edited=true;save();}});
-$('editor').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.p&&e.target.dataset.p.slice(-5)!=='notes'){e.preventDefault();e.target.blur();}});
+$('editor').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.target.dataset.secname||e.target.dataset.p&&e.target.dataset.p.slice(-5)!=='notes')){e.preventDefault();e.target.blur();}});
 $('editor').addEventListener('click',e=>{const a=e.target.closest('[data-add]'),d=e.target.closest('[data-del]');
+ if(a||d)snap();
  if(a){at(a.dataset.add).lines.push({dish:'',paxValue:null,dayWord:'',manual:true});state.edited=true;save(true);renderDay();const ed=$('editor').querySelectorAll(`[data-p^="${a.dataset.add}."][data-p$=".dish"]`);ed[ed.length-1].focus();}
  if(d){at(d.dataset.del).lines.splice(+d.dataset.i,1);state.edited=true;save(true);renderDay();}});
 $('dlXlsx').onclick=download;$('printDay').onclick=()=>doPrint('day');$('printWeek').onclick=()=>doPrint('week');$('printReview').onclick=printReview;
@@ -132,5 +135,44 @@ $('applySettings').onclick=()=>applySettings(false);$('resetSettings').onclick=(
 window.addEventListener('beforeprint',()=>{if(state&&!$('printArea').innerHTML)$('printArea').innerHTML=printSheetHTML(state.res.sheets[state.day]);});
 window.addEventListener('afterprint',()=>{$('printArea').innerHTML='';});
 fillSettings();try{state=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){state=null;}if(state&&state.v!==1)state=null;render();if(!state)status('No work order loaded yet.');
+/* ---------- edit mode: drag & drop (pointer events: mouse, touch, pen), undo, reset ---------- */
+let undoStack=[];const UNDO_MAX=50;
+function snap(){if(!state)return;undoStack.push(JSON.stringify(state.res.sheets));if(undoStack.length>UNDO_MAX)undoStack.shift();updUndo();}
+function updUndo(){const b=$('undoEdit');if(b)b.disabled=!undoStack.length;}
+function undo(){if(!undoStack.length||!state)return;state.res.sheets=JSON.parse(undoStack.pop());state.edited=true;save(true);renderDay();updUndo();status('Undone.');}
+$('editor').addEventListener('change',e=>{const t=e.target;if(!t.dataset.col)return;snap();const l=at(t.dataset.col).lines[+t.dataset.i];l.fill=t.value||null;state.edited=true;save(true);renderDay();status('Colour changed.');});
+$('editor').addEventListener('focusin',e=>{if((e.target.dataset.p||e.target.dataset.secname)&&!e.target.dataset.snapped){e.target.dataset.snapped='1';snap();}});
+$('undoEdit').onclick=undo;
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey&&!(e.target.isContentEditable||/INPUT|TEXTAREA/.test(e.target.tagName))){e.preventDefault();undo();}});
+$('resetAuto').onclick=()=>{if(!state)return;if(state.edited&&!confirm('Throw away all edits and rebuild this week automatically from the work order?'))return;
+ const day=state.day,note=state.rawNote;snap();generate(state.woRows,{name:state.woName,sig:state.woSig});state.day=day;state.rawNote=note;state.edited=false;save(true);render();status('Reset to the automatic allocation.');};
+let drag=null;
+function moveLine(src,dst){// src {base,i}; dst {base,i(insert index)}
+ const from=at(src.base).lines;const [l]=from.splice(src.i,1);if(!l)return;let i=dst.i;if(src.base===dst.base&&src.i<i)i--;const to=at(dst.base).lines;to.splice(Math.max(0,Math.min(i,to.length)),0,l);l.moved=true;}
+function sameSecOnDay(base,day){const [d,blk,k]=base.split('.');const sh=state.res.sheets[day];const srcSec=state.res.sheets[+d][blk][+k];const key=srcSec.key;let j=sh[blk].findIndex(x=>x.key===key);if(j<0)j=0;return day+'.'+blk+'.'+j;}
+function targetAt(x,y){const el=document.elementFromPoint(x,y);if(!el)return null;const tab=el.closest('#tabs button[data-i]');if(tab)return {tab:+tab.dataset.i,el:tab};
+ const row=el.closest('tr[data-row]');if(row){const r=row.getBoundingClientRect();return {base:row.dataset.row,i:+row.dataset.i+(y>r.top+r.height/2?1:0),el:row,after:y>r.top+r.height/2};}
+ const sec=el.closest('tr[data-sec]');if(sec)return {base:sec.dataset.sec,i:0,el:sec,after:true};return null;}
+function clearMarks(){document.querySelectorAll('.dropB,.dropA,.dropTab').forEach(n=>n.classList.remove('dropB','dropA','dropTab'));}
+$('editor').addEventListener('pointerdown',e=>{const g=e.target.closest('.grip');if(!g||!state)return;e.preventDefault();
+ const row=g.closest('tr');const ghost=document.createElement('div');ghost.className='dragGhost noprint';ghost.textContent=at(g.dataset.grip).lines[+g.dataset.i].dish||'(blank line)';document.body.appendChild(ghost);
+ drag={src:{base:g.dataset.grip,i:+g.dataset.i},ghost,pid:e.pointerId,tabTimer:null,tabOver:null};row.classList.add('dragging');document.body.classList.add('isDragging');
+ g.setPointerCapture&&g.setPointerCapture(e.pointerId);placeGhost(e);});
+function placeGhost(e){drag.ghost.style.left=(e.clientX+12)+'px';drag.ghost.style.top=(e.clientY+12)+'px';}
+function onMove(e){if(!drag||e.pointerId!==drag.pid)return;e.preventDefault();placeGhost(e);clearMarks();const t=targetAt(e.clientX,e.clientY);drag.t=t;
+ if(t&&t.tab!=null){t.el.classList.add('dropTab');if(drag.tabOver!==t.tab){clearTimeout(drag.tabTimer);drag.tabOver=t.tab;drag.tabTimer=setTimeout(()=>{if(drag&&drag.tabOver===t.tab&&state.day!==t.tab){// switch day mid-drag; the dragged line moves with you
+   const dst=sameSecOnDay(drag.src.base,t.tab);moveLine(drag.src,{base:dst,i:at(dst).lines.length});drag.src={base:dst,i:at(dst).lines.length-1};state.day=t.tab;render();drag.switched=true;}},450);}}
+ else{clearTimeout(drag.tabTimer);drag.tabOver=null;if(t)t.el.classList.add(t.after?'dropA':'dropB');}
+ const r=$('editor').getBoundingClientRect();if(e.clientY<60)window.scrollBy(0,-12);else if(e.clientY>innerHeight-60)window.scrollBy(0,12);}
+function onUp(e){if(!drag||e.pointerId!==drag.pid)return;clearTimeout(drag.tabTimer);const t=drag.t;const d=drag;drag=null;d.ghost.remove();clearMarks();document.body.classList.remove('isDragging');
+ if(t&&t.tab!=null&&t.tab!==state.day){const dst=sameSecOnDay(d.src.base,t.tab);moveLine(d.src,{base:dst,i:at(dst).lines.length});state.day=t.tab;}
+ else if(t&&t.base&&!(t.base===d.src.base&&(t.i===d.src.i||t.i===d.src.i+1))){moveLine(d.src,{base:t.base,i:t.i});}
+ else if(!d.switched){renderDay();return;}
+ state.edited=true;save(true);render();status('Moved.');}
+$('editor').addEventListener('pointerdown',()=>{},{passive:false});
+document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('.grip'))snap();},true);
+document.addEventListener('pointermove',onMove,{passive:false});document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',e=>{if(drag&&e.pointerId===drag.pid){drag.t=null;onUp(e);}});
+updUndo();
+$('editor').addEventListener('focusout',()=>{if(state)save(true);});addEventListener('pagehide',()=>{if(state)save(true);});
 window.__alloc={get state(){return state;},buildWorkbook,printSheetHTML};
 })();
