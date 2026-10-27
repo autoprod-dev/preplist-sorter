@@ -4,6 +4,7 @@
 (function () {
   'use strict';
   var C = window.PREPLINE_GATE || {};
+  var BASE = (document.currentScript && document.currentScript.src) || location.href;
   if (!C.enabled || !C.endpoint) return;                       // kill-switch
   var KEY = 'prepline.gate.v1', Q = 'prepline.signupQueue.v1';
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
@@ -46,7 +47,7 @@
         '<label>Full name<input name="n" required minlength="2" autocomplete="name" style="display:block;width:100%;margin:4px 0 12px;padding:8px"></label>' +
         '<label>Workplace / company<input name="w" required minlength="2" autocomplete="organization" style="display:block;width:100%;margin:4px 0 12px;padding:8px"></label>' +
         '<label>Email<input name="e" type="email" required autocomplete="email" style="display:block;width:100%;margin:4px 0 12px;padding:8px"></label>' +
-        '<p style="font-size:12px;color:#5b6475">Autoprod records sign-ins (name, workplace, email, region, time). See <a href="privacy.html">privacy</a>.</p>' +
+        '<p style="font-size:12px;color:#5b6475">Autoprod records sign-ins (name, workplace, email, region, time). See <a href="' + new URL('privacy.html', BASE).href + '" target="_blank" rel="noopener">privacy</a>.</p>' +
         '<button type="submit" style="width:100%;padding:10px;font-weight:700">Continue</button>' +
         '<p style="margin:12px 0 0;color:#8a92a3;font-size:12px;text-align:center">Prepline by Autoprod</p></form>';
       d.querySelector('form').addEventListener('submit', function (ev) {
