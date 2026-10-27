@@ -1,9 +1,10 @@
 // Prepline accounts + 7-day trial (separate layer; does not touch any Prepline feature).
-// The status service decides. Fails CLOSED: any error, timeout, missing/disabled config or bad answer = no entry.
+// The status service decides. Fails OPEN: any error, timeout or missing endpoint = page works normally.
 (function () {
   'use strict';
   var C = window.PREPLINE_GATE || {};
   var BASE = (document.currentScript && document.currentScript.src) || location.href;
+  if (!C.enabled || !C.endpoint) return;
   var KEY = 'prepline.account.v2';
   // the account sign-up replaces the older welcome box: mark it done so only one form ever shows
   try { if (!localStorage.getItem('prepline.signup.v1')) localStorage.setItem('prepline.signup.v1', JSON.stringify({ d: new Date().toISOString().slice(0, 10), via: 'account' })); } catch (e) {}
@@ -33,28 +34,11 @@
     document.documentElement.style.overflow = '';
   }
   function call(body) {
-    if (!C.enabled || !C.endpoint) return Promise.resolve(null);
     body.region = region(); body.page = page; body.version = meta ? meta.content : ''; body.ts = Date.now();
     var ctl = window.AbortController ? new AbortController() : null, timer = setTimeout(function () { if (ctl) ctl.abort(); }, C.timeoutMs || 8000);
     return fetch(C.endpoint, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), credentials: 'omit', cache: 'no-store', signal: ctl ? ctl.signal : undefined })
-      .then(function (r) {
-        clearTimeout(timer);
-        if (!r || !r.ok) return null;
-        return r.json().then(function (j) { return j && typeof j === 'object' ? j : null; }, function () { return null; });
-      })
+      .then(function (r) { clearTimeout(timer); return r.ok ? r.json() : null; })
       .catch(function () { clearTimeout(timer); return null; });
-  }
-  function showOffline() {
-    ready(function () {
-      var d = overlay('ap-offline', '<div style="' + CARD + ';text-align:center"><div style="font-size:20px;font-weight:700;margin-bottom:8px">Can\u2019t check your access right now</div>' +
-        '<p style="margin:0 0 16px;color:#5b6475">Check your internet and try again.</p>' +
-        '<button id="apRetry" type="button" style="' + BTN + ';background:#1d4ed8;color:#fff;border:0;border-radius:8px">Retry</button>' +
-        '<p style="margin:14px 0 0;color:#5b6475;font-size:13px">Still stuck? <a href="mailto:autoprod.help@gmail.com">autoprod.help@gmail.com</a></p>' + FOOT + '</div>');
-      d.querySelector('#apRetry').addEventListener('click', function () {
-        d.querySelector('#apRetry').disabled = true; d.querySelector('#apRetry').textContent = 'Checking\u2026';
-        start();
-      });
-    });
   }
   function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function dmy(s) { return s.split('-').reverse().join('/'); }
@@ -65,29 +49,17 @@
       n.textContent = text; document.documentElement.appendChild(n);
     });
   }
-  // Apply an answer from the service. Missing / bad / unknown answer = closed (fail-closed).
-  var OK = { trial: 1, unlimited: 1, paid: 1, until: 1 };
+  // Apply an answer from the service. Unknown/missing answer = open (fail-open).
   function apply(j) {
-    window.__preplineGate = j || { status: 'offline', reason: 'no_answer' };
-    if (!j || typeof j.status !== 'string') return showOffline();
+    window.__preplineGate = j || { status: 'open', reason: 'no_answer' };
+    if (!j || typeof j.status !== 'string') return unlock();
     var s = st(); if (j.token) { s.token = j.token; put(s); if (!ls('prepline.signup.v1')) ls('prepline.signup.v1', JSON.stringify({ d: today(), via: 'account' })); }  // one form only
     if (j.status === 'not_found') { s.token = ''; put(s); return showSignup(true); }
     if (j.status === 'blocked') return showBlocked('Access to Prepline has been paused for this account.');
-    if (j.status === 'until') {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(j.until || '')) return showOffline();
-      if (j.until < today()) return showBlocked('Your Prepline access ended on ' + dmy(j.until) + '.');
-      return unlock();
-    }
-    // Testing switch (gate-config trial.enforce): when false, trial + expired unlock; no buy/code screen.
-    var enforce = !!(C.trial && C.trial.enforce === true);
-    if (j.status === 'expired') {
-      if (!enforce) return unlock();
-      return showBuy();
-    }
-    if (!OK[j.status]) return showOffline();
+    if (j.status === 'until' && /^\d{4}-\d{2}-\d{2}$/.test(j.until || '') && j.until < today()) return showBlocked('Your Prepline access ended on ' + dmy(j.until) + '.');
+    if (j.status === 'expired') return showBuy();
     unlock();
-    // Admin pill (showStatus) kept; normal users never get showStatus from Code.gs.
-    if (j.status === 'trial' && j.daysLeft > 0 && j.showStatus) note('Trial: ' + j.daysLeft + (j.daysLeft === 1 ? ' day' : ' days') + ' left');
+    if (j.status === 'trial' && j.daysLeft > 0) note('Trial: ' + j.daysLeft + (j.daysLeft === 1 ? ' day' : ' days') + ' left');
   }
   function showBlocked(msg) {
     ready(function () {
@@ -104,7 +76,7 @@
         '<label>Workplace / company<input name="w" autocomplete="organization" style="' + INP + '"></label></div>' +
         '<label>Email<input name="e" type="email" autocomplete="email" style="' + INP + '"></label>' +
         '<p id="apErr" style="color:#b42318;font-size:14px;margin:0 0 8px" role="alert"></p>' +
-        '<p style="font-size:12px;color:#5b6475">Signing in just lets us see how many people are trying Prepline, so we know if it\u0027s catching on. Your details aren\u0027t shared or used for anything else.</p>' +
+        '<p class="apSignOnly" style="font-size:12px;color:#5b6475">Autoprod records sign-ups (name, workplace, email, region, time). See <a href="' + new URL('privacy.html', BASE).href + '" target="_blank" rel="noopener">privacy</a>.</p>' +
         '<button id="apGo" type="submit" style="' + BTN + '"></button>' +
         '<p style="margin:12px 0 0;text-align:center;font-size:14px"><a href="#" id="apSwitch"></a></p>' + FOOT + '</form>');
       var f = d.querySelector('form'), mode = login ? 'login' : 'signup';
@@ -128,10 +100,9 @@
         d.querySelector('#apGo').disabled = true;
         call(mode === 'signup' ? { action: 'signup', name: name, establishment: wp, email: email } : { action: 'login', email: email }).then(function (j) {
           d.querySelector('#apGo').disabled = false;
-          if (!j) { err.textContent = 'Can\u2019t check your access right now. Check your internet and try again.'; return; }
-          if (j.status === 'not_found') { err.textContent = 'No account found for that email. Check it, or sign up.'; return; }
-          if (j.status === 'invalid') { err.textContent = 'Please fill in every field.'; return; }
-          apply(j);
+          if (j && j.status === 'not_found') { err.textContent = 'No account found for that email. Check it, or sign up.'; return; }
+          if (j && j.status === 'invalid') { err.textContent = 'Please fill in every field.'; return; }
+          apply(j);   // null (network) = open
         });
       });
     });
@@ -139,9 +110,14 @@
   function showBuy() {
     ready(function () {
       var d = overlay('ap-buy', '<div style="' + CARD + ';text-align:center"><div style="font-size:20px;font-weight:700;margin-bottom:8px">Your free trial has ended</div>' +
-        '<p style="margin:0 0 16px">To keep using Prepline, get in touch for an activation code. Ask the person who shared Prepline with you, or email <a href="mailto:autoprod.help@gmail.com">autoprod.help@gmail.com</a>.</p>' +
+        '<p style="margin:0 0 16px">Thanks for trying Prepline. To keep using it, buy a licence. You\u2019ll get an activation code by email.</p>' +
+        '<a id="apBuy" target="_blank" rel="noopener" style="display:block;box-sizing:border-box;' + BTN + ';background:#1d4ed8;color:#fff;border-radius:8px;text-decoration:none;margin-bottom:18px">Buy Prepline</a>' +
         '<form style="text-align:left" novalidate><label>Have an activation code?<input name="c" placeholder="PL-XXXX-XXXX-XXXX-XXXX-X" autocomplete="off" style="' + INP + ';text-transform:uppercase"></label>' +
-        '<p id="apErr" style="color:#b42318;font-size:14px;margin:0 0 8px" role="alert"></p><button type="submit" style="' + BTN + '">Unlock</button></form>' + FOOT + '</div>');
+        '<p id="apErr" style="color:#b42318;font-size:14px;margin:0 0 8px" role="alert"></p><button type="submit" style="' + BTN + '">Unlock</button></form>' +
+        '<p style="margin:14px 0 0;color:#5b6475;font-size:13px">Questions? <a href="mailto:autoprod.help@gmail.com">autoprod.help@gmail.com</a></p>' + FOOT + '</div>');
+      var s = st(), u = C.checkoutUrl || '#';
+      try { var x = new URL(u); if (s.email) x.searchParams.set('checkout[email]', s.email); x.searchParams.set('checkout[custom][trial_email]', s.email || ''); u = x.href; } catch (e) {}
+      d.querySelector('#apBuy').href = u;
       var f = d.querySelector('form');
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var err = d.querySelector('#apErr'), code = f.c.value.trim().toUpperCase().replace(/\s+/g, '');
@@ -154,12 +130,7 @@
       });
     });
   }
-  function start() {
-    C = window.PREPLINE_GATE || {};
-    if (!C.enabled || !C.endpoint) { window.__preplineGate = { status: 'offline', reason: 'gate_misconfigured' }; return showOffline(); }
-    var s0 = st();
-    if (!s0.token) return showSignup(false);
-    call({ action: 'check', token: s0.token }).then(apply);
-  }
-  start();
+  var s0 = st();
+  if (!s0.token) return showSignup(false);
+  call({ action: 'check', token: s0.token }).then(apply);
 })();
