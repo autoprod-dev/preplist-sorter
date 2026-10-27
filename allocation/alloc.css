@@ -20,3 +20,4 @@ table.ed td.c{text-align:center}.mini{min-height:24px;padding:0 6px;font-size:12
  table.pt td.nb{border:none}table.pt td.c{text-align:center}table.pt td.b{font-weight:700;font-family:Calibri,Arial}
  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+.ed td.cy{background:#00FFFF}tr.flagged td:first-child div::after{content:" ⚑";color:#c60;font-weight:700}#review h3{font-size:14px;margin:10px 0 4px}

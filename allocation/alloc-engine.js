@@ -40,7 +40,7 @@ function parseWorkOrder(rows){let day=null,ev='',evNo='',out=[];const days=[];
  for(const x of rows){const a=clean(x.A);const pd=parseDay(a);if(pd){day=pd;days.push(pd);continue;}
   if(clean(x.B)&&!clean(x.C)&&!clean(x.F)){evNo=clean(x.B);continue;}
   if(clean(x.C)&&!clean(x.F)){ev=clean(x.C);continue;}
-  if(day&&clean(x.F)&&clean(x.H))out.push({r:x.r,date:day,event:ev,eventNo:evNo,room:clean(x.F),qty:Number(x.G)||0,qtyRaw:clean(x.G),item:clean(x.H),notes:x.I==null?'':String(x.I),colour:hex(x.fill),colA:hex(x.fillA)});}
+  if(day&&clean(x.F)&&clean(x.H))out.push({r:x.r,date:day,event:ev,eventNo:evNo,room:clean(x.F),qty:Number(x.G)||0,qtyRaw:clean(x.G),item:clean(x.H),notes:x.I==null?'':String(x.I),colour:hex(x.fill),colA:hex(x.fillA),time:clean(x.O),cost:clean(x.K)});}
  return {lines:out,days:[...new Set(days)].sort()};}
 function buildAllocation(wo,S0){const S=Object.assign({},DEFAULT_ALLOC_SETTINGS,S0||{});const roomRe=new RegExp(S.entCentre.roomPattern,'i'),evRe=new RegExp(S.entCentre.eventPattern,'i');
  const L=wo.lines;const items=[];const trace=[];const skipped=[];
@@ -80,13 +80,16 @@ function buildAllocation(wo,S0){const S=Object.assign({},DEFAULT_ALLOC_SETTINGS,
  // aggregate per section/date/dish
  const agg=new Map();for(const it of items){const key=it.section+'|'+it.date+'|'+it.dish;const g=agg.get(key);if(g){if(it.pax!=null)g.parts.push(it.pax);}else agg.set(key,{...it,parts:it.pax!=null?[it.pax]:[]});}
  const lines=[...agg.values()].map(g=>{const num=g.parts.every(x=>typeof x==='number');const p=g.kind==='count'&&num?[g.parts.reduce((a,b)=>a+b,0)]:num?g.parts:[g.parts.join(' + ')];return {...g,paxValue:p.length===0?null:p.length===1?p[0]:'='+p.join('+'),paxTotal:num?p.reduce((a,b)=>a+b,0):null};});
+ let V2=null;const R2=(typeof AllocRulesV2!=='undefined')?AllocRulesV2:(typeof require==='function'?(()=>{try{return require('./alloc-rules-v2.js')}catch(e){return null}})():null);
+ if(S.rulesV2!==false&&R2){V2=R2.build(wo,S);lines.length=0;skipped.length=0;trace.length=0;for(const l of V2.lines)lines.push({...l,notes:l.flag?'⚑ '+l.flag:null});for(const k of V2.skipped)skipped.push(k);for(const t of V2.trace)trace.push(t);}
  for(const c of S.coffeeShopLines||[])lines.push({section:'Coffee',date:c.date||null,dayWord:c.day,dish:c.dish,paxValue:c.pax??null,kind:'generic'});
  const first=wo.days[0],monday=addDays(first,-((dow(first)+6)%7));const week=[0,1,2,3,4,5,6].map(i=>addDays(monday,i));
  const lastWO=wo.days[wo.days.length-1];const fileDate=S.fileDateRule==='weekSunday'?week[6]:lastWO;
  const sheets=week.map(D=>{const dn=DAYS[dow(D)];const ahead=[];for(let i=1;i<=S.prepDaysAhead;i++)ahead.push(addDays(D,i));const ex=S.extraAhead[dn];if(ex)for(let i=S.prepDaysAhead+1;i<=ex;i++)ahead.push(addDays(D,i));
-  const sel=(sec,dates)=>lines.filter(x=>x.section===sec&&(x.date?dates.includes(x.date):sec==='Coffee')).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  return {date:D,dayName:dn,aheadDates:ahead,service:SERVICE_SECTIONS.map(s=>({key:s,fill:SERVICE_FILL[s],lines:sel(s,[D]).map(x=>({...x}))})),prep:PREP_SECTIONS.map(p=>({...p,counts:p.matrix.map(()=>''),lines:(p.key==='Fruits'&&S.fruitsFirstLine?[{dish:S.fruitsFirstLine,paxValue:null,date:null}]:[]).concat(sel(p.key,ahead).map(x=>({...x})))}))};});
- return {settings:S,week,fileDate,lastWO,sheets,lines,trace,skipped};}
+  const sel=(sec,dates)=>lines.filter(x=>x.section===sec&&(x.dates&&x.dates.length>1?x.dates.some(d=>dates.includes(d)):x.date?dates.includes(x.date):sec==='Coffee')).sort((a,b)=>V2?((a.date||'').localeCompare(b.date||'')||(a.first||0)-(b.first||0)):(a.date||'').localeCompare(b.date||''));
+  const selR=(dates)=>V2?lines.filter(x=>x.section==='Retail'&&x.dates.some(d=>dates.includes(d))):null;
+  return {date:D,dayName:dn,aheadDates:ahead,service:SERVICE_SECTIONS.map(s=>({key:s,fill:SERVICE_FILL[s],lines:(s==='Retail'&&V2?selR([D]):sel(s,[D])).map(x=>({...x}))})),prep:PREP_SECTIONS.map(p=>({...p,counts:p.matrix.map(()=>''),lines:(p.key==='Fruits'&&S.fruitsFirstLine?[{dish:S.fruitsFirstLine,paxValue:null,date:null}]:[]).concat((p.key==='Retail'&&V2?selR([D].concat(ahead)):sel(p.key,ahead)).map(x=>({...x}))).map((x,i)=>V2&&i===0&&!x.staff&&x.dish?{...x,staff:'after service'}:x)}))};});
+ return {settings:S,week,fileDate,lastWO,sheets,lines,trace,skipped,unplaced:V2?skipped.slice():[],v2:!!V2};}
 function fileName(res){const [y,m,d]=res.fileDate.split('-');return `Larder W.E ${d}.${m}.${y.slice(2)}.xlsx`;}
 /* Build an AOA + style map for one day sheet in Paula's template layout. Returns {cells:[[r,c,v,style]], merges, rows} */
 function sheetLayout(sh){const C=[];let r=0;const put=(row,col,v,st)=>C.push([row,col,v,st||'body']);const merges=[];const iRef={};
@@ -100,7 +103,7 @@ function sheetLayout(sh){const C=[];let r=0;const put=(row,col,v,st)=>C.push([ro
   let ls=p.lines.slice();
   r++;for(const l of ls){row(l);r++;}
   const need=start+p.matrix.length;if(r<need)r=need;if(p.key!=='Coffee')r++;}
- function row(l){for(let c=0;c<6;c++)put(r,c,'', 'body');if(!l)return;put(r,0,l.dish,'dish');if(l.paxValue!=null)put(r,1,l.paxValue,'num');put(r,2,l.dayWord||(l.date?DAYS[dow(l.date)]:''),'center');if(l.staff)put(r,3,l.staff,'center');if(l.notes)put(r,4,l.notes,'body');if(l.alloc)put(r,5,l.alloc,'body');}
+ function row(l){for(let c=0;c<6;c++)put(r,c,'', 'body');if(!l)return;put(r,0,l.dish,l.fill?'dish:'+l.fill:'dish');if(l.paxValue!=null)put(r,1,l.paxValue,'num');put(r,2,l.dayWord||(l.date?DAYS[dow(l.date)]:''),'center');if(l.staff)put(r,3,l.staff,'center');if(l.notes)put(r,4,l.notes,'body');if(l.alloc)put(r,5,l.alloc,'body');}
  const g=k=>iRef[k]||'0';const f=(...ks)=>'='+ks.map(g).join('+');
  const foot=[['AM Staff',f('Sandwich:am','Salad:am','Canape:am','Fruits:am','Retail:am','Coffee:am')],['LUNCHBOX STAFF',f('Sandwich:lunchbox','Salad:lunchbox')],['PM staff',f('Salad:pm','Canape:pm','Fruits:pm','Retail:pm','Coffee:pm','Sandwich:pm')]];
  const fr=r;foot.forEach((x,i)=>{put(r,0,x[0],'foot');put(r,5,x[1],'formula');r++;});put(r,0,'Total staffs','foot');put(r,5,`=F${fr+1}+F${fr+2}+F${fr+3}`,'formula');r++;
