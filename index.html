@@ -81,6 +81,7 @@ var LICENSE_CONFIG = {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="prep-days-vocab.js"></script>
 
 <script type="module">
   // Pinned to pdf.js 5.6.205 — do not switch to a floating "latest" tag,
@@ -676,6 +677,7 @@ body.pb-open{overflow:hidden}
 .pb-dishbar label{display:flex;flex-direction:column;font-size:12px;font-weight:600;gap:3px}
 .pb-dishbar input{font-size:16px;padding:8px;border:1px solid #bbb;border-radius:6px;min-width:220px}
 .pb-dishbar .pb-pax input{min-width:0;width:110px;background:#FFF2CC;font-weight:700}
+.pd-chip{display:inline-block;margin-left:4px;padding:0 6px;border-radius:9px;font-size:11px;font-weight:600;background:#e8f1ec;color:#2d5a43;white-space:nowrap;vertical-align:middle}.pd-chip.pd-unc{background:#f3f0e6;color:#7a6a3a}
 .pb-legend{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 12px}
 .pb-chip{padding:5px 10px;font-weight:700;font-size:12px;border:1px solid #888;border-radius:4px}
 .pb-note{font-size:12px;color:#555;flex-basis:100%}
@@ -1472,7 +1474,7 @@ function loadOnetimeSession(){
     const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
+        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1, prepCat:typeof r.prepCat==='string'?r.prepCat:'', leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:typeof r.prepSrc==='string'?r.prepSrc:'',
         // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
         ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
         // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
@@ -1529,7 +1531,7 @@ function commitRowsToDatabase(){
   dishes.forEach(dish=>{
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
-      baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
+      baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum, prepCat:r.prepCat||"", leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:r.prepSrc||"",
       pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType,
       ...(typeof alForTask==='function' && alForTask(r.task).confirmed ? {al: alForTask(r.task).tags.slice()} : {})   // v3.3: checked allergen tags
     }));
@@ -1608,9 +1610,10 @@ function generateWeekly(){
     if (selPax.ok && selPax.n!==undefined) paxByDish[dish] = selPax.n;
     const eventDay = getEventDay(dish);
     dishDatabase[dish].items.forEach(it=>{
-      const day = eventDay ? calendarDayForPrepNum(eventDay, it.stageNum) : '';
+      const pinf = it.prepCat !== undefined ? {prepCat:it.prepCat||'', leadDays:Number.isFinite(it.leadDays)?it.leadDays:null, prepSrc:it.prepSrc||''} : prepInfoFor(it.task, null, it.section);
+      const day = eventDay ? prepStartDay(eventDay, {stageNum:it.stageNum, leadDays:pinf.leadDays}) : '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
-        baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum,
+        baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum, ...pinf,
         pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType,
         ...(Number.isFinite(it.pdfBasePax) ? {pdfBasePax:it.pdfBasePax} : {})});
     });
@@ -2060,6 +2063,73 @@ function calendarDayForPrepNum(eventDay, prepNum){
   }
   return WEEKDAYS[(idx - (4-prepNum) + 7) % 7];
 }
+
+// ---- 4.3.4: prep START day by ingredient type (rules in prep-days-vocab.js).
+// Primary: the spreadsheet's colour legend (each line's fill colour -> legend label -> category).
+// Fallback: keywords in the line's wording. Proteins / garnish legend colours are split by keyword
+// (red meat vs seafood; micro herbs / oils / dry garnish vs garnish). No match = old stage-based day, "uncategorised".
+function prepVocab(){ return (Array.isArray(window.PREP_DAYS_VOCAB) && window.PREP_DAYS_VOCAB.length) ? window.PREP_DAYS_VOCAB : []; }
+const _pvRe = {};
+function prepWordRe(w){
+  if (_pvRe[w]) return _pvRe[w];
+  const star = /\*$/.test(w); const core = w.replace(/\*$/, '').trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  return (_pvRe[w] = new RegExp('(^|[^a-z])' + core + (star ? '' : '(?![a-z])'), 'i'));
+}
+function prepNormText(t){ return String(t == null ? '' : t).toLowerCase().replace(/[ée]/g, m=>m==='é'?'e':m).replace(/['’]s\b/g, ''); }
+function prepCatByWords(text, family){
+  const t = prepNormText(text);
+  if (/\bgoat'?s?\s+(cheese|curd)\b/i.test(String(text))) { /* goat's cheese is not red meat */ }
+  for (const c of prepVocab()){
+    if (family && c.family !== family) continue;
+    if (c.key === 'redmeat' && /\bgoat'?s?\s*(cheese|curd|milk)\b/.test(t) && !/\b(beef|lamb|pork|veal|venison)\b/.test(t)) continue;
+    if ((c.words || []).some(w => prepWordRe(w).test(t))) return c;
+  }
+  return null;
+}
+// a legend label ("2. Vege", "Proteins", "Garnish, herbs, oils") -> {key} exact category, or {family} to split by keyword
+function prepCatFromLegendLabel(label){
+  const t = String(label == null ? '' : label).trim().replace(/^\d{1,2}\s*[.):-]?\s*/, '').toLowerCase().replace(/[,&\/+.:]/g, ' ').replace(/\band\b/g, ' ').replace(/[ée]/g, m=>m==='é'?'e':m).replace(/\s+/g, ' ').trim();
+  if (!t || t.length > 40) return null;
+  if (/^proteins?$/.test(t)) return {family:'protein'};
+  for (const c of prepVocab()) if ((c.legend || []).some(l => l === t)) return {key:c.key};
+  if (/^garnish/.test(t)) return {family:'garnish'};
+  if (/^(sauces?|purees?|gels?)\b/.test(t)) return {key:'gels'};
+  return null;
+}
+function prepCatByKey(k){ return prepVocab().find(c => c.key === k) || null; }
+// info for one line: {prepCat, leadDays, prepSrc:'legend'|'keyword'} or {prepCat:'', leadDays:null}
+function prepInfoFor(text, legendPrep, section){
+  let c = null, src = '';
+  if (legendPrep){
+    if (legendPrep.key){
+      c = prepCatByKey(legendPrep.key);
+      // a generic garnish legend colour can still be a micro herb / oil / dry garnish line
+      if (c && c.family === 'garnish' && c.key === 'garnish'){ const k = prepCatByWords(text, 'garnish'); if (k) c = k; }
+    } else if (legendPrep.family){
+      c = prepCatByWords(text, legendPrep.family) || (legendPrep.family === 'garnish' ? prepCatByKey('garnish') : null);
+    }
+    if (c) src = 'legend';
+  }
+  if (!c){ c = prepCatByWords(text, null); if (c) src = 'keyword'; }
+  return c ? {prepCat: c.key, leadDays: c.lead, prepSrc: src} : {prepCat: '', leadDays: null, prepSrc: ''};
+}
+// the weekday a line starts: lead days before the event (closed days push it earlier), else the old stage rule
+function prepStartDay(eventDay, r){
+  if (!eventDay) return '';
+  const lead = r && Number.isFinite(r.leadDays) ? r.leadDays : null;
+  if (lead === null) return calendarDayForPrepNum(eventDay, r ? r.stageNum : null) || '';
+  const idx = WEEKDAYS.indexOf(eventDay); if (idx < 0) return '';
+  let offset = lead;
+  for (let tries=0; tries<7; tries++){ const day = WEEKDAYS[((idx - offset) % 7 + 7) % 7]; if (!blockedDays.has(day)) return day; offset++; }
+  return WEEKDAYS[((idx - lead) % 7 + 7) % 7];
+}
+function prepCatChip(r){
+  if (!r) return '';
+  const c = r.prepCat ? prepCatByKey(r.prepCat) : null;
+  if (!c) return ' <span class="pd-chip pd-unc" title="No legend colour or keyword matched: prep day uses the old stage rule">uncategorised</span>';
+  const when = c.lead === 0 ? 'on the day' : (c.lead + (c.lead === 1 ? ' day' : ' days') + ' before');
+  return ` <span class="pd-chip" title="${r.prepSrc === 'legend' ? 'From the colour legend' : 'From keywords'}">${escapeHtml(c.label)} · ${when}${r.day ? ' · starts '+escapeHtml(dayLabel(r.day)) : ''}</span>`;
+}
 // Setting/changing a dish's event day automatically recalculates the actual weekday
 // for every one of its tasks from their stage — this is the "automate 4-day prep day
 // based on the tab's scheduled day" part. Any day you've hand-picked on a row gets
@@ -2069,7 +2139,7 @@ function setEventDay(encodedDish, val){
   if (val) eventDayOverride[dish] = val; else delete eventDayOverride[dish];
   const eventDay = getEventDay(dish);
   ROWS.forEach(r=>{
-    if (r.dish===dish && r.stageNum) r.day = eventDay ? calendarDayForPrepNum(eventDay, r.stageNum) : '';
+    if (r.dish===dish && (r.stageNum || Number.isFinite(r.leadDays))) r.day = eventDay ? prepStartDay(eventDay, r) : '';
   });
   render();
 }
@@ -2215,10 +2285,10 @@ function toggleBlockedDay(day, checked){
   // known prep stage and a known event day are touched; anything else (no event day set
   // yet) is left exactly as it was.
   ROWS.forEach(r=>{
-    if (!r.stageNum) return;
+    if (!r.stageNum && !Number.isFinite(r.leadDays)) return;
     const eventDay = getEventDay(r.dish);
     if (!eventDay) return;
-    r.day = calendarDayForPrepNum(eventDay, r.stageNum);
+    r.day = prepStartDay(eventDay, r) || r.day;
   });
   render();
 }
@@ -2450,8 +2520,9 @@ function addRows(dish, items){
     lastStage = stageNum;
     lastCore = core || lastCore;
     // A Prep day column in the file wins over auto-calculation too, for the same reason.
-    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '');
-    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum,
+    const pinf = prepInfoFor(taskText, it.legendPrep || null, cat);
+    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays}) : '');
+    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum, ...pinf,
       ...(typeof it.srcSheet==='string' ? {srcSheet: it.srcSheet} : {})});
   }
 }
@@ -2623,7 +2694,10 @@ const LEGEND_LABELS = [
   [/^(veg|vege|veges|veggies?|vegetables?|vegs)$/i, 'Vegetables'],
   [/^garnish(es)?([\s,&\/]+.*)?$/i, 'Garnishes, Herbs, Powders, Oils Etc.'],
   [/^(starch(es)?|big\s+jobs?)$/i, 'Starch'],
-  [/^(proteins?|meats?)$/i, 'Proteins']
+  [/^(proteins?|meats?)$/i, 'Proteins'],
+  // 4.3.4: finer legend labels used for prep start days (they still sort into the same stations)
+  [/^(red\s+meats?|seafood|fish|shellfish|beef|lamb)$/i, 'Proteins'],
+  [/^(micro\s*herbs?|micros?|oils?|dry\s+garnish(es)?|crumbs?|dry\s+garnish(es)?\s*(and|&|,)\s*crumbs?|pick(ed)?\s+herbs|herbs)$/i, 'Garnishes, Herbs, Powders, Oils Etc.']
 ];
 function legendLabelCategory(text){
   let t = String(text == null ? '' : text).trim().replace(/^\d{1,2}\s*[.):-]?\s*/, '').replace(/\s+/g, ' ').replace(/[.:]$/, '');
@@ -2660,6 +2734,14 @@ function cellFillKey(cell){
 }
 // r8: a fill that is not exactly a legend colour still counts when it is very close to one (e.g. a slightly
 // different red); anything further away (cream item cells, pink comment cells) is ignored.
+function legendKeyFor(key, legend){
+  if (!key) return null; if (legend[key]) return key;
+  const m = /^rgb:([0-9A-F]{6})$/.exec(key); if (!m) return null;
+  const rgb = h=>[0,2,4].map(i=>parseInt(h.substr(i,2),16)); const a = rgb(m[1]);
+  let best = null, bd = 1e9;
+  Object.keys(legend).forEach(k=>{ const n = /^rgb:([0-9A-F]{6})$/.exec(k); if (!n) return; const b = rgb(n[1]); const d = Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]); if (d < bd){ bd = d; best = k; } });
+  return bd <= 48 ? best : null;
+}
 function legendCatFor(key, legend){
   if (!key) return null; if (legend[key]) return legend[key];
   const m = /^rgb:([0-9A-F]{6})$/.exec(key); if (!m) return null;
@@ -2669,30 +2751,37 @@ function legendCatFor(key, legend){
   return bd <= 48 ? best : null;
 }
 function readColourLegend(wbObj){
-  const legend = {}, labels = new Set(), found = [];
+  const legend = {}, labels = new Set(), found = [], legendPrep = {};
   (wbObj.SheetNames || []).forEach(name=>{
     const ws = wbObj.Sheets[name]; if (!ws) return;
     Object.keys(ws).forEach(addr=>{
       if (addr[0] === '!') return; const cell = ws[addr];
       if (!cell || cell.t !== 's') return;
       const cat = legendLabelCategory(cell.v); if (!cat) return;
+      const pl = (()=>{ try{ return prepCatFromLegendLabel(cell.v); }catch(e){ return null; } })();
       let key = cellFillKey(cell);
       if (!key){ const rc = XLSX.utils.decode_cell(addr);
         for (const dc of [-1, 1, -2, 2]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && (nb.v == null || String(nb.v).trim() === '') && (key = cellFillKey(nb))) break; } }
       if (!key) return;
       labels.add(String(cell.v).trim().toLowerCase());
-      if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); }
+      if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); if (pl) legendPrep[key] = pl; }
+      else if (pl && legendPrep[key] && JSON.stringify(legendPrep[key]) !== JSON.stringify(pl)){
+        // the same colour means different things on different tabs: keep only what they agree on
+        const fam = x => x.family || (prepCatByKey(x.key) || {}).family;
+        const f1 = fam(legendPrep[key]), f2 = fam(pl);
+        if (f1 && f1 === f2) legendPrep[key] = {family: f1}; else delete legendPrep[key];
+      }
     });
   });
   const cats = new Set(Object.values(legend));
-  return cats.size >= 2 ? {legend, labels, found} : null;
+  return cats.size >= 2 ? {legend, labels, found, legendPrep} : null;
 }
 function mergedTopLeft(ws, r, c){
   const ms = ws['!merges']; if (!ms) return null;
   for (const m of ms) if (r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c) return ws[XLSX.utils.encode_cell(m.s)];
   return null;
 }
-function sheetFillByText(ws, legend){
+function sheetFillByText(ws, legend, keyOut){
   // A job's colour: the first LEGEND colour found on the narrow coloured marker cell(s) just LEFT of the item name
   // (the kitchen layout: column A), else its own cell, else its qty / unit cells.
   // Fills that are not legend colours (e.g. cream item cells, pink comment cells) are skipped, not taken.
@@ -2706,20 +2795,22 @@ function sheetFillByText(ws, legend){
       const nb = dc === 0 ? cell : (ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})] || mergedTopLeft(ws, rc.r, rc.c + dc));
       if (!nb || (dc !== 0 && legendLabelCategory(nb.v))) continue;
       const k = cellFillKey(nb), cat = legendCatFor(k, legend);
-      if (cat){ map[t] = cat; break; }
+      if (cat){ map[t] = cat; if (keyOut) keyOut[t] = legendKeyFor(k, legend); break; }
     } });
   return map;
 }
 let lastColourSort = null;   // {colours, jobs, found} for the status line
 function applyColourLegend(ws, items, info){
   if (!info) return items;
-  const byText = sheetFillByText(ws, info.legend);
+  const keyByText = {};
+  const byText = sheetFillByText(ws, info.legend, keyByText);
   return items.filter(it=>{
     const t = String(it.item || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (info.labels.has(t) && legendLabelCategory(it.item)) return false;   // a legend cell, not a job
     if (typeof it.section === 'string' && it.section.trim()) return true;    // a Section column wins
     const cat = byText[t];
     if (cat){ it.section = cat; it.colourSorted = true; lastColourSort.jobs++; }
+    { const lk = keyByText[t]; const lp = lk && info.legendPrep ? info.legendPrep[lk] : null; if (lp) it.legendPrep = lp; }
     return true;
   });
 }
@@ -3484,10 +3575,11 @@ function addPdfRows(dish, tasks, eventDay){
     lastCore = core || lastCore;
     const disp = pdfQtyToDisplay(t.parsedQty);
     const taskLabel = cleanName + (t.note ? ' — ' + t.note : (disp.value===null ? ' ('+t.qtyRaw+')' : ''));
-    const day = eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '';
+    const pinf = prepInfoFor(cleanName, null, cat);
+    const day = eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays}) : '';
     ROWS.push({
       dish, task: taskLabel, qty:'', unit: disp.unit, section: cat, baseCategory: cat,
-      flagged, day, stageNum, pdfFixedTotal: disp.value,
+      flagged, day, stageNum, ...pinf, pdfFixedTotal: disp.value,
     });
   }
   return skipped;
@@ -4714,7 +4806,8 @@ function renderByDish(){
     const encDish = encName(dish);
     const eventDay = getEventDay(dish);
     const eventDateStr = getEventDateStr(dish);
-    const prepSpan = eventDay ? `${dayLabel(calendarDayForPrepNum(eventDay,1))} → ${dayLabel(eventDay)}` : null;
+    const spanLead = Math.max(3, ...rows.map(r=>Number.isFinite(r.leadDays)?r.leadDays:0));
+    const prepSpan = eventDay ? `${dayLabel(spanLead>3 ? prepStartDay(eventDay,{leadDays:spanLead}) : calendarDayForPrepNum(eventDay,1))} → ${dayLabel(eventDay)}` : null;
     html += `<div class="dish-block">
       <div class="dish-head no-print">
         <div>
@@ -4759,7 +4852,7 @@ function renderByDish(){
       else totalCell = '<span class="needpax">set pax →</span>';
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td><input type="checkbox" class="rowcheck" ${selectedRowIdx.has(globalIdx)?'checked':''} onchange="toggleRowSelected(${globalIdx}, this.checked)"></td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty total-cell">${totalCell}</td>
         <td><select class="rowsel section-${key}" onchange="moveRow(${globalIdx}, this.value)">
@@ -4784,7 +4877,7 @@ function renderByDish(){
           const cont = meta[i].isContinuation;
           const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
           const totalTxt = total!==null ? `${qN(total,r.unit)} ${qU(total,r.unit)}` : (cont && noQty ? 'uses batch above' : '—');
-          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}${alChipsHtml(r)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
+          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}${alChipsHtml(r)}${prepCatChip(r)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
         }).join('')}
         </tbody></table>
         ${methodCropsPageHtml(rows)}
@@ -4924,7 +5017,7 @@ function renderByPriority(){
       const evDay = getEventDay(r.dish);
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${totalCell}</td>
         <td>${r.section}</td>
         <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
@@ -4960,7 +5053,7 @@ function renderByPriority(){
         const evDay = getEventDay(r.dish);
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
@@ -5112,7 +5205,7 @@ function renderBySection(){
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(idx>0 && rowsForSection[idx-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty">${totalCell}</td>
@@ -5152,7 +5245,7 @@ function renderBySection(){
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForSection[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
