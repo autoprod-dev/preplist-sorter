@@ -4245,6 +4245,7 @@ function buildPrintDocHtml(target){
 // reason, print() genuinely can't be reached (a handful of older WebViews restrict it),
 // this falls back to a plain "press Ctrl+P" instruction rather than silently doing nothing.
 function printViaIframe(fullHtml){
+  if (window.PrepLineBrand) fullHtml = PrepLineBrand.addToHtml(fullHtml);
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
   document.body.appendChild(iframe);
@@ -7604,5 +7605,6 @@ function pbWireDrop(){
 document.addEventListener('DOMContentLoaded', pbWireDrop);
 
 </script>
+<script src="brand.js"></script>
 </body>
 </html>
