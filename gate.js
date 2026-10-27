@@ -98,7 +98,7 @@
         '<label>Workplace / company<input name="w" autocomplete="organization" style="' + INP + '"></label></div>' +
         '<label>Email<input name="e" type="email" autocomplete="email" style="' + INP + '"></label>' +
         '<p id="apErr" style="color:#b42318;font-size:14px;margin:0 0 8px" role="alert"></p>' +
-        '<p class="apSignOnly" style="font-size:12px;color:#5b6475">Autoprod records sign-ups (name, workplace, email, region, time). See <a href="' + new URL('privacy.html', BASE).href + '" target="_blank" rel="noopener">privacy</a>.</p>' +
+        '<p style="font-size:12px;color:#5b6475">Signing in just lets us see how many people are trying Prepline, so we know if it\u0027s catching on. Your details aren\u0027t shared or used for anything else.</p>' +
         '<button id="apGo" type="submit" style="' + BTN + '"></button>' +
         '<p style="margin:12px 0 0;text-align:center;font-size:14px"><a href="#" id="apSwitch"></a></p>' + FOOT + '</form>');
       var f = d.querySelector('form'), mode = login ? 'login' : 'signup';
