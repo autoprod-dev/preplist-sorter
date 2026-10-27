@@ -133,14 +133,9 @@
   function showBuy() {
     ready(function () {
       var d = overlay('ap-buy', '<div style="' + CARD + ';text-align:center"><div style="font-size:20px;font-weight:700;margin-bottom:8px">Your free trial has ended</div>' +
-        '<p style="margin:0 0 16px">Thanks for trying Prepline. To keep using it, buy a licence. You\u2019ll get an activation code by email.</p>' +
-        '<a id="apBuy" target="_blank" rel="noopener" style="display:block;box-sizing:border-box;' + BTN + ';background:#1d4ed8;color:#fff;border-radius:8px;text-decoration:none;margin-bottom:18px">Buy Prepline</a>' +
+        '<p style="margin:0 0 16px">To keep using Prepline, get in touch for an activation code. Ask the person who shared Prepline with you, or email <a href="mailto:autoprod.help@gmail.com">autoprod.help@gmail.com</a>.</p>' +
         '<form style="text-align:left" novalidate><label>Have an activation code?<input name="c" placeholder="PL-XXXX-XXXX-XXXX-XXXX-X" autocomplete="off" style="' + INP + ';text-transform:uppercase"></label>' +
-        '<p id="apErr" style="color:#b42318;font-size:14px;margin:0 0 8px" role="alert"></p><button type="submit" style="' + BTN + '">Unlock</button></form>' +
-        '<p style="margin:14px 0 0;color:#5b6475;font-size:13px">Questions? <a href="mailto:autoprod.help@gmail.com">autoprod.help@gmail.com</a></p>' + FOOT + '</div>');
-      var s = st(), u = C.checkoutUrl || '#';
-      try { var x = new URL(u); if (s.email) x.searchParams.set('checkout[email]', s.email); x.searchParams.set('checkout[custom][trial_email]', s.email || ''); u = x.href; } catch (e) {}
-      d.querySelector('#apBuy').href = u;
+        '<p id="apErr" style="color:#b42318;font-size:14px;margin:0 0 8px" role="alert"></p><button type="submit" style="' + BTN + '">Unlock</button></form>' + FOOT + '</div>');
       var f = d.querySelector('form');
       f.addEventListener('submit', function (ev) {
         ev.preventDefault(); var err = d.querySelector('#apErr'), code = f.c.value.trim().toUpperCase().replace(/\s+/g, '');

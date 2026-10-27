@@ -34,7 +34,6 @@
 "description":"Free kitchen prep list organiser for chefs and cooks. Turn a menu, PDF or spreadsheet into prep lists sorted by dish, station and prep day, scale by pax, tag allergens, build supplier order sheets, print one page or share to phones. Runs in your browser, works offline.","url":"https://autoprod-dev.github.io/preplist-sorter/","applicationCategory":"BusinessApplication","applicationSubCategory":"Kitchen prep list organiser",
 "operatingSystem":"Any (web browser: Windows, macOS, Android, iOS)","browserRequirements":"Requires JavaScript and a modern browser",
 "inLanguage":"en-AU","softwareVersion":"3.4.9","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
-"offers":{"@type":"Offer","price":"0","priceCurrency":"AUD"},
 "featureList":["Auto-sorted prep lists from a menu, PDF or spreadsheet","Pax scaling","Prep lists by dish, team section and prep day","Allergen tags","Supplier order sheet","Cost per dish","Share to phones by QR code or link","One-page printouts","Excel export","Works offline"],
 "publisher":{"@type":"Organization","name":"Autoprod"}}
 </script>
@@ -747,8 +746,6 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
 <div class="shell-masthead no-print">
   <div class="shell-brand">Prepline</div>
   <div class="shell-tabs">
-    <button class="shell-tab-btn pro-cta" id="proUpgradeBtn" onclick="AutoprodLicence.openUpgrade()" type="button">★ Upgrade to Pro</button>
-    <button class="shell-tab-btn" id="licenceKeyBtn" onclick="AutoprodLicence.openLicenceDialog()" type="button">Enter licence key</button>
     <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
     <a class="shell-tab-btn" id="allocLink" href="./allocation/" style="text-decoration:none" title="Section 1: work orders and staff allocation">Work orders &amp; allocation</a>
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
@@ -5857,7 +5854,7 @@ function renderProChrome(){
   }
   const pro = proActive();
   const up = document.getElementById('proUpgradeBtn');
-  if (up){ up.textContent = pro ? '★ Pro' : '★ Upgrade to Pro'; up.classList.toggle('active', pro);
+  if (up){ up.textContent = pro ? '★ Pro' : '★ Pro options'; up.classList.toggle('active', pro);
     up.onclick = ()=> pro ? (LICENSE_CONFIG.edition==='offline-pro' ? null : AutoprodLicence.openLicenceDialog()) : AutoprodLicence.openUpgrade(); }
   const lk = document.getElementById('licenceKeyBtn'); if (lk) lk.hidden = pro;
   const f = document.getElementById('madeWithFooter'); if (f) f.hidden = pro || !freeFooterOn();
