@@ -103,7 +103,7 @@ function build(wo,S,E){const L=wo.lines;const out=new Map();const skipped=[];con
    else if(g.kind==='count'||g.kind==='mezze'||g.kind==='green')pv=total;else pv=evs.length>1?'='+evs.map(e=>e.q).join('+'):total;}
   if(g.syd&&evs.length>1)g.flags.add('Sum of Sydney Eats sessions per event — Paula sometimes applies a 0.8 ratio or a different figure; confirm');
   if(g.kind==='mezze')pv=evs.length?evs[0].q:null;
-  lines.push({section:g.section,date:dates[0],dates,dish,paxValue:pv,paxTotal:typeof pv==='number'?pv:total,dayWord,fill:g.fill,flag:[...g.flags].join(' · ')||null,woRows:[...new Set(g.rows)],first:g.first,kind:g.kind});}
+  lines.push({section:g.section,date:dates[0],dates,dish,paxValue:pv,paxTotal:typeof pv==='number'?pv:total,dayWord,fill:g.fill,flag:[...g.flags].join(' · ')||null,woRows:[...new Set(g.rows)],first:g.first,kind:g.kind,syd:!!g.syd});}
  // salad bar parts deduped by header row already (k). Lines that are only 'salad bar' with no salads? fine.
  return {lines,skipped,trace};}
 const API={build,nm,canName,CYAN};root.AllocRulesV2=API;if(typeof module!=='undefined')module.exports=API;
