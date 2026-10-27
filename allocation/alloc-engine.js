@@ -92,6 +92,10 @@ function buildAllocation(wo,S0){const S=Object.assign({},DEFAULT_ALLOC_SETTINGS,
  return {settings:S,week,fileDate,lastWO,sheets,lines,trace,skipped,unplaced:V2?skipped.slice():[],v2:!!V2};}
 function fileName(res){const [y,m,d]=res.fileDate.split('-');return `Larder W.E ${d}.${m}.${y.slice(2)}.xlsx`;}
 /* Build an AOA + style map for one day sheet in Paula's template layout. Returns {cells:[[r,c,v,style]], merges, rows} */
+/* Chef totals: sum Staff Required over every service+prep line (all numbers in the cell added, e.g. 'after service + 3' = 3; blanks/text = 0), plus prep matrix counts separately. */
+function staffNum(v){if(typeof v==='number')return isFinite(v)?v:0;const m=String(v==null?'':v).match(/\d+(?:\.\d+)?/g);return m?m.reduce((a,x)=>a+Number(x),0):0;}
+function chefTotals(sh){let lines=0,prep=0;for(const blk of ['service','prep'])for(const sec of sh[blk]||[])for(const l of sec.lines||[])lines+=staffNum(l.staff);
+ for(const sec of sh.prep||[])for(const c of sec.counts||[])prep+=staffNum(c);const rd=x=>Math.round(x*100)/100;return {lines:rd(lines),prep:rd(prep)};}
 function sheetLayout(sh){const C=[];let r=0;const put=(row,col,v,st)=>C.push([row,col,v,st||'body']);const merges=[];const iRef={};
  put(0,0,'','title');merges.push([0,0,0,5]);put(1,0,new Date(sh.date+'T00:00'),'date');merges.push([1,0,1,5]);
  ['Dishes','No. of pax','Date of Function','Staff Required','Notes','allocated Staff'].forEach((h,i)=>put(2,i,h,'head'));
@@ -104,12 +108,13 @@ function sheetLayout(sh){const C=[];let r=0;const put=(row,col,v,st)=>C.push([ro
   r++;for(const l of ls){row(l);r++;}
   const need=start+p.matrix.length;if(r<need)r=need;if(p.key!=='Coffee')r++;}
  function row(l){for(let c=0;c<6;c++)put(r,c,'', 'body');if(!l)return;put(r,0,l.dish,l.fill?'dish:'+l.fill:'dish');if(l.paxValue!=null)put(r,1,l.paxValue,'num');put(r,2,l.dayWord||(l.date?DAYS[dow(l.date)]:''),'center');if(l.staff)put(r,3,l.staff,'center');if(l.notes)put(r,4,l.notes,'body');if(l.alloc)put(r,5,l.alloc,'body');}
+ {const T=chefTotals(sh);put(r,0,'Total chefs needed','foot');put(r,3,T.lines,'num');for(const c of [1,2,4,5])put(r,c,'','body');r++;put(r,0,'Prep matrix staff (separate)','foot');put(r,3,T.prep,'num');for(const c of [1,2,4,5])put(r,c,'','body');r+=2;}
  const g=k=>iRef[k]||'0';const f=(...ks)=>'='+ks.map(g).join('+');
  const foot=[['AM Staff',f('Sandwich:am','Salad:am','Canape:am','Fruits:am','Retail:am','Coffee:am')],['LUNCHBOX STAFF',f('Sandwich:lunchbox','Salad:lunchbox')],['PM staff',f('Salad:pm','Canape:pm','Fruits:pm','Retail:pm','Coffee:pm','Sandwich:pm')]];
  const fr=r;foot.forEach((x,i)=>{put(r,0,x[0],'foot');put(r,5,x[1],'formula');r++;});put(r,0,'Total staffs','foot');put(r,5,`=F${fr+1}+F${fr+2}+F${fr+3}`,'formula');r++;
  const tr=r;['TOTAL AM','TOTAL PM','TOTAL LUNCHBOX'].forEach(t=>{put(r,4,t,'body');put(r,5,'','body');r++;});r++;
  [['MISSING AM',fr+1,tr+1],['MISSING PM',fr+3,tr+2],['MISSING LUNCHBOX',fr+2,tr+3]].forEach(x=>{put(r,4,x[0],'body');put(r,5,`=F${x[1]}-F${x[2]}`,'formula');r++;});
  return {cells:C,merges,rows:r};}
-const API={DEFAULT_ALLOC_SETTINGS,PREP_SECTIONS,SERVICE_SECTIONS,parseWorkOrder,buildAllocation,sheetLayout,fileName,shortName,iso,addDays,DAYS};
+const API={chefTotals,staffNum,DEFAULT_ALLOC_SETTINGS,PREP_SECTIONS,SERVICE_SECTIONS,parseWorkOrder,buildAllocation,sheetLayout,fileName,shortName,iso,addDays,DAYS};
 root.AllocEngine=API;if(typeof module!=='undefined')module.exports=API;
 })(typeof window!=='undefined'?window:globalThis);
