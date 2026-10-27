@@ -1,0 +1,12 @@
+// Optional Apps Script flag for a later redeploy (NOT required for the client switch).
+// Live Code.gs is unchanged — gate-config.js trial.enforce is enough for Paula's link now.
+//
+// Near the top of Code.gs:
+//   var TRIAL_ENFORCED = true;  // set false so trial/expired become unlimited
+//
+// In the function that returns trial/expired (around TRIAL_DAYS):
+//   if (!TRIAL_ENFORCED) return { status: 'unlimited', reason: 'trial_waived' };
+//   var end = addDays_(a.signup, TRIAL_DAYS), left = diff_(day_(), end);
+//   return left > 0
+//     ? { status: 'trial', daysLeft: left, trialEnds: end, reason: 'trial' }
+//     : { status: 'expired', trialEnds: end, reason: 'trial_ended' };

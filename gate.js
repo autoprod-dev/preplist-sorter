@@ -78,9 +78,15 @@
       if (j.until < today()) return showBlocked('Your Prepline access ended on ' + dmy(j.until) + '.');
       return unlock();
     }
-    if (j.status === 'expired') return showBuy();
+    // Testing switch (gate-config trial.enforce): when false, trial + expired unlock; no buy/code screen.
+    var enforce = !!(C.trial && C.trial.enforce === true);
+    if (j.status === 'expired') {
+      if (!enforce) return unlock();
+      return showBuy();
+    }
     if (!OK[j.status]) return showOffline();
     unlock();
+    // Admin pill (showStatus) kept; normal users never get showStatus from Code.gs.
     if (j.status === 'trial' && j.daysLeft > 0 && j.showStatus) note('Trial: ' + j.daysLeft + (j.daysLeft === 1 ? ' day' : ' days') + ' left');
   }
   function showBlocked(msg) {
