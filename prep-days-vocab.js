@@ -6,6 +6,7 @@
  *            a trailing * means "starts with", e.g. "puree*" also matches "purees")
  * Order matters: the first category whose words match wins, so the more specific ones
  * (micro herbs, dry garnish, oils) come before the general ones (garnish, vegetables).
+ * Poultry, cheese/butters/creams and dressings come last so e.g. 'pumpkin & goat's cheese ravioli' stays starch.
  * Anything that matches nothing keeps the old behaviour and is shown as "uncategorised".
  */
 window.PREP_DAYS_VOCAB = [
@@ -35,5 +36,14 @@ window.PREP_DAYS_VOCAB = [
    words:['garnish*','pick','picked','herb','herbs','parsley','chervil','dill','coriander','mint','basil','chive*','tarragon','sage','thyme','rosemary','oregano','shiso','edible flower*','flower edible','flowers','pickle*','pickled']},
   {key:'veg',     label:'Vegetables',              lead:4, family:'veg',
    legend:['veg','vege','veges','veggies','vegetable','vegetables'],
-   words:['veg','vege','vegetable*','carrot*','onion*','shallot*','leek*','celery','celeriac','fennel','beetroot*','beet*','pumpkin','squash','zucchini','eggplant','capsicum*','mushroom*','cauliflower','broccoli*','broccolini','asparagus','pea','peas','bean*','kale','spinach','cabbage','tomato*','cucumber*','radish*','corn','garlic','lettuce','greens','cos','witlof','artichoke*','parsnip*','turnip*','kohlrabi','silverbeet','chard','okra','salad']}
+   words:['veg','vege','vegetable*','carrot*','onion*','shallot*','leek*','celery','celeriac','fennel','beetroot*','beet*','pumpkin','squash','zucchini','eggplant','capsicum*','mushroom*','cauliflower','broccoli*','broccolini','asparagus','pea','peas','bean*','kale','spinach','cabbage','tomato*','cucumber*','radish*','corn','garlic','lettuce','greens','cos','witlof','artichoke*','parsnip*','turnip*','kohlrabi','silverbeet','chard','okra','salad']},
+  {key:'poultry', label:'Poultry',                 lead:4, family:'protein',
+   legend:['poultry','chicken','duck','birds','game birds'],
+   words:['poultry','chicken','duck','turkey','quail','spatchcock','poussin','guinea fowl','pheasant','goose','pigeon','squab','confit leg','thigh*','drumstick*','wing*']},
+  {key:'dairy',   label:'Cheese, butters and creams', lead:4, family:'dairy',
+   legend:['cheese','cheeses','dairy','butter','butters','cream','creams','butters creams','cheese dairy'],
+   words:['cheese*','parmesan','parmigiano','pecorino','grana padano','mozzarella','burrata','ricotta','feta','haloumi','halloumi','goat curd','labneh','mascarpone','stracciatella','gruyere','cheddar','brie','camembert','blue cheese','butter*','cream','creams','creme fraiche','crème fraîche','sour cream','chantilly','custard','yoghurt','yogurt']},
+  {key:'dressing', label:'Dressings',              lead:4, family:'dressing',
+   legend:['dressing','dressings','vinaigrette','vinaigrettes'],
+   words:['dressing*','vinaigrette*','mayo','mayonnaise','aioli','ranch']}
 ];

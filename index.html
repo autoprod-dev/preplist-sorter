@@ -2126,9 +2126,16 @@ function prepStartDay(eventDay, r){
 function prepCatChip(r){
   if (!r) return '';
   const c = r.prepCat ? prepCatByKey(r.prepCat) : null;
-  if (!c) return ' <span class="pd-chip pd-unc" title="No legend colour or keyword matched: prep day uses the old stage rule">uncategorised</span>';
+  if (!c){ const ev0 = prepEventLabel(r.dish); return ' <span class="pd-chip pd-unc" title="No legend colour or keyword matched: prep day uses the old stage rule">uncategorised'+(ev0 ? ' · '+escapeHtml(ev0) : '')+'</span>'; }
   const when = c.lead === 0 ? 'on the day' : (c.lead + (c.lead === 1 ? ' day' : ' days') + ' before');
-  return ` <span class="pd-chip" title="${r.prepSrc === 'legend' ? 'From the colour legend' : 'From keywords'}">${escapeHtml(c.label)} · ${when}${r.day ? ' · starts '+escapeHtml(dayLabel(r.day)) : ''}</span>`;
+  const ev = prepEventLabel(r.dish);
+  return ` <span class="pd-chip" title="${r.prepSrc === 'legend' ? 'From the colour legend' : 'From keywords'}">${escapeHtml(c.label)} · ${when}${r.day ? ' · starts '+escapeHtml(dayLabel(r.day)) : ''}${ev ? ' · '+escapeHtml(ev) : ''}</span>`;
+}
+function prepEventLabel(dish){
+  const ds = getEventDateStr(dish), m = ds && /^(\d{2})\/(\d{2})\/(\d{2,4})$/.exec(ds);
+  if (m){ const y = m[3].length === 2 ? 2000 + +m[3] : +m[3]; const d = new Date(y, +m[2]-1, +m[1]);
+    if (!isNaN(d)) return 'Event ' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; }
+  const ed = getEventDay(dish); return ed ? 'Event ' + String(ed).slice(0,3) : '';
 }
 // Setting/changing a dish's event day automatically recalculates the actual weekday
 // for every one of its tasks from their stage — this is the "automate 4-day prep day
@@ -2696,7 +2703,9 @@ const LEGEND_LABELS = [
   [/^(starch(es)?|big\s+jobs?)$/i, 'Starch'],
   [/^(proteins?|meats?)$/i, 'Proteins'],
   // 4.3.4: finer legend labels used for prep start days (they still sort into the same stations)
-  [/^(red\s+meats?|seafood|fish|shellfish|beef|lamb)$/i, 'Proteins'],
+  [/^(red\s+meats?|seafood|fish|shellfish|beef|lamb|poultry|chicken|duck)$/i, 'Proteins'],
+  [/^(dressings?|vinaigrettes?|butters?|creams?|dairy|butters?\s*(and|&|,)\s*creams?)$/i, 'Sauce, Purees and Gels'],
+  [/^(cheeses?|cheese\s*(and|&|,|\/)\s*dairy)$/i, 'Garnishes, Herbs, Powders, Oils Etc.'],
   [/^(micro\s*herbs?|micros?|oils?|dry\s+garnish(es)?|crumbs?|dry\s+garnish(es)?\s*(and|&|,)\s*crumbs?|pick(ed)?\s+herbs|herbs)$/i, 'Garnishes, Herbs, Powders, Oils Etc.']
 ];
 function legendLabelCategory(text){
@@ -2814,10 +2823,35 @@ function applyColourLegend(ws, items, info){
     return true;
   });
 }
+// 4.3.5: production tool spreadsheets carry the function date in the batch-number section
+// ("BAT-16/09/2026", or a "BAT-" cell with the date just below / beside it). Returns [{r, date:'dd/mm/yyyy'}].
+function xlsxBatDates(aoa){
+  const out = [], pad = n => String(n).padStart(2, '0');
+  const asDate = v => {
+    if (v == null) return null;
+    if (v instanceof Date && !isNaN(v)) return pad(v.getDate())+'/'+pad(v.getMonth()+1)+'/'+v.getFullYear();
+    if (typeof v === 'number' && v > 30000 && v < 80000 && typeof XLSX !== 'undefined' && XLSX.SSF){ const d = XLSX.SSF.parse_date_code(v); return d ? pad(d.d)+'/'+pad(d.m)+'/'+d.y : null; }
+    const m = String(v).trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/); return m ? pad(m[1])+'/'+pad(m[2])+'/'+m[3] : null;
+  };
+  (aoa || []).forEach((row, r)=>{ (row || []).forEach((v, c)=>{
+    if (typeof v !== 'string' || !/^\s*bat\b/i.test(v)) return;
+    const m = v.match(/bat\s*-?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4})/i);
+    let d = m ? asDate(m[1]) : null;
+    if (!d && /^\s*bat\s*-?\s*(no\.?|number|#)?\s*:?\s*$/i.test(v)){
+      for (const [dr, dc] of [[1,0],[0,1],[2,0],[0,2],[1,1]]){ const nb = (aoa[r+dr] || [])[c+dc]; d = asDate(nb); if (d) break; }
+    }
+    if (d) out.push({r, date: d});
+  }); });
+  return out;
+}
 function processWorkbook(wbObj){
   setWorkbookTheme(wbObj);
   const colourInfo = (()=>{ try{ return readColourLegend(wbObj); }catch(e){ return null; } })();
   lastColourSort = colourInfo ? {colours: Object.keys(colourInfo.legend).length, jobs: 0, found: colourInfo.found} : null;
+  // 4.3.5: the BAT date on the FIRST tab ("page 1") is the event date for every line in this file;
+  // no BAT there = the old way (weekday in the tab / dish name).
+  const fileBatDate = (()=>{ try{ const ws0 = wbObj.Sheets[wbObj.SheetNames[0]]; if (!ws0) return null;
+    const b = xlsxBatDates(XLSX.utils.sheet_to_json(ws0, {header:1, defval:null})); return b.length ? b[0].date : null; }catch(e){ return null; } })();
   let sheetsUsed=0, itemsFound=0;
   const skipped = [];
   const errored = [];
@@ -2865,6 +2899,7 @@ function processWorkbook(wbObj){
         const dishTitle = isGeneric ? rawTitle : (blocks.length>1 ? rawTitle : name);
         sheetsUsed++; itemsFound += block.items.length;
         if (block.pax!=null && paxByDish[dishTitle]===undefined){ const bp = parsePaxInput(block.pax); if (bp.ok && bp.n!==undefined) paxByDish[dishTitle] = bp.n; }
+        if (fileBatDate){ const wd = pdfBatDateToWeekday(fileBatDate); if (wd){ eventDayOverride[dishTitle] = wd; eventDateByDish[dishTitle] = fileBatDate; } }
         const rowsBefore = ROWS.length;
         if (colourInfo) block.items = applyColourLegend(ws, block.items, colourInfo);
         addRows(dishTitle, block.items);
@@ -3637,6 +3672,9 @@ async function handlePdfFiles(fileList, opts){
         pagesItems.push(await pdfExtractPageItems(page));
       }
       const {dishes} = pdfParseAllPages(pagesItems);
+      // 4.3.5: the BAT date on this file's FIRST page is the event date for every line in it;
+      // a dish's own BAT date (old behaviour) is only used when page 1 has none.
+      const fileBatDate = (()=>{ try{ return pagesItems[0] ? pdfParseBatDate(pagesItems[0]) : null; }catch(e){ return null; } })();
       dishes.forEach(d=>{
         const tasks = pdfExplodeDish(d);
         (d.skipped||[]).forEach(raw=>skippedRows.push(raw));
@@ -3650,9 +3688,10 @@ async function handlePdfFiles(fileList, opts){
           while (usedDishTitles.has(dishTitle)) dishTitle = stem + ' (' + (n++) + ')';
         }
         usedDishTitles.add(dishTitle);
-        const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
+        const evDate = fileBatDate || d.main.batDate;
+        const eventDay = evDate ? pdfBatDateToWeekday(evDate) : null;
         if (eventDay) eventDayOverride[dishTitle] = eventDay;
-        if (d.main.batDate) eventDateByDish[dishTitle] = d.main.batDate;
+        if (evDate) eventDateByDish[dishTitle] = evDate;
         const pdfRowsBefore = ROWS.length;
         addPdfRows(dishTitle, tasks, eventDay).forEach(raw=>skippedRows.push(raw));
         // v3.2: a PDF's closest thing to a tab name is the recipe title as printed on its
