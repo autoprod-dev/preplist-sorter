@@ -2091,6 +2091,12 @@ function prepNormText(t){ return String(t == null ? '' : t).toLowerCase().replac
 function prepCatByWords(text, family){
   const t = prepNormText(text);
   if (/\bgoat'?s?\s+(cheese|curd)\b/i.test(String(text))) { /* goat's cheese is not red meat */ }
+  // Eggplant "steak" / centrepiece painted protein-colour is still a vegetable job
+  if (/\b(eggplant|aubergine)\b/.test(t)){
+    if (!family || family === 'veg' || family === 'protein'){
+      const v = prepVocab().find(c => c.key === 'veg'); if (v) return v;
+    }
+  }
   for (const c of prepVocab()){
     if (family && c.family !== family) continue;
     if (c.key === 'redmeat' && /\bgoat'?s?\s*(cheese|curd|milk)\b/.test(t) && !/\b(beef|lamb|pork|veal|venison)\b/.test(t)) continue;
@@ -2110,6 +2116,17 @@ function prepCatFromLegendLabel(label){
 }
 function prepCatByKey(k){ return prepVocab().find(c => c.key === k) || null; }
 // info for one line: {prepCat, leadDays, prepSrc:'legend'|'keyword'} or {prepCat:'', leadDays:null}
+function sectionPrepFallback(section){
+  // When colour-legend prep mapping was wiped (same fill used for Sauce and Dressings/etc.)
+  // or a line has no keyword hit, use the kitchen station already assigned to the row.
+  const m = {
+    'Sauce, Purees and Gels': 'gels',
+    'Vegetables': 'veg',
+    'Garnishes, Herbs, Powders, Oils Etc.': 'garnish',
+    'Starch': 'starch'
+  };
+  return m[section] || null;
+}
 function prepInfoFor(text, legendPrep, section){
   let c = null, src = '';
   if (legendPrep){
@@ -2123,6 +2140,13 @@ function prepInfoFor(text, legendPrep, section){
     if (c) src = 'legend';
   }
   if (!c){ c = prepCatByWords(text, null); if (c) src = 'keyword'; }
+  if (!c && section){
+    if (section === 'Proteins'){ c = prepCatByWords(text, 'protein'); if (c) src = 'section'; }
+    else {
+      const fb = sectionPrepFallback(section);
+      if (fb){ c = prepCatByKey(fb); if (c) src = 'section'; }
+    }
+  }
   return c ? {prepCat: c.key, leadDays: c.lead, prepSrc: src} : {prepCat: '', leadDays: null, prepSrc: ''};
 }
 // the weekday a line starts: lead days before the event (closed days push it earlier), else the old stage rule
@@ -2565,11 +2589,31 @@ function isBlankCell(v){ return v===undefined || v===null || (typeof v==='string
 // a row (e.g. two "PAX" cells side by side in the same row for two different dishes).
 // Header wording other kitchens use for the same columns.
 const ITEM_HEADERS = new Set(['item','items','ingredient','ingredients','product','products','prep item','prep items','component','components','description']);
-const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight','qty (per pax)','quantity per pax']);   // v3.2.3 export header
+const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight','qty (per pax)','quantity per pax','per person','per plate','per pax','qty per person','quantity per person','gm/ml']);   // v3.2.3 + WLS "per person" / "gm/ml"
 const UNIT_HEADERS = new Set(['unit','units','uom','unit of measure','measure']);
 const DAY_HEADERS  = new Set(['prep day','day','prepday']);
 const SECTION_HEADERS = new Set(['section','category','team']);
 const SOURCE_HEADERS = new Set(['source tab']);   // v3.2: written by this tool's own Excel export
+const TOTAL_HEADERS = new Set(['total','total needed','total amount prepped','total amount']);
+// Short unit tokens that must never be treated as an ingredient name (Pass 2 used to pick the Unit column when Item was blank).
+const UNIT_TOKEN_RE = /^(g|kg|mg|ml|l|lt|ltr|litre|liter|pcs?|pc|ea|each|pax\/tray|pax\/pun|punnet|pun|tray|bunch|bk|tsp|tbsp|cup|oz|lb|portion|portions)$/i;
+const HEADER_LABELS = new Set([...ITEM_HEADERS, ...QTY_HEADERS, ...UNIT_HEADERS, ...DAY_HEADERS, ...SECTION_HEADERS, ...SOURCE_HEADERS, ...TOTAL_HEADERS, 'pax','comments','menu pres']);
+function cellHeaderLow(v){ return typeof v==='string' ? v.trim().toLowerCase() : ''; }
+function isUnitToken(v){ return typeof v==='string' && UNIT_TOKEN_RE.test(v.trim()); }
+function isNameLikeCell(v){
+  if (typeof v!=='string') return false;
+  const s = v.trim();
+  if (s.length<3) return false;
+  if (HEADER_LABELS.has(s.toLowerCase())) return false;
+  if (isUnitToken(s)) return false;
+  if (/^\d+([.,]\d+)?$/.test(s)) return false;
+  return true;
+}
+function looksLikeHeaderRow(row){
+  let hits = 0;
+  for (const v of (row||[])){ if (HEADER_LABELS.has(cellHeaderLow(v))) hits++; }
+  return hits >= 2;
+}
 function extractAllBlocks(aoa){
   const nRows = aoa.length;
   const claimedRects = []; // {r1,r2,c1,c2}
@@ -2583,6 +2627,9 @@ function extractAllBlocks(aoa){
       const row = aoa[r]||[];
       const item = row[itemCol];
       if (isBlankCell(item)){ blank++; if (blank>6){ endRow=r; break; } continue; }
+      const low = cellHeaderLow(item);
+      // Skip header-label leftovers and bare unit tokens (never real ingredient names)
+      if (HEADER_LABELS.has(low) || isUnitToken(item)){ blank = 0; endRow = r; continue; }
       blank = 0; endRow = r;
       const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
       if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim().replace(/^[1-7]\s*[.)-]?\s+(?=(mon|tue|wed|thu|fri|sat|sun))/i, '');   // r7: '1 Monday' from an export reads back as Monday
@@ -2595,7 +2642,7 @@ function extractAllBlocks(aoa){
 
   function findTitleNear(anchorRow, anchorCol, colSpan, rowSpan){
     rowSpan = rowSpan || 9;
-    const EXCLUDE = new Set(['pax','comments','item','per plate','gm/ml','total needed','per person','unit','total','menu pres']);
+    const EXCLUDE = new Set(['pax','comments','item','per plate','gm/ml','total needed','per person','unit','total','menu pres','total amount prepped']);
     for (let r=anchorRow-1; r>=Math.max(0, anchorRow-rowSpan); r--){
       const row = aoa[r]||[];
       for (let c=Math.max(0, anchorCol-colSpan); c<=anchorCol+colSpan; c++){
@@ -2610,6 +2657,39 @@ function extractAllBlocks(aoa){
     return null;
   }
 
+  function nearInRow(hdr, c, set){
+    for (let d=1; d<=8; d++){   // v3.2.3: export has 8 columns (Source tab is 7 right of Item)
+      for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; }
+    }
+    return -1;
+  }
+
+  function readPaxNear(r, itemCol){
+    let pax = null;
+    for (let rr=Math.max(0,r-3); rr<=r+1 && pax===null; rr++){
+      const rw = aoa[rr]||[];
+      for (let cc=0; cc<rw.length; cc++){
+        if (typeof rw[cc]==='string' && rw[cc].trim().toLowerCase()==='pax'){
+          if (typeof rw[cc-1]==='number') pax = rw[cc-1];
+          else if (typeof rw[cc+1]==='number') pax = rw[cc+1];
+        }
+      }
+    }
+    return pax;
+  }
+
+  // Infer qty/unit when a blank sits between Item and the number (merged-name layouts)
+  function inferQtyUnit(itemCol, probeRow, qtyCol, unitCol){
+    if (!isBlankCell((probeRow||[])[qtyCol])) return {qtyCol, unitCol};
+    for (let d=1; d<=4; d++){
+      const qc = itemCol+d, uc = itemCol+d+1;
+      const qv = (probeRow||[])[qc], uv = (probeRow||[])[uc];
+      const qNum = typeof qv==='number' || (typeof qv==='string' && /^\s*\d+([.,]\d+)?\s*$/.test(qv));
+      if (qNum && (isUnitToken(uv) || typeof uv==='string')) return {qtyCol:qc, unitCol:uc};
+    }
+    return {qtyCol, unitCol};
+  }
+
   // ---- Pass 1: classic "Item" header blocks ----
   for (let r=0; r<nRows; r++){
     const row = aoa[r]||[];
@@ -2622,33 +2702,53 @@ function extractAllBlocks(aoa){
         // otherwise fall back to the classic layout: Qty right of Item, Unit right of Qty.
         let qtyCol=c+1, unitCol=c+2;
         const hdr = row.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
-        const near = (set)=>{ for (let d=1; d<=8; d++){   // v3.2.3: export has 8 columns (Source tab is 7 right of Item)
-           for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; } } return -1; };
-        const qf = near(QTY_HEADERS), uf = near(UNIT_HEADERS);
+        const qf = nearInRow(hdr, c, QTY_HEADERS), uf = nearInRow(hdr, c, UNIT_HEADERS);
         if (qf>=0 && !QTY_HEADERS.has(hdr[c+1]||'')) qtyCol = qf;
         if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
         else if (qf>=0 && uf<0) unitCol = qtyCol+1;
-        const dayCol = near(DAY_HEADERS), sectionColFound = near(SECTION_HEADERS), sourceColFound = near(SOURCE_HEADERS);
+        const dayCol = nearInRow(hdr, c, DAY_HEADERS), sectionColFound = nearInRow(hdr, c, SECTION_HEADERS), sourceColFound = nearInRow(hdr, c, SOURCE_HEADERS);
         const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 4);
-        let pax = null;
-        for (let rr=Math.max(0,r-3); rr<=r+1 && pax===null; rr++){
-          const rw = aoa[rr]||[];
-          for (let cc=0; cc<rw.length; cc++){
-            if (typeof rw[cc]==='string' && rw[cc].trim().toLowerCase()==='pax'){
-              if (typeof rw[cc-1]==='number') pax = rw[cc-1];
-              else if (typeof rw[cc+1]==='number') pax = rw[cc+1];
-            }
-          }
-        }
-        blocks.push({title, items, pax});
-        claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:itemCol+4});
+        blocks.push({title, items, pax: readPaxNear(r, itemCol)});
+        claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:unitCol+4});
       }
     }
   }
 
-  // ---- Pass 2: PAX-anchor blocks (no literal "Item" text — dishes laid out without one) ----
+  // ---- Pass 1b: qty/unit header row with blank / missing "Item" label (WLS / MACQ layouts) ----
+  // Real production tools sometimes leave the Item header cell as a single space. Pass 1
+  // then misses the block and Pass 2 used to treat the Unit column as the item name.
+  for (let r=0; r<nRows; r++){
+    const row = aoa[r]||[];
+    const hdr = row.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
+    let qtyCol=-1, unitCol=-1;
+    for (let c=0; c<Math.min(20, Math.max(hdr.length, 1)); c++){
+      if (qtyCol<0 && QTY_HEADERS.has(hdr[c]||'')) qtyCol = c;
+      if (unitCol<0 && UNIT_HEADERS.has(hdr[c]||'')) unitCol = c;
+    }
+    if (qtyCol<0 || unitCol<0) continue;
+    let itemCol = -1;
+    for (let c=qtyCol-1; c>=Math.max(0, qtyCol-3); c--){
+      if (QTY_HEADERS.has(hdr[c]||'') || UNIT_HEADERS.has(hdr[c]||'') || TOTAL_HEADERS.has(hdr[c]||'')) continue;
+      itemCol = c; break;
+    }
+    if (itemCol<0) itemCol = Math.max(0, qtyCol-1);
+    if (isClaimed(r, itemCol) || isClaimed(r, qtyCol)) continue;
+    let nameHits = 0;
+    for (let rr=r+1; rr<Math.min(nRows, r+8); rr++){
+      if (isNameLikeCell((aoa[rr]||[])[itemCol])) nameHits++;
+    }
+    if (nameHits<1) continue;
+    const dayCol = nearInRow(hdr, itemCol, DAY_HEADERS), sectionColFound = nearInRow(hdr, itemCol, SECTION_HEADERS), sourceColFound = nearInRow(hdr, itemCol, SOURCE_HEADERS);
+    const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
+    if (items.length===0) continue;
+    const title = findTitleNear(r, itemCol, 4);
+    blocks.push({title, items, pax: readPaxNear(r, itemCol)});
+    claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:unitCol+4});
+  }
+
+  // ---- Pass 2: PAX-anchor blocks (no literal "Item" / qty-unit header) ----
   for (let r=0; r<nRows; r++){
     const row = aoa[r]||[];
     for (let c=0; c<20; c++){
@@ -2656,14 +2756,38 @@ function extractAllBlocks(aoa){
       if (typeof row[c]==='string' && row[c].trim().toLowerCase()==='pax'){
         const paxVal = (typeof row[c+1]==='number') ? row[c+1] : (typeof row[c-1]==='number' ? row[c-1] : null);
         const nextRow = aoa[r+1]||[];
-        const candidates = [c, c-2, c-1, 0].filter(x=>x>=0);
-        let itemCol = c;
+        const headerNext = looksLikeHeaderRow(nextRow);
+        // Prefer columns LEFT of PAX — classic layout puts Item | Qty | Unit with PAX over the unit/total area
+        const candidates = [c-2, c-1, c, 0, c+1].filter(x=>x>=0);
+        const probeRow = headerNext ? (aoa[r+2]||[]) : nextRow;
+        let best = -1, bestScore = -1e9;
         for (const cand of candidates){
-          const v = nextRow[cand];
-          if (typeof v==='string' && v.trim().length>0){ itemCol = cand; break; }
+          const v = probeRow[cand];
+          const hdrV = cellHeaderLow(nextRow[cand]);
+          let score = 0;
+          if (HEADER_LABELS.has(hdrV) && (UNIT_HEADERS.has(hdrV) || QTY_HEADERS.has(hdrV) || TOTAL_HEADERS.has(hdrV) || hdrV==='pax')) score -= 200;
+          if (isNameLikeCell(v)) score += 100 + Math.min(40, String(v).trim().length);
+          else if (typeof v==='string' && v.trim().length>0 && !isUnitToken(v) && !HEADER_LABELS.has(cellHeaderLow(v))) score += 40;
+          else if (isUnitToken(v) || HEADER_LABELS.has(cellHeaderLow(v))) score -= 150;
+          else if (typeof v==='number') score -= 50;
+          if (cand < c) score += 15;
+          if (cand === c) score -= 10;
+          if (score > bestScore){ bestScore = score; best = cand; }
         }
-        const qtyCol=itemCol+1, unitCol=itemCol+2;
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1);
+        if (best < 0 || bestScore < 20) continue; // no plausible item column — do not default to the PAX/unit col
+        const itemCol = best;
+        let qtyCol=itemCol+1, unitCol=itemCol+2;
+        if (headerNext){
+          const hdr = nextRow.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
+          const qf = nearInRow(hdr, itemCol, QTY_HEADERS), uf = nearInRow(hdr, itemCol, UNIT_HEADERS);
+          if (qf>=0) qtyCol = qf;
+          if (uf>=0) unitCol = uf;
+          else if (qf>=0) unitCol = qtyCol+1;
+        } else {
+          ({qtyCol, unitCol} = inferQtyUnit(itemCol, probeRow, qtyCol, unitCol));
+        }
+        const startRow = headerNext ? r+2 : r+1;
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, startRow);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 2, 45);
         blocks.push({title, items, pax:paxVal});
@@ -2691,14 +2815,20 @@ function extractAllBlocks(aoa){
         }
         if (run>=3){
           const items = [];
-          for (let k=r; k<=end; k++){ const rw=aoa[k]||[]; if (isText(rw[c])) items.push({item:String(rw[c]), qty:rw[c+1], unit:rw[c+2]}); }
+          for (let k=r; k<=end; k++){
+            const rw=aoa[k]||[];
+            if (isText(rw[c]) && !HEADER_LABELS.has(cellHeaderLow(rw[c])) && !isUnitToken(rw[c])){
+              let qc=c+1, uc=c+2;
+              ({qtyCol:qc, unitCol:uc} = inferQtyUnit(c, rw, qc, uc));
+              items.push({item:String(rw[c]), qty:rw[qc], unit:rw[uc]});
+            }
+          }
           blocks.push({title: findTitleNear(r, c, 3, 6), items, pax:null});
           done = true;
         }
       }
     }
   }
-
   return blocks;
 }
 
@@ -2786,11 +2916,17 @@ function readColourLegend(wbObj){
       if (!key) return;
       labels.add(String(cell.v).trim().toLowerCase());
       if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); if (pl) legendPrep[key] = pl; }
+      else if (pl && !legendPrep[key]){ legendPrep[key] = pl; }
       else if (pl && legendPrep[key] && JSON.stringify(legendPrep[key]) !== JSON.stringify(pl)){
         // the same colour means different things on different tabs: keep only what they agree on
         const fam = x => x.family || (prepCatByKey(x.key) || {}).family;
         const f1 = fam(legendPrep[key]), f2 = fam(pl);
-        if (f1 && f1 === f2) legendPrep[key] = {family: f1}; else delete legendPrep[key];
+        if (f1 && f1 === f2) legendPrep[key] = {family: f1};
+        else {
+          // e.g. Sauce blue also used for Dressings — keep a station-level prep hint so rows stay categorised
+          const fb = sectionPrepFallback(legend[key] || cat);
+          if (fb) legendPrep[key] = {key: fb}; else delete legendPrep[key];
+        }
       }
     });
   });
