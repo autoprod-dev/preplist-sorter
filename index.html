@@ -2683,7 +2683,7 @@ function extractAllBlocks(aoa){
       if (isBlankCell(item)){ blank++; if (blank>6){ endRow=r; break; } continue; }
       const low = cellHeaderLow(item);
       // Skip header-label leftovers and bare unit tokens (never real ingredient names)
-      if (HEADER_LABELS.has(low) || isUnitToken(item)){ blank = 0; endRow = r; continue; }
+      if (HEADER_LABELS.has(low) || isUnitToken(item) || isNonIngredientNote(item)){ blank = 0; endRow = r; continue; }
       blank = 0; endRow = r;
       const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
       if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim().replace(/^[1-7]\s*[.)-]?\s+(?=(mon|tue|wed|thu|fri|sat|sun))/i, '');   // r7: '1 Monday' from an export reads back as Monday
@@ -2910,6 +2910,45 @@ function legendLabelCategory(text){
   for (const [re, cat] of LEGEND_LABELS) if (re.test(t)) return cat;
   return null;
 }
+// 4.4.3: Paula/Gerard default legend — used when a sheet/tab has no readable colour legend of its own.
+// Hexes match Paula's production tools (ARGB without alpha in our rgb: keys).
+const DEFAULT_COLOUR_LEGEND = {
+  'rgb:4A86E8': 'Sauce, Purees and Gels',
+  'rgb:00FF00': 'Vegetables',
+  'rgb:FF9900': 'Garnishes, Herbs, Powders, Oils Etc.',
+  'rgb:FFFF00': 'Starch',
+  'rgb:FF0000': 'Proteins'
+};
+const DEFAULT_LEGEND_PREP = {
+  'rgb:4A86E8': {key:'gels'},
+  'rgb:00FF00': {key:'veg'},
+  'rgb:FF9900': {family:'garnish'},
+  'rgb:FFFF00': {key:'starch'},
+  'rgb:FF0000': {family:'protein'}
+};
+function defaultColourInfo(){
+  return {
+    legend: Object.assign({}, DEFAULT_COLOUR_LEGEND),
+    labels: new Set(),
+    found: Object.keys(DEFAULT_COLOUR_LEGEND).map(k=>({label:'(default)', cat: DEFAULT_COLOUR_LEGEND[k], key:k})),
+    legendPrep: Object.assign({}, DEFAULT_LEGEND_PREP),
+    isDefault: true
+  };
+}
+// Notes / headers that must never become ingredient rows (even when yellow/coloured)
+function isNonIngredientNote(text){
+  const t = String(text == null ? '' : text).trim();
+  if (!t) return true;
+  const low = t.toLowerCase();
+  if (/^pre[\s-]?orders?\b/.test(low)) return true;
+  if (/^pre[\s-]?order\b/.test(low)) return true;
+  if (/^(notes?|comments?|total|sub\s*total|menu\s*pres)\b/.test(low)) return true;
+  if (/^pax(\s*\/\s*\w+)?$/.test(low)) return true;
+  if (/^thursday\b|^monday\b|^tuesday\b|^wednesday\b|^friday\b|^saturday\b|^sunday\b/i.test(low) && /\d{1,2}\/\d{1,2}/.test(low)) return true;
+  if (legendLabelCategory(t)) return true;
+  return false;
+}
+
 // r8: theme colours are turned into real RGB (using the workbook's own theme, else Office defaults) so a legend
 // filled with a standard colour still matches jobs filled with the same colour picked from the theme row.
 let wbThemeRgb = null;
@@ -2929,7 +2968,7 @@ function tintHex(hx, tint){
 function cellFillKey(cell){
   const st = cell && cell.s; if (!st) return null;
   if (st.patternType && st.patternType === 'none') return null;
-  const c = st.fgColor || {};
+  const c = st.fgColor || (st.fill && st.fill.fgColor) || {};
   let hx = null;
   if (typeof c.rgb === 'string' && c.rgb) hx = c.rgb.slice(-6).toUpperCase();
   else if (c.theme != null){ const base = (wbThemeRgb || OFFICE_THEME)[c.theme]; if (!base) return 'th:' + c.theme + ':' + (Math.round((c.tint || 0) * 100) / 100); hx = tintHex(base, c.tint || 0); }
@@ -2955,37 +2994,56 @@ function legendCatFor(key, legend){
   Object.keys(legend).forEach(k=>{ const n = /^rgb:([0-9A-F]{6})$/.exec(k); if (!n) return; const b = rgb(n[1]); const d = Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]); if (d < bd){ bd = d; best = legend[k]; } });
   return bd <= 48 ? best : null;
 }
+function absorbLegendCell(ws, addr, cell, legend, labels, found, legendPrep){
+  if (!cell || (cell.t !== 's' && typeof cell.v !== 'string')) return;
+  const cat = legendLabelCategory(cell.v); if (!cat) return;
+  const pl = (()=>{ try{ return prepCatFromLegendLabel(cell.v); }catch(e){ return null; } })();
+  let key = cellFillKey(cell);
+  if (!key){ const rc = XLSX.utils.decode_cell(addr);
+    for (const dc of [-1, 1, -2, 2]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && (nb.v == null || String(nb.v).trim() === '') && (key = cellFillKey(nb))) break; } }
+  if (!key) return;
+  labels.add(String(cell.v).trim().toLowerCase());
+  if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); if (pl) legendPrep[key] = pl; }
+  else if (pl && !legendPrep[key]){ legendPrep[key] = pl; }
+  else if (pl && legendPrep[key] && JSON.stringify(legendPrep[key]) !== JSON.stringify(pl)){
+    const fam = x => x.family || (prepCatByKey(x.key) || {}).family;
+    const f1 = fam(legendPrep[key]), f2 = fam(pl);
+    if (f1 && f1 === f2) legendPrep[key] = {family: f1};
+    else {
+      const fb = sectionPrepFallback(legend[key] || cat);
+      if (fb) legendPrep[key] = {key: fb}; else delete legendPrep[key];
+    }
+  }
+}
+// 4.4.3: read the colour legend on ONE sheet/tab (Paula puts it on every dish tab).
+function readSheetColourLegend(ws){
+  if (!ws) return null;
+  const legend = {}, labels = new Set(), found = [], legendPrep = {};
+  Object.keys(ws).forEach(addr=>{
+    if (addr[0] === '!') return;
+    absorbLegendCell(ws, addr, ws[addr], legend, labels, found, legendPrep);
+  });
+  const cats = new Set(Object.values(legend));
+  return cats.size >= 2 ? {legend, labels, found, legendPrep, isDefault: false} : null;
+}
 function readColourLegend(wbObj){
   const legend = {}, labels = new Set(), found = [], legendPrep = {};
   (wbObj.SheetNames || []).forEach(name=>{
     const ws = wbObj.Sheets[name]; if (!ws) return;
     Object.keys(ws).forEach(addr=>{
-      if (addr[0] === '!') return; const cell = ws[addr];
-      if (!cell || cell.t !== 's') return;
-      const cat = legendLabelCategory(cell.v); if (!cat) return;
-      const pl = (()=>{ try{ return prepCatFromLegendLabel(cell.v); }catch(e){ return null; } })();
-      let key = cellFillKey(cell);
-      if (!key){ const rc = XLSX.utils.decode_cell(addr);
-        for (const dc of [-1, 1, -2, 2]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && (nb.v == null || String(nb.v).trim() === '') && (key = cellFillKey(nb))) break; } }
-      if (!key) return;
-      labels.add(String(cell.v).trim().toLowerCase());
-      if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); if (pl) legendPrep[key] = pl; }
-      else if (pl && !legendPrep[key]){ legendPrep[key] = pl; }
-      else if (pl && legendPrep[key] && JSON.stringify(legendPrep[key]) !== JSON.stringify(pl)){
-        // the same colour means different things on different tabs: keep only what they agree on
-        const fam = x => x.family || (prepCatByKey(x.key) || {}).family;
-        const f1 = fam(legendPrep[key]), f2 = fam(pl);
-        if (f1 && f1 === f2) legendPrep[key] = {family: f1};
-        else {
-          // e.g. Sauce blue also used for Dressings — keep a station-level prep hint so rows stay categorised
-          const fb = sectionPrepFallback(legend[key] || cat);
-          if (fb) legendPrep[key] = {key: fb}; else delete legendPrep[key];
-        }
-      }
+      if (addr[0] === '!') return;
+      absorbLegendCell(ws, addr, ws[addr], legend, labels, found, legendPrep);
     });
   });
   const cats = new Set(Object.values(legend));
-  return cats.size >= 2 ? {legend, labels, found, legendPrep} : null;
+  return cats.size >= 2 ? {legend, labels, found, legendPrep, isDefault: false} : null;
+}
+// Per-sheet legend when present (≥2 categories); else Paula's default hex legend.
+function colourInfoForSheet(ws, wbFallback){
+  const sheet = readSheetColourLegend(ws);
+  if (sheet) return sheet;
+  if (wbFallback && wbFallback.legend && Object.keys(wbFallback.legend).length >= 2) return wbFallback;
+  return defaultColourInfo();
 }
 function mergedTopLeft(ws, r, c){
   const ms = ws['!merges']; if (!ms) return null;
@@ -3010,18 +3068,38 @@ function sheetFillByText(ws, legend, keyOut){
     } });
   return map;
 }
-let lastColourSort = null;   // {colours, jobs, found} for the status line
+let lastColourSort = null;   // {colours, jobs, found, ambiguous, mismatches} for the status line
 function applyColourLegend(ws, items, info){
   if (!info) return items;
   const keyByText = {};
   const byText = sheetFillByText(ws, info.legend, keyByText);
+  // Collect fills on the sheet that are neither legend colours nor white/black (ambiguous shade report)
+  if (lastColourSort && !lastColourSort._ambScan){
+    lastColourSort._ambScan = true;
+    lastColourSort.ambiguous = lastColourSort.ambiguous || [];
+    const seen = new Set(lastColourSort.ambiguous.map(a=>a.key));
+    Object.keys(ws || {}).forEach(addr=>{
+      if (addr[0]==='!') return;
+      const k = cellFillKey(ws[addr]); if (!k) return;
+      if (legendKeyFor(k, info.legend)) return;
+      if (seen.has(k)) return;
+      seen.add(k);
+      const m = /^rgb:([0-9A-F]{6})$/.exec(k);
+      lastColourSort.ambiguous.push({key:k, hex: m ? m[1] : k, sample: String((ws[addr]&&ws[addr].v)||'').trim().slice(0,40)});
+    });
+  }
   return items.filter(it=>{
-    const t = String(it.item || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const raw = String(it.item || '').trim();
+    const t = raw.toLowerCase().replace(/\s+/g, ' ');
+    if (isNonIngredientNote(raw)) return false;   // 4.4.3: Preorder / pax / titles / legend labels
     if (info.labels.has(t) && legendLabelCategory(it.item)) return false;   // a legend cell, not a job
-    if (typeof it.section === 'string' && it.section.trim()) return true;    // a Section column wins
     const cat = byText[t];
-    if (cat){ it.section = cat; it.colourSorted = true; lastColourSort.jobs++; }
-    { const lk = keyByText[t]; const lp = lk && info.legendPrep ? info.legendPrep[lk] : null; if (lp) it.legendPrep = lp; }
+    if (cat){
+      // 4.4.3: colour is authoritative on ingredient lines (overrides any Section column)
+      it.section = cat; it.colourSorted = true; lastColourSort.jobs++;
+      const lk = keyByText[t]; const lp = lk && info.legendPrep ? info.legendPrep[lk] : null; if (lp) it.legendPrep = lp;
+    }
+    // uncoloured → leave section empty so addRows / keywords decide
     return true;
   });
 }
@@ -3048,8 +3126,9 @@ function xlsxBatDates(aoa){
 }
 function processWorkbook(wbObj){
   setWorkbookTheme(wbObj);
-  const colourInfo = (()=>{ try{ return readColourLegend(wbObj); }catch(e){ return null; } })();
-  lastColourSort = colourInfo ? {colours: Object.keys(colourInfo.legend).length, jobs: 0, found: colourInfo.found} : null;
+  const wbColourInfo = (()=>{ try{ return readColourLegend(wbObj); }catch(e){ return null; } })();
+  // 4.4.3: colour legend is always on (per-sheet when present, else Paula defaults)
+  lastColourSort = {colours: 0, jobs: 0, found: (wbColourInfo && wbColourInfo.found) || defaultColourInfo().found, ambiguous: [], usedDefault: !wbColourInfo};
   // 4.3.5: the BAT date on the FIRST tab ("page 1") is the event date for every line in this file;
   // no BAT there = the old way (weekday in the tab / dish name).
   const fileBatDate = (()=>{ try{ const ws0 = wbObj.Sheets[wbObj.SheetNames[0]]; if (!ws0) return null;
@@ -3103,7 +3182,13 @@ function processWorkbook(wbObj){
         if (block.pax!=null && paxByDish[dishTitle]===undefined){ const bp = parsePaxInput(block.pax); if (bp.ok && bp.n!==undefined) paxByDish[dishTitle] = bp.n; }
         if (fileBatDate){ const wd = pdfBatDateToWeekday(fileBatDate); if (wd){ eventDayOverride[dishTitle] = wd; eventDateByDish[dishTitle] = fileBatDate; } }
         const rowsBefore = ROWS.length;
-        if (colourInfo) block.items = applyColourLegend(ws, block.items, colourInfo);
+        const colourInfo = (()=>{ try{ return colourInfoForSheet(ws, wbColourInfo); }catch(e){ return defaultColourInfo(); } })();
+        if (colourInfo){
+          if (!lastColourSort.colours) lastColourSort.colours = Object.keys(colourInfo.legend).length;
+          if (colourInfo.found && colourInfo.found.length && !colourInfo.isDefault) lastColourSort.found = colourInfo.found;
+          if (colourInfo.isDefault) lastColourSort.usedDefault = true;
+          block.items = applyColourLegend(ws, block.items, colourInfo);
+        }
         addRows(dishTitle, block.items);
         // v3.1: remember the workbook tab each row came from, so every Excel export can
         // name its tabs after the imported file's own tabs (see exportDishesToXlsx).
@@ -3996,6 +4081,49 @@ document.getElementById('fileInput').addEventListener('change', e=>{
     if (evt==='drop') routeFiles(e.dataTransfer.files);
   });
 });
+
+// 4.4.3: parse an in-memory workbook that already carries cellStyles (.s fills).
+// Used by the sheet-builder so Sort now / edited grids never round-trip through a
+// community SheetJS write that strips fills.
+function handleWorkbookObject(wbObj, fileName){
+  if (!wbObj) return;
+  try{
+    const name = fileName || 'edited.xlsx';
+    setStatus('Reading '+name+' — this can take a moment on a big workbook…');
+    const prev = {ROWS, paxByDish, eventDateByDish};
+    ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
+    const {sheetsUsed, itemsFound, skipped, errored} = processWorkbook(wbObj);
+    if (itemsFound===0){
+      ({ROWS, paxByDish, eventDateByDish} = prev);
+      setStatus('Could not find any recipe rows in "'+name+'". Each dish needs a table with a column headed Item, Ingredient or Product (quantity and unit beside it), or a PAX cell above the list — or use the paste box. Your previous list has been kept.', 'err');
+      return;
+    }
+    document.getElementById('fileTag').textContent = name;
+    const dishNames = [];
+    ROWS.forEach(r=>{ const n=cleanDishName(r.dish); if(!dishNames.includes(n)) dishNames.push(n); });
+    if (toolMode==='onetime'){
+      sourceInfo = {name: name, loadedAt: new Date()};
+      let msg = 'Sorted '+itemsFound+' tasks into '+dishNames.length+' dishes: '+dishNames.join(', ')+'.';
+      if (lastColourSort) msg += ' Colour legend'+(lastColourSort.usedDefault?' (defaults)':'')+' ('+lastColourSort.found.map(f=>f.label+' = '+(f.cat==='Garnishes, Herbs, Powders, Oils Etc.'?'Garnish':f.cat)).join(', ')+'): '+lastColourSort.jobs+' job(s) sorted by colour, the rest by name.';
+      if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
+      if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
+      setStatus(msg, errored.length ? 'err' : 'ok');
+      renderApp();
+      if (typeof showOutputChoice==='function'){ if (pbSorting){ pbSorting = false; const oc=document.getElementById('outputChoice'); if (oc){ oc.hidden = true; oc.innerHTML=''; } const v=document.getElementById('preplistTab'); if (v) v.scrollIntoView(); } else showOutputChoice('upload'); }
+      return;
+    }
+    const added = commitRowsToDatabase();
+    let msg = 'Added '+added+' dishes to your recipe database ('+itemsFound+' tasks): '+dishNames.join(', ')+'.';
+    if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
+    if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
+    setStatus(msg, errored.length ? 'err' : 'ok');
+    appMode = 'weekly';
+    renderApp();
+  } catch(err){
+    setStatus('Could not read that file ('+(err && err.message ? err.message : 'unknown error')+'). Please upload an .xlsx, .xls or .csv spreadsheet, or a production tool PDF.', 'err');
+  }
+}
+window.handleWorkbookObject = handleWorkbookObject;
 
 function handleFile(file){
   if (typeof XLSX === 'undefined'){

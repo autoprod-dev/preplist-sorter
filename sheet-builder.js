@@ -246,29 +246,24 @@
         return;
       }
       var wb = getStyledSheetForXlsx();
+      var fname = (pending && pending.fileName) || 'edited.xlsx';
       close();
-      // Same parser path as upload
-      if (typeof processWorkbook === 'function') {
-        // Reset list state like handleFile
-        if (typeof ROWS !== 'undefined') {
-          try {
-            // Use the same entry as a synthetic file via XLSX write → read with cellStyles
-            var out = XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true });
-            var wb2 = XLSX.read(out, { type: 'array', cellDates: false, sheetStubs: false, cellStyles: true });
-            root.ROWS = [];
-            if (typeof paxByDish !== 'undefined') root.paxByDish = {};
-            // Prefer globals used by index.html (non-module)
-          } catch (e1) {}
-        }
-        // Call through the public handle path
-        if (typeof handleWorkbookObject === 'function') {
-          handleWorkbookObject(wb, (pending && pending.fileName) || 'edited.xlsx');
-        } else {
-          // Fallback: write bytes and call handleFile-equivalent
-          ingestWorkbook(wb, (pending && pending.fileName) || 'edited.xlsx');
+      // 4.4.3: feed the in-memory styled workbook directly — never rewrite through
+      // community SheetJS (that path drops every fill, so colour legend sorting dies).
+      if (typeof handleWorkbookObject === 'function') {
+        handleWorkbookObject(wb, fname);
+      } else if (typeof processWorkbook === 'function') {
+        // Last resort: still prefer in-memory process if bridge missing
+        try {
+          if (typeof ROWS !== 'undefined') root.ROWS = [];
+          processWorkbook(wb);
+          if (typeof renderApp === 'function') renderApp();
+          else if (typeof render === 'function') render();
+        } catch (e2) {
+          ingestWorkbook(wb, fname);
         }
       } else {
-        ingestWorkbook(wb, (pending && pending.fileName) || 'edited.xlsx');
+        ingestWorkbook(wb, fname);
       }
     } catch (e) {
       alert('Could not feed sheet to sorter: ' + (e.message || e));
@@ -419,9 +414,21 @@
     if (!pending) return;
     if (pending.type === 'xlsx') {
       var name = pending.fileName;
+      var bytes = pending.bytes;
       var wb = pending.wb;
       pending = null;
-      // Re-read with styles to match handleFile
+      // 4.4.3: use the ORIGINAL upload bytes so community SheetJS write cannot strip fills.
+      // Falling back to in-memory wb via handleWorkbookObject (keeps .s) if bytes missing.
+      if (bytes) {
+        var file = new File([bytes], name || 'upload.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        if (_origHandleFile) { _origHandleFile(file); return; }
+        var B = window.__preplineBridge;
+        if (B && typeof B.handleFileRaw === 'function') { B.handleFileRaw(file); return; }
+      }
+      if (typeof handleWorkbookObject === 'function' && wb) {
+        handleWorkbookObject(wb, name);
+        return;
+      }
       ingestWorkbook(wb, name);
     }
   }
