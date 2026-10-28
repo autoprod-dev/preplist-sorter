@@ -79,10 +79,11 @@
     }).join('');
     card.innerHTML =
       '<div class="rp-top"><h2 style="flex:1">Venue rules</h2><button type="button" class="ghost" id="rpClose">Close</button></div>' +
-      '<p class="rp-sub">Colour, keyword, packs, staffing and IF/THEN rules for this kitchen. Profiles stay on this device. The Default profile mirrors the built-in prep-day vocabulary and staffing ratios.</p>' +
+      '<p class="rp-sub">Colour, keyword, packs, staffing and IF/THEN rules for this kitchen. Profiles stay on this device. The Default profile mirrors the built-in prep-day vocabulary and staffing ratios. 4-day group weekend soft-shift is on by default (editable above). Crab croquettes (frozen bulk) is an editable keyword exception → 4-day group.</p>' +
       '<div class="rp-top">' +
         '<label>Profile <select id="rpProfile">' + opts + '</select></label>' +
         '<label>Match <select id="rpMode"><option value="first"' + (p.matchMode !== 'stack' ? ' selected' : '') + '>First match wins</option><option value="stack"' + (p.matchMode === 'stack' ? ' selected' : '') + '>Stack / continue</option></select></label>' +
+        '<label title="For the 4-day group (veg / red meat / poultry / dairy / dressings / crab croquettes): if 4 days before is Sat/Sun, use 3; if that is Sun, start Monday. Never Sat/Sun."><input type="checkbox" id="rpWeekend"' + (p.weekendShift === false ? '' : ' checked') + '> Weekend soft-shift (4-day group)</label>' +
         '<button type="button" id="rpNewProf">New profile</button>' +
         '<button type="button" id="rpDup">Duplicate</button>' +
         '<button type="button" id="rpExport">Export JSON</button>' +
@@ -105,6 +106,7 @@
     card.querySelector('#rpClose').onclick = closeRules;
     card.querySelector('#rpProfile').onchange = function () { R().setActiveId(this.value); render(); };
     card.querySelector('#rpMode').onchange = function () { p.matchMode = this.value; R().saveProfile(p); };
+    card.querySelector('#rpWeekend').onchange = function () { p.weekendShift = !!this.checked; R().saveProfile(p); };
     card.querySelector('#rpNewProf').onclick = function () {
       var name = prompt('Profile name', 'My kitchen');
       if (!name) return;
@@ -170,7 +172,7 @@
     return {
       id: R().uid(), type: type, enabled: true, priority: 50,
       name: type + ' rule', stack: false,
-      colour: '', legendLabel: '', category: 'veg', leadDays: 4,
+      colour: '', legendLabel: '', category: 'veg', leadDays: 4, weekendShift: false, overridePrep: false,
       field: 'name', op: 'contains', value: '', wildcard: false,
       per: 10, unit: 'pack', round: 'up',
       section: 'Sandwich', mode: 'service', paxMax: 150, chefs: 1,
@@ -180,7 +182,7 @@
 
   function summary(r) {
     if (r.type === 'colour') return (r.legendLabel || r.colour || '?') + ' → ' + (r.category || '') + (r.leadDays != null ? ' · lead ' + r.leadDays : '');
-    if (r.type === 'keyword') return (r.field || 'name') + ' ' + (r.op || 'contains') + ' "' + (r.value || '') + '" → ' + (r.category || '');
+    if (r.type === 'keyword') return (r.field || 'name') + ' ' + (r.op || 'contains') + ' "' + (r.value || '') + '" → ' + (r.category || '') + (r.leadDays != null && r.leadDays !== '' ? ' · lead ' + r.leadDays : '') + (r.weekendShift ? ' · weekend-shift' : '') + (r.overridePrep ? ' · override' : '');
     if (r.type === 'packs') return '1 ' + (r.unit || 'pack') + ' per ' + (r.per || 10) + ' pax · round ' + (r.round || 'up');
     if (r.type === 'staffing') return (r.section || 'any') + ' ≤' + r.paxMax + ' → ' + r.chefs + ' chefs';
     if (r.type === 'ifthen') return 'IF ' + (r.field || 'name') + ' ' + (r.op || 'contains') + ' "' + (r.value || '') + '" THEN…';
@@ -202,6 +204,7 @@
       (rule.type === 'staffing' ? field('Section', '<input id="reSec" value="' + escAttr(rule.section || '') + '">') + field('Pax max', '<input id="rePax" type="number" value="' + (rule.paxMax == null ? '' : rule.paxMax) + '">') + field('Chefs', '<input id="reChefs" type="number" value="' + (rule.chefs == null ? '' : rule.chefs) + '">') + field('Round', sel('reRound', ['none', 'up', 'down', 'nearest'], rule.round || 'none')) : '') +
       ((rule.type === 'colour' || rule.type === 'keyword' || rule.type === 'ifthen') ? field('Category', '<input id="reCat" value="' + escAttr(rule.category || rule.thenCategory || '') + '" placeholder="veg, starch…">') + field('Lead days', '<input id="reLead" type="number" value="' + (rule.leadDays != null ? rule.leadDays : (rule.thenLead || '')) + '">') : '') +
       (rule.type === 'ifthen' ? field('Then staff', '<input id="reThenStaff" value="' + escAttr(rule.thenStaff == null ? '' : rule.thenStaff) + '">') + field('Then note', '<input id="reThenNote" value="' + escAttr(rule.thenNote || '') + '">') + field('Hide', '<label><input type="checkbox" id="reHide"' + (rule.thenHide ? ' checked' : '') + '> hide row</label>') : '') +
+      ((rule.type === 'colour' || rule.type === 'keyword' || rule.type === 'ifthen') ? field('Weekend soft-shift', '<label><input type="checkbox" id="reWk"' + (rule.weekendShift ? ' checked' : '') + '> 4-day Sat/Sun soft-shift</label>') + field('Override prep', '<label><input type="checkbox" id="reOv"' + (rule.overridePrep ? ' checked' : '') + '> wins over legend/keywords</label>') : '') +
       field('Stack', '<label><input type="checkbox" id="reStack"' + (rule.stack ? ' checked' : '') + '> keep matching after this</label>') +
       '</div><div class="rp-actions"><button type="button" class="primary" id="reSave">Save rule</button><button type="button" class="ghost" id="reCancel">Cancel</button></div></div>';
     box.querySelector('#reCancel').onclick = function () { box.innerHTML = ''; };
@@ -209,8 +212,8 @@
       rule.name = val('reName');
       rule.priority = num('rePri', 0);
       rule.stack = !!(document.getElementById('reStack') || {}).checked;
-      if (rule.type === 'colour') { rule.legendLabel = val('reLab'); rule.colour = val('reCol'); rule.category = val('reCat'); rule.leadDays = num('reLead', null); }
-      if (rule.type === 'keyword') { rule.field = val('reField'); rule.op = val('reOp'); rule.value = val('reVal'); rule.wildcard = !!(document.getElementById('reWild') || {}).checked; rule.category = val('reCat'); rule.leadDays = num('reLead', null); }
+      if (rule.type === 'colour') { rule.legendLabel = val('reLab'); rule.colour = val('reCol'); rule.category = val('reCat'); rule.leadDays = num('reLead', null); rule.weekendShift = !!(document.getElementById('reWk') || {}).checked; rule.overridePrep = !!(document.getElementById('reOv') || {}).checked; }
+      if (rule.type === 'keyword') { rule.field = val('reField'); rule.op = val('reOp'); rule.value = val('reVal'); rule.wildcard = !!(document.getElementById('reWild') || {}).checked; rule.category = val('reCat'); rule.leadDays = num('reLead', null); rule.weekendShift = !!(document.getElementById('reWk') || {}).checked; rule.overridePrep = !!(document.getElementById('reOv') || {}).checked; }
       if (rule.type === 'packs') { rule.per = num('rePer', 10); rule.unit = val('reUnit') || 'pack'; rule.round = val('reRound') || 'up'; }
       if (rule.type === 'staffing') { rule.section = val('reSec'); rule.paxMax = num('rePax', Infinity); rule.chefs = num('reChefs', 1); rule.round = val('reRound') || 'none'; }
       if (rule.type === 'ifthen') {
@@ -219,6 +222,8 @@
         rule.thenLead = num('reLead', ''); rule.leadDays = rule.thenLead;
         rule.thenStaff = num('reThenStaff', ''); rule.thenNote = val('reThenNote');
         rule.thenHide = !!(document.getElementById('reHide') || {}).checked;
+        rule.weekendShift = !!(document.getElementById('reWk') || {}).checked;
+        rule.overridePrep = !!(document.getElementById('reOv') || {}).checked;
       }
       var p = activeProfile();
       var i = (p.rules || []).findIndex(function (x) { return x.id === rule.id; });

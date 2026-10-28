@@ -18,7 +18,8 @@
         rules.push({
           id: uid(), type: 'colour', enabled: true, priority: i,
           name: 'Legend: ' + lab + ' → ' + c.label,
-          colour: '', legendLabel: lab, category: c.key, leadDays: c.lead, stack: false
+          colour: '', legendLabel: lab, category: c.key, leadDays: c.lead,
+          weekendShift: !!c.weekendShift, stack: false
         });
       });
       (c.words || []).forEach(function (w) {
@@ -26,7 +27,7 @@
           id: uid(), type: 'keyword', enabled: true, priority: 100 + i,
           name: 'Keyword: ' + w + ' → ' + c.label,
           field: 'name', op: 'contains', value: w.replace(/\*$/, ''), wildcard: /\*$/.test(w),
-          category: c.key, leadDays: c.lead, stack: false
+          category: c.key, leadDays: c.lead, weekendShift: !!c.weekendShift, stack: false
         });
       });
     });
@@ -50,11 +51,21 @@
       name: '1 pack per 10 pax (example, off)',
       per: 10, unit: 'pack', round: 'up', stack: false
     });
+    // 4.4.2 editable exception: crab croquettes (bulked/frozen) → 4-day weekend-shift group
+    // Priority 5 beats seafood "crab" keyword (100+) so the exception wins under first-match.
+    rules.push({
+      id: uid(), type: 'keyword', enabled: true, priority: 5,
+      name: 'Crab croquettes (bulked/frozen) → 4-day group',
+      field: 'name', op: 'contains', value: 'crab croquette', wildcard: false,
+      category: 'crabcroq', leadDays: 4, weekendShift: true, overridePrep: true, stack: false
+    });
     return {
       id: 'default',
       name: 'Default',
       builtIn: true,
       matchMode: 'first', // first | stack
+      weekendShift: true, // 4-day group soft-shift off Sat/Sun (profile toggle)
+      prepDaysVersion: '4.4.2',
       rules: rules,
       updatedAt: new Date().toISOString()
     };
@@ -65,11 +76,22 @@
       var raw = localStorage.getItem(STORE);
       if (raw) {
         var o = JSON.parse(raw);
-        if (o && Array.isArray(o.profiles) && o.profiles.length) return o;
+        if (o && Array.isArray(o.profiles) && o.profiles.length) {
+          // 4.4.2: refresh built-in Default so micro lead 1, weekendShift, crab croquette rule land
+          if (!o.version || o.version < 2) {
+            var fresh = defaultFromVocab();
+            var di = o.profiles.findIndex(function (p) { return p.id === 'default'; });
+            if (di >= 0 && o.profiles[di].builtIn) o.profiles[di] = fresh;
+            else if (di < 0) o.profiles.unshift(fresh);
+            o.version = 2;
+            saveStore(o);
+          }
+          return o;
+        }
       }
     } catch (e) {}
     var def = defaultFromVocab();
-    var store = { profiles: [def], version: 1 };
+    var store = { profiles: [def], version: 2 };
     saveStore(store);
     return store;
   }
@@ -174,7 +196,7 @@
     var mode = opts.matchMode || profile.matchMode || 'first';
     var legendLabel = opts.legendLabel || row.legendLabel || '';
     var colour = (row.colour || row.fill || '').toString().replace(/^#/, '').toUpperCase();
-    var out = { category: null, leadDays: null, staff: null, packs: null, highlight: null, hide: false, notes: [], matched: [], src: '' };
+    var out = { category: null, leadDays: null, weekendShift: null, overridePrep: false, staff: null, packs: null, highlight: null, hide: false, notes: [], matched: [], src: '' };
     var rules = (profile.rules || []).filter(function (r) { return r.enabled !== false; })
       .slice().sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
 
@@ -208,6 +230,8 @@
   function applyAction(out, r) {
     if (r.category != null && r.category !== '') { out.category = r.category; out.src = r.type; }
     if (r.leadDays != null && r.leadDays !== '') out.leadDays = Number(r.leadDays);
+    if (r.weekendShift != null) out.weekendShift = !!r.weekendShift;
+    if (r.overridePrep) out.overridePrep = true;
     if (r.type === 'staffing' && r.chefs != null) {
       var n = Number(r.chefs);
       if (r.round === 'up') n = Math.ceil(n);
@@ -252,8 +276,9 @@
       if (r.enabled === false) return;
       if (r.type !== 'colour' && r.type !== 'keyword') return;
       var key = r.category; if (!key) return;
-      if (!byKey[key]) byKey[key] = { key: key, label: key, lead: Number.isFinite(r.leadDays) ? r.leadDays : 0, family: key, legend: [], words: [] };
+      if (!byKey[key]) byKey[key] = { key: key, label: key, lead: Number.isFinite(r.leadDays) ? r.leadDays : 0, family: key, weekendShift: !!r.weekendShift, legend: [], words: [] };
       if (Number.isFinite(r.leadDays)) byKey[key].lead = r.leadDays;
+      if (r.weekendShift) byKey[key].weekendShift = true;
       if (r.type === 'colour' && r.legendLabel) byKey[key].legend.push(norm(r.legendLabel));
       if (r.type === 'keyword' && r.value) byKey[key].words.push(r.wildcard ? r.value + '*' : r.value);
     });
@@ -265,6 +290,7 @@
       if (byKey[c.key]) {
         out.push({
           key: c.key, label: c.label, lead: byKey[c.key].lead, family: c.family,
+          weekendShift: c.weekendShift === true || byKey[c.key].weekendShift === true,
           legend: byKey[c.key].legend.length ? byKey[c.key].legend : (c.legend || []).slice(),
           words: byKey[c.key].words.length ? byKey[c.key].words : (c.words || []).slice()
         });

@@ -1478,7 +1478,7 @@ function loadOnetimeSession(){
     const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1, prepCat:typeof r.prepCat==='string'?r.prepCat:'', leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:typeof r.prepSrc==='string'?r.prepSrc:'',
+        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1, prepCat:typeof r.prepCat==='string'?r.prepCat:'', leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:typeof r.prepSrc==='string'?r.prepSrc:'', weekendShift:!!r.weekendShift,
         // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
         ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
         // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
@@ -1614,8 +1614,8 @@ function generateWeekly(){
     if (selPax.ok && selPax.n!==undefined) paxByDish[dish] = selPax.n;
     const eventDay = getEventDay(dish);
     dishDatabase[dish].items.forEach(it=>{
-      const pinf = it.prepCat !== undefined ? {prepCat:it.prepCat||'', leadDays:Number.isFinite(it.leadDays)?it.leadDays:null, prepSrc:it.prepSrc||''} : prepInfoFor(it.task, null, it.section);
-      const day = eventDay ? prepStartDay(eventDay, {stageNum:it.stageNum, leadDays:pinf.leadDays}) : '';
+      const pinf = it.prepCat !== undefined ? {prepCat:it.prepCat||'', leadDays:Number.isFinite(it.leadDays)?it.leadDays:null, prepSrc:it.prepSrc||'', weekendShift:!!it.weekendShift} : prepInfoFor(it.task, null, it.section);
+      const day = eventDay ? prepStartDay(eventDay, {stageNum:it.stageNum, leadDays:pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
         baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum, ...pinf,
         pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType,
@@ -2127,6 +2127,15 @@ function sectionPrepFallback(section){
   };
   return m[section] || null;
 }
+function prepWeekendShiftEnabled(){
+  try{
+    if (window.PreplineRules && typeof window.PreplineRules.getProfile === 'function'){
+      const p = window.PreplineRules.getProfile();
+      if (p && p.weekendShift === false) return false;
+    }
+  }catch(e){}
+  return true;
+}
 function prepInfoFor(text, legendPrep, section){
   let c = null, src = '';
   if (legendPrep){
@@ -2147,25 +2156,69 @@ function prepInfoFor(text, legendPrep, section){
       if (fb){ c = prepCatByKey(fb); if (c) src = 'section'; }
     }
   }
-  return c ? {prepCat: c.key, leadDays: c.lead, prepSrc: src} : {prepCat: '', leadDays: null, prepSrc: ''};
+  let info = c
+    ? {prepCat: c.key, leadDays: c.lead, prepSrc: src, weekendShift: !!c.weekendShift}
+    : {prepCat: '', leadDays: null, prepSrc: '', weekendShift: false};
+  // Editable Rules overrides (e.g. crab croquettes → 4-day weekend-shift group)
+  try{
+    if (window.PreplineRules && typeof window.PreplineRules.evaluate === 'function'){
+      const ev = window.PreplineRules.evaluate({ task: text, item: text, section: section || '', prepCat: info.prepCat });
+      if (ev && ev.overridePrep && (ev.leadDays != null || ev.category)){
+        if (ev.category){
+          const oc = prepCatByKey(ev.category) || { key: ev.category, lead: Number(ev.leadDays), weekendShift: true, label: ev.category };
+          info.prepCat = oc.key;
+          info.leadDays = ev.leadDays != null ? Number(ev.leadDays) : oc.lead;
+          info.weekendShift = ev.weekendShift != null ? !!ev.weekendShift : !!oc.weekendShift;
+        } else {
+          info.leadDays = Number(ev.leadDays);
+          if (ev.weekendShift != null) info.weekendShift = !!ev.weekendShift;
+        }
+        info.prepSrc = 'rule';
+      }
+    }
+  }catch(e){}
+  return info;
 }
-// the weekday a line starts: lead days before the event (closed days push it earlier), else the old stage rule
+// the weekday a line starts: lead days before the event (closed days push it earlier), else the old stage rule.
+// 4.4.2 weekend soft-shift (4-day group only, when profile.weekendShift !== false and r.weekendShift):
+//   if 4 days before is Sat/Sun → use 3; if that lands on Sat/Sun → next working day (Mon). Never Sat/Sun.
 function prepStartDay(eventDay, r){
   if (!eventDay) return '';
   const lead = r && Number.isFinite(r.leadDays) ? r.leadDays : null;
   if (lead === null) return calendarDayForPrepNum(eventDay, r ? r.stageNum : null) || '';
   const idx = WEEKDAYS.indexOf(eventDay); if (idx < 0) return '';
   let offset = lead;
-  for (let tries=0; tries<7; tries++){ const day = WEEKDAYS[((idx - offset) % 7 + 7) % 7]; if (!blockedDays.has(day)) return day; offset++; }
+  const shift = prepWeekendShiftEnabled() && r && r.weekendShift && lead >= 4;
+  if (shift){
+    const day4 = WEEKDAYS[((idx - 4) % 7 + 7) % 7];
+    if (day4 === 'Saturday' || day4 === 'Sunday'){
+      offset = 3;
+      let day3 = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+      // if 3-days-before is still weekend (Sun after Wed event), start next working day (Mon)
+      while (offset > 0 && (day3 === 'Saturday' || day3 === 'Sunday')){
+        offset--;
+        day3 = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+      }
+    }
+  }
+  for (let tries=0; tries<7; tries++){
+    const day = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+    const weekendBlocked = shift && (day === 'Saturday' || day === 'Sunday');
+    if (!blockedDays.has(day) && !weekendBlocked) return day;
+    offset++; // day-omit / residual weekend: push earlier
+  }
   return WEEKDAYS[((idx - lead) % 7 + 7) % 7];
 }
 function prepCatChip(r){
   if (!r) return '';
   const c = r.prepCat ? prepCatByKey(r.prepCat) : null;
   if (!c){ const ev0 = prepEventLabel(r.dish); return ' <span class="pd-chip pd-unc" title="No legend colour or keyword matched: prep day uses the old stage rule">uncategorised'+(ev0 ? ' · '+escapeHtml(ev0) : '')+'</span>'; }
-  const when = c.lead === 0 ? 'on the day' : (c.lead + (c.lead === 1 ? ' day' : ' days') + ' before');
+  const lead = Number.isFinite(r.leadDays) ? r.leadDays : c.lead;
+  const when = lead === 0 ? 'on the day' : (lead + (lead === 1 ? ' day' : ' days') + ' before');
   const ev = prepEventLabel(r.dish);
-  return ` <span class="pd-chip" title="${r.prepSrc === 'legend' ? 'From the colour legend' : 'From keywords'}">${escapeHtml(c.label)} · ${when}${r.day ? ' · starts '+escapeHtml(dayLabel(r.day)) : ''}${ev ? ' · '+escapeHtml(ev) : ''}</span>`;
+  const srcTip = r.prepSrc === 'legend' ? 'From the colour legend' : (r.prepSrc === 'rule' ? 'From venue rules' : (r.prepSrc === 'section' ? 'From section' : 'From keywords'));
+  const wk = r.weekendShift ? ' · weekend soft-shift' : '';
+  return ` <span class="pd-chip" title="${srcTip}${wk}">${escapeHtml(c.label)} · ${when}${r.day ? ' · starts '+escapeHtml(dayLabel(r.day)) : ''}${ev ? ' · '+escapeHtml(ev) : ''}</span>`;
 }
 function prepEventLabel(dish){
   const ds = getEventDateStr(dish), m = ds && /^(\d{2})\/(\d{2})\/(\d{2,4})$/.exec(ds);
@@ -2314,6 +2367,7 @@ function classifyPrepStage(taskText, baseCategory, contextStage){
 function blockedDaysPanelHtml(){
   return `<div class="panel no-print" style="padding:12px 16px; margin-bottom:16px;">
     <div style="font-weight:700; font-size:12.5px; margin-bottom:8px;">Kitchen closed on (public holiday etc.) — prep auto-shifts off these days</div>
+    <div style="font-size:11.5px; color:#5C5A52; margin-bottom:8px;">4-day group (veg / red meat / poultry / dairy / dressings / crab croquettes): weekend soft-shift is on by default in Venue rules — Sat/Sun starts move to a 3-day lead or Monday. Day-omit below still pushes earlier.</div>
     <div class="row" style="gap:14px; flex-wrap:wrap;">
       ${WEEKDAYS.map(w=>`<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;">
         <input type="checkbox" ${blockedDays.has(w)?'checked':''} onchange="toggleBlockedDay('${w}', this.checked)">${w}
@@ -2564,7 +2618,7 @@ function addRows(dish, items){
     lastCore = core || lastCore;
     // A Prep day column in the file wins over auto-calculation too, for the same reason.
     const pinf = prepInfoFor(taskText, it.legendPrep || null, cat);
-    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays}) : '');
+    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '');
     ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum, ...pinf,
       ...(typeof it.srcSheet==='string' ? {srcSheet: it.srcSheet} : {})});
   }
@@ -3759,7 +3813,7 @@ function addPdfRows(dish, tasks, eventDay){
     const disp = pdfQtyToDisplay(t.parsedQty);
     const taskLabel = cleanName + (t.note ? ' — ' + t.note : (disp.value===null ? ' ('+t.qtyRaw+')' : ''));
     const pinf = prepInfoFor(cleanName, null, cat);
-    const day = eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays}) : '';
+    const day = eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '';
     ROWS.push({
       dish, task: taskLabel, qty:'', unit: disp.unit, section: cat, baseCategory: cat,
       flagged, day, stageNum, ...pinf, pdfFixedTotal: disp.value,
@@ -7903,7 +7957,8 @@ window.__preplineBridge = {
   render: () => { if (typeof renderApp==='function') renderApp(); else if (typeof render==='function') render(); },
   setStatus: (m, k) => { if (typeof setStatus==='function') setStatus(m, k); },
   showOutput: (k) => { if (typeof showOutputChoice==='function') showOutputChoice(k); },
-  prepInfoFor: (text, leg, sec) => (typeof prepInfoFor==='function' ? prepInfoFor(text, leg, sec) : {prepCat:'', leadDays:null, prepSrc:''}),
+  prepInfoFor: (text, leg, sec) => (typeof prepInfoFor==='function' ? prepInfoFor(text, leg, sec) : {prepCat:'', leadDays:null, prepSrc:'', weekendShift:false}),
+  prepStartDay: (eventDay, r) => (typeof prepStartDay==='function' ? prepStartDay(eventDay, r) : ''),
   handleFileRaw: (file) => handleFile(file)
 };
 
