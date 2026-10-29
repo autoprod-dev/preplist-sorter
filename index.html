@@ -1199,6 +1199,7 @@ function encName(str){
 let origViewerImages = []; // the current dish's images, so Prev/Next can step through them
 let origViewerIndex = 0;
 let origViewerDishClean = '';
+let origViewerDish = '';
 function openOriginalViewer(encDish){
   const dish = decodeURIComponent(encDish);
   const imgs = originalPageImages[dish];
@@ -1206,6 +1207,7 @@ function openOriginalViewer(encDish){
   origViewerImages = imgs;
   origViewerIndex = 0;
   origViewerDishClean = cleanDishName(dish);
+  origViewerDish = dish;
   renderOriginalViewer();
   document.getElementById('origViewerOverlay').classList.remove('hidden');
 }
@@ -1215,7 +1217,7 @@ function renderOriginalViewer(){
   document.getElementById('origViewerTitle').textContent = origViewerDishClean;
   document.getElementById('origViewerSub').textContent = (total>1 ? 'Page '+(origViewerIndex+1)+' of '+total+' — ' : '') + (cur.pageLabel || '');
   const imgEl = document.getElementById('origViewerImg'); imgEl.src = cur.dataUrl;
-  origComposed(cur).then(u=>{ if (origViewerImages[origViewerIndex]===cur && u!==cur.dataUrl) imgEl.src = u; }).catch(()=>{});
+  origComposed(cur, origViewerDish).then(u=>{ if (origViewerImages[origViewerIndex]===cur && u!==cur.dataUrl) imgEl.src = u; }).catch(()=>{});
   const nav = document.getElementById('origViewerNav');
   nav.style.display = total>1 ? '' : 'none';
   document.getElementById('origViewerPrevBtn').disabled = origViewerIndex===0;
@@ -1239,15 +1241,19 @@ function pdfRefGeometry(items, scale){
   const up = r=>r.top - 0.85*(r.sz||10);   // pdf.js 'top' is the text baseline: box top = a little above it
   return {refRows: rows.map((r,i)=>({name:r.name, top:up(r), bot: rows[i+1] ? up(rows[i+1]) : (lastBot ? Math.min(lastBot, up(r)+28) : up(r)+24)})), refBox:{x0:bx0, x1: Math.max(pageW + 2, bx0 + 68)}, refScale:scale};
 }
-function origRefLines(entry){
+function origRefLines(entry, dish){
   if (!entry || !entry.refRows || !POS.length) return [];
-  return entry.refRows.map(r=>{ const m = poMatchFor(r.name); return (m && m.status==='ok' && m.item) ? {row:r, text:poBoxText(m.item)} : null; }).filter(Boolean);
+  const functionDate = dish ? getEventDateStr(dish) : null;
+  return entry.refRows.map(r=>{
+    const m = poMatchFor(r.name, {functionDate, forFill:true});
+    return (m && m.status==='ok' && m.item) ? {row:r, text:poBoxText(m.item)} : null;
+  }).filter(Boolean);
 }
 const origCompCache = {};
-function origComposed(entry){
-  const lines = origRefLines(entry);
+function origComposed(entry, dish){
+  const lines = origRefLines(entry, dish);
   if (!lines.length) return Promise.resolve(entry.dataUrl);
-  const key = entry.dataUrl.length + '|' + entry.dataUrl.slice(-40) + '|' + lines.map(l=>l.row.top+l.text).join('~');
+  const key = entry.dataUrl.length + '|' + entry.dataUrl.slice(-40) + '|' + (dish||'') + '|' + (dish?getEventDateStr(dish):'') + '|' + lines.map(l=>l.row.top+l.text).join('~');
   if (origCompCache[key]) return Promise.resolve(origCompCache[key]);
   return new Promise((res, rej)=>{
     const img = new Image();
@@ -1278,26 +1284,26 @@ function origComposed(entry){
 }
 function renderOriginalsTab(){
   const dishes = Object.keys(originalPageImages), n = dishes.reduce((a,d)=>a+originalPageImages[d].length,0);
-  const filled = dishes.reduce((a,d)=>a+originalPageImages[d].reduce((b,e)=>b+origRefLines(e).length,0),0);
+  const filled = dishes.reduce((a,d)=>a+originalPageImages[d].reduce((b,e)=>b+origRefLines(e,d).length,0),0);
   setTimeout(composeOriginalsInDom, 0);
   return `<div class="panel orig-tab" id="origTab">
     <div class="row no-print" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
       <h3 style="margin:0;">📖 Original production tools</h3>
       <button class="ghost" type="button" onclick="printOriginalsAll()">🖨️ Print the original pages</button>
     </div>
-    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s); ingredients that cannot be matched, and sub-recipes, are left blank to fill in by hand.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
+    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is within 4 days before the function; ingredients with no match, delivery outside that window, or sub-recipes stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
     ${dishes.map(d=>originalPageImages[d].map((e,i)=>`<div class="orig-page"><div class="orig-head no-print"><b>${escapeHtml(cleanDishName(d))}</b> <span class="meta">${escapeHtml(e.pageLabel||'')}</span> <button class="ghost" type="button" onclick="openOriginalViewer('${encodeURIComponent(d).replace(/'/g,'%27')}')">📖 View original</button></div><img class="orig-img" data-od="${escapeHtml(encodeURIComponent(d))}" data-oi="${i}" src="${e.dataUrl}" alt="${escapeHtml(cleanDishName(d))}"></div>`).join('')).join('')}
   </div>`;
 }
 function composeOriginalsInDom(){
   document.querySelectorAll('img.orig-img').forEach(img=>{
     const d = decodeURIComponent(img.getAttribute('data-od')), e = (originalPageImages[d]||[])[Number(img.getAttribute('data-oi'))];
-    if (e) origComposed(e).then(u=>{ img.src = u; img.setAttribute('data-filled', u!==e.dataUrl ? '1' : '0'); }).catch(()=>{});
+    if (e) origComposed(e, d).then(u=>{ img.src = u; img.setAttribute('data-filled', u!==e.dataUrl ? '1' : '0'); }).catch(()=>{});
   });
 }
 async function printOriginalsAll(){
   const items = []; Object.keys(originalPageImages).forEach(d=>originalPageImages[d].forEach(e=>items.push({d, e})));
-  const urls = await Promise.all(items.map(x=>origComposed(x.e).catch(()=>x.e.dataUrl)));
+  const urls = await Promise.all(items.map(x=>origComposed(x.e, x.d).catch(()=>x.e.dataUrl)));
   const imgsHtml = items.map((x,i)=>`<div class="pg"><img src="${urls[i]}"></div>`).join('');
   printViaIframe(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Original production tools</title><style>body{margin:0}.pg{page-break-after:always;display:flex;justify-content:center;padding:8px 0}.pg:last-child{page-break-after:auto}img{max-width:100%;height:auto}</style></head><body>${imgsHtml}</body></html>`);
 }
@@ -1308,7 +1314,7 @@ function closeOriginalViewer(){
 }
 async function printOriginalViewer(){
   const title = origViewerDishClean;
-  const urls = await Promise.all(origViewerImages.map(im=>origComposed(im).catch(()=>im.dataUrl)));
+  const urls = await Promise.all(origViewerImages.map(im=>origComposed(im, origViewerDish).catch(()=>im.dataUrl)));
   const imgsHtml = origViewerImages.map((im,i)=>`<div class="pg"><img src="${urls[i]}"><div class="lbl">${escapeHtml(im.pageLabel||'')}</div></div>`).join('');
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
     <style>
@@ -3345,20 +3351,90 @@ function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((i
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
 const PO_LINK_KEY = 'prepline.poLinks.v1';
 let poLinks = (function(){ try{ return JSON.parse(localStorage.getItem(PO_LINK_KEY)||'{}') || {}; }catch(e){ return {}; } })();
-function poMatchFor(task){
+// 4.4.4: Ref# fill only when requisition Required Delivery Date is within 0..4 days
+// before the dish function date (inclusive; never after). Among same/similar matches
+// across multiple requisition PDFs, pick the delivery closest to (and not after) the function.
+const PO_DELIVERY_WINDOW_DAYS = 4;
+function poParseDate(s){
+  const m = String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  let y = Number(m[3]); if (y < 100) y += 2000;
+  const d = new Date(y, Number(m[2]) - 1, Number(m[1]));
+  return (d.getFullYear()===y && d.getMonth()===Number(m[2])-1 && d.getDate()===Number(m[1])) ? d : null;
+}
+function poDaysBefore(deliveryStr, functionStr){
+  const d = poParseDate(deliveryStr), f = poParseDate(functionStr);
+  if (!d || !f) return null;
+  const a = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const b = Date.UTC(f.getFullYear(), f.getMonth(), f.getDate());
+  return Math.round((b - a) / 86400000);
+}
+function poDeliveryInWindow(deliveryStr, functionStr){
+  const days = poDaysBefore(deliveryStr, functionStr);
+  return days !== null && days >= 0 && days <= PO_DELIVERY_WINDOW_DAYS;
+}
+function poPickBestCand(cands){
+  // Highest name score; then closest delivery to function (smallest daysBefore >= 0).
+  let best = null;
+  cands.forEach(c=>{
+    if (!best){ best = c; return; }
+    if (c.score > best.score + 1e-9){ best = c; return; }
+    if (Math.abs(c.score - best.score) <= 1e-9){
+      const cd = (c.daysBefore === null || c.daysBefore < 0) ? 1e9 : c.daysBefore;
+      const bd = (best.daysBefore === null || best.daysBefore < 0) ? 1e9 : best.daysBefore;
+      if (cd < bd) best = c;
+    }
+  });
+  return best;
+}
+function poMatchFor(task, opts){
+  opts = opts || {};
+  const functionDate = opts.functionDate || null;
+  const forFill = !!opts.forFill;   // Ref# box on original PT: never fill without a valid window match
   if (!POS.length) return null;
   if (!poMatchCache) poMatchCache = {items: poAllItems(), byKey: {}};
-  const key = ingKey(task);
-  if (poMatchCache.byKey[key] !== undefined) return poMatchCache.byKey[key];
-  if (poIsInHouse(task)) return (poMatchCache.byKey[key] = {status:'sub'});
-  const tok = poTokens(task); let best = null;
-  poMatchCache.items.forEach(it=>{ const sc = poScore(tok, it.tok); if (sc > 0 && (!best || sc > best.score)) best = {item: it, score: sc}; });
-  const link = poLinks[key];
+  const cacheKey = ingKey(task) + '|' + (functionDate || '') + '|' + (forFill ? 'F' : 'S');
+  if (poMatchCache.byKey[cacheKey] !== undefined) return poMatchCache.byKey[cacheKey];
+  if (poIsInHouse(task)) return (poMatchCache.byKey[cacheKey] = {status:'sub'});
+  const tok = poTokens(task);
+  const cands = [];
+  poMatchCache.items.forEach(it=>{
+    const sc = poScore(tok, it.tok);
+    if (sc <= 0) return;
+    const daysBefore = functionDate ? poDaysBefore(it.po && it.po.delivery, functionDate) : null;
+    cands.push({item: it, score: sc, daysBefore});
+  });
+  const link = poLinks[ingKey(task)];
   let res;
   if (link === 'none') res = {status:'none', manual:true};
-  else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)) res = {status:'ok', item: poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link), score:1, manual:true};
-  else res = !best || best.score < PO_CHECK ? {status:'none', best} : {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score};
-  return (poMatchCache.byKey[key] = res);
+  else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)){
+    const item = poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link);
+    // Manual link still respects the 4-day window when a function date is known (and always when filling Ref#).
+    if (functionDate && !poDeliveryInWindow(item.po && item.po.delivery, functionDate))
+      res = {status:'nodelivery', reason:'no delivery within 4 days', item, score:1, manual:true, daysBefore: poDaysBefore(item.po && item.po.delivery, functionDate)};
+    else res = {status:'ok', item, score:1, manual:true, daysBefore: functionDate ? poDaysBefore(item.po && item.po.delivery, functionDate) : null};
+  } else {
+    const nameHits = cands.filter(c=>c.score >= PO_CHECK);
+    if (functionDate){
+      const inWin = cands.filter(c=>c.daysBefore !== null && c.daysBefore >= 0 && c.daysBefore <= PO_DELIVERY_WINDOW_DAYS);
+      const best = poPickBestCand(inWin);
+      if (best && best.score >= PO_CHECK)
+        res = {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score, daysBefore: best.daysBefore};
+      else if (nameHits.length)
+        res = {status:'nodelivery', reason:'no delivery within 4 days', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0};
+      else
+        res = {status:'none', best: poPickBestCand(cands)};
+    } else if (forFill){
+      // Ref# fill requires a function date to validate the delivery window.
+      res = nameHits.length
+        ? {status:'nodelivery', reason:'no function date', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0}
+        : {status:'none', best: poPickBestCand(cands)};
+    } else {
+      const best = poPickBestCand(cands);
+      res = !best || best.score < PO_CHECK ? {status:'none', best} : {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score};
+    }
+  }
+  return (poMatchCache.byKey[cacheKey] = res);
 }
 const PO_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function poLongDate(d){ const m = String(d||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? Number(m[1])+' '+PO_MONTHS[Number(m[2])-1] : (d||''); }
@@ -3392,38 +3468,43 @@ const PO_VIEWS_KEY = 'prepline.poInViews.v1';
 const poInViews = false;   // r3 (spec): NO supplier / PO details in By dish, By team section, By prep day or the Order sheet; REF lives in the Ref # box on View original + its print
 function poChipHtml(r){
   if (!poInViews) return '';
-  const m = poMatchFor(r.task); if (!m || m.status==='sub') return '';
+  const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return '';
   if (m.status==='none') return ' <span class="po-chip none" title="No line on the uploaded purchase orders matches this ingredient.">no PO</span>';
+  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is within 4 days before the function.">no delivery within 4 days</span>';
   const it = m.item, po = it.po;
   const tip = `${it.supplier}${po.poNumbers.length?' · PO '+poNumberText(po):''} · line ${it.n}: ${it.desc} · ${it.qty!==null?it.qty+' '+it.uom:''} · delivery ${po.delivery}${m.status==='check'?' — weak name match, please check':''}`;
   return ` <span class="po-chip ${m.status}" title="${escapeHtml(tip)}"><b class="po-ref-l">REF</b> ${escapeHtml(poRefText(it))}${m.status==='check'?' (check)':''}</span>`;
 }
 function poStats(){
-  const keys = new Set(), used = new Set(); let ok = 0, check = 0, none = 0;
-  ROWS.forEach(r=>{ const k = ingKey(r.task); if (!k || keys.has(k)) return; keys.add(k); const m = poMatchFor(r.task); if (!m || m.status==='sub') return;
-    if (m.status==='ok'){ ok++; used.add(m.item.po.req+'#'+m.item.n); } else if (m.status==='check'){ check++; used.add(m.item.po.req+'#'+m.item.n); } else none++; });
+  const keys = new Set(), used = new Set(); let ok = 0, check = 0, none = 0, nodelivery = 0;
+  ROWS.forEach(r=>{ const k = ingKey(r.task)+'|'+ (getEventDateStr(r.dish)||''); if (!k || keys.has(k)) return; keys.add(k);
+    const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return;
+    if (m.status==='ok'){ ok++; used.add(m.item.po.req+'#'+m.item.n); }
+    else if (m.status==='check'){ check++; used.add(m.item.po.req+'#'+m.item.n); }
+    else if (m.status==='nodelivery') nodelivery++;
+    else none++; });
   const unusedLines = poAllItems().filter(it=>!used.has(it.po.req+'#'+it.n));
-  return {total: keys.size, ok, check, none, unusedLines};
+  return {total: keys.size, ok, check, none, nodelivery, unusedLines};
 }
 function poLinkSet(encTask, val){ const k = ingKey(decodeURIComponent(encTask)); if (val) poLinks[k] = val; else delete poLinks[k]; try{ localStorage.setItem(PO_LINK_KEY, JSON.stringify(poLinks)); }catch(e){} poMatchCache = null; render(); }
 function poPanelHtml(){
   if (!POS.length) return '';
   const st = ROWS.length ? poStats() : null;
   const opts = poAllItems();
-  const listRows = st ? [...new Set(ROWS.map(r=>r.task))].filter(t=>{ const m = poMatchFor(t); return m && (m.status==='check' || m.status==='none'); }) : [];
+  const listRows = st ? [...new Set(ROWS.map(r=>r.task+'@@'+(getEventDateStr(r.dish)||'')))].map(k=>{ const i=k.lastIndexOf('@@'); return {task:k.slice(0,i), functionDate:k.slice(i+2)||null}; }).filter(x=>{ const m = poMatchFor(x.task, {functionDate:x.functionDate}); return m && (m.status==='check' || m.status==='none' || m.status==='nodelivery'); }) : [];
   return `<div class="panel po-panel no-print" id="poPanel">
     <div class="row" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
       <h3 style="margin:0;">🧾 Requisitions (${POS.length})</h3>
       <button class="ghost" type="button" onclick="clearPOs()">Clear requisitions</button>
     </div>
-    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box on each production tool page: see the <b>📖 Original PTs</b> tab or <b>📖 View original</b> (both print).</div>
+    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is within 4 days before that dish's function date (closest match wins if the same item appears on several PDFs). See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
     <table class="po-table"><thead><tr><th>PO number(s)</th><th>Delivery</th><th>Suppliers</th><th>Lines</th><th>File</th></tr></thead><tbody>
     ${POS.map(po=>`<tr><td><b>${po.poNumbers.length?escapeHtml(poNumberText(po)):'no PO number'}</b>${po.req?'<div class="meta">'+escapeHtml(po.req)+'</div>':''}${po.subject?'<div class="meta">'+escapeHtml(po.subject)+'</div>':''}</td><td>${escapeHtml(po.delivery||'—')}</td><td>${escapeHtml([...new Set(po.items.map(i=>i.supplier))].join(', '))}</td><td>${po.items.length}</td><td class="meta">${escapeHtml(po.file||'')}</td></tr>`).join('')}
     </tbody></table>
-    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
+    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery within 4 days`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
     ${listRows.length ? `<details class="po-fix"><summary>Check or link ingredients (${listRows.length})</summary>
-      ${listRows.map(t=>{ const m = poMatchFor(t); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${m.status==='check'?'<span class="po-chip check">check</span>':'<span class="po-chip none">no PO</span>'}</span>
-        <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):'— not on a PO —'}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+')')}</option>`).join('')}</select></div>`; }).join('')}
+      ${listRows.map(x=>{ const t=x.task; const m = poMatchFor(t, {functionDate:x.functionDate}); const flag = m.status==='check'?'<span class="po-chip check">check</span>':(m.status==='nodelivery'?'<span class="po-chip none">no delivery within 4 days</span>':'<span class="po-chip none">no PO</span>'); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${flag}</span>
+        <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):(m.status==='nodelivery'?'Name match outside 4-day window':'— not on a PO —')}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+') · del '+(i.po.delivery||'?'))}</option>`).join('')}</select></div>`; }).join('')}
     </details>` : ''}
     ${st && st.unusedLines.length ? `<details class="po-fix"><summary>PO lines not used by any recipe (${st.unusedLines.length})</summary><ul>${st.unusedLines.map(i=>`<li>${escapeHtml(i.supplier)} · ${escapeHtml(i.desc)} · ${i.qty!==null?escapeHtml(i.qty+' '+i.uom):''} <span class="meta">(${escapeHtml(i.po.req)})</span></li>`).join('')}</ul></details>` : ''}
   </div>`;
@@ -6536,7 +6617,15 @@ function orderLines(){
   });
   list.forEach(L=>{
     L.supplier = (INGINFO.items[L.key]||{}).sup || '';
-    L.po = poMatchFor(L.task);
+    L.po = (function(){
+      let best = null;
+      (L.dishes||[]).forEach(d=>{
+        const m = poMatchFor(L.task, {functionDate: getEventDateStr(d)});
+        if (!m || (m.status!=='ok' && m.status!=='check')) return;
+        if (!best || m.score > best.score + 1e-9 || (Math.abs(m.score-best.score)<=1e-9 && (m.daysBefore||1e9) < (best.daysBefore||1e9))) best = m;
+      });
+      return best || poMatchFor(L.task, {functionDate: getEventDateStr((L.dishes||[])[0])});
+    })();
     if (poInViews && !L.supplier && L.po && L.po.status==='ok') { L.supplier = L.po.item.supplier; L.supFromPo = true; }
     if (L.hasQty){
       L.qty = Math.round(L.qty*1e9)/1e9;
@@ -6561,6 +6650,7 @@ const ORDER_GROUP_FOOT = [];   // feature 6 adds a cost total line: (group) => h
 function poOrderCell(L, print){
   const m = L.po; if (!m || m.status==='sub') return '';
   if (m.status==='none') return print ? 'not on a PO' : '<span class="po-chip none">no PO</span>';
+  if (m.status==='nodelivery') return print ? 'no delivery within 4 days' : '<span class="po-chip none">no delivery within 4 days</span>';
   const it = m.item, po = it.po;
   const txt = poRefText(it) + (m.status==='check'?' (check)':'');
   return print ? escapeHtml(txt) : `<span class="po-chip ${m.status}" title="${escapeHtml(it.supplier+' · '+it.desc)}">🧾 ${escapeHtml(txt)}</span>`;
