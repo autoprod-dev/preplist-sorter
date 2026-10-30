@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.4.5">
+<meta name="prepline-version" content="4.4.6">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2542,9 +2542,20 @@ function computeTotal(r){
     if (!hasPax || !(Number.isFinite(base) && base>0)) return r.pdfFixedTotal;
     return Math.round(r.pdfFixedTotal * pax / base * 1e9)/1e9;   // v3.2.3: only float noise removed, so it matches Excel's per-pax × PAX exactly (display rounds)
   }
+  // Prefer the sheet's own "total" / "total amount prepped" when present (Eggplant tabs).
+  if (Number.isFinite(r.sheetTotal) && r.sheetTotal > 0){
+    const base = r.sheetBasePax;
+    if (hasPax && Number.isFinite(base) && base > 0 && pax !== base)
+      return Math.round(r.sheetTotal * pax / base * 1e9)/1e9;
+    return r.sheetTotal;
+  }
   const q = parseQty(r.qty);
-  if (!hasPax || isNaN(q)) return null;
-  return Math.round(q * pax * 1e9)/1e9;
+  if (hasPax && !isNaN(q)){
+    const tot = Math.round(q * pax * 1e9)/1e9;
+    if (tot >= 100000){ r.totalFlag = 'check-total'; }
+    return tot;
+  }
+  return null;
 }
 // Totals of 1000 g or more display as kg (and 1000 ml+ as L): "10 kg", never "10000 g".
 const G_UNITS = new Set(['g','gm','gms','gram','grams']), KG_UNITS = new Set(['kg','kgs','kilo','kilos','kilogram','kilograms']);
@@ -2602,6 +2613,8 @@ function addRows(dish, items){
     if (!it || it.item===undefined || it.item===null) continue;
     it.item = String(it.item);
     if (!it.item.trim()) continue;
+    if (typeof isUnitToken==='function' && isUnitToken(it.item)) continue;
+    if (typeof HEADER_LABELS!=='undefined' && HEADER_LABELS.has(it.item.trim().toLowerCase())) continue;
     // A Section column in the file (e.g. this tool's own Excel export, re-uploaded with
     // values edited or untouched) wins over auto-categorization — it's what the person
     // actually set, not a guess from the task's wording.
@@ -2626,6 +2639,7 @@ function addRows(dish, items){
     const pinf = prepInfoFor(taskText, it.legendPrep || null, cat);
     const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '');
     ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum, ...pinf,
+      ...(Number.isFinite(it.sheetTotal) ? {sheetTotal: it.sheetTotal, sheetBasePax: (typeof paxByDish[dish]==='number' ? paxByDish[dish] : undefined)} : {}),
       ...(typeof it.srcSheet==='string' ? {srcSheet: it.srcSheet} : {})});
   }
 }
@@ -2656,7 +2670,7 @@ const SECTION_HEADERS = new Set(['section','category','team']);
 const SOURCE_HEADERS = new Set(['source tab']);   // v3.2: written by this tool's own Excel export
 const TOTAL_HEADERS = new Set(['total','total needed','total amount prepped','total amount']);
 // Short unit tokens that must never be treated as an ingredient name (Pass 2 used to pick the Unit column when Item was blank).
-const UNIT_TOKEN_RE = /^(g|kg|mg|ml|l|lt|ltr|litre|liter|pcs?|pc|ea|each|pax\/tray|pax\/pun|punnet|pun|tray|bunch|bk|tsp|tbsp|cup|oz|lb|portion|portions)$/i;
+const UNIT_TOKEN_RE = /^(g|gm|gms|kg|mg|ml|l|lt|ltr|litre|liter|pcs?|pc|ea|each|unit|units|uom|half\s*pcs?|pax\/tray|pax\/pun|punnet|pun|tray|bunch|bk|tsp|tbsp|cup|oz|lb|portion|portions)$/i;
 const HEADER_LABELS = new Set([...ITEM_HEADERS, ...QTY_HEADERS, ...UNIT_HEADERS, ...DAY_HEADERS, ...SECTION_HEADERS, ...SOURCE_HEADERS, ...TOTAL_HEADERS, 'pax','comments','menu pres']);
 function cellHeaderLow(v){ return typeof v==='string' ? v.trim().toLowerCase() : ''; }
 function isUnitToken(v){ return typeof v==='string' && UNIT_TOKEN_RE.test(v.trim()); }
@@ -2680,7 +2694,13 @@ function extractAllBlocks(aoa){
   const blocks = [];
   const isClaimed = (r,c) => claimedRects.some(x => r>=x.r1 && r<=x.r2 && c>=x.c1 && c<=x.c2);
 
-  function readItemsDownward(itemCol, qtyCol, unitCol, startRow, dayCol, sectionCol, sourceCol){
+  function totalColFromHeader(hdr, itemCol){
+    for (let c=0; c<hdr.length; c++){ if (TOTAL_HEADERS.has(hdr[c]||'')) return c; }
+    // Classic layout: Item | per person | unit | total
+    if (itemCol!=null && itemCol+3 < (hdr.length+4)) return itemCol+3;
+    return null;
+  }
+  function readItemsDownward(itemCol, qtyCol, unitCol, startRow, dayCol, sectionCol, sourceCol, totalCol){
     const items = [];
     let blank = 0, endRow = startRow;
     for (let r=startRow; r<nRows; r++){
@@ -2692,6 +2712,11 @@ function extractAllBlocks(aoa){
       if (HEADER_LABELS.has(low) || isUnitToken(item) || isNonIngredientNote(item)){ blank = 0; endRow = r; continue; }
       blank = 0; endRow = r;
       const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
+      if (totalCol!=null && !isBlankCell(row[totalCol])){
+        const tv = row[totalCol];
+        const n = typeof tv==='number' ? tv : parseFloat(String(tv).replace(/,/g,''));
+        if (Number.isFinite(n)) entry.sheetTotal = n;
+      }
       if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim().replace(/^[1-7]\s*[.)-]?\s+(?=(mon|tue|wed|thu|fri|sat|sun))/i, '');   // r7: '1 Monday' from an export reads back as Monday
       if (sectionCol!=null && !isBlankCell(row[sectionCol])) entry.section = String(row[sectionCol]).trim();
       if (sourceCol!=null && !isBlankCell(row[sourceCol])) entry.srcSheet = String(row[sourceCol]);   // exact, not trimmed
@@ -2767,7 +2792,8 @@ function extractAllBlocks(aoa){
         if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
         else if (qf>=0 && uf<0) unitCol = qtyCol+1;
         const dayCol = nearInRow(hdr, c, DAY_HEADERS), sectionColFound = nearInRow(hdr, c, SECTION_HEADERS), sourceColFound = nearInRow(hdr, c, SOURCE_HEADERS);
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
+        const totCol = totalColFromHeader(hdr, itemCol);
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null, totCol);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 4);
         blocks.push({title, items, pax: readPaxNear(r, itemCol)});
@@ -2801,7 +2827,8 @@ function extractAllBlocks(aoa){
     }
     if (nameHits<1) continue;
     const dayCol = nearInRow(hdr, itemCol, DAY_HEADERS), sectionColFound = nearInRow(hdr, itemCol, SECTION_HEADERS), sourceColFound = nearInRow(hdr, itemCol, SOURCE_HEADERS);
-    const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
+    const totCol = totalColFromHeader(hdr, itemCol);
+    const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null, totCol);
     if (items.length===0) continue;
     const title = findTitleNear(r, itemCol, 4);
     blocks.push({title, items, pax: readPaxNear(r, itemCol)});
@@ -2847,7 +2874,8 @@ function extractAllBlocks(aoa){
           ({qtyCol, unitCol} = inferQtyUnit(itemCol, probeRow, qtyCol, unitCol));
         }
         const startRow = headerNext ? r+2 : r+1;
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, startRow);
+        const totCol = headerNext ? totalColFromHeader(nextRow.map(v=> typeof v==='string' ? v.trim().toLowerCase() : ''), itemCol) : (itemCol+3);
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, startRow, null, null, null, totCol);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 2, 45);
         blocks.push({title, items, pax:paxVal});
@@ -2908,7 +2936,7 @@ const LEGEND_LABELS = [
   [/^(red\s+meats?|seafood|fish|shellfish|beef|lamb|poultry|chicken|duck)$/i, 'Proteins'],
   [/^(dressings?|vinaigrettes?|butters?|creams?|dairy|butters?\s*(and|&|,)\s*creams?)$/i, 'Sauce, Purees and Gels'],
   [/^(cheeses?|cheese\s*(and|&|,|\/)\s*dairy)$/i, 'Garnishes, Herbs, Powders, Oils Etc.'],
-  [/^(micro\s*herbs?|micros?|oils?|dry\s+garnish(es)?|crumbs?|dry\s+garnish(es)?\s*(and|&|,)\s*crumbs?|pick(ed)?\s+herbs|herbs)$/i, 'Garnishes, Herbs, Powders, Oils Etc.']
+  [/^(micro[\s-]+herbs?|oils?|dry\s+garnish(es)?|crumbs?|dry\s+garnish(es)?\s*(and|&|,)\s*crumbs?|pick(ed)?\s+herbs|herbs)$/i, 'Garnishes, Herbs, Powders, Oils Etc.']  // 4.4.6: 'Microherbs' (one word) is an ingredient
 ];
 function legendLabelCategory(text){
   let t = String(text == null ? '' : text).trim().replace(/^\d{1,2}\s*[.):-]?\s*/, '').replace(/\s+/g, ' ').replace(/[.:]$/, '');
@@ -2951,7 +2979,8 @@ function isNonIngredientNote(text){
   if (/^(notes?|comments?|total|sub\s*total|menu\s*pres)\b/.test(low)) return true;
   if (/^pax(\s*\/\s*\w+)?$/.test(low)) return true;
   if (/^thursday\b|^monday\b|^tuesday\b|^wednesday\b|^friday\b|^saturday\b|^sunday\b/i.test(low) && /\d{1,2}\/\d{1,2}/.test(low)) return true;
-  if (legendLabelCategory(t)) return true;
+  // Only short station legend words — never finer labels like "Microherbs" (real Eggplant ingredient rows).
+  if (/^(veg|vege|veges|veggies?|vegetables?|vegs|garnish(es)?|proteins?|meats?|starch(es)?|sauces?|pur[eé]es?|gels?|big\s+jobs?)$/i.test(t)) return true;
   return false;
 }
 
@@ -5815,7 +5844,8 @@ function buildConsolidatedGroups(rows){
     if (!g.dishes.includes(r.dish)) g.dishes.push(r.dish);
     if (total!==null){ g.total += total; g.hasTotal = true; }
     const label = cleanTaskLabel(r.task);
-    if (label.length < g.taskLabel.length) g.taskLabel = label;
+    const labelIsUnit = (typeof isUnitToken==='function' && isUnitToken(label)) || (typeof HEADER_LABELS!=='undefined' && HEADER_LABELS.has(String(label).toLowerCase()));
+    if (!labelIsUnit && label.length < g.taskLabel.length) g.taskLabel = label;
   });
   return order.map(k=>groups[k]);
 }

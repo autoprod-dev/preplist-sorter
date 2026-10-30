@@ -8,7 +8,7 @@ on:
       tag:
         description: 'Backup tag to restore (tree only; new commit on master)'
         required: true
-        default: backup-pre-nologin-20261030
+        default: backup-pre-unitfix-20261030
       mode:
         description: 'restore = tag tree on master; restore-latest = live-backup-4.4.4 tip'
         required: true

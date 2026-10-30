@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="3.4.9-r8-builder3">
+<meta name="prepline-version" content="4.4.5">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,12 +28,12 @@
 <meta name="twitter:title" content="Prepline: free kitchen prep list organiser and sorter">
 <meta name="twitter:description" content="Free kitchen prep list organiser for chefs and cooks. Turn a menu, PDF or spreadsheet into prep lists sorted by dish, station and prep day, scale by pax, tag allergens, build supplier order sheets, print one page or share to phones. Runs in your browser, works offline.">
 <meta name="twitter:image" content="https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png">
+<script src="gate-config.js"></script><script src="gate.js"></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Prepline","alternateName":"Prepline prep list sorter",
 "description":"Free kitchen prep list organiser for chefs and cooks. Turn a menu, PDF or spreadsheet into prep lists sorted by dish, station and prep day, scale by pax, tag allergens, build supplier order sheets, print one page or share to phones. Runs in your browser, works offline.","url":"https://autoprod-dev.github.io/preplist-sorter/","applicationCategory":"BusinessApplication","applicationSubCategory":"Kitchen prep list organiser",
 "operatingSystem":"Any (web browser: Windows, macOS, Android, iOS)","browserRequirements":"Requires JavaScript and a modern browser",
 "inLanguage":"en-AU","softwareVersion":"3.4.9","isAccessibleForFree":true,"image":"https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png",
-"offers":{"@type":"Offer","price":"0","priceCurrency":"AUD"},
 "featureList":["Auto-sorted prep lists from a menu, PDF or spreadsheet","Pax scaling","Prep lists by dish, team section and prep day","Allergen tags","Supplier order sheet","Cost per dish","Share to phones by QR code or link","One-page printouts","Excel export","Works offline"],
 "publisher":{"@type":"Organization","name":"Autoprod"}}
 </script>
@@ -80,6 +80,14 @@ var LICENSE_CONFIG = {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="prep-days-vocab.js"></script>
+<script src="rules-engine.js"></script>
+<script src="rules-ui.js"></script>
+<link rel="stylesheet" href="vendor/x-spreadsheet/xspreadsheet.css">
+<script src="vendor/x-spreadsheet/xspreadsheet.js"></script>
+<script src="vendor/hot-formula-parser/formula-parser.min.js"></script>
+<script src="sheet-builder.js"></script>
+
 
 <script type="module">
   // Pinned to pdf.js 5.6.205 — do not switch to a floating "latest" tag,
@@ -675,6 +683,7 @@ body.pb-open{overflow:hidden}
 .pb-dishbar label{display:flex;flex-direction:column;font-size:12px;font-weight:600;gap:3px}
 .pb-dishbar input{font-size:16px;padding:8px;border:1px solid #bbb;border-radius:6px;min-width:220px}
 .pb-dishbar .pb-pax input{min-width:0;width:110px;background:#FFF2CC;font-weight:700}
+.pd-chip{display:inline-block;margin-left:4px;padding:0 6px;border-radius:9px;font-size:11px;font-weight:600;background:#e8f1ec;color:#2d5a43;white-space:nowrap;vertical-align:middle}.pd-chip.pd-unc{background:#f3f0e6;color:#7a6a3a}
 .pb-legend{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 12px}
 .pb-chip{padding:5px 10px;font-weight:700;font-size:12px;border:1px solid #888;border-radius:4px}
 .pb-note{font-size:12px;color:#555;flex-basis:100%}
@@ -720,6 +729,8 @@ body.asis-open{overflow:hidden}
 .out-choice button.oc-btn.oc-sort{background:#E4F0E6!important}
 .out-choice button.oc-btn span{color:#333!important;font-weight:500}
 .asis-bar button#asisCloseBtn{background:#fff!important;color:#1C1E1B!important;border:1px solid #fff!important;padding:8px 14px!important;border-radius:8px;font-weight:700}
+/* 4.1.0: on phones the as-is bar's Print/Close drop to their own row at the left, so they are always on screen even when the page is wider than the phone */
+@media (max-width:760px){.asis-bar{flex-wrap:wrap;position:fixed;left:0;right:0;top:0;z-index:50}.asis-bar b{flex:1 1 100%}.asis-wrap{padding-top:96px}}
 #pbPanel input,#pbPanel select,#pbPanel textarea{box-sizing:border-box;max-width:100%;min-width:0}
 .pb-row>*{min-width:0}
 /* the survey toast and floating buttons must not cover the builder or the as-is preview */
@@ -742,9 +753,8 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
 <div class="shell-masthead no-print">
   <div class="shell-brand">Prepline</div>
   <div class="shell-tabs">
-    <button class="shell-tab-btn pro-cta" id="proUpgradeBtn" onclick="AutoprodLicence.openUpgrade()" type="button">★ Upgrade to Pro</button>
-    <button class="shell-tab-btn" id="licenceKeyBtn" onclick="AutoprodLicence.openLicenceDialog()" type="button">Enter licence key</button>
     <button class="shell-tab-btn active" id="shellTabBtnPreplist" onclick="switchShellTab('preplist')" type="button">Preplist</button>
+    <a class="shell-tab-btn" id="allocLink" href="./allocation/" style="text-decoration:none" title="Section 1: work orders and staff allocation">Work orders &amp; allocation</a>
     <button class="shell-tab-btn" id="shellTabBtnHelp" onclick="switchShellTab('help')" type="button">Help</button>
     <button class="shell-tab-btn" id="feedbackBtn" onclick="openFeedback()" type="button" title="Send feedback (opens your email app or copies the text)">Feedback</button>
     <a class="shell-tab-btn contact-link" id="contactLink" href="#" hidden title="Email Prepline support">Email us</a>
@@ -1189,6 +1199,7 @@ function encName(str){
 let origViewerImages = []; // the current dish's images, so Prev/Next can step through them
 let origViewerIndex = 0;
 let origViewerDishClean = '';
+let origViewerDish = '';
 function openOriginalViewer(encDish){
   const dish = decodeURIComponent(encDish);
   const imgs = originalPageImages[dish];
@@ -1196,6 +1207,7 @@ function openOriginalViewer(encDish){
   origViewerImages = imgs;
   origViewerIndex = 0;
   origViewerDishClean = cleanDishName(dish);
+  origViewerDish = dish;
   renderOriginalViewer();
   document.getElementById('origViewerOverlay').classList.remove('hidden');
 }
@@ -1205,7 +1217,7 @@ function renderOriginalViewer(){
   document.getElementById('origViewerTitle').textContent = origViewerDishClean;
   document.getElementById('origViewerSub').textContent = (total>1 ? 'Page '+(origViewerIndex+1)+' of '+total+' — ' : '') + (cur.pageLabel || '');
   const imgEl = document.getElementById('origViewerImg'); imgEl.src = cur.dataUrl;
-  origComposed(cur).then(u=>{ if (origViewerImages[origViewerIndex]===cur && u!==cur.dataUrl) imgEl.src = u; }).catch(()=>{});
+  origComposed(cur, origViewerDish).then(u=>{ if (origViewerImages[origViewerIndex]===cur && u!==cur.dataUrl) imgEl.src = u; }).catch(()=>{});
   const nav = document.getElementById('origViewerNav');
   nav.style.display = total>1 ? '' : 'none';
   document.getElementById('origViewerPrevBtn').disabled = origViewerIndex===0;
@@ -1229,15 +1241,19 @@ function pdfRefGeometry(items, scale){
   const up = r=>r.top - 0.85*(r.sz||10);   // pdf.js 'top' is the text baseline: box top = a little above it
   return {refRows: rows.map((r,i)=>({name:r.name, top:up(r), bot: rows[i+1] ? up(rows[i+1]) : (lastBot ? Math.min(lastBot, up(r)+28) : up(r)+24)})), refBox:{x0:bx0, x1: Math.max(pageW + 2, bx0 + 68)}, refScale:scale};
 }
-function origRefLines(entry){
+function origRefLines(entry, dish){
   if (!entry || !entry.refRows || !POS.length) return [];
-  return entry.refRows.map(r=>{ const m = poMatchFor(r.name); return (m && m.status==='ok' && m.item) ? {row:r, text:poBoxText(m.item)} : null; }).filter(Boolean);
+  const functionDate = dish ? getEventDateStr(dish) : null;
+  return entry.refRows.map(r=>{
+    const m = poMatchFor(r.name, {functionDate, forFill:true});
+    return (m && m.status==='ok' && m.item) ? {row:r, text:poBoxText(m.item)} : null;
+  }).filter(Boolean);
 }
 const origCompCache = {};
-function origComposed(entry){
-  const lines = origRefLines(entry);
+function origComposed(entry, dish){
+  const lines = origRefLines(entry, dish);
   if (!lines.length) return Promise.resolve(entry.dataUrl);
-  const key = entry.dataUrl.length + '|' + entry.dataUrl.slice(-40) + '|' + lines.map(l=>l.row.top+l.text).join('~');
+  const key = entry.dataUrl.length + '|' + entry.dataUrl.slice(-40) + '|' + (dish||'') + '|' + (dish?getEventDateStr(dish):'') + '|' + lines.map(l=>l.row.top+l.text).join('~');
   if (origCompCache[key]) return Promise.resolve(origCompCache[key]);
   return new Promise((res, rej)=>{
     const img = new Image();
@@ -1268,26 +1284,26 @@ function origComposed(entry){
 }
 function renderOriginalsTab(){
   const dishes = Object.keys(originalPageImages), n = dishes.reduce((a,d)=>a+originalPageImages[d].length,0);
-  const filled = dishes.reduce((a,d)=>a+originalPageImages[d].reduce((b,e)=>b+origRefLines(e).length,0),0);
+  const filled = dishes.reduce((a,d)=>a+originalPageImages[d].reduce((b,e)=>b+origRefLines(e,d).length,0),0);
   setTimeout(composeOriginalsInDom, 0);
   return `<div class="panel orig-tab" id="origTab">
     <div class="row no-print" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
       <h3 style="margin:0;">📖 Original production tools</h3>
       <button class="ghost" type="button" onclick="printOriginalsAll()">🖨️ Print the original pages</button>
     </div>
-    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s); ingredients that cannot be matched, and sub-recipes, are left blank to fill in by hand.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
+    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is within 4 days before the function; ingredients with no match, delivery outside that window, or sub-recipes stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
     ${dishes.map(d=>originalPageImages[d].map((e,i)=>`<div class="orig-page"><div class="orig-head no-print"><b>${escapeHtml(cleanDishName(d))}</b> <span class="meta">${escapeHtml(e.pageLabel||'')}</span> <button class="ghost" type="button" onclick="openOriginalViewer('${encodeURIComponent(d).replace(/'/g,'%27')}')">📖 View original</button></div><img class="orig-img" data-od="${escapeHtml(encodeURIComponent(d))}" data-oi="${i}" src="${e.dataUrl}" alt="${escapeHtml(cleanDishName(d))}"></div>`).join('')).join('')}
   </div>`;
 }
 function composeOriginalsInDom(){
   document.querySelectorAll('img.orig-img').forEach(img=>{
     const d = decodeURIComponent(img.getAttribute('data-od')), e = (originalPageImages[d]||[])[Number(img.getAttribute('data-oi'))];
-    if (e) origComposed(e).then(u=>{ img.src = u; img.setAttribute('data-filled', u!==e.dataUrl ? '1' : '0'); }).catch(()=>{});
+    if (e) origComposed(e, d).then(u=>{ img.src = u; img.setAttribute('data-filled', u!==e.dataUrl ? '1' : '0'); }).catch(()=>{});
   });
 }
 async function printOriginalsAll(){
   const items = []; Object.keys(originalPageImages).forEach(d=>originalPageImages[d].forEach(e=>items.push({d, e})));
-  const urls = await Promise.all(items.map(x=>origComposed(x.e).catch(()=>x.e.dataUrl)));
+  const urls = await Promise.all(items.map(x=>origComposed(x.e, x.d).catch(()=>x.e.dataUrl)));
   const imgsHtml = items.map((x,i)=>`<div class="pg"><img src="${urls[i]}"></div>`).join('');
   printViaIframe(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Original production tools</title><style>body{margin:0}.pg{page-break-after:always;display:flex;justify-content:center;padding:8px 0}.pg:last-child{page-break-after:auto}img{max-width:100%;height:auto}</style></head><body>${imgsHtml}</body></html>`);
 }
@@ -1298,7 +1314,7 @@ function closeOriginalViewer(){
 }
 async function printOriginalViewer(){
   const title = origViewerDishClean;
-  const urls = await Promise.all(origViewerImages.map(im=>origComposed(im).catch(()=>im.dataUrl)));
+  const urls = await Promise.all(origViewerImages.map(im=>origComposed(im, origViewerDish).catch(()=>im.dataUrl)));
   const imgsHtml = origViewerImages.map((im,i)=>`<div class="pg"><img src="${urls[i]}"><div class="lbl">${escapeHtml(im.pageLabel||'')}</div></div>`).join('');
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
     <style>
@@ -1468,7 +1484,7 @@ function loadOnetimeSession(){
     const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1,
+        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1, prepCat:typeof r.prepCat==='string'?r.prepCat:'', leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:typeof r.prepSrc==='string'?r.prepSrc:'', weekendShift:!!r.weekendShift,
         // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
         ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
         // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
@@ -1525,7 +1541,7 @@ function commitRowsToDatabase(){
   dishes.forEach(dish=>{
     const items = ROWS.filter(r=>r.dish===dish).map(r=>({
       task:r.task, qty:r.qty, unit:r.unit, section:r.section,
-      baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum,
+      baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum, prepCat:r.prepCat||"", leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:r.prepSrc||"",
       pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType,
       ...(typeof alForTask==='function' && alForTask(r.task).confirmed ? {al: alForTask(r.task).tags.slice()} : {})   // v3.3: checked allergen tags
     }));
@@ -1604,9 +1620,10 @@ function generateWeekly(){
     if (selPax.ok && selPax.n!==undefined) paxByDish[dish] = selPax.n;
     const eventDay = getEventDay(dish);
     dishDatabase[dish].items.forEach(it=>{
-      const day = eventDay ? calendarDayForPrepNum(eventDay, it.stageNum) : '';
+      const pinf = it.prepCat !== undefined ? {prepCat:it.prepCat||'', leadDays:Number.isFinite(it.leadDays)?it.leadDays:null, prepSrc:it.prepSrc||'', weekendShift:!!it.weekendShift} : prepInfoFor(it.task, null, it.section);
+      const day = eventDay ? prepStartDay(eventDay, {stageNum:it.stageNum, leadDays:pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
-        baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum,
+        baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum, ...pinf,
         pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType,
         ...(Number.isFinite(it.pdfBasePax) ? {pdfBasePax:it.pdfBasePax} : {})});
     });
@@ -2056,6 +2073,165 @@ function calendarDayForPrepNum(eventDay, prepNum){
   }
   return WEEKDAYS[(idx - (4-prepNum) + 7) % 7];
 }
+
+// ---- 4.3.4: prep START day by ingredient type (rules in prep-days-vocab.js).
+// Primary: the spreadsheet's colour legend (each line's fill colour -> legend label -> category).
+// Fallback: keywords in the line's wording. Proteins / garnish legend colours are split by keyword
+// (red meat vs seafood; micro herbs / oils / dry garnish vs garnish). No match = old stage-based day, "uncategorised".
+function prepVocab(){
+  try{
+    if (window.PreplineRules && typeof window.PreplineRules.vocabFromProfile === 'function'){
+      const v = window.PreplineRules.vocabFromProfile();
+      if (Array.isArray(v) && v.length) return v;
+    }
+  }catch(e){}
+  return (Array.isArray(window.PREP_DAYS_VOCAB) && window.PREP_DAYS_VOCAB.length) ? window.PREP_DAYS_VOCAB : [];
+}
+const _pvRe = {};
+function prepWordRe(w){
+  if (_pvRe[w]) return _pvRe[w];
+  const star = /\*$/.test(w); const core = w.replace(/\*$/, '').trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  return (_pvRe[w] = new RegExp('(^|[^a-z])' + core + (star ? '' : '(?![a-z])'), 'i'));
+}
+function prepNormText(t){ return String(t == null ? '' : t).toLowerCase().replace(/[ée]/g, m=>m==='é'?'e':m).replace(/['’]s\b/g, ''); }
+function prepCatByWords(text, family){
+  const t = prepNormText(text);
+  if (/\bgoat'?s?\s+(cheese|curd)\b/i.test(String(text))) { /* goat's cheese is not red meat */ }
+  // Eggplant "steak" / centrepiece painted protein-colour is still a vegetable job
+  if (/\b(eggplant|aubergine)\b/.test(t)){
+    if (!family || family === 'veg' || family === 'protein'){
+      const v = prepVocab().find(c => c.key === 'veg'); if (v) return v;
+    }
+  }
+  for (const c of prepVocab()){
+    if (family && c.family !== family) continue;
+    if (c.key === 'redmeat' && /\bgoat'?s?\s*(cheese|curd|milk)\b/.test(t) && !/\b(beef|lamb|pork|veal|venison)\b/.test(t)) continue;
+    if ((c.words || []).some(w => prepWordRe(w).test(t))) return c;
+  }
+  return null;
+}
+// a legend label ("2. Vege", "Proteins", "Garnish, herbs, oils") -> {key} exact category, or {family} to split by keyword
+function prepCatFromLegendLabel(label){
+  const t = String(label == null ? '' : label).trim().replace(/^\d{1,2}\s*[.):-]?\s*/, '').toLowerCase().replace(/[,&\/+.:]/g, ' ').replace(/\band\b/g, ' ').replace(/[ée]/g, m=>m==='é'?'e':m).replace(/\s+/g, ' ').trim();
+  if (!t || t.length > 40) return null;
+  if (/^proteins?$/.test(t)) return {family:'protein'};
+  for (const c of prepVocab()) if ((c.legend || []).some(l => l === t)) return {key:c.key};
+  if (/^garnish/.test(t)) return {family:'garnish'};
+  if (/^(sauces?|purees?|gels?)\b/.test(t)) return {key:'gels'};
+  return null;
+}
+function prepCatByKey(k){ return prepVocab().find(c => c.key === k) || null; }
+// info for one line: {prepCat, leadDays, prepSrc:'legend'|'keyword'} or {prepCat:'', leadDays:null}
+function sectionPrepFallback(section){
+  // When colour-legend prep mapping was wiped (same fill used for Sauce and Dressings/etc.)
+  // or a line has no keyword hit, use the kitchen station already assigned to the row.
+  const m = {
+    'Sauce, Purees and Gels': 'gels',
+    'Vegetables': 'veg',
+    'Garnishes, Herbs, Powders, Oils Etc.': 'garnish',
+    'Starch': 'starch'
+  };
+  return m[section] || null;
+}
+function prepWeekendShiftEnabled(){
+  try{
+    if (window.PreplineRules && typeof window.PreplineRules.getProfile === 'function'){
+      const p = window.PreplineRules.getProfile();
+      if (p && p.weekendShift === false) return false;
+    }
+  }catch(e){}
+  return true;
+}
+function prepInfoFor(text, legendPrep, section){
+  let c = null, src = '';
+  if (legendPrep){
+    if (legendPrep.key){
+      c = prepCatByKey(legendPrep.key);
+      // a generic garnish legend colour can still be a micro herb / oil / dry garnish line
+      if (c && c.family === 'garnish' && c.key === 'garnish'){ const k = prepCatByWords(text, 'garnish'); if (k) c = k; }
+    } else if (legendPrep.family){
+      c = prepCatByWords(text, legendPrep.family) || (legendPrep.family === 'garnish' ? prepCatByKey('garnish') : null);
+    }
+    if (c) src = 'legend';
+  }
+  if (!c){ c = prepCatByWords(text, null); if (c) src = 'keyword'; }
+  if (!c && section){
+    if (section === 'Proteins'){ c = prepCatByWords(text, 'protein'); if (c) src = 'section'; }
+    else {
+      const fb = sectionPrepFallback(section);
+      if (fb){ c = prepCatByKey(fb); if (c) src = 'section'; }
+    }
+  }
+  let info = c
+    ? {prepCat: c.key, leadDays: c.lead, prepSrc: src, weekendShift: !!c.weekendShift}
+    : {prepCat: '', leadDays: null, prepSrc: '', weekendShift: false};
+  // Editable Rules overrides (e.g. crab croquettes → 4-day weekend-shift group)
+  try{
+    if (window.PreplineRules && typeof window.PreplineRules.evaluate === 'function'){
+      const ev = window.PreplineRules.evaluate({ task: text, item: text, section: section || '', prepCat: info.prepCat });
+      if (ev && ev.overridePrep && (ev.leadDays != null || ev.category)){
+        if (ev.category){
+          const oc = prepCatByKey(ev.category) || { key: ev.category, lead: Number(ev.leadDays), weekendShift: true, label: ev.category };
+          info.prepCat = oc.key;
+          info.leadDays = ev.leadDays != null ? Number(ev.leadDays) : oc.lead;
+          info.weekendShift = ev.weekendShift != null ? !!ev.weekendShift : !!oc.weekendShift;
+        } else {
+          info.leadDays = Number(ev.leadDays);
+          if (ev.weekendShift != null) info.weekendShift = !!ev.weekendShift;
+        }
+        info.prepSrc = 'rule';
+      }
+    }
+  }catch(e){}
+  return info;
+}
+// the weekday a line starts: lead days before the event (closed days push it earlier), else the old stage rule.
+// 4.4.2 weekend soft-shift (4-day group only, when profile.weekendShift !== false and r.weekendShift):
+//   if 4 days before is Sat/Sun → use 3; if that lands on Sat/Sun → next working day (Mon). Never Sat/Sun.
+function prepStartDay(eventDay, r){
+  if (!eventDay) return '';
+  const lead = r && Number.isFinite(r.leadDays) ? r.leadDays : null;
+  if (lead === null) return calendarDayForPrepNum(eventDay, r ? r.stageNum : null) || '';
+  const idx = WEEKDAYS.indexOf(eventDay); if (idx < 0) return '';
+  let offset = lead;
+  const shift = prepWeekendShiftEnabled() && r && r.weekendShift && lead >= 4;
+  if (shift){
+    const day4 = WEEKDAYS[((idx - 4) % 7 + 7) % 7];
+    if (day4 === 'Saturday' || day4 === 'Sunday'){
+      offset = 3;
+      let day3 = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+      // if 3-days-before is still weekend (Sun after Wed event), start next working day (Mon)
+      while (offset > 0 && (day3 === 'Saturday' || day3 === 'Sunday')){
+        offset--;
+        day3 = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+      }
+    }
+  }
+  for (let tries=0; tries<7; tries++){
+    const day = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+    const weekendBlocked = shift && (day === 'Saturday' || day === 'Sunday');
+    if (!blockedDays.has(day) && !weekendBlocked) return day;
+    offset++; // day-omit / residual weekend: push earlier
+  }
+  return WEEKDAYS[((idx - lead) % 7 + 7) % 7];
+}
+function prepCatChip(r){
+  if (!r) return '';
+  const c = r.prepCat ? prepCatByKey(r.prepCat) : null;
+  if (!c){ const ev0 = prepEventLabel(r.dish); return ' <span class="pd-chip pd-unc" title="No legend colour or keyword matched: prep day uses the old stage rule">uncategorised'+(ev0 ? ' · '+escapeHtml(ev0) : '')+'</span>'; }
+  const lead = Number.isFinite(r.leadDays) ? r.leadDays : c.lead;
+  const when = lead === 0 ? 'on the day' : (lead + (lead === 1 ? ' day' : ' days') + ' before');
+  const ev = prepEventLabel(r.dish);
+  const srcTip = r.prepSrc === 'legend' ? 'From the colour legend' : (r.prepSrc === 'rule' ? 'From venue rules' : (r.prepSrc === 'section' ? 'From section' : 'From keywords'));
+  const wk = r.weekendShift ? ' · weekend soft-shift' : '';
+  return ` <span class="pd-chip" title="${srcTip}${wk}">${escapeHtml(c.label)} · ${when}${r.day ? ' · starts '+escapeHtml(dayLabel(r.day)) : ''}${ev ? ' · '+escapeHtml(ev) : ''}</span>`;
+}
+function prepEventLabel(dish){
+  const ds = getEventDateStr(dish), m = ds && /^(\d{2})\/(\d{2})\/(\d{2,4})$/.exec(ds);
+  if (m){ const y = m[3].length === 2 ? 2000 + +m[3] : +m[3]; const d = new Date(y, +m[2]-1, +m[1]);
+    if (!isNaN(d)) return 'Event ' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ' ' + d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]; }
+  const ed = getEventDay(dish); return ed ? 'Event ' + String(ed).slice(0,3) : '';
+}
 // Setting/changing a dish's event day automatically recalculates the actual weekday
 // for every one of its tasks from their stage — this is the "automate 4-day prep day
 // based on the tab's scheduled day" part. Any day you've hand-picked on a row gets
@@ -2065,7 +2241,7 @@ function setEventDay(encodedDish, val){
   if (val) eventDayOverride[dish] = val; else delete eventDayOverride[dish];
   const eventDay = getEventDay(dish);
   ROWS.forEach(r=>{
-    if (r.dish===dish && r.stageNum) r.day = eventDay ? calendarDayForPrepNum(eventDay, r.stageNum) : '';
+    if (r.dish===dish && (r.stageNum || Number.isFinite(r.leadDays))) r.day = eventDay ? prepStartDay(eventDay, r) : '';
   });
   render();
 }
@@ -2197,6 +2373,7 @@ function classifyPrepStage(taskText, baseCategory, contextStage){
 function blockedDaysPanelHtml(){
   return `<div class="panel no-print" style="padding:12px 16px; margin-bottom:16px;">
     <div style="font-weight:700; font-size:12.5px; margin-bottom:8px;">Kitchen closed on (public holiday etc.) — prep auto-shifts off these days</div>
+    <div style="font-size:11.5px; color:#5C5A52; margin-bottom:8px;">4-day group (veg / red meat / poultry / dairy / dressings / crab croquettes): weekend soft-shift is on by default in Venue rules — Sat/Sun starts move to a 3-day lead or Monday. Day-omit below still pushes earlier.</div>
     <div class="row" style="gap:14px; flex-wrap:wrap;">
       ${WEEKDAYS.map(w=>`<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;">
         <input type="checkbox" ${blockedDays.has(w)?'checked':''} onchange="toggleBlockedDay('${w}', this.checked)">${w}
@@ -2211,10 +2388,10 @@ function toggleBlockedDay(day, checked){
   // known prep stage and a known event day are touched; anything else (no event day set
   // yet) is left exactly as it was.
   ROWS.forEach(r=>{
-    if (!r.stageNum) return;
+    if (!r.stageNum && !Number.isFinite(r.leadDays)) return;
     const eventDay = getEventDay(r.dish);
     if (!eventDay) return;
-    r.day = calendarDayForPrepNum(eventDay, r.stageNum);
+    r.day = prepStartDay(eventDay, r) || r.day;
   });
   render();
 }
@@ -2446,8 +2623,9 @@ function addRows(dish, items){
     lastStage = stageNum;
     lastCore = core || lastCore;
     // A Prep day column in the file wins over auto-calculation too, for the same reason.
-    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '');
-    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum,
+    const pinf = prepInfoFor(taskText, it.legendPrep || null, cat);
+    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '');
+    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum, ...pinf,
       ...(typeof it.srcSheet==='string' ? {srcSheet: it.srcSheet} : {})});
   }
 }
@@ -2471,11 +2649,31 @@ function isBlankCell(v){ return v===undefined || v===null || (typeof v==='string
 // a row (e.g. two "PAX" cells side by side in the same row for two different dishes).
 // Header wording other kitchens use for the same columns.
 const ITEM_HEADERS = new Set(['item','items','ingredient','ingredients','product','products','prep item','prep items','component','components','description']);
-const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight','qty (per pax)','quantity per pax']);   // v3.2.3 export header
+const QTY_HEADERS  = new Set(['qty','quantity','amount','qty needed','quantity needed','weight','qty (per pax)','quantity per pax','per person','per plate','per pax','qty per person','quantity per person','gm/ml']);   // v3.2.3 + WLS "per person" / "gm/ml"
 const UNIT_HEADERS = new Set(['unit','units','uom','unit of measure','measure']);
 const DAY_HEADERS  = new Set(['prep day','day','prepday']);
 const SECTION_HEADERS = new Set(['section','category','team']);
 const SOURCE_HEADERS = new Set(['source tab']);   // v3.2: written by this tool's own Excel export
+const TOTAL_HEADERS = new Set(['total','total needed','total amount prepped','total amount']);
+// Short unit tokens that must never be treated as an ingredient name (Pass 2 used to pick the Unit column when Item was blank).
+const UNIT_TOKEN_RE = /^(g|kg|mg|ml|l|lt|ltr|litre|liter|pcs?|pc|ea|each|pax\/tray|pax\/pun|punnet|pun|tray|bunch|bk|tsp|tbsp|cup|oz|lb|portion|portions)$/i;
+const HEADER_LABELS = new Set([...ITEM_HEADERS, ...QTY_HEADERS, ...UNIT_HEADERS, ...DAY_HEADERS, ...SECTION_HEADERS, ...SOURCE_HEADERS, ...TOTAL_HEADERS, 'pax','comments','menu pres']);
+function cellHeaderLow(v){ return typeof v==='string' ? v.trim().toLowerCase() : ''; }
+function isUnitToken(v){ return typeof v==='string' && UNIT_TOKEN_RE.test(v.trim()); }
+function isNameLikeCell(v){
+  if (typeof v!=='string') return false;
+  const s = v.trim();
+  if (s.length<3) return false;
+  if (HEADER_LABELS.has(s.toLowerCase())) return false;
+  if (isUnitToken(s)) return false;
+  if (/^\d+([.,]\d+)?$/.test(s)) return false;
+  return true;
+}
+function looksLikeHeaderRow(row){
+  let hits = 0;
+  for (const v of (row||[])){ if (HEADER_LABELS.has(cellHeaderLow(v))) hits++; }
+  return hits >= 2;
+}
 function extractAllBlocks(aoa){
   const nRows = aoa.length;
   const claimedRects = []; // {r1,r2,c1,c2}
@@ -2489,6 +2687,9 @@ function extractAllBlocks(aoa){
       const row = aoa[r]||[];
       const item = row[itemCol];
       if (isBlankCell(item)){ blank++; if (blank>6){ endRow=r; break; } continue; }
+      const low = cellHeaderLow(item);
+      // Skip header-label leftovers and bare unit tokens (never real ingredient names)
+      if (HEADER_LABELS.has(low) || isUnitToken(item) || isNonIngredientNote(item)){ blank = 0; endRow = r; continue; }
       blank = 0; endRow = r;
       const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
       if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim().replace(/^[1-7]\s*[.)-]?\s+(?=(mon|tue|wed|thu|fri|sat|sun))/i, '');   // r7: '1 Monday' from an export reads back as Monday
@@ -2501,7 +2702,7 @@ function extractAllBlocks(aoa){
 
   function findTitleNear(anchorRow, anchorCol, colSpan, rowSpan){
     rowSpan = rowSpan || 9;
-    const EXCLUDE = new Set(['pax','comments','item','per plate','gm/ml','total needed','per person','unit','total','menu pres']);
+    const EXCLUDE = new Set(['pax','comments','item','per plate','gm/ml','total needed','per person','unit','total','menu pres','total amount prepped']);
     for (let r=anchorRow-1; r>=Math.max(0, anchorRow-rowSpan); r--){
       const row = aoa[r]||[];
       for (let c=Math.max(0, anchorCol-colSpan); c<=anchorCol+colSpan; c++){
@@ -2516,6 +2717,39 @@ function extractAllBlocks(aoa){
     return null;
   }
 
+  function nearInRow(hdr, c, set){
+    for (let d=1; d<=8; d++){   // v3.2.3: export has 8 columns (Source tab is 7 right of Item)
+      for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; }
+    }
+    return -1;
+  }
+
+  function readPaxNear(r, itemCol){
+    let pax = null;
+    for (let rr=Math.max(0,r-3); rr<=r+1 && pax===null; rr++){
+      const rw = aoa[rr]||[];
+      for (let cc=0; cc<rw.length; cc++){
+        if (typeof rw[cc]==='string' && rw[cc].trim().toLowerCase()==='pax'){
+          if (typeof rw[cc-1]==='number') pax = rw[cc-1];
+          else if (typeof rw[cc+1]==='number') pax = rw[cc+1];
+        }
+      }
+    }
+    return pax;
+  }
+
+  // Infer qty/unit when a blank sits between Item and the number (merged-name layouts)
+  function inferQtyUnit(itemCol, probeRow, qtyCol, unitCol){
+    if (!isBlankCell((probeRow||[])[qtyCol])) return {qtyCol, unitCol};
+    for (let d=1; d<=4; d++){
+      const qc = itemCol+d, uc = itemCol+d+1;
+      const qv = (probeRow||[])[qc], uv = (probeRow||[])[uc];
+      const qNum = typeof qv==='number' || (typeof qv==='string' && /^\s*\d+([.,]\d+)?\s*$/.test(qv));
+      if (qNum && (isUnitToken(uv) || typeof uv==='string')) return {qtyCol:qc, unitCol:uc};
+    }
+    return {qtyCol, unitCol};
+  }
+
   // ---- Pass 1: classic "Item" header blocks ----
   for (let r=0; r<nRows; r++){
     const row = aoa[r]||[];
@@ -2528,33 +2762,53 @@ function extractAllBlocks(aoa){
         // otherwise fall back to the classic layout: Qty right of Item, Unit right of Qty.
         let qtyCol=c+1, unitCol=c+2;
         const hdr = row.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
-        const near = (set)=>{ for (let d=1; d<=8; d++){   // v3.2.3: export has 8 columns (Source tab is 7 right of Item)
-           for (const cc of [c+d, c-d]){ if (cc>=0 && set.has(hdr[cc]||'')) return cc; } } return -1; };
-        const qf = near(QTY_HEADERS), uf = near(UNIT_HEADERS);
+        const qf = nearInRow(hdr, c, QTY_HEADERS), uf = nearInRow(hdr, c, UNIT_HEADERS);
         if (qf>=0 && !QTY_HEADERS.has(hdr[c+1]||'')) qtyCol = qf;
         if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
         else if (qf>=0 && uf<0) unitCol = qtyCol+1;
-        const dayCol = near(DAY_HEADERS), sectionColFound = near(SECTION_HEADERS), sourceColFound = near(SOURCE_HEADERS);
+        const dayCol = nearInRow(hdr, c, DAY_HEADERS), sectionColFound = nearInRow(hdr, c, SECTION_HEADERS), sourceColFound = nearInRow(hdr, c, SOURCE_HEADERS);
         const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 4);
-        let pax = null;
-        for (let rr=Math.max(0,r-3); rr<=r+1 && pax===null; rr++){
-          const rw = aoa[rr]||[];
-          for (let cc=0; cc<rw.length; cc++){
-            if (typeof rw[cc]==='string' && rw[cc].trim().toLowerCase()==='pax'){
-              if (typeof rw[cc-1]==='number') pax = rw[cc-1];
-              else if (typeof rw[cc+1]==='number') pax = rw[cc+1];
-            }
-          }
-        }
-        blocks.push({title, items, pax});
-        claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:itemCol+4});
+        blocks.push({title, items, pax: readPaxNear(r, itemCol)});
+        claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:unitCol+4});
       }
     }
   }
 
-  // ---- Pass 2: PAX-anchor blocks (no literal "Item" text — dishes laid out without one) ----
+  // ---- Pass 1b: qty/unit header row with blank / missing "Item" label (WLS / MACQ layouts) ----
+  // Real production tools sometimes leave the Item header cell as a single space. Pass 1
+  // then misses the block and Pass 2 used to treat the Unit column as the item name.
+  for (let r=0; r<nRows; r++){
+    const row = aoa[r]||[];
+    const hdr = row.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
+    let qtyCol=-1, unitCol=-1;
+    for (let c=0; c<Math.min(20, Math.max(hdr.length, 1)); c++){
+      if (qtyCol<0 && QTY_HEADERS.has(hdr[c]||'')) qtyCol = c;
+      if (unitCol<0 && UNIT_HEADERS.has(hdr[c]||'')) unitCol = c;
+    }
+    if (qtyCol<0 || unitCol<0) continue;
+    let itemCol = -1;
+    for (let c=qtyCol-1; c>=Math.max(0, qtyCol-3); c--){
+      if (QTY_HEADERS.has(hdr[c]||'') || UNIT_HEADERS.has(hdr[c]||'') || TOTAL_HEADERS.has(hdr[c]||'')) continue;
+      itemCol = c; break;
+    }
+    if (itemCol<0) itemCol = Math.max(0, qtyCol-1);
+    if (isClaimed(r, itemCol) || isClaimed(r, qtyCol)) continue;
+    let nameHits = 0;
+    for (let rr=r+1; rr<Math.min(nRows, r+8); rr++){
+      if (isNameLikeCell((aoa[rr]||[])[itemCol])) nameHits++;
+    }
+    if (nameHits<1) continue;
+    const dayCol = nearInRow(hdr, itemCol, DAY_HEADERS), sectionColFound = nearInRow(hdr, itemCol, SECTION_HEADERS), sourceColFound = nearInRow(hdr, itemCol, SOURCE_HEADERS);
+    const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null);
+    if (items.length===0) continue;
+    const title = findTitleNear(r, itemCol, 4);
+    blocks.push({title, items, pax: readPaxNear(r, itemCol)});
+    claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:unitCol+4});
+  }
+
+  // ---- Pass 2: PAX-anchor blocks (no literal "Item" / qty-unit header) ----
   for (let r=0; r<nRows; r++){
     const row = aoa[r]||[];
     for (let c=0; c<20; c++){
@@ -2562,14 +2816,38 @@ function extractAllBlocks(aoa){
       if (typeof row[c]==='string' && row[c].trim().toLowerCase()==='pax'){
         const paxVal = (typeof row[c+1]==='number') ? row[c+1] : (typeof row[c-1]==='number' ? row[c-1] : null);
         const nextRow = aoa[r+1]||[];
-        const candidates = [c, c-2, c-1, 0].filter(x=>x>=0);
-        let itemCol = c;
+        const headerNext = looksLikeHeaderRow(nextRow);
+        // Prefer columns LEFT of PAX — classic layout puts Item | Qty | Unit with PAX over the unit/total area
+        const candidates = [c-2, c-1, c, 0, c+1].filter(x=>x>=0);
+        const probeRow = headerNext ? (aoa[r+2]||[]) : nextRow;
+        let best = -1, bestScore = -1e9;
         for (const cand of candidates){
-          const v = nextRow[cand];
-          if (typeof v==='string' && v.trim().length>0){ itemCol = cand; break; }
+          const v = probeRow[cand];
+          const hdrV = cellHeaderLow(nextRow[cand]);
+          let score = 0;
+          if (HEADER_LABELS.has(hdrV) && (UNIT_HEADERS.has(hdrV) || QTY_HEADERS.has(hdrV) || TOTAL_HEADERS.has(hdrV) || hdrV==='pax')) score -= 200;
+          if (isNameLikeCell(v)) score += 100 + Math.min(40, String(v).trim().length);
+          else if (typeof v==='string' && v.trim().length>0 && !isUnitToken(v) && !HEADER_LABELS.has(cellHeaderLow(v))) score += 40;
+          else if (isUnitToken(v) || HEADER_LABELS.has(cellHeaderLow(v))) score -= 150;
+          else if (typeof v==='number') score -= 50;
+          if (cand < c) score += 15;
+          if (cand === c) score -= 10;
+          if (score > bestScore){ bestScore = score; best = cand; }
         }
-        const qtyCol=itemCol+1, unitCol=itemCol+2;
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1);
+        if (best < 0 || bestScore < 20) continue; // no plausible item column — do not default to the PAX/unit col
+        const itemCol = best;
+        let qtyCol=itemCol+1, unitCol=itemCol+2;
+        if (headerNext){
+          const hdr = nextRow.map(v=> typeof v==='string' ? v.trim().toLowerCase() : '');
+          const qf = nearInRow(hdr, itemCol, QTY_HEADERS), uf = nearInRow(hdr, itemCol, UNIT_HEADERS);
+          if (qf>=0) qtyCol = qf;
+          if (uf>=0) unitCol = uf;
+          else if (qf>=0) unitCol = qtyCol+1;
+        } else {
+          ({qtyCol, unitCol} = inferQtyUnit(itemCol, probeRow, qtyCol, unitCol));
+        }
+        const startRow = headerNext ? r+2 : r+1;
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, startRow);
         if (items.length===0) continue; // false hit — keep scanning the rest of the row
         const title = findTitleNear(r, itemCol, 2, 45);
         blocks.push({title, items, pax:paxVal});
@@ -2597,14 +2875,20 @@ function extractAllBlocks(aoa){
         }
         if (run>=3){
           const items = [];
-          for (let k=r; k<=end; k++){ const rw=aoa[k]||[]; if (isText(rw[c])) items.push({item:String(rw[c]), qty:rw[c+1], unit:rw[c+2]}); }
+          for (let k=r; k<=end; k++){
+            const rw=aoa[k]||[];
+            if (isText(rw[c]) && !HEADER_LABELS.has(cellHeaderLow(rw[c])) && !isUnitToken(rw[c])){
+              let qc=c+1, uc=c+2;
+              ({qtyCol:qc, unitCol:uc} = inferQtyUnit(c, rw, qc, uc));
+              items.push({item:String(rw[c]), qty:rw[qc], unit:rw[uc]});
+            }
+          }
           blocks.push({title: findTitleNear(r, c, 3, 6), items, pax:null});
           done = true;
         }
       }
     }
   }
-
   return blocks;
 }
 
@@ -2619,7 +2903,12 @@ const LEGEND_LABELS = [
   [/^(veg|vege|veges|veggies?|vegetables?|vegs)$/i, 'Vegetables'],
   [/^garnish(es)?([\s,&\/]+.*)?$/i, 'Garnishes, Herbs, Powders, Oils Etc.'],
   [/^(starch(es)?|big\s+jobs?)$/i, 'Starch'],
-  [/^(proteins?|meats?)$/i, 'Proteins']
+  [/^(proteins?|meats?)$/i, 'Proteins'],
+  // 4.3.4: finer legend labels used for prep start days (they still sort into the same stations)
+  [/^(red\s+meats?|seafood|fish|shellfish|beef|lamb|poultry|chicken|duck)$/i, 'Proteins'],
+  [/^(dressings?|vinaigrettes?|butters?|creams?|dairy|butters?\s*(and|&|,)\s*creams?)$/i, 'Sauce, Purees and Gels'],
+  [/^(cheeses?|cheese\s*(and|&|,|\/)\s*dairy)$/i, 'Garnishes, Herbs, Powders, Oils Etc.'],
+  [/^(micro\s*herbs?|micros?|oils?|dry\s+garnish(es)?|crumbs?|dry\s+garnish(es)?\s*(and|&|,)\s*crumbs?|pick(ed)?\s+herbs|herbs)$/i, 'Garnishes, Herbs, Powders, Oils Etc.']
 ];
 function legendLabelCategory(text){
   let t = String(text == null ? '' : text).trim().replace(/^\d{1,2}\s*[.):-]?\s*/, '').replace(/\s+/g, ' ').replace(/[.:]$/, '');
@@ -2627,6 +2916,45 @@ function legendLabelCategory(text){
   for (const [re, cat] of LEGEND_LABELS) if (re.test(t)) return cat;
   return null;
 }
+// 4.4.3: Paula/Gerard default legend — used when a sheet/tab has no readable colour legend of its own.
+// Hexes match Paula's production tools (ARGB without alpha in our rgb: keys).
+const DEFAULT_COLOUR_LEGEND = {
+  'rgb:4A86E8': 'Sauce, Purees and Gels',
+  'rgb:00FF00': 'Vegetables',
+  'rgb:FF9900': 'Garnishes, Herbs, Powders, Oils Etc.',
+  'rgb:FFFF00': 'Starch',
+  'rgb:FF0000': 'Proteins'
+};
+const DEFAULT_LEGEND_PREP = {
+  'rgb:4A86E8': {key:'gels'},
+  'rgb:00FF00': {key:'veg'},
+  'rgb:FF9900': {family:'garnish'},
+  'rgb:FFFF00': {key:'starch'},
+  'rgb:FF0000': {family:'protein'}
+};
+function defaultColourInfo(){
+  return {
+    legend: Object.assign({}, DEFAULT_COLOUR_LEGEND),
+    labels: new Set(),
+    found: Object.keys(DEFAULT_COLOUR_LEGEND).map(k=>({label:'(default)', cat: DEFAULT_COLOUR_LEGEND[k], key:k})),
+    legendPrep: Object.assign({}, DEFAULT_LEGEND_PREP),
+    isDefault: true
+  };
+}
+// Notes / headers that must never become ingredient rows (even when yellow/coloured)
+function isNonIngredientNote(text){
+  const t = String(text == null ? '' : text).trim();
+  if (!t) return true;
+  const low = t.toLowerCase();
+  if (/^pre[\s-]?orders?\b/.test(low)) return true;
+  if (/^pre[\s-]?order\b/.test(low)) return true;
+  if (/^(notes?|comments?|total|sub\s*total|menu\s*pres)\b/.test(low)) return true;
+  if (/^pax(\s*\/\s*\w+)?$/.test(low)) return true;
+  if (/^thursday\b|^monday\b|^tuesday\b|^wednesday\b|^friday\b|^saturday\b|^sunday\b/i.test(low) && /\d{1,2}\/\d{1,2}/.test(low)) return true;
+  if (legendLabelCategory(t)) return true;
+  return false;
+}
+
 // r8: theme colours are turned into real RGB (using the workbook's own theme, else Office defaults) so a legend
 // filled with a standard colour still matches jobs filled with the same colour picked from the theme row.
 let wbThemeRgb = null;
@@ -2646,7 +2974,7 @@ function tintHex(hx, tint){
 function cellFillKey(cell){
   const st = cell && cell.s; if (!st) return null;
   if (st.patternType && st.patternType === 'none') return null;
-  const c = st.fgColor || {};
+  const c = st.fgColor || (st.fill && st.fill.fgColor) || {};
   let hx = null;
   if (typeof c.rgb === 'string' && c.rgb) hx = c.rgb.slice(-6).toUpperCase();
   else if (c.theme != null){ const base = (wbThemeRgb || OFFICE_THEME)[c.theme]; if (!base) return 'th:' + c.theme + ':' + (Math.round((c.tint || 0) * 100) / 100); hx = tintHex(base, c.tint || 0); }
@@ -2656,6 +2984,14 @@ function cellFillKey(cell){
 }
 // r8: a fill that is not exactly a legend colour still counts when it is very close to one (e.g. a slightly
 // different red); anything further away (cream item cells, pink comment cells) is ignored.
+function legendKeyFor(key, legend){
+  if (!key) return null; if (legend[key]) return key;
+  const m = /^rgb:([0-9A-F]{6})$/.exec(key); if (!m) return null;
+  const rgb = h=>[0,2,4].map(i=>parseInt(h.substr(i,2),16)); const a = rgb(m[1]);
+  let best = null, bd = 1e9;
+  Object.keys(legend).forEach(k=>{ const n = /^rgb:([0-9A-F]{6})$/.exec(k); if (!n) return; const b = rgb(n[1]); const d = Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]); if (d < bd){ bd = d; best = k; } });
+  return bd <= 48 ? best : null;
+}
 function legendCatFor(key, legend){
   if (!key) return null; if (legend[key]) return legend[key];
   const m = /^rgb:([0-9A-F]{6})$/.exec(key); if (!m) return null;
@@ -2664,31 +3000,63 @@ function legendCatFor(key, legend){
   Object.keys(legend).forEach(k=>{ const n = /^rgb:([0-9A-F]{6})$/.exec(k); if (!n) return; const b = rgb(n[1]); const d = Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]); if (d < bd){ bd = d; best = legend[k]; } });
   return bd <= 48 ? best : null;
 }
+function absorbLegendCell(ws, addr, cell, legend, labels, found, legendPrep){
+  if (!cell || (cell.t !== 's' && typeof cell.v !== 'string')) return;
+  const cat = legendLabelCategory(cell.v); if (!cat) return;
+  const pl = (()=>{ try{ return prepCatFromLegendLabel(cell.v); }catch(e){ return null; } })();
+  let key = cellFillKey(cell);
+  if (!key){ const rc = XLSX.utils.decode_cell(addr);
+    for (const dc of [-1, 1, -2, 2]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && (nb.v == null || String(nb.v).trim() === '') && (key = cellFillKey(nb))) break; } }
+  if (!key) return;
+  labels.add(String(cell.v).trim().toLowerCase());
+  if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); if (pl) legendPrep[key] = pl; }
+  else if (pl && !legendPrep[key]){ legendPrep[key] = pl; }
+  else if (pl && legendPrep[key] && JSON.stringify(legendPrep[key]) !== JSON.stringify(pl)){
+    const fam = x => x.family || (prepCatByKey(x.key) || {}).family;
+    const f1 = fam(legendPrep[key]), f2 = fam(pl);
+    if (f1 && f1 === f2) legendPrep[key] = {family: f1};
+    else {
+      const fb = sectionPrepFallback(legend[key] || cat);
+      if (fb) legendPrep[key] = {key: fb}; else delete legendPrep[key];
+    }
+  }
+}
+// 4.4.3: read the colour legend on ONE sheet/tab (Paula puts it on every dish tab).
+function readSheetColourLegend(ws){
+  if (!ws) return null;
+  const legend = {}, labels = new Set(), found = [], legendPrep = {};
+  Object.keys(ws).forEach(addr=>{
+    if (addr[0] === '!') return;
+    absorbLegendCell(ws, addr, ws[addr], legend, labels, found, legendPrep);
+  });
+  const cats = new Set(Object.values(legend));
+  return cats.size >= 2 ? {legend, labels, found, legendPrep, isDefault: false} : null;
+}
 function readColourLegend(wbObj){
-  const legend = {}, labels = new Set(), found = [];
+  const legend = {}, labels = new Set(), found = [], legendPrep = {};
   (wbObj.SheetNames || []).forEach(name=>{
     const ws = wbObj.Sheets[name]; if (!ws) return;
     Object.keys(ws).forEach(addr=>{
-      if (addr[0] === '!') return; const cell = ws[addr];
-      if (!cell || cell.t !== 's') return;
-      const cat = legendLabelCategory(cell.v); if (!cat) return;
-      let key = cellFillKey(cell);
-      if (!key){ const rc = XLSX.utils.decode_cell(addr);
-        for (const dc of [-1, 1, -2, 2]){ const nb = ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})]; if (nb && (nb.v == null || String(nb.v).trim() === '') && (key = cellFillKey(nb))) break; } }
-      if (!key) return;
-      labels.add(String(cell.v).trim().toLowerCase());
-      if (!legend[key]){ legend[key] = cat; found.push({label: String(cell.v).trim(), cat, key}); }
+      if (addr[0] === '!') return;
+      absorbLegendCell(ws, addr, ws[addr], legend, labels, found, legendPrep);
     });
   });
   const cats = new Set(Object.values(legend));
-  return cats.size >= 2 ? {legend, labels, found} : null;
+  return cats.size >= 2 ? {legend, labels, found, legendPrep, isDefault: false} : null;
+}
+// Per-sheet legend when present (≥2 categories); else Paula's default hex legend.
+function colourInfoForSheet(ws, wbFallback){
+  const sheet = readSheetColourLegend(ws);
+  if (sheet) return sheet;
+  if (wbFallback && wbFallback.legend && Object.keys(wbFallback.legend).length >= 2) return wbFallback;
+  return defaultColourInfo();
 }
 function mergedTopLeft(ws, r, c){
   const ms = ws['!merges']; if (!ms) return null;
   for (const m of ms) if (r >= m.s.r && r <= m.e.r && c >= m.s.c && c <= m.e.c) return ws[XLSX.utils.encode_cell(m.s)];
   return null;
 }
-function sheetFillByText(ws, legend){
+function sheetFillByText(ws, legend, keyOut){
   // A job's colour: the first LEGEND colour found on the narrow coloured marker cell(s) just LEFT of the item name
   // (the kitchen layout: column A), else its own cell, else its qty / unit cells.
   // Fills that are not legend colours (e.g. cream item cells, pink comment cells) are skipped, not taken.
@@ -2702,27 +3070,75 @@ function sheetFillByText(ws, legend){
       const nb = dc === 0 ? cell : (ws[XLSX.utils.encode_cell({r: rc.r, c: rc.c + dc})] || mergedTopLeft(ws, rc.r, rc.c + dc));
       if (!nb || (dc !== 0 && legendLabelCategory(nb.v))) continue;
       const k = cellFillKey(nb), cat = legendCatFor(k, legend);
-      if (cat){ map[t] = cat; break; }
+      if (cat){ map[t] = cat; if (keyOut) keyOut[t] = legendKeyFor(k, legend); break; }
     } });
   return map;
 }
-let lastColourSort = null;   // {colours, jobs, found} for the status line
+let lastColourSort = null;   // {colours, jobs, found, ambiguous, mismatches} for the status line
 function applyColourLegend(ws, items, info){
   if (!info) return items;
-  const byText = sheetFillByText(ws, info.legend);
+  const keyByText = {};
+  const byText = sheetFillByText(ws, info.legend, keyByText);
+  // Collect fills on the sheet that are neither legend colours nor white/black (ambiguous shade report)
+  if (lastColourSort && !lastColourSort._ambScan){
+    lastColourSort._ambScan = true;
+    lastColourSort.ambiguous = lastColourSort.ambiguous || [];
+    const seen = new Set(lastColourSort.ambiguous.map(a=>a.key));
+    Object.keys(ws || {}).forEach(addr=>{
+      if (addr[0]==='!') return;
+      const k = cellFillKey(ws[addr]); if (!k) return;
+      if (legendKeyFor(k, info.legend)) return;
+      if (seen.has(k)) return;
+      seen.add(k);
+      const m = /^rgb:([0-9A-F]{6})$/.exec(k);
+      lastColourSort.ambiguous.push({key:k, hex: m ? m[1] : k, sample: String((ws[addr]&&ws[addr].v)||'').trim().slice(0,40)});
+    });
+  }
   return items.filter(it=>{
-    const t = String(it.item || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const raw = String(it.item || '').trim();
+    const t = raw.toLowerCase().replace(/\s+/g, ' ');
+    if (isNonIngredientNote(raw)) return false;   // 4.4.3: Preorder / pax / titles / legend labels
     if (info.labels.has(t) && legendLabelCategory(it.item)) return false;   // a legend cell, not a job
-    if (typeof it.section === 'string' && it.section.trim()) return true;    // a Section column wins
     const cat = byText[t];
-    if (cat){ it.section = cat; it.colourSorted = true; lastColourSort.jobs++; }
+    if (cat){
+      // 4.4.3: colour is authoritative on ingredient lines (overrides any Section column)
+      it.section = cat; it.colourSorted = true; lastColourSort.jobs++;
+      const lk = keyByText[t]; const lp = lk && info.legendPrep ? info.legendPrep[lk] : null; if (lp) it.legendPrep = lp;
+    }
+    // uncoloured → leave section empty so addRows / keywords decide
     return true;
   });
 }
+// 4.3.5: production tool spreadsheets carry the function date in the batch-number section
+// ("BAT-16/09/2026", or a "BAT-" cell with the date just below / beside it). Returns [{r, date:'dd/mm/yyyy'}].
+function xlsxBatDates(aoa){
+  const out = [], pad = n => String(n).padStart(2, '0');
+  const asDate = v => {
+    if (v == null) return null;
+    if (v instanceof Date && !isNaN(v)) return pad(v.getDate())+'/'+pad(v.getMonth()+1)+'/'+v.getFullYear();
+    if (typeof v === 'number' && v > 30000 && v < 80000 && typeof XLSX !== 'undefined' && XLSX.SSF){ const d = XLSX.SSF.parse_date_code(v); return d ? pad(d.d)+'/'+pad(d.m)+'/'+d.y : null; }
+    const m = String(v).trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/); return m ? pad(m[1])+'/'+pad(m[2])+'/'+m[3] : null;
+  };
+  (aoa || []).forEach((row, r)=>{ (row || []).forEach((v, c)=>{
+    if (typeof v !== 'string' || !/^\s*bat\b/i.test(v)) return;
+    const m = v.match(/bat\s*-?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4})/i);
+    let d = m ? asDate(m[1]) : null;
+    if (!d && /^\s*bat\s*-?\s*(no\.?|number|#)?\s*:?\s*$/i.test(v)){
+      for (const [dr, dc] of [[1,0],[0,1],[2,0],[0,2],[1,1]]){ const nb = (aoa[r+dr] || [])[c+dc]; d = asDate(nb); if (d) break; }
+    }
+    if (d) out.push({r, date: d});
+  }); });
+  return out;
+}
 function processWorkbook(wbObj){
   setWorkbookTheme(wbObj);
-  const colourInfo = (()=>{ try{ return readColourLegend(wbObj); }catch(e){ return null; } })();
-  lastColourSort = colourInfo ? {colours: Object.keys(colourInfo.legend).length, jobs: 0, found: colourInfo.found} : null;
+  const wbColourInfo = (()=>{ try{ return readColourLegend(wbObj); }catch(e){ return null; } })();
+  // 4.4.3: colour legend is always on (per-sheet when present, else Paula defaults)
+  lastColourSort = {colours: 0, jobs: 0, found: (wbColourInfo && wbColourInfo.found) || defaultColourInfo().found, ambiguous: [], usedDefault: !wbColourInfo};
+  // 4.3.5: the BAT date on the FIRST tab ("page 1") is the event date for every line in this file;
+  // no BAT there = the old way (weekday in the tab / dish name).
+  const fileBatDate = (()=>{ try{ const ws0 = wbObj.Sheets[wbObj.SheetNames[0]]; if (!ws0) return null;
+    const b = xlsxBatDates(XLSX.utils.sheet_to_json(ws0, {header:1, defval:null})); return b.length ? b[0].date : null; }catch(e){ return null; } })();
   let sheetsUsed=0, itemsFound=0;
   const skipped = [];
   const errored = [];
@@ -2770,8 +3186,15 @@ function processWorkbook(wbObj){
         const dishTitle = isGeneric ? rawTitle : (blocks.length>1 ? rawTitle : name);
         sheetsUsed++; itemsFound += block.items.length;
         if (block.pax!=null && paxByDish[dishTitle]===undefined){ const bp = parsePaxInput(block.pax); if (bp.ok && bp.n!==undefined) paxByDish[dishTitle] = bp.n; }
+        if (fileBatDate){ const wd = pdfBatDateToWeekday(fileBatDate); if (wd){ eventDayOverride[dishTitle] = wd; eventDateByDish[dishTitle] = fileBatDate; } }
         const rowsBefore = ROWS.length;
-        if (colourInfo) block.items = applyColourLegend(ws, block.items, colourInfo);
+        const colourInfo = (()=>{ try{ return colourInfoForSheet(ws, wbColourInfo); }catch(e){ return defaultColourInfo(); } })();
+        if (colourInfo){
+          if (!lastColourSort.colours) lastColourSort.colours = Object.keys(colourInfo.legend).length;
+          if (colourInfo.found && colourInfo.found.length && !colourInfo.isDefault) lastColourSort.found = colourInfo.found;
+          if (colourInfo.isDefault) lastColourSort.usedDefault = true;
+          block.items = applyColourLegend(ws, block.items, colourInfo);
+        }
         addRows(dishTitle, block.items);
         // v3.1: remember the workbook tab each row came from, so every Excel export can
         // name its tabs after the imported file's own tabs (see exportDishesToXlsx).
@@ -2796,6 +3219,9 @@ function routeFiles(fileList, opts){
   if (opts.append && !pdfs.length){ setStatus('Append works with production tool PDFs only.', 'err'); return; }
   if (pdfs.length && !opts.__poSplit){
     splitPoFiles(pdfs).then(({pts, pos})=>{
+      // 4.1.1: a new week's production tool (not "append") starts a new set of purchase orders, so last week's POs
+      // can't be matched to this week's ingredients. Uploading POs on their own still adds to the current set.
+      if (pts.length && !opts.append){ const kept = POS.filter(x=>pos.indexOf(x)>=0); if (kept.length !== POS.length){ POS = kept; poLinks = {}; try{ localStorage.setItem(PO_LINK_KEY, '{}'); }catch(e){} savePOs(); } }
       const others = files.filter(f=>!f.name.toLowerCase().endsWith('.pdf'));
       const msg = pos.length ? 'Read '+pos.length+' purchase order'+(pos.length>1?'s':'')+' ('+pos.reduce((n,p)=>n+p.items.length,0)+' lines). ' : '';
       if (pts.length || others.length) routeFiles([...pts, ...others], Object.assign({}, opts, {__poSplit:true, __poMsg: msg}));
@@ -2925,20 +3351,90 @@ function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((i
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
 const PO_LINK_KEY = 'prepline.poLinks.v1';
 let poLinks = (function(){ try{ return JSON.parse(localStorage.getItem(PO_LINK_KEY)||'{}') || {}; }catch(e){ return {}; } })();
-function poMatchFor(task){
+// 4.4.4: Ref# fill only when requisition Required Delivery Date is within 0..4 days
+// before the dish function date (inclusive; never after). Among same/similar matches
+// across multiple requisition PDFs, pick the delivery closest to (and not after) the function.
+const PO_DELIVERY_WINDOW_DAYS = 4;
+function poParseDate(s){
+  const m = String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  let y = Number(m[3]); if (y < 100) y += 2000;
+  const d = new Date(y, Number(m[2]) - 1, Number(m[1]));
+  return (d.getFullYear()===y && d.getMonth()===Number(m[2])-1 && d.getDate()===Number(m[1])) ? d : null;
+}
+function poDaysBefore(deliveryStr, functionStr){
+  const d = poParseDate(deliveryStr), f = poParseDate(functionStr);
+  if (!d || !f) return null;
+  const a = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const b = Date.UTC(f.getFullYear(), f.getMonth(), f.getDate());
+  return Math.round((b - a) / 86400000);
+}
+function poDeliveryInWindow(deliveryStr, functionStr){
+  const days = poDaysBefore(deliveryStr, functionStr);
+  return days !== null && days >= 0 && days <= PO_DELIVERY_WINDOW_DAYS;
+}
+function poPickBestCand(cands){
+  // Highest name score; then closest delivery to function (smallest daysBefore >= 0).
+  let best = null;
+  cands.forEach(c=>{
+    if (!best){ best = c; return; }
+    if (c.score > best.score + 1e-9){ best = c; return; }
+    if (Math.abs(c.score - best.score) <= 1e-9){
+      const cd = (c.daysBefore === null || c.daysBefore < 0) ? 1e9 : c.daysBefore;
+      const bd = (best.daysBefore === null || best.daysBefore < 0) ? 1e9 : best.daysBefore;
+      if (cd < bd) best = c;
+    }
+  });
+  return best;
+}
+function poMatchFor(task, opts){
+  opts = opts || {};
+  const functionDate = opts.functionDate || null;
+  const forFill = !!opts.forFill;   // Ref# box on original PT: never fill without a valid window match
   if (!POS.length) return null;
   if (!poMatchCache) poMatchCache = {items: poAllItems(), byKey: {}};
-  const key = ingKey(task);
-  if (poMatchCache.byKey[key] !== undefined) return poMatchCache.byKey[key];
-  if (poIsInHouse(task)) return (poMatchCache.byKey[key] = {status:'sub'});
-  const tok = poTokens(task); let best = null;
-  poMatchCache.items.forEach(it=>{ const sc = poScore(tok, it.tok); if (sc > 0 && (!best || sc > best.score)) best = {item: it, score: sc}; });
-  const link = poLinks[key];
+  const cacheKey = ingKey(task) + '|' + (functionDate || '') + '|' + (forFill ? 'F' : 'S');
+  if (poMatchCache.byKey[cacheKey] !== undefined) return poMatchCache.byKey[cacheKey];
+  if (poIsInHouse(task)) return (poMatchCache.byKey[cacheKey] = {status:'sub'});
+  const tok = poTokens(task);
+  const cands = [];
+  poMatchCache.items.forEach(it=>{
+    const sc = poScore(tok, it.tok);
+    if (sc <= 0) return;
+    const daysBefore = functionDate ? poDaysBefore(it.po && it.po.delivery, functionDate) : null;
+    cands.push({item: it, score: sc, daysBefore});
+  });
+  const link = poLinks[ingKey(task)];
   let res;
   if (link === 'none') res = {status:'none', manual:true};
-  else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)) res = {status:'ok', item: poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link), score:1, manual:true};
-  else res = !best || best.score < PO_CHECK ? {status:'none', best} : {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score};
-  return (poMatchCache.byKey[key] = res);
+  else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)){
+    const item = poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link);
+    // Manual link still respects the 4-day window when a function date is known (and always when filling Ref#).
+    if (functionDate && !poDeliveryInWindow(item.po && item.po.delivery, functionDate))
+      res = {status:'nodelivery', reason:'no delivery within 4 days', item, score:1, manual:true, daysBefore: poDaysBefore(item.po && item.po.delivery, functionDate)};
+    else res = {status:'ok', item, score:1, manual:true, daysBefore: functionDate ? poDaysBefore(item.po && item.po.delivery, functionDate) : null};
+  } else {
+    const nameHits = cands.filter(c=>c.score >= PO_CHECK);
+    if (functionDate){
+      const inWin = cands.filter(c=>c.daysBefore !== null && c.daysBefore >= 0 && c.daysBefore <= PO_DELIVERY_WINDOW_DAYS);
+      const best = poPickBestCand(inWin);
+      if (best && best.score >= PO_CHECK)
+        res = {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score, daysBefore: best.daysBefore};
+      else if (nameHits.length)
+        res = {status:'nodelivery', reason:'no delivery within 4 days', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0};
+      else
+        res = {status:'none', best: poPickBestCand(cands)};
+    } else if (forFill){
+      // Ref# fill requires a function date to validate the delivery window.
+      res = nameHits.length
+        ? {status:'nodelivery', reason:'no function date', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0}
+        : {status:'none', best: poPickBestCand(cands)};
+    } else {
+      const best = poPickBestCand(cands);
+      res = !best || best.score < PO_CHECK ? {status:'none', best} : {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score};
+    }
+  }
+  return (poMatchCache.byKey[cacheKey] = res);
 }
 const PO_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function poLongDate(d){ const m = String(d||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? Number(m[1])+' '+PO_MONTHS[Number(m[2])-1] : (d||''); }
@@ -2972,38 +3468,43 @@ const PO_VIEWS_KEY = 'prepline.poInViews.v1';
 const poInViews = false;   // r3 (spec): NO supplier / PO details in By dish, By team section, By prep day or the Order sheet; REF lives in the Ref # box on View original + its print
 function poChipHtml(r){
   if (!poInViews) return '';
-  const m = poMatchFor(r.task); if (!m || m.status==='sub') return '';
+  const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return '';
   if (m.status==='none') return ' <span class="po-chip none" title="No line on the uploaded purchase orders matches this ingredient.">no PO</span>';
+  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is within 4 days before the function.">no delivery within 4 days</span>';
   const it = m.item, po = it.po;
   const tip = `${it.supplier}${po.poNumbers.length?' · PO '+poNumberText(po):''} · line ${it.n}: ${it.desc} · ${it.qty!==null?it.qty+' '+it.uom:''} · delivery ${po.delivery}${m.status==='check'?' — weak name match, please check':''}`;
   return ` <span class="po-chip ${m.status}" title="${escapeHtml(tip)}"><b class="po-ref-l">REF</b> ${escapeHtml(poRefText(it))}${m.status==='check'?' (check)':''}</span>`;
 }
 function poStats(){
-  const keys = new Set(), used = new Set(); let ok = 0, check = 0, none = 0;
-  ROWS.forEach(r=>{ const k = ingKey(r.task); if (!k || keys.has(k)) return; keys.add(k); const m = poMatchFor(r.task); if (!m || m.status==='sub') return;
-    if (m.status==='ok'){ ok++; used.add(m.item.po.req+'#'+m.item.n); } else if (m.status==='check'){ check++; used.add(m.item.po.req+'#'+m.item.n); } else none++; });
+  const keys = new Set(), used = new Set(); let ok = 0, check = 0, none = 0, nodelivery = 0;
+  ROWS.forEach(r=>{ const k = ingKey(r.task)+'|'+ (getEventDateStr(r.dish)||''); if (!k || keys.has(k)) return; keys.add(k);
+    const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return;
+    if (m.status==='ok'){ ok++; used.add(m.item.po.req+'#'+m.item.n); }
+    else if (m.status==='check'){ check++; used.add(m.item.po.req+'#'+m.item.n); }
+    else if (m.status==='nodelivery') nodelivery++;
+    else none++; });
   const unusedLines = poAllItems().filter(it=>!used.has(it.po.req+'#'+it.n));
-  return {total: keys.size, ok, check, none, unusedLines};
+  return {total: keys.size, ok, check, none, nodelivery, unusedLines};
 }
 function poLinkSet(encTask, val){ const k = ingKey(decodeURIComponent(encTask)); if (val) poLinks[k] = val; else delete poLinks[k]; try{ localStorage.setItem(PO_LINK_KEY, JSON.stringify(poLinks)); }catch(e){} poMatchCache = null; render(); }
 function poPanelHtml(){
   if (!POS.length) return '';
   const st = ROWS.length ? poStats() : null;
   const opts = poAllItems();
-  const listRows = st ? [...new Set(ROWS.map(r=>r.task))].filter(t=>{ const m = poMatchFor(t); return m && (m.status==='check' || m.status==='none'); }) : [];
+  const listRows = st ? [...new Set(ROWS.map(r=>r.task+'@@'+(getEventDateStr(r.dish)||'')))].map(k=>{ const i=k.lastIndexOf('@@'); return {task:k.slice(0,i), functionDate:k.slice(i+2)||null}; }).filter(x=>{ const m = poMatchFor(x.task, {functionDate:x.functionDate}); return m && (m.status==='check' || m.status==='none' || m.status==='nodelivery'); }) : [];
   return `<div class="panel po-panel no-print" id="poPanel">
     <div class="row" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
       <h3 style="margin:0;">🧾 Requisitions (${POS.length})</h3>
       <button class="ghost" type="button" onclick="clearPOs()">Clear requisitions</button>
     </div>
-    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box on each production tool page: see the <b>📖 Original PTs</b> tab or <b>📖 View original</b> (both print).</div>
+    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is within 4 days before that dish's function date (closest match wins if the same item appears on several PDFs). See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
     <table class="po-table"><thead><tr><th>PO number(s)</th><th>Delivery</th><th>Suppliers</th><th>Lines</th><th>File</th></tr></thead><tbody>
     ${POS.map(po=>`<tr><td><b>${po.poNumbers.length?escapeHtml(poNumberText(po)):'no PO number'}</b>${po.req?'<div class="meta">'+escapeHtml(po.req)+'</div>':''}${po.subject?'<div class="meta">'+escapeHtml(po.subject)+'</div>':''}</td><td>${escapeHtml(po.delivery||'—')}</td><td>${escapeHtml([...new Set(po.items.map(i=>i.supplier))].join(', '))}</td><td>${po.items.length}</td><td class="meta">${escapeHtml(po.file||'')}</td></tr>`).join('')}
     </tbody></table>
-    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
+    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery within 4 days`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
     ${listRows.length ? `<details class="po-fix"><summary>Check or link ingredients (${listRows.length})</summary>
-      ${listRows.map(t=>{ const m = poMatchFor(t); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${m.status==='check'?'<span class="po-chip check">check</span>':'<span class="po-chip none">no PO</span>'}</span>
-        <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):'— not on a PO —'}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+')')}</option>`).join('')}</select></div>`; }).join('')}
+      ${listRows.map(x=>{ const t=x.task; const m = poMatchFor(t, {functionDate:x.functionDate}); const flag = m.status==='check'?'<span class="po-chip check">check</span>':(m.status==='nodelivery'?'<span class="po-chip none">no delivery within 4 days</span>':'<span class="po-chip none">no PO</span>'); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${flag}</span>
+        <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):(m.status==='nodelivery'?'Name match outside 4-day window':'— not on a PO —')}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+') · del '+(i.po.delivery||'?'))}</option>`).join('')}</select></div>`; }).join('')}
     </details>` : ''}
     ${st && st.unusedLines.length ? `<details class="po-fix"><summary>PO lines not used by any recipe (${st.unusedLines.length})</summary><ul>${st.unusedLines.map(i=>`<li>${escapeHtml(i.supplier)} · ${escapeHtml(i.desc)} · ${i.qty!==null?escapeHtml(i.qty+' '+i.uom):''} <span class="meta">(${escapeHtml(i.po.req)})</span></li>`).join('')}</ul></details>` : ''}
   </div>`;
@@ -3477,10 +3978,11 @@ function addPdfRows(dish, tasks, eventDay){
     lastCore = core || lastCore;
     const disp = pdfQtyToDisplay(t.parsedQty);
     const taskLabel = cleanName + (t.note ? ' — ' + t.note : (disp.value===null ? ' ('+t.qtyRaw+')' : ''));
-    const day = eventDay ? calendarDayForPrepNum(eventDay, stageNum) : '';
+    const pinf = prepInfoFor(cleanName, null, cat);
+    const day = eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '';
     ROWS.push({
       dish, task: taskLabel, qty:'', unit: disp.unit, section: cat, baseCategory: cat,
-      flagged, day, stageNum, pdfFixedTotal: disp.value,
+      flagged, day, stageNum, ...pinf, pdfFixedTotal: disp.value,
     });
   }
   return skipped;
@@ -3538,6 +4040,9 @@ async function handlePdfFiles(fileList, opts){
         pagesItems.push(await pdfExtractPageItems(page));
       }
       const {dishes} = pdfParseAllPages(pagesItems);
+      // 4.3.5: the BAT date on this file's FIRST page is the event date for every line in it;
+      // a dish's own BAT date (old behaviour) is only used when page 1 has none.
+      const fileBatDate = (()=>{ try{ return pagesItems[0] ? pdfParseBatDate(pagesItems[0]) : null; }catch(e){ return null; } })();
       dishes.forEach(d=>{
         const tasks = pdfExplodeDish(d);
         (d.skipped||[]).forEach(raw=>skippedRows.push(raw));
@@ -3551,9 +4056,10 @@ async function handlePdfFiles(fileList, opts){
           while (usedDishTitles.has(dishTitle)) dishTitle = stem + ' (' + (n++) + ')';
         }
         usedDishTitles.add(dishTitle);
-        const eventDay = d.main.batDate ? pdfBatDateToWeekday(d.main.batDate) : null;
+        const evDate = fileBatDate || d.main.batDate;
+        const eventDay = evDate ? pdfBatDateToWeekday(evDate) : null;
         if (eventDay) eventDayOverride[dishTitle] = eventDay;
-        if (d.main.batDate) eventDateByDish[dishTitle] = d.main.batDate;
+        if (evDate) eventDateByDish[dishTitle] = evDate;
         const pdfRowsBefore = ROWS.length;
         addPdfRows(dishTitle, tasks, eventDay).forEach(raw=>skippedRows.push(raw));
         // v3.2: a PDF's closest thing to a tab name is the recipe title as printed on its
@@ -3626,6 +4132,13 @@ async function handlePdfFiles(fileList, opts){
       sourceInfo = {name: tagName, loadedAt: new Date()};
       setStatus(skipWarn+(opts.append?'Appended ':'Sorted ')+totalTasks+' items from '+dishNames.length+' dish(es): '+dishNames.join(', ')+'.'+(opts.append?' The list now has '+ROWS.length+' items.':'')+noteMsg, skipWarn?'warn':'ok');
       renderApp();
+      try{
+        if (!opts.append && window.PreplineSheet && typeof window.PreplineSheet.offerPdfRowEdit==='function'){
+          const extracted = ROWS.map(r=>({dish:r.dish, task:r.task||r.item, qty:r.qty, unit:r.unit, section:r.section||'', date:eventDateByDish[r.dish]||'', pax:paxByDish[r.dish], prepCat:r.prepCat||''}));
+          // Offer edit of structured rows (PDF binary itself is never edited)
+          setTimeout(()=>window.PreplineSheet.offerPdfRowEdit(extracted, {name: tagName}), 0);
+        }
+      }catch(e){}
       return;
     }
     const added = commitRowsToDatabase();
@@ -3649,6 +4162,49 @@ document.getElementById('fileInput').addEventListener('change', e=>{
     if (evt==='drop') routeFiles(e.dataTransfer.files);
   });
 });
+
+// 4.4.3: parse an in-memory workbook that already carries cellStyles (.s fills).
+// Used by the sheet-builder so Sort now / edited grids never round-trip through a
+// community SheetJS write that strips fills.
+function handleWorkbookObject(wbObj, fileName){
+  if (!wbObj) return;
+  try{
+    const name = fileName || 'edited.xlsx';
+    setStatus('Reading '+name+' — this can take a moment on a big workbook…');
+    const prev = {ROWS, paxByDish, eventDateByDish};
+    ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
+    const {sheetsUsed, itemsFound, skipped, errored} = processWorkbook(wbObj);
+    if (itemsFound===0){
+      ({ROWS, paxByDish, eventDateByDish} = prev);
+      setStatus('Could not find any recipe rows in "'+name+'". Each dish needs a table with a column headed Item, Ingredient or Product (quantity and unit beside it), or a PAX cell above the list — or use the paste box. Your previous list has been kept.', 'err');
+      return;
+    }
+    document.getElementById('fileTag').textContent = name;
+    const dishNames = [];
+    ROWS.forEach(r=>{ const n=cleanDishName(r.dish); if(!dishNames.includes(n)) dishNames.push(n); });
+    if (toolMode==='onetime'){
+      sourceInfo = {name: name, loadedAt: new Date()};
+      let msg = 'Sorted '+itemsFound+' tasks into '+dishNames.length+' dishes: '+dishNames.join(', ')+'.';
+      if (lastColourSort) msg += ' Colour legend'+(lastColourSort.usedDefault?' (defaults)':'')+' ('+lastColourSort.found.map(f=>f.label+' = '+(f.cat==='Garnishes, Herbs, Powders, Oils Etc.'?'Garnish':f.cat)).join(', ')+'): '+lastColourSort.jobs+' job(s) sorted by colour, the rest by name.';
+      if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
+      if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
+      setStatus(msg, errored.length ? 'err' : 'ok');
+      renderApp();
+      if (typeof showOutputChoice==='function'){ if (pbSorting){ pbSorting = false; const oc=document.getElementById('outputChoice'); if (oc){ oc.hidden = true; oc.innerHTML=''; } const v=document.getElementById('preplistTab'); if (v) v.scrollIntoView(); } else showOutputChoice('upload'); }
+      return;
+    }
+    const added = commitRowsToDatabase();
+    let msg = 'Added '+added+' dishes to your recipe database ('+itemsFound+' tasks): '+dishNames.join(', ')+'.';
+    if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
+    if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
+    setStatus(msg, errored.length ? 'err' : 'ok');
+    appMode = 'weekly';
+    renderApp();
+  } catch(err){
+    setStatus('Could not read that file ('+(err && err.message ? err.message : 'unknown error')+'). Please upload an .xlsx, .xls or .csv spreadsheet, or a production tool PDF.', 'err');
+  }
+}
+window.handleWorkbookObject = handleWorkbookObject;
 
 function handleFile(file){
   if (typeof XLSX === 'undefined'){
@@ -4238,6 +4794,7 @@ function buildPrintDocHtml(target){
 // reason, print() genuinely can't be reached (a handful of older WebViews restrict it),
 // this falls back to a plain "press Ctrl+P" instruction rather than silently doing nothing.
 function printViaIframe(fullHtml){
+  if (window.PrepLineBrand) fullHtml = PrepLineBrand.addToHtml(fullHtml);
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
   document.body.appendChild(iframe);
@@ -4706,7 +5263,8 @@ function renderByDish(){
     const encDish = encName(dish);
     const eventDay = getEventDay(dish);
     const eventDateStr = getEventDateStr(dish);
-    const prepSpan = eventDay ? `${dayLabel(calendarDayForPrepNum(eventDay,1))} → ${dayLabel(eventDay)}` : null;
+    const spanLead = Math.max(3, ...rows.map(r=>Number.isFinite(r.leadDays)?r.leadDays:0));
+    const prepSpan = eventDay ? `${dayLabel(spanLead>3 ? prepStartDay(eventDay,{leadDays:spanLead}) : calendarDayForPrepNum(eventDay,1))} → ${dayLabel(eventDay)}` : null;
     html += `<div class="dish-block">
       <div class="dish-head no-print">
         <div>
@@ -4751,7 +5309,7 @@ function renderByDish(){
       else totalCell = '<span class="needpax">set pax →</span>';
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td><input type="checkbox" class="rowcheck" ${selectedRowIdx.has(globalIdx)?'checked':''} onchange="toggleRowSelected(${globalIdx}, this.checked)"></td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty total-cell">${totalCell}</td>
         <td><select class="rowsel section-${key}" onchange="moveRow(${globalIdx}, this.value)">
@@ -4776,7 +5334,7 @@ function renderByDish(){
           const cont = meta[i].isContinuation;
           const noQty = (r.qty===undefined || r.qty===null || r.qty==='' || isNaN(parseQty(r.qty)));
           const totalTxt = total!==null ? `${qN(total,r.unit)} ${qU(total,r.unit)}` : (cont && noQty ? 'uses batch above' : '—');
-          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}${alChipsHtml(r)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
+          return `<tr class="${!cont?'job-start':''}"><td class="${cont?'continuation-task':'task'}">${cont?'↳ ':''}${escapeHtml(r.task)}${alChipsHtml(r)}${prepCatChip(r)}</td><td class="qty">${escapeHtml(perPaxText(r))}</td><td class="qty"><b>${totalTxt}</b></td><td class="pf-section">${r.section}</td><td class="pf-day">${r.day||'—'}</td></tr>`;
         }).join('')}
         </tbody></table>
         ${methodCropsPageHtml(rows)}
@@ -4916,7 +5474,7 @@ function renderByPriority(){
       const evDay = getEventDay(r.dish);
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${totalCell}</td>
         <td>${r.section}</td>
         <td>${escapeHtml(leaderBySection[r.section] || '—')}</td>
@@ -4952,7 +5510,7 @@ function renderByPriority(){
         const evDay = getEventDay(r.dish);
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForDay[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))+(evDay?`<br><span style="font-weight:400;">event: ${evDay}</span>`:'')}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
@@ -5104,7 +5662,7 @@ function renderBySection(){
         : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
       html += `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
         <td class="dish">${(idx>0 && rowsForSection[idx-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)} ${findSimilarBtn(r.task)}</td>
+        <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)} ${findSimilarBtn(r.task)}</td>
         <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
         <td class="qty">${escapeHtml(perPaxText(r))}</td>
         <td class="qty">${totalCell}</td>
@@ -5144,7 +5702,7 @@ function renderBySection(){
           : (isContinuation && noQty ? '<span class="contnote">uses batch above</span>' : '—');
         return `<tr class="job-band-${band}${!isContinuation?' job-start':''}">
           <td class="dish">${(i>0 && rowsForSection[i-1].dish===r.dish) ? '' : escapeHtml(cleanDishName(r.dish))}</td>
-          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}</td>
+          <td class="${isContinuation?'continuation-task':'task'}">${isContinuation?'↳ ':''}${escapeHtml(r.task)}${r.flagged?'<span class="flagtag">check</span>':''}${alChipsHtml(r)}${prepCatChip(r)}</td>
           <td class="qty">${pax!==undefined ? pax : '<span style="color:var(--prot);">set pax</span>'}</td>
           <td class="qty">${escapeHtml(perPaxText(r))}</td>
           <td class="qty">${totalCell}</td>
@@ -5717,7 +6275,7 @@ function renderProChrome(){
   }
   const pro = proActive();
   const up = document.getElementById('proUpgradeBtn');
-  if (up){ up.textContent = pro ? '★ Pro' : '★ Upgrade to Pro'; up.classList.toggle('active', pro);
+  if (up){ up.textContent = pro ? '★ Pro' : '★ Pro options'; up.classList.toggle('active', pro);
     up.onclick = ()=> pro ? (LICENSE_CONFIG.edition==='offline-pro' ? null : AutoprodLicence.openLicenceDialog()) : AutoprodLicence.openUpgrade(); }
   const lk = document.getElementById('licenceKeyBtn'); if (lk) lk.hidden = pro;
   const f = document.getElementById('madeWithFooter'); if (f) f.hidden = pro || !freeFooterOn();
@@ -6059,7 +6617,15 @@ function orderLines(){
   });
   list.forEach(L=>{
     L.supplier = (INGINFO.items[L.key]||{}).sup || '';
-    L.po = poMatchFor(L.task);
+    L.po = (function(){
+      let best = null;
+      (L.dishes||[]).forEach(d=>{
+        const m = poMatchFor(L.task, {functionDate: getEventDateStr(d)});
+        if (!m || (m.status!=='ok' && m.status!=='check')) return;
+        if (!best || m.score > best.score + 1e-9 || (Math.abs(m.score-best.score)<=1e-9 && (m.daysBefore||1e9) < (best.daysBefore||1e9))) best = m;
+      });
+      return best || poMatchFor(L.task, {functionDate: getEventDateStr((L.dishes||[])[0])});
+    })();
     if (poInViews && !L.supplier && L.po && L.po.status==='ok') { L.supplier = L.po.item.supplier; L.supFromPo = true; }
     if (L.hasQty){
       L.qty = Math.round(L.qty*1e9)/1e9;
@@ -6084,6 +6650,7 @@ const ORDER_GROUP_FOOT = [];   // feature 6 adds a cost total line: (group) => h
 function poOrderCell(L, print){
   const m = L.po; if (!m || m.status==='sub') return '';
   if (m.status==='none') return print ? 'not on a PO' : '<span class="po-chip none">no PO</span>';
+  if (m.status==='nodelivery') return print ? 'no delivery within 4 days' : '<span class="po-chip none">no delivery within 4 days</span>';
   const it = m.item, po = it.po;
   const txt = poRefText(it) + (m.status==='check'?' (check)':'');
   return print ? escapeHtml(txt) : `<span class="po-chip ${m.status}" title="${escapeHtml(it.supplier+' · '+it.desc)}">🧾 ${escapeHtml(txt)}</span>`;
@@ -6918,8 +7485,8 @@ function closePrivacy(){ const m = document.getElementById('privacyModal'); if (
 //    at most 5 tries, then dropped.
 const ALLOW_SKIP = false;   // true = show a small "Skip for now" link (asks again next visit)
 const SIGNUP_CONFIG = {
-  endpoint: 'https://script.google.com/macros/s/AKfycbxv8HWUatM_nqMmlgyaNtjVAuqHSfLWqrwSwgVttVKlAdNwzSLyeVkMKzmrs9q8GqME2A/exec',
-  sites: { '/preplist-sorter/': 'live', '/prepline-test/': 'test' },
+  endpoint: '',   // 4.4.5: signup/welcome disabled — no Apps Script call
+  sites: {},
   positions: ['Head Chef', 'Sous Chef', 'Chef de Partie', 'Cook', 'Kitchen Hand', 'Other'],
   doneKey: 'prepline.signup.v1', queueKey: 'prepline.signupQueue.v1', skipKey: 'prepline.signupSkip.v1',
   maxTries: 5, minMs: 1500, timeoutMs: 30000,   // Apps Script can take 10-30 s on a cold start
@@ -7594,8 +8161,28 @@ function pbWireDrop(){
   panel.addEventListener('drop', e=>{ e.preventDefault(); e.stopPropagation(); panel.classList.remove('pb-drag'); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) pbOpenFile(f); });
   const inp = document.getElementById('pbFileInput'); if (inp) inp.addEventListener('change', e=>{ const f = e.target.files && e.target.files[0]; if (f) pbOpenFile(f); });
 }
+
+// Bridge for sheet-builder / rules (let-scoped state is not on window)
+window.__preplineBridge = {
+  getRows: () => ROWS,
+  setRows: (rows) => { ROWS = rows; },
+  clearList: () => { ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {}; },
+  setPax: (d, n) => { paxByDish[d] = n; },
+  setDate: (d, v) => { eventDateByDish[d] = v; },
+  getPax: () => paxByDish,
+  getDates: () => eventDateByDish,
+  processWorkbook: (wb) => processWorkbook(wb),
+  render: () => { if (typeof renderApp==='function') renderApp(); else if (typeof render==='function') render(); },
+  setStatus: (m, k) => { if (typeof setStatus==='function') setStatus(m, k); },
+  showOutput: (k) => { if (typeof showOutputChoice==='function') showOutputChoice(k); },
+  prepInfoFor: (text, leg, sec) => (typeof prepInfoFor==='function' ? prepInfoFor(text, leg, sec) : {prepCat:'', leadDays:null, prepSrc:'', weekendShift:false}),
+  prepStartDay: (eventDay, r) => (typeof prepStartDay==='function' ? prepStartDay(eventDay, r) : ''),
+  handleFileRaw: (file) => handleFile(file)
+};
+
 document.addEventListener('DOMContentLoaded', pbWireDrop);
 
 </script>
+<script src="brand.js"></script>
 </body>
 </html>
