@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.0.1-ubs">
+<meta name="prepline-version" content="4.4.5">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -7485,8 +7485,8 @@ function closePrivacy(){ const m = document.getElementById('privacyModal'); if (
 //    at most 5 tries, then dropped.
 const ALLOW_SKIP = false;   // true = show a small "Skip for now" link (asks again next visit)
 const SIGNUP_CONFIG = {
-  endpoint: 'https://script.google.com/macros/s/AKfycbxv8HWUatM_nqMmlgyaNtjVAuqHSfLWqrwSwgVttVKlAdNwzSLyeVkMKzmrs9q8GqME2A/exec',
-  sites: { '/preplist-sorter/': 'live', '/prepline-test/': 'test' },
+  endpoint: '',   // 4.4.5: signup/welcome disabled — no Apps Script call
+  sites: {},
   positions: ['Head Chef', 'Sous Chef', 'Chef de Partie', 'Cook', 'Kitchen Hand', 'Other'],
   doneKey: 'prepline.signup.v1', queueKey: 'prepline.signupQueue.v1', skipKey: 'prepline.signupSkip.v1',
   maxTries: 5, minMs: 1500, timeoutMs: 30000,   // Apps Script can take 10-30 s on a cold start

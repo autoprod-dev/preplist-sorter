@@ -8,9 +8,9 @@ on:
       tag:
         description: 'Backup tag to restore (tree only; new commit on master)'
         required: true
-        default: backup-pre-refdate-20261029
+        default: backup-pre-nologin-20261030
       mode:
-        description: 'restore = tag tree on master; restore-latest = live-backup-4.3.5 tip'
+        description: 'restore = tag tree on master; restore-latest = live-backup-4.4.4 tip'
         required: true
         default: restore
         type: choice
@@ -38,7 +38,7 @@ jobs:
           MODE="${{ github.event.inputs.mode }}"
           TAG="${{ github.event.inputs.tag }}"
           if [ "$MODE" = "restore-latest" ]; then
-            REF="live-backup-4.3.5"
+            REF="live-backup-4.4.4"
           else
             REF="$TAG"
           fi

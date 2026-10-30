@@ -3,7 +3,7 @@
 # .github/workflows/revert-to-backup.yml). Creates a NEW commit on master;
 # never force-pushes.
 set -euo pipefail
-TAG="${1:-backup-pre-refdate-20261029}"
+TAG="${1:-backup-pre-nologin-20261030}"
 MODE="${2:-restore}"   # restore | restore-latest
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-master}"
@@ -15,7 +15,7 @@ git fetch "$REMOTE" --tags
 git fetch "$REMOTE" "$BRANCH"
 
 if [ "$MODE" = "restore-latest" ]; then
-  REF="live-backup-4.3.5"
+  REF="live-backup-4.4.4"
 else
   REF="$TAG"
 fi
