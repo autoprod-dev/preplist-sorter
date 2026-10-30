@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.4.6">
+<meta name="prepline-version" content="4.4.7">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -87,6 +87,7 @@ var LICENSE_CONFIG = {
 <script src="vendor/x-spreadsheet/xspreadsheet.js"></script>
 <script src="vendor/hot-formula-parser/formula-parser.min.js"></script>
 <script src="sheet-builder.js"></script>
+<script src="organised-export.js"></script>
 
 
 <script type="module">
@@ -5141,6 +5142,7 @@ function render(){
       : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
       : viewMode==='order' ? ''
       : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
+    <button class="secondary" onclick="exportOrganisedXlsx447()" type="button" title="Paula Sorted layout: one tab per section, yellow header, Total needed = qty × pax, A–Z by dish/prep/event">📊 Organised export (yellow header)</button>
   </div>
   <div class="row no-print print-row" style="margin-bottom:20px; gap:8px; align-items:center;">
     <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one page complete)</button>
@@ -6823,6 +6825,31 @@ function renderOrderSheet(){
 // Excel: one tab per supplier (and "No supplier yet"). Order qty is a plain number to edit.
 const ORDER_XLSX_EXTRA = [];   // feature 6: {header, value(L), formula?(L, excelRow) -> {f, v}, wch}
 const ORDER_XLSX_FOOT = [];    // feature 6: (ctx) -> adds a total row
+function exportOrganisedXlsx447(){
+  if (!window.PreplineOrganisedExport || typeof PreplineOrganisedExport.exportOrganisedXlsx !== 'function'){
+    setStatus('Organised export unavailable', 'err'); return;
+  }
+  try{
+    const rows = (typeof activeRows === 'function' ? activeRows() : ROWS).filter(r => typeof rowMatchesSearch !== 'function' || rowMatchesSearch(r));
+    if (!rows.length){
+      setStatus('Nothing to export yet — load a preplist first (or tick at least one dish in the summary above).', 'err');
+      return;
+    }
+    const res = PreplineOrganisedExport.exportOrganisedXlsx(rows, {}, {
+      cleanDishName, paxByDish,
+      allergenText: typeof allergenText==='function' ? allergenText : undefined,
+      dayLabel: typeof dayLabel==='function' ? dayLabel : undefined,
+      srcName: typeof srcName==='function' ? srcName : undefined,
+      exportPerPax: typeof exportPerPax==='function' ? exportPerPax : undefined,
+      getEventDay: typeof getEventDay==='function' ? getEventDay : undefined,
+      getEventDateStr: typeof getEventDateStr==='function' ? getEventDateStr : undefined
+    });
+    const done = (r) => setStatus('Organised export: '+(r&&r.rows)+' rows · Paula layout (section tabs, yellow header, A–Z by dish/prep/event'+(r&&r.layout? ', '+r.layout : '')+') · '+(r&&r.engine||'xlsx')+'.', 'ok');
+    if (res && typeof res.then === 'function') res.then(done).catch(e=>setStatus('Organised export failed: '+(e&&e.message||e), 'err'));
+    else done(res);
+  }catch(e){ setStatus('Organised export failed: '+(e&&e.message||e), 'err'); }
+}
+
 function exportOrderToXlsx(){
   if (typeof XLSX === 'undefined' || !XLSX.utils){ setStatus('The spreadsheet export could not load. Reload the page and try again.', 'err'); return; }
   const groups = orderGroups();

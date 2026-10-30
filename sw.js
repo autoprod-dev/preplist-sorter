@@ -12,7 +12,7 @@
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '4.4.5';
+const VERSION = '4.4.7';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
 // The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
 const NO_CDN = SCOPE_PATH === '/prepline-team/';
@@ -21,7 +21,7 @@ const CACHE = CACHE_PREFIX + VERSION;
 // 3.3.0 (test site only) used 'prepline-test-<version>'
 const LEGACY_PREFIX = SCOPE_PATH === '/prepline-test/' ? 'prepline-test-' : null;
 // gate.js + gate-config.js stay in APP_SHELL (4.4.5: gate is a no-op unlock; no login/Apps Script).
-const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './gate.js', './gate-config.js', './brand.js', './prep-days-vocab.js',
+const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './gate.js', './gate-config.js', './brand.js', './prep-days-vocab.js', './organised-export.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 // Same-site library copies (team site). Precached when present, skipped where absent (404).
 const LOCAL_LIBS = ['./lib/xlsx.full.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js',
