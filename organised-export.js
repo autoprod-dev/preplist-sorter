@@ -1,6 +1,8 @@
-/* Prepline 4.4.7 — Organised export (Paula Sorted layout). Port of trial 4.7.8. Autoprod.
- * Organised export ONLY — no other 4.7.x upgrades. Yellow headers, five section tabs,
- * A–Z by dish/Source → prep day → event date → item; Total =B*D; BAT/PO blank write-in.
+/* Prepline 4.4.8 — Organised export (Paula Sorted layout). Autoprod.
+ * Yellow headers, five section tabs; A–Z by dish/Source → prep day → event date → item
+ * (KEEP 4.4.7 order — no prep-date colour / smart-chef / new A–Z).
+ * 4.4.8: Section column = tab name; Total = formula + cached result (Protected View);
+ * STAFF ALLOCATED + BAT/PO # blank write-in.
  */
 (function (root) {
   'use strict';
@@ -34,8 +36,17 @@
     return OTHER_SHEET;
   }
 
+  /* Canonical Section text for a Paula tab (Garnishes keeps the " Etc." Paula writes). */
+  function sectionForSheet(sheet) {
+    var s = String(sheet || '').trim();
+    for (var i = 0; i < PAULA_TABS.length; i++) {
+      if (PAULA_TABS[i].sheet === s) return PAULA_TABS[i].sections[0];
+    }
+    return s || '—';
+  }
+
   /* Paula places rows on tabs by what the item is, not only by the colour-legend Section.
-   * Section column stays as classified; sheet/tab follows these chef overrides.
+   * 4.4.8: Section column ALWAYS equals the tab the row is placed on (canonical label).
    * BAT/PO # is always blank (handwritten batch numbers) — never filled from upload.
    */
   function sheetForItem(item, sec) {
@@ -102,13 +113,7 @@
   }
 
   function staffAllocated(r, helpers) {
-    /* Paula's Sorted puts allergen suggestions in STAFF ALLOCATED. */
-    if (helpers && typeof helpers.allergenText === 'function') {
-      try {
-        var t = helpers.allergenText(r.task);
-        if (t != null && String(t).trim() !== '') return String(t);
-      } catch (e) {}
-    }
+    /* 4.4.8: always blank — Paula writes in staff numbers herself. */
     return '';
   }
 
@@ -208,6 +213,9 @@
         : (r.dish || '');
       /* Dish key for A–Z: prefer Source tab (Paula's dish label), fall back to cleaned dish. */
       var dishKey = String(src || dishName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      var sheet = sheetForItem(r.task, sec);
+      /* 4.4.8: Section text always matches the tab. */
+      var sectionOut = sheet === OTHER_SHEET ? (sec || '—') : sectionForSheet(sheet);
       out.push({
         item: r.task,
         qtyPerPax: pp.n,
@@ -216,11 +224,11 @@
         fixedTotal: pp.fixedTotal,
         nonNumeric: !!pp.nonNumeric,
         batPo: '', /* blank write-in for chefs — never filled from upload */
-        section: sec || '—',
+        section: sectionOut,
         prepDay: prepLab,
         sourceTab: src,
         staff: staffAllocated(r, helpers),
-        sheet: sheetForItem(r.task, sec),
+        sheet: sheet,
         itemNorm: String(r.task || '').toLowerCase().replace(/\s+/g, ' ').trim(),
         dish: r.dish || '',
         dishKey: dishKey,
@@ -239,6 +247,27 @@
       return 0;
     });
     return out;
+  }
+
+  /** Total needed cell: formula with cached result for Protected View.
+   *  Non-numeric or missing qty/pax → blank (never #VALUE). */
+  function totalNeededCell(r, excelRow) {
+    if (r.fixedTotal != null && r.fixedTotal !== '') return r.fixedTotal;
+    if (r.nonNumeric) return '';
+    var q = r.qtyPerPax;
+    var p = r.pax;
+    var qn = (typeof q === 'number') ? q : NaN;
+    var pn = (typeof p === 'number') ? p : NaN;
+    if (typeof q === 'string' && q.trim() !== '') {
+      qn = Number(String(q).replace(/,/g, ''));
+    }
+    if (typeof p === 'string' && p.trim() !== '') {
+      pn = Number(String(p).replace(/,/g, ''));
+    }
+    if (q === '' || p === '' || q == null || p == null) return '';
+    if (!isFinite(qn) || !isFinite(pn)) return '';
+    var product = qn * pn;
+    return { formula: 'B' + excelRow + '*D' + excelRow, result: product };
   }
 
   function thinBorder() {
@@ -286,15 +315,8 @@
       row.getCell(3).value = r.unit || '';
       if (typeof r.pax === 'number') row.getCell(4).value = r.pax;
       else row.getCell(4).value = r.pax === '' ? '' : r.pax;
-      if (r.fixedTotal != null && r.fixedTotal !== '') {
-        row.getCell(5).value = r.fixedTotal;
-      } else if (r.nonNumeric) {
-        row.getCell(5).value = { formula: 'IF(ISNUMBER(B' + excelRow + '),B' + excelRow + '*D' + excelRow + ',"")' };
-      } else if (r.qtyPerPax === '' || r.pax === '') {
-        row.getCell(5).value = { formula: 'IF(OR(B' + excelRow + '="",D' + excelRow + '=""),"",B' + excelRow + '*D' + excelRow + ')' };
-      } else {
-        row.getCell(5).value = { formula: 'B' + excelRow + '*D' + excelRow };
-      }
+      /* Total needed: formula + cached result so Protected View / LibreOffice / phones show a value. */
+      row.getCell(5).value = totalNeededCell(r, excelRow);
       row.getCell(6).value = r.batPo || '';
       row.getCell(7).value = r.section || '';
       row.getCell(8).value = r.prepDay || '';
@@ -325,11 +347,12 @@
       var excelRow = idx + 3;
       var qty = r.qtyPerPax == null ? '' : r.qtyPerPax;
       var pax = r.pax === '' ? '' : r.pax;
+      var totCell = totalNeededCell(r, excelRow);
       var tot = '';
-      if (r.fixedTotal != null && r.fixedTotal !== '') {
-        tot = r.fixedTotal;
-      } else {
-        formulas.push({ r: excelRow - 1, c: 4, f: 'B' + excelRow + '*D' + excelRow });
+      if (totCell && typeof totCell === 'object' && totCell.formula) {
+        formulas.push({ r: excelRow - 1, c: 4, f: totCell.formula, v: totCell.result });
+      } else if (totCell !== '' && totCell != null) {
+        tot = totCell;
       }
       aoa.push([
         r.item, qty, r.unit || '', pax, tot,
@@ -340,7 +363,7 @@
     ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
     formulas.forEach(function (fc) {
       var addr = XLSX.utils.encode_cell({ r: fc.r, c: fc.c });
-      ws[addr] = { t: 'n', f: fc.f, v: 0 };
+      ws[addr] = { t: 'n', f: fc.f, v: (fc.v != null && isFinite(fc.v)) ? fc.v : 0 };
     });
     var yellow = { patternType: 'solid', fgColor: { rgb: 'FFFF00' } };
     var boldH = { bold: true, name: 'Calibri', sz: 12 };
@@ -471,7 +494,7 @@
   U.buildPaulaOrganisedRows = buildPaulaRows;
   U.PAULA_ORGANISED_HEADERS = HEADERS;
   U.PAULA_ORGANISED_TABS = PAULA_TABS.map(function (t) { return t.sheet; });
-  U.VERSION = '4.4.7';
+  U.VERSION = '4.4.8';
 
   root.PreplineOrganisedExport = U;
 })(typeof window !== 'undefined' ? window : globalThis);

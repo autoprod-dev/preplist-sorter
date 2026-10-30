@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.4.7">
+<meta name="prepline-version" content="4.4.8">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -88,6 +88,8 @@ var LICENSE_CONFIG = {
 <script src="vendor/hot-formula-parser/formula-parser.min.js"></script>
 <script src="sheet-builder.js"></script>
 <script src="organised-export.js"></script>
+<script src="section-toggles.js"></script>
+<script src="calendar-app.js"></script>
 
 
 <script type="module">
@@ -1499,7 +1501,7 @@ function loadOnetimeSession(){
       paxByDish = cleanPaxMap(s.paxByDish);
       migratePdfBasePax(ROWS, paxByDish);
       activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
-      viewMode = ['dish','section','priority','order','orig'].includes(s.viewMode) ? s.viewMode : 'dish';
+      viewMode = ['dish','section','priority','order','orig','week'].includes(s.viewMode) ? s.viewMode : 'dish';
       eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
       eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
       rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
@@ -1850,8 +1852,9 @@ function sortOrderLines(lines){
 }
 function printOrderControlHtml(){
   const view = viewMode;
-  const opts = sortColumnOptions(view);
-  const s = sortState[view];
+  if (view === 'week' || view === 'orig') return '';
+  const opts = sortColumnOptions(view) || [];
+  const s = sortState[view] || { col: '', dir: 'asc' };
   return `<div class="no-print print-order-ctl" data-view="${view}" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 18px; padding:12px 16px; background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);">
     <b style="font-size:12.5px;">Before printing — order by:</b>
     <span class="meta" style="font-size:11.5px;">Rows in every view${view==='order'?' (lines within each supplier)':''}, on screen and in print. Remembered on this device.</span>
@@ -5134,13 +5137,14 @@ function render(){
     <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
     <button class="${viewMode==='section'?'':'secondary'}" onclick="setView('section')" type="button">By team section</button>
     <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
+    <button class="${viewMode==='week'?'':'secondary'}" onclick="setView('week')" type="button" id="weekViewBtn">Week calendar</button>
     <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet (by supplier)</button>
     ${Object.keys(originalPageImages).length ? `<button class="${viewMode==='orig'?'':'secondary'}" onclick="setView('orig')" type="button" id="origViewBtn">📖 Original PTs (Ref # filled)</button>` : ''}
   </div>
   <div class="row no-print" style="margin-bottom:10px; gap:8px;">
     ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="Exports this view (By dish) as an editable .xlsx">📊 Export to Excel (editable)</button>`
       : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
-      : viewMode==='order' ? ''
+      : (viewMode==='order' || viewMode==='week') ? ''
       : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
     <button class="secondary" onclick="exportOrganisedXlsx447()" type="button" title="Paula Sorted layout: one tab per section, yellow header, Total needed = qty × pax, A–Z by dish/prep/event">📊 Organised export (yellow header)</button>
   </div>
@@ -5151,9 +5155,9 @@ function render(){
   </div>
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
-  if (viewMode!=='orig'){ html += searchBarHtml();
-  html += printOrderControlHtml(); }   // v3.4.5: the Order sheet view has it too
-  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : (viewMode==='orig' && Object.keys(originalPageImages).length ? renderOriginalsTab() : renderByPriority())));
+  if (viewMode!=='orig' && viewMode!=='week'){ html += searchBarHtml();
+  html += printOrderControlHtml(); }   // v3.4.5: the Order sheet view has it too; week calendar skips
+  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : (viewMode==='week' ? renderWeekCalendar448() : (viewMode==='orig' && Object.keys(originalPageImages).length ? renderOriginalsTab() : renderByPriority()))));
   // v3.4.4: re-rendering after a manual edit keeps the page where it was and keeps focus
   // on the control that was just changed (it used to jump back to the top).
   const keepY = window.scrollY, keepX = window.scrollX, ae = document.activeElement;
@@ -6825,6 +6829,24 @@ function renderOrderSheet(){
 // Excel: one tab per supplier (and "No supplier yet"). Order qty is a plain number to edit.
 const ORDER_XLSX_EXTRA = [];   // feature 6: {header, value(L), formula?(L, excelRow) -> {f, v}, wch}
 const ORDER_XLSX_FOOT = [];    // feature 6: (ctx) -> adds a total row
+function renderWeekCalendar448(){
+  if (window.Prepline486 && typeof Prepline486.renderCalendarView === 'function') {
+    try {
+      const rows = (typeof activeRows === 'function') ? activeRows() : (ROWS || []);
+      const deps = (typeof batchDeps === 'function') ? batchDeps() : {};
+      return Prepline486.renderCalendarView(rows, deps, {
+        escapeHtml: typeof escapeHtml === 'function' ? escapeHtml : undefined,
+        cleanDishName: typeof cleanDishName === 'function' ? cleanDishName : undefined,
+        dayLabel: typeof dayLabel === 'function' ? dayLabel : undefined,
+        getEventDay: typeof getEventDay === 'function' ? getEventDay : undefined,
+        getEventDateStr: typeof getEventDateStr === 'function' ? getEventDateStr : undefined
+      });
+    } catch (e) {
+      return '<div class="panel">Week calendar failed: ' + (e && e.message || e) + '</div>';
+    }
+  }
+  return '<div class="panel">Week calendar unavailable</div>';
+}
 function exportOrganisedXlsx447(){
   if (!window.PreplineOrganisedExport || typeof PreplineOrganisedExport.exportOrganisedXlsx !== 'function'){
     setStatus('Organised export unavailable', 'err'); return;
@@ -6844,7 +6866,7 @@ function exportOrganisedXlsx447(){
       getEventDay: typeof getEventDay==='function' ? getEventDay : undefined,
       getEventDateStr: typeof getEventDateStr==='function' ? getEventDateStr : undefined
     });
-    const done = (r) => setStatus('Organised export: '+(r&&r.rows)+' rows · Paula layout (section tabs, yellow header, A–Z by dish/prep/event'+(r&&r.layout? ', '+r.layout : '')+') · '+(r&&r.engine||'xlsx')+'.', 'ok');
+    const done = (r) => setStatus('Organised export: '+(r&&r.rows)+' rows · Paula layout (Section=tab, Total cached, STAFF/BAT blank, A–Z by dish/prep/event'+(r&&r.layout? ', '+r.layout : '')+') · '+(r&&r.engine||'xlsx')+'.', 'ok');
     if (res && typeof res.then === 'function') res.then(done).catch(e=>setStatus('Organised export failed: '+(e&&e.message||e), 'err'));
     else done(res);
   }catch(e){ setStatus('Organised export failed: '+(e&&e.message||e), 'err'); }
