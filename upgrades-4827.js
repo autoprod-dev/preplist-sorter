@@ -293,7 +293,8 @@
     } catch (e) {}
   }
 
-  /** renderIngPanel() wipes the u480 settings bar; restore a working Show/Hide. */
+  /** renderIngPanel() wipes the u480 settings bar; restore a working Show/Hide.
+   *  Clone the button so u480/u4821 one-way listeners cannot double-toggle with ours. */
   function repairIngPanelToggle() {
     var wrap = document.getElementById('ingPanelWrap');
     if (!wrap || wrap.style.display === 'none') return;
@@ -310,31 +311,78 @@
     }
     var btn = bar.querySelector('button');
     if (!btn) return;
-    /* Prefer our flip Show/Hide over one-way u480 expand */
     if (!btn.__u4827Ing) {
-      btn.__u4827Ing = true;
-      btn.classList.add('u4827-toggle');
-      btn.addEventListener('click', function (ev) {
+      var fresh = btn.cloneNode(true);
+      fresh.__u4827Ing = true;
+      fresh.classList.add('u4827-toggle');
+      fresh.addEventListener('click', function (ev) {
         ev.preventDefault();
+        ev.stopImmediatePropagation();
         ev.stopPropagation();
-        var collapsed = wrap.classList.toggle('u480-settings-collapsed');
-        if (collapsed) wrap.classList.remove('u480-settings-open');
-        else wrap.classList.add('u480-settings-open');
-        btn.textContent = collapsed ? 'Show' : 'Hide';
-        try {
-          if (!collapsed && typeof setIngPanelOpen === 'function') setIngPanelOpen(true);
-        } catch (e) {}
+        var willOpen = wrap.classList.contains('u480-settings-collapsed');
+        if (willOpen) {
+          wrap.classList.remove('u480-settings-collapsed');
+          wrap.classList.add('u480-settings-open');
+          fresh.textContent = 'Hide';
+          try {
+            if (typeof ingPanelOpen !== 'undefined') ingPanelOpen = true;
+            localStorage.setItem('preplinePref_ingPanelOpen_v1', '1');
+          } catch (e) {}
+          try { if (typeof setIngPanelOpen === 'function') setIngPanelOpen(true); } catch (e) {}
+        } else {
+          wrap.classList.add('u480-settings-collapsed');
+          wrap.classList.remove('u480-settings-open');
+          fresh.textContent = 'Show';
+          try {
+            if (typeof ingPanelOpen !== 'undefined') ingPanelOpen = false;
+            localStorage.setItem('preplinePref_ingPanelOpen_v1', '0');
+          } catch (e) {}
+          try { if (typeof setIngPanelOpen === 'function') setIngPanelOpen(false); } catch (e) {}
+        }
+        /* setIngPanelOpen → renderIngPanel wipes the bar; rebuild on next tick */
+        setTimeout(repairIngPanelToggle, 0);
       });
+      btn.parentNode.replaceChild(fresh, btn);
+      btn = fresh;
     }
     btn.textContent = wrap.classList.contains('u480-settings-collapsed') ? 'Show' : 'Hide';
-    /* Hide the in-body duplicate toggle so one control remains */
     var dup = wrap.querySelector('#ingPanelToggle');
     if (dup) dup.style.display = 'none';
+  }
+
+  function patchRenderIngPanel() {
+    var g = root;
+    if (typeof g.renderIngPanel !== 'function' || g.renderIngPanel.__u4827) return false;
+    var orig = g.renderIngPanel;
+    function wrapped() {
+      var wrap = document.getElementById('ingPanelWrap');
+      var wasCollapsed = !!(wrap && wrap.classList.contains('u480-settings-collapsed'));
+      var wasOpen = !!(wrap && wrap.classList.contains('u480-settings-open'));
+      var ret = orig.apply(this, arguments);
+      wrap = document.getElementById('ingPanelWrap');
+      if (wrap) {
+        try { delete wrap.dataset.u480Bar; } catch (e) { wrap.dataset.u480Bar = ''; }
+        if (wasOpen) {
+          wrap.classList.add('u480-settings-open');
+          wrap.classList.remove('u480-settings-collapsed');
+        } else if (wasCollapsed) {
+          wrap.classList.add('u480-settings-collapsed');
+          wrap.classList.remove('u480-settings-open');
+        }
+        repairIngPanelToggle();
+      }
+      return ret;
+    }
+    wrapped.__u4827 = true;
+    g.renderIngPanel = wrapped;
+    try { renderIngPanel = wrapped; } catch (e) {}
+    return true;
   }
 
   function applyFeatureToggles() {
     ensureCss();
     patchOriginalViewer();
+    patchRenderIngPanel();
     repairIngPanelToggle();
 
     /* More views — same Show/Hide style as Export / Print */
@@ -423,6 +471,7 @@
     ensureCss();
     syncVersion();
     patchOriginalViewer();
+    patchRenderIngPanel();
     patchRender();
     applyFeatureToggles();
     try {
