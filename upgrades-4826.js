@@ -1,4 +1,4 @@
-/* Prepline 4.8.26 — trial only.
+/* Prepline 4.8.26 — live (promoted from trial).
  * Long-life mise expands to soils + gels (dressings, any croutons, powders, crumbs, oils).
  * ANY puree = 2 days before event only (no long-life / earlier week pack).
  * Poultry lead=3 (overrides 4-day protein). Cheese=3. Dressings & butters stay 4.
@@ -18,7 +18,7 @@
       if (root.Prepline4824) root.Prepline4824.VERSION = VERSION;
       if (root.Prepline4825) root.Prepline4825.VERSION = VERSION;
       var meta = document.querySelector('meta[name="prepline-version"]');
-      if (meta) meta.setAttribute('content', VERSION + '-trial');
+      if (meta) meta.setAttribute('content', VERSION);
       var badge = document.getElementById('appVersion');
       if (badge && /Prepline v/.test(badge.textContent || '')) {
         badge.textContent = 'Prepline v' + VERSION;
