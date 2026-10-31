@@ -3,7 +3,7 @@
 # .github/workflows/revert-to-backup.yml). Creates a NEW commit on master;
 # never force-pushes.
 set -euo pipefail
-TAG="${1:-backup-pre-sectiontoggles-20261031}"
+TAG="${1:-backup-pre-trialpromote-20261101}"
 MODE="${2:-restore}"   # restore | restore-latest
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-master}"

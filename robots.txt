@@ -1,4 +1,2 @@
 User-agent: *
-Allow: /
-
-Sitemap: https://autoprod-dev.github.io/preplist-sorter/sitemap.xml
+Disallow: /

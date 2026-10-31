@@ -131,7 +131,7 @@ $('editor').addEventListener('click',e=>{const a=e.target.closest('[data-add]'),
  if(a||d)snap();
  if(a){at(a.dataset.add).lines.push({dish:'',paxValue:null,dayWord:'',manual:true});state.edited=true;save(true);renderDay();const ed=$('editor').querySelectorAll(`[data-p^="${a.dataset.add}."][data-p$=".dish"]`);ed[ed.length-1].focus();}
  if(d){at(d.dataset.del).lines.splice(+d.dataset.i,1);state.edited=true;save(true);renderDay();}});
-$('dlXlsx').onclick=download;$('printDay').onclick=()=>doPrint('day');$('printWeek').onclick=()=>doPrint('week');$('printReview').onclick=printReview;
+$('dlXlsx').onclick=download;$('printDay').onclick=()=>doPrint('day');$('printWeek').onclick=()=>doPrint('week');$('printReview').onclick=printReview;const _ps=$('printStations');if(_ps)_ps.onclick=printStationSheets;
 $('clearAlloc').onclick=()=>{if(!confirm('Clear the allocation and all edits from this device?'))return;localStorage.removeItem(KEY);state=null;status('Cleared. Upload a work order to start.');render();};
 $('applySettings').onclick=()=>applySettings(false);$('resetSettings').onclick=()=>applySettings(true);
 window.addEventListener('beforeprint',()=>{if(state&&!$('printArea').innerHTML)$('printArea').innerHTML=printSheetHTML(state.res.sheets[state.day]);});
@@ -176,5 +176,16 @@ document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closes
 document.addEventListener('pointermove',onMove,{passive:false});document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',e=>{if(drag&&e.pointerId===drag.pid){drag.t=null;onUp(e);}});
 updUndo();
 $('editor').addEventListener('focusout',()=>{if(state)save(true);});addEventListener('pagehide',()=>{if(state)save(true);});
-window.__alloc={get state(){return state;},buildWorkbook,printSheetHTML};
+
+function printStationSheets(){
+  if(!state)return;
+  if(!window.PreplineUpgrades47){alert('Station sheets module missing');return;}
+  const sheets=PreplineUpgrades47.buildStationSheetsFromAlloc(state);
+  if(!sheets.length){alert('No allocated lines yet — assign staff in the Allocated Staff column first.');return;}
+  PreplineUpgrades47.ensureCss();
+  $('printArea').innerHTML=PreplineUpgrades47.stationSheetHtml(sheets,{escapeHtml:esc});
+  document.title=(E.fileName(state.res)||'Prepline').replace(/\.xlsx$/,'')+' · station sheets';
+  window.print();
+}
+window.__alloc={get state(){return state;},buildWorkbook,printSheetHTML,printStationSheets};
 })();

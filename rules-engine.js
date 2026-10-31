@@ -59,13 +59,37 @@
       field: 'name', op: 'contains', value: 'crab croquette', wildcard: false,
       category: 'crabcroq', leadDays: 4, weekendShift: true, overridePrep: true, stack: false
     });
+    // 4.8.24 Gerard: prawns prep 1 day before (Paula orders day-before for freshness); not Mon/Sat early-batched.
+    // Priority 5 so these beat any leftover seafood prawn/shrimp keywords on older profiles.
+    ['prawn', 'prawns', 'shrimp', 'shrimps'].forEach(function (w) {
+      rules.push({
+        id: uid(), type: 'keyword', enabled: true, priority: 5,
+        name: 'Prawns → 1-day (order day-before)',
+        field: 'name', op: 'contains', value: w, wildcard: false,
+        category: 'prawn', leadDays: 1, weekendShift: true, overridePrep: true, stack: false
+      });
+    });
+    var batchable = {};
+    (Array.isArray(root.PREP_DAYS_VOCAB) ? root.PREP_DAYS_VOCAB : []).forEach(function (c) {
+      // Default on for protein/veg/dry/oil/sauce/starch/dairy/dressing; off for garnish/micro/prawn
+      var on = (c.family === 'protein' || c.family === 'veg' || c.family === 'sauce' ||
+        c.family === 'starch' || c.family === 'dairy' || c.family === 'dressing' ||
+        c.key === 'dry' || c.key === 'oil' || c.key === 'crabcroq');
+      batchable[c.key] = !!on;
+    });
+    batchable.prawn = false; /* 4.8.24: never early-batch prawns (Mon/Sat packing) */
+    batchable.garnish = false;
+    batchable.micro = false;
     return {
       id: 'default',
       name: 'Default',
       builtIn: true,
       matchMode: 'first', // first | stack
-      weekendShift: true, // 4-day group soft-shift off Sat/Sun (profile toggle)
-      prepDaysVersion: '4.4.2',
+      weekendShift: true, // 4.6.2: weekend avoidance for ALL categories (profile toggle)
+      allowSaturdayStarts: false, // default: no Saturday starts
+      saturdayCap: 3, // optional soft cap when Saturday starts allowed
+      prepDaysVersion: '4.8.26',
+      batchable: batchable, // cross-dish batching on/off per prep category
       rules: rules,
       updatedAt: new Date().toISOString()
     };
@@ -86,12 +110,112 @@
             o.version = 2;
             saveStore(o);
           }
+          // 4.6.0: ensure every profile has a batchable map
+          if (!o.version || o.version < 3) {
+            var defB = defaultFromVocab().batchable || {};
+            o.profiles.forEach(function (pr) {
+              if (!pr.batchable || typeof pr.batchable !== 'object') pr.batchable = Object.assign({}, defB);
+              else {
+                Object.keys(defB).forEach(function (k) {
+                  if (pr.batchable[k] === undefined) pr.batchable[k] = defB[k];
+                });
+              }
+            });
+            o.version = 3;
+            saveStore(o);
+          }
+          // 4.6.2: weekend avoidance + Sat toggles; refresh built-in Default leads/windows
+          if (!o.version || o.version < 4) {
+            var fresh4 = defaultFromVocab();
+            o.profiles.forEach(function (pr) {
+              if (pr.allowSaturdayStarts === undefined) pr.allowSaturdayStarts = false;
+              if (pr.saturdayCap === undefined) pr.saturdayCap = 3;
+              if (pr.weekendShift === undefined) pr.weekendShift = true;
+              if (pr.id === 'default' && pr.builtIn) {
+                pr.rules = fresh4.rules;
+                pr.batchable = Object.assign({}, fresh4.batchable, pr.batchable || {});
+                pr.weekendShift = pr.weekendShift !== false;
+                pr.allowSaturdayStarts = !!pr.allowSaturdayStarts;
+                pr.saturdayCap = Number.isFinite(Number(pr.saturdayCap)) ? Number(pr.saturdayCap) : 3;
+                pr.prepDaysVersion = '4.6.2';
+              }
+            });
+            o.version = 4;
+            saveStore(o);
+          }
+          // 4.8.24: prawn lead=1 + not batchable; refresh built-in Default rules/batchable
+          if (!o.version || o.version < 5) {
+            var fresh5 = defaultFromVocab();
+            o.profiles.forEach(function (pr) {
+              if (!pr.batchable || typeof pr.batchable !== 'object') pr.batchable = Object.assign({}, fresh5.batchable);
+              else {
+                Object.keys(fresh5.batchable || {}).forEach(function (k) {
+                  if (pr.batchable[k] === undefined) pr.batchable[k] = fresh5.batchable[k];
+                });
+                pr.batchable.prawn = false;
+              }
+              if (pr.id === 'default' && pr.builtIn) {
+                pr.rules = fresh5.rules;
+                pr.batchable = Object.assign({}, fresh5.batchable);
+                pr.batchable.prawn = false;
+                pr.prepDaysVersion = '4.8.24';
+              }
+            });
+            o.version = 5;
+            saveStore(o);
+          }
+          // 4.8.25: Gerard soft/hard veg + micro 1-day not batched; refresh built-in Default
+          if (!o.version || o.version < 6) {
+            var fresh6 = defaultFromVocab();
+            o.profiles.forEach(function (pr) {
+              if (!pr.batchable || typeof pr.batchable !== 'object') pr.batchable = Object.assign({}, fresh6.batchable);
+              else {
+                Object.keys(fresh6.batchable || {}).forEach(function (k) {
+                  if (pr.batchable[k] === undefined) pr.batchable[k] = fresh6.batchable[k];
+                });
+              }
+              pr.batchable.micro = false;
+              pr.batchable.prawn = false;
+              if (pr.id === 'default' && pr.builtIn) {
+                pr.rules = fresh6.rules;
+                pr.batchable = Object.assign({}, fresh6.batchable);
+                pr.batchable.micro = false;
+                pr.batchable.prawn = false;
+                pr.prepDaysVersion = '4.8.25';
+              }
+            });
+            o.version = 6;
+            saveStore(o);
+          }
+          // 4.8.26: puree=2, poultry/cheese=3, long-life gels/soils; refresh Default
+          if (!o.version || o.version < 7) {
+            var fresh7 = defaultFromVocab();
+            o.profiles.forEach(function (pr) {
+              if (!pr.batchable || typeof pr.batchable !== 'object') pr.batchable = Object.assign({}, fresh7.batchable);
+              else {
+                Object.keys(fresh7.batchable || {}).forEach(function (k) {
+                  if (pr.batchable[k] === undefined) pr.batchable[k] = fresh7.batchable[k];
+                });
+              }
+              pr.batchable.micro = false;
+              pr.batchable.prawn = false;
+              if (pr.id === 'default' && pr.builtIn) {
+                pr.rules = fresh7.rules;
+                pr.batchable = Object.assign({}, fresh7.batchable);
+                pr.batchable.micro = false;
+                pr.batchable.prawn = false;
+                pr.prepDaysVersion = '4.8.26';
+              }
+            });
+            o.version = 7;
+            saveStore(o);
+          }
           return o;
         }
       }
     } catch (e) {}
     var def = defaultFromVocab();
-    var store = { profiles: [def], version: 2 };
+    var store = { profiles: [def], version: 7 };
     saveStore(store);
     return store;
   }
@@ -156,6 +280,20 @@
     }
     return saveProfile(p);
   }
+
+  function syncBatchableToUi(profile) {
+    var p = profile || getProfile();
+    if (!root.PreplineBatch || !p) return;
+    try {
+      var st = {};
+      if (p.batchable) st.batchable = p.batchable;
+      if (typeof p.allowSaturdayStarts === 'boolean') st.allowSaturdayStarts = p.allowSaturdayStarts;
+      if (Number.isFinite(Number(p.saturdayCap))) st.saturdayCap = Number(p.saturdayCap);
+      if (typeof p.weekendShift === 'boolean') st.avoidWeekend = p.weekendShift !== false;
+      root.PreplineBatch.loadState(st);
+    } catch (e) {}
+  }
+
 
   function norm(t) {
     return String(t == null ? '' : t).toLowerCase().replace(/[ée]/g, function (m) { return m === 'é' ? 'e' : m; });
@@ -312,6 +450,7 @@
     STORE: STORE, uid: uid, defaultFromVocab: defaultFromVocab,
     loadStore: loadStore, getProfile: getProfile, listProfiles: listProfiles,
     saveProfile: saveProfile, deleteProfile: deleteProfile, resetDefault: resetDefault,
+    syncBatchableToUi: syncBatchableToUi,
     activeId: activeId, setActiveId: setActiveId,
     exportProfile: exportProfile, importProfile: importProfile,
     evaluate: evaluate, preview: preview, packsFor: packsFor, vocabFromProfile: vocabFromProfile

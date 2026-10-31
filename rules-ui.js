@@ -79,11 +79,13 @@
     }).join('');
     card.innerHTML =
       '<div class="rp-top"><h2 style="flex:1">Venue rules</h2><button type="button" class="ghost" id="rpClose">Close</button></div>' +
-      '<p class="rp-sub">Colour, keyword, packs, staffing and IF/THEN rules for this kitchen. Profiles stay on this device. The Default profile mirrors the built-in prep-day vocabulary and staffing ratios. 4-day group weekend soft-shift is on by default (editable above). Crab croquettes (frozen bulk) is an editable keyword exception → 4-day group.</p>' +
+      '<p class="rp-sub">Colour, keyword, packs, staffing and IF/THEN rules for this kitchen. Profiles stay on this device. The Default profile mirrors the built-in prep-day vocabulary and staffing ratios. Weekend avoidance (all categories) is on by default — Sat/Sun → Mon, or Fri if Mon is on/after function; Sunday never. Optional Saturday starts + soft cap below. Crab croquettes (frozen bulk) is an editable keyword exception → 4-day protein window.</p>' +
       '<div class="rp-top">' +
         '<label>Profile <select id="rpProfile">' + opts + '</select></label>' +
         '<label>Match <select id="rpMode"><option value="first"' + (p.matchMode !== 'stack' ? ' selected' : '') + '>First match wins</option><option value="stack"' + (p.matchMode === 'stack' ? ' selected' : '') + '>Stack / continue</option></select></label>' +
-        '<label title="For the 4-day group (veg / red meat / poultry / dairy / dressings / crab croquettes): if 4 days before is Sat/Sun, use 3; if that is Sun, start Monday. Never Sat/Sun."><input type="checkbox" id="rpWeekend"' + (p.weekendShift === false ? '' : ' checked') + '> Weekend soft-shift (4-day group)</label>' +
+        '<label title="All categories: Sat/Sun raw starts move forward to Monday, or back to Friday if Monday is on/after the function day. Sunday never."><input type="checkbox" id="rpWeekend"' + (p.weekendShift === false ? '' : ' checked') + '> Weekend avoidance (all categories)</label>' +
+        '<label title="When off (default), Saturday starts are shifted like weekend. When on, Saturday is allowed as a prep start day."><input type="checkbox" id="rpAllowSat"' + (p.allowSaturdayStarts ? ' checked' : '') + '> Allow Saturday starts</label>' +
+        '<label title="Soft guidance when Saturday starts are allowed (not a hard lock).">Sat cap <input type="number" id="rpSatCap" min="0" max="20" step="1" value="' + (Number.isFinite(Number(p.saturdayCap)) ? Number(p.saturdayCap) : 3) + '" style="width:3.2em"></label>' +
         '<button type="button" id="rpNewProf">New profile</button>' +
         '<button type="button" id="rpDup">Duplicate</button>' +
         '<button type="button" id="rpExport">Export JSON</button>' +
@@ -99,6 +101,11 @@
         '<button type="button" class="primary" data-add="ifthen">+ IF / THEN</button>' +
         '<button type="button" id="rpTest">Test preview</button>' +
       '</div>' +
+      '<div class="rp-batch" id="rpBatch" style="margin:12px 0;padding:12px;border:1px solid #D9D3C3;border-radius:8px;background:#fff">' +
+        '<div style="font-weight:600;margin-bottom:6px">Cross-dish batching (per section)</div>' +
+        '<p style="margin:0 0 8px;font-size:12.5px;color:#5C5A52">When “Batch across dishes” is on, matching ingredients merge across dishes/function days within each category’s batch window (4-day redmeat/dairy-butter/dry/oil/dressing/crab croq; 3 poultry/cheese/gels/starch; 2 puree/garnish; 1 fish/micro; long-life dressings/croutons/powders/crumbs/oils/soils/gels). Sunday never; Saturday only if allowed. Untick a category to keep it as separate lines.</p>' +
+        '<div id="rpBatchChecks" style="display:flex;flex-wrap:wrap;gap:8px 14px"></div>' +
+      '</div>' +
       '<div id="rpEdit"></div>' +
       '<table><thead><tr><th>On</th><th>Pri</th><th>Rule</th><th></th></tr></thead><tbody id="rpBody">' + (rows || '<tr><td colspan="4">No rules yet.</td></tr>') + '</tbody></table>' +
       '<div class="rp-preview" id="rpPrev" hidden></div>';
@@ -106,7 +113,34 @@
     card.querySelector('#rpClose').onclick = closeRules;
     card.querySelector('#rpProfile').onchange = function () { R().setActiveId(this.value); render(); };
     card.querySelector('#rpMode').onchange = function () { p.matchMode = this.value; R().saveProfile(p); };
-    card.querySelector('#rpWeekend').onchange = function () { p.weekendShift = !!this.checked; R().saveProfile(p); };
+    card.querySelector('#rpWeekend').onchange = function () { p.weekendShift = !!this.checked; R().saveProfile(p); if (R().syncBatchableToUi) R().syncBatchableToUi(p); };
+    var allowSat = card.querySelector('#rpAllowSat');
+    if (allowSat) allowSat.onchange = function () { p.allowSaturdayStarts = !!this.checked; R().saveProfile(p); if (R().syncBatchableToUi) R().syncBatchableToUi(p); };
+    var satCap = card.querySelector('#rpSatCap');
+    if (satCap) satCap.onchange = function () { var n = Number(this.value); p.saturdayCap = Number.isFinite(n) && n >= 0 ? n : 3; R().saveProfile(p); if (R().syncBatchableToUi) R().syncBatchableToUi(p); };
+    (function fillBatch(){
+      var box = card.querySelector('#rpBatchChecks'); if (!box) return;
+      if (!p.batchable) p.batchable = {};
+      var vocab = (window.PREP_DAYS_VOCAB || []);
+      box.innerHTML = vocab.map(function (c) {
+        /* 4.8.24: prawn omitted from default-on list → stays false (no Mon/Sat early batch). */
+        var on = p.batchable[c.key] !== false && (p.batchable[c.key] === true || ['poultry','redmeat','seafood','veg','vegsoft','veghard','vegraw','vegcook','dry','oil','gels','puree','dressing','dairy','cheese','starch','crabcroq'].indexOf(c.key) >= 0);
+        if (p.batchable[c.key] === undefined) p.batchable[c.key] = on;
+        if (c.key === 'prawn') { p.batchable.prawn = false; on = false; }
+        return '<label style="font-size:12.5px;display:inline-flex;align-items:center;gap:5px;cursor:pointer">' +
+          '<input type="checkbox" data-batch-cat="' + c.key + '"' + (p.batchable[c.key] ? ' checked' : '') + '> ' +
+          (c.label || c.key) + '</label>';
+      }).join('');
+      box.querySelectorAll('[data-batch-cat]').forEach(function (inp) {
+        inp.onchange = function () {
+          p.batchable[inp.getAttribute('data-batch-cat')] = !!inp.checked;
+          R().saveProfile(p);
+          if (R().syncBatchableToUi) R().syncBatchableToUi(p);
+          if (typeof render === 'function') try { render(); } catch (e) {}
+        };
+      });
+      if (R().syncBatchableToUi) R().syncBatchableToUi(p);
+    })();
     card.querySelector('#rpNewProf').onclick = function () {
       var name = prompt('Profile name', 'My kitchen');
       if (!name) return;
@@ -204,7 +238,7 @@
       (rule.type === 'staffing' ? field('Section', '<input id="reSec" value="' + escAttr(rule.section || '') + '">') + field('Pax max', '<input id="rePax" type="number" value="' + (rule.paxMax == null ? '' : rule.paxMax) + '">') + field('Chefs', '<input id="reChefs" type="number" value="' + (rule.chefs == null ? '' : rule.chefs) + '">') + field('Round', sel('reRound', ['none', 'up', 'down', 'nearest'], rule.round || 'none')) : '') +
       ((rule.type === 'colour' || rule.type === 'keyword' || rule.type === 'ifthen') ? field('Category', '<input id="reCat" value="' + escAttr(rule.category || rule.thenCategory || '') + '" placeholder="veg, starch…">') + field('Lead days', '<input id="reLead" type="number" value="' + (rule.leadDays != null ? rule.leadDays : (rule.thenLead || '')) + '">') : '') +
       (rule.type === 'ifthen' ? field('Then staff', '<input id="reThenStaff" value="' + escAttr(rule.thenStaff == null ? '' : rule.thenStaff) + '">') + field('Then note', '<input id="reThenNote" value="' + escAttr(rule.thenNote || '') + '">') + field('Hide', '<label><input type="checkbox" id="reHide"' + (rule.thenHide ? ' checked' : '') + '> hide row</label>') : '') +
-      ((rule.type === 'colour' || rule.type === 'keyword' || rule.type === 'ifthen') ? field('Weekend soft-shift', '<label><input type="checkbox" id="reWk"' + (rule.weekendShift ? ' checked' : '') + '> 4-day Sat/Sun soft-shift</label>') + field('Override prep', '<label><input type="checkbox" id="reOv"' + (rule.overridePrep ? ' checked' : '') + '> wins over legend/keywords</label>') : '') +
+      ((rule.type === 'colour' || rule.type === 'keyword' || rule.type === 'ifthen') ? field('Weekend avoidance', '<label><input type="checkbox" id="reWk"' + (rule.weekendShift ? ' checked' : '') + '> Weekend avoidance</label>') + field('Override prep', '<label><input type="checkbox" id="reOv"' + (rule.overridePrep ? ' checked' : '') + '> wins over legend/keywords</label>') : '') +
       field('Stack', '<label><input type="checkbox" id="reStack"' + (rule.stack ? ' checked' : '') + '> keep matching after this</label>') +
       '</div><div class="rp-actions"><button type="button" class="primary" id="reSave">Save rule</button><button type="button" class="ghost" id="reCancel">Cancel</button></div></div>';
     box.querySelector('#reCancel').onclick = function () { box.innerHTML = ''; };
