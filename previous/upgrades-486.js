@@ -1,8 +1,9 @@
-/* Prepline 4.4.8 — Calendar-app Week/Month/Year grids (port of trial 4.8.6/4.8.8). Autoprod.
+/* Prepline 4.8.6 / 4.8.8 — Calendar-app Week/Month/Year grids + hide Team ops (trial).
  * Week/Month/Year look like Google/Outlook (day columns, date cells, coloured chips).
  * Print CSS makes each span look like a paper calendar (print-color-adjust: exact).
- * Print calendar blank fix included (forces #u486Cal visible in print).
- * Team ops hide is OFF on Paula (HIDE_TEAM_OPS = false). No smart-chef.
+ * 4.8.8: Print calendar was blank because upgrades-47 station CSS hid body * on every
+ * print; station CSS is now scoped, and this file forces #u486Cal visible in print.
+ * Team ops (Roster / Dispatch / Morning brief / Swap) hidden for now; code kept.
  */
 (function (root) {
   'use strict';
@@ -14,7 +15,7 @@
   var SPAN_KEY = 'prepline.calSpan.v1';
   var ANCHOR_KEY = 'prepline.calAnchor.v1';
   /* Flip to false to bring Team ops back in the UI. */
-  var HIDE_TEAM_OPS = false; /* Paula: never hide Team ops */
+  var HIDE_TEAM_OPS = true;
   var TEAM_VIEWS = { roster47: 1, dispatch47: 1, brief47: 1, swap47: 1 };
 
   function esc(s) {
@@ -680,101 +681,22 @@
     }
   }
 
-  /** Minimal PreplineUpgrades47 stub so calendar can replace renderWeekView. */
-  function ensureUpgrades47Stub() {
-    if (!root.PreplineUpgrades47) {
-      root.PreplineUpgrades47 = { VERSION: '4.4.8-stub' };
-    }
-    if (typeof root.PreplineUpgrades47.renderWeekView !== 'function') {
-      root.PreplineUpgrades47.renderWeekView = function (rows, deps, helpers) {
-        return renderCalendarView(rows, deps, helpers || {});
-      };
-    }
-  }
-
-  /** Inject Week calendar button into Paula toolbar (once per render). */
-  function injectWeekButton() {
-    if (typeof document === 'undefined') return;
-    var bar = document.querySelector('.viewtoggle') || document.querySelector('#preplistTab .row');
-    if (!bar) return;
-    if (document.getElementById('weekViewBtn')) return;
-    var priorityBtn = null;
-    Array.prototype.slice.call(bar.querySelectorAll('button')).forEach(function (b) {
-      if (/By prep day/i.test(b.textContent || '')) priorityBtn = b;
-    });
-    var btn = document.createElement('button');
-    btn.id = 'weekViewBtn';
-    btn.type = 'button';
-    btn.className = (typeof viewMode !== 'undefined' && viewMode === 'week') ? '' : 'secondary';
-    btn.textContent = 'Week calendar';
-    btn.onclick = function () {
-      if (typeof setView === 'function') setView('week');
-      else if (typeof root.setView === 'function') root.setView('week');
-    };
-    if (priorityBtn && priorityBtn.parentNode) {
-      priorityBtn.parentNode.insertBefore(btn, priorityBtn.nextSibling);
-    } else {
-      bar.appendChild(btn);
-    }
-  }
-
-  /** When viewMode==='week', replace main list body with calendar HTML. */
-  /** After Paula render, bind Week/Month/Year controls when calendar is on screen. */
-  function patchPaulaRender() {
-    var g = root;
-    if (typeof g.render !== 'function' || g.render.__u448cal) return;
-    var orig = g.render;
-    function wrapped() {
-      var ret = orig.apply(this, arguments);
-      try {
-        injectWeekButton();
-        var btn = document.getElementById('weekViewBtn');
-        if (btn) {
-          var on = (typeof viewMode !== 'undefined' && viewMode === 'week');
-          btn.className = on ? '' : 'secondary';
-        }
-        if (typeof viewMode !== 'undefined' && viewMode === 'week') {
-          var cal = document.getElementById('u486Cal');
-          if (cal) {
-            var host = cal.parentNode || cal;
-            host.__u486Bound = false;
-            bindCalControls(host, function () {
-              if (typeof render === 'function') render();
-              else if (typeof g.render === 'function') g.render();
-            });
-          }
-        }
-      } catch (e) {
-        try { console.warn('Prepline448 calendar', e); } catch (e2) {}
-      }
-      return ret;
-    }
-    wrapped.__u448cal = true;
-    if (orig.__u486cal) wrapped.__u486cal = true;
-    try { render = wrapped; } catch (e) {}
-    g.render = wrapped;
-  }
-
   function boot() {
     ensureCss();
-    ensureUpgrades47Stub();
     patchRenderWeek();
-    hideTeamOps(); /* no-op when HIDE_TEAM_OPS false */
+    hideTeamOps();
     patchSetView();
     patchBind();
-    patchPaulaRender();
   }
 
   root.Prepline486 = {
-    VERSION: '4.4.8',
+    VERSION: '4.8.6',
     HIDE_TEAM_OPS: HIDE_TEAM_OPS,
     renderCalendarView: renderCalendarView,
     bindCalControls: bindCalControls,
     hideTeamOps: hideTeamOps,
-    ensureCss: ensureCss,
-    injectWeekButton: injectWeekButton
+    ensureCss: ensureCss
   };
-  root.Prepline448Cal = root.Prepline486;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

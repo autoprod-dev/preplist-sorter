@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.4.8">
+<meta name="prepline-version" content="4.8.26">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -80,23 +80,50 @@ var LICENSE_CONFIG = {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="allocation/vendor/xlsx-js-style.min.js"></script>
 <script src="prep-days-vocab.js"></script>
 <script src="rules-engine.js"></script>
 <script src="rules-ui.js"></script>
-<link rel="stylesheet" href="vendor/x-spreadsheet/xspreadsheet.css">
-<script src="vendor/x-spreadsheet/xspreadsheet.js"></script>
-<script src="vendor/hot-formula-parser/formula-parser.min.js"></script>
+<script src="batching.js"></script>
+<script src="upgrades-47.js"></script>
+<script src="upgrades-472.js"></script>
+<script src="upgrades-473.js"></script>
+<script src="upgrades-476.js"></script>
+<script src="upgrades-477.js"></script>
+<script src="upgrades-478.js"></script>
+<script src="upgrades-479.js"></script>
+<script src="upgrades-480.js"></script>
+<script src="upgrades-481.js"></script>
+<script src="upgrades-482.js"></script>
+<script src="upgrades-485.js"></script>
+<script src="upgrades-486.js"></script>
+<script src="upgrades-487.js"></script>
+<script src="upgrades-488.js"></script>
+<script src="upgrades-489.js"></script>
+<script src="upgrades-4820.js"></script>
+<script src="upgrades-4821.js"></script>
+<script src="upgrades-4822.js"></script>
+<script src="upgrades-4823.js"></script>
+<script src="upgrades-4824.js"></script>
+<script src="upgrades-4825.js"></script>
+<script src="upgrades-4826.js"></script>
+<!-- Full editors: Univer (Apache-2.0, self-hosted) + LuckyExcel + pdf-lib. Loaded on demand from sheet-builder.js / pdf-editor.js. -->
 <script src="sheet-builder.js"></script>
-<script src="organised-export.js"></script>
-<script src="section-toggles.js"></script>
-<script src="calendar-app.js"></script>
+<script src="pdf-editor.js"></script>
 
 
 <script type="module">
   // Pinned to pdf.js 5.6.205 — do not switch to a floating "latest" tag,
   // older builds parse PDF layout differently and will break extraction.
-  import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.min.mjs';
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.worker.min.mjs';
+  // Prefer self-hosted pdf.js (vendor/); CDN fallback for old caches.
+  let pdfjsLib;
+  try {
+    pdfjsLib = await import('./vendor/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdf.worker.min.mjs', import.meta.url).href;
+  } catch (e) {
+    pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.6.205/pdf.worker.min.mjs';
+  }
   window.pdfjsLib = pdfjsLib;
 </script>
 <style>
@@ -333,7 +360,11 @@ var LICENSE_CONFIG = {
   #preplistTab .empty{padding:70px 20px; text-align:center; color:var(--ink-soft);}
   #preplistTab .empty .big{font-family:'Fraunces',sans-serif; font-size:19px; color:var(--ink); margin-bottom:7px;}
 
-  #preplistTab .viewtoggle {
+  .u47-plan-toggle{display:flex;gap:0;margin:0 0 4px;border:1px solid var(--line,#D6D2C4);border-radius:12px;overflow:hidden;background:#fff;box-shadow:var(--shadow-sm);max-width:420px;}
+  .u47-plan-btn{flex:1;border:0;background:transparent;padding:12px 14px;font:700 14px/1.2 Inter,sans-serif;color:var(--ink-soft,#5C5F58);cursor:pointer;}
+  .u47-plan-btn.on{background:var(--ink,#1C1E1B);color:#fff;}
+  .u47-plan-btn:not(.on):hover{background:rgba(28,30,27,0.06);}
+    #preplistTab .viewtoggle {
     display:inline-flex; gap:2px; margin-bottom:22px; background:var(--line);
     padding:4px; border-radius:11px; box-shadow:inset 0 1px 2px rgba(28,30,27,0.07);
   }
@@ -915,7 +946,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v3.4.9-r8-builder3</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.26</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -925,8 +956,8 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
     occasionally (button above, in Recipe database mode) in case you switch computers, switch browsers, or
     clear browsing data.
     Sorting is keyword-based and won't be perfect — use the section dropdown on any row to move it.
-    Prep stage is auto-assigned on a 4-day lead time (Day 1 collect/trim/wash/count, Day 2 cook/steam/roast,
-    Day 3 portion/tray up/box off, Day 4 box-off continuation/production tools) based on each task's wording,
+    Prep stage for 4-day proteins: day 4 collect&amp;trim, day 3 sear/cool, day 2 re-tray/roast, event day box off.
+    Fish &amp; seafood: 2 days (collect/trim then process/tray). Prawns: 1 day before (ordered day-before for freshness; not early-batched). Other proteins 4 days (poultry 3). Crab croquettes: 4 days. Soft veg: 2 days (zucchini, radish, sauteed warrigal, shaved fennel, celeriac remoulade, apple). Hard veg: 4 days (carrots, onions, beetroot, pumpkin, potato/sweet potato, leeks, turnips, roasted/sous-vide fennel, gem/witlof, picked leaves/flowers, iceplant, samphire, karkalla, seablight, picked warrigal, pickled veg). Micro herbs: 1 day (not early-batched). Other veg: raw ≤4 / cooked ≤3 fallback. Poultry: 3 days (overrides general 4-day protein). Cheese: 3 days. Dressings &amp; butters: 4 days. Purees: 2 days before the event only (no earlier batching). Long-life mise (dressings, any croutons, powders, crumbs, oils, soils, gels e.g. Yuzu Gel): made once ≤4 days before first event of the week, covers the whole week;
     then mapped onto real weekdays — in Recipe database mode, working backward from the event date you enter
     each week (a Saturday event runs Wed/Thu/Fri/Sat prep); in One-time sort mode, from a weekday named in the
     dish's tab (e.g. "Mains Beef Fillet Saturday") or set manually per dish. The "By prep day" view groups every
@@ -1249,7 +1280,8 @@ function origRefLines(entry, dish){
   const functionDate = dish ? getEventDateStr(dish) : null;
   return entry.refRows.map(r=>{
     const m = poMatchFor(r.name, {functionDate, forFill:true});
-    return (m && m.status==='ok' && m.item) ? {row:r, text:poBoxText(m.item)} : null;
+    const txt = (m && m.status==='ok') ? poRefFillText(m) : '';
+    return txt ? {row:r, text:txt} : null;
   }).filter(Boolean);
 }
 const origCompCache = {};
@@ -1293,8 +1325,9 @@ function renderOriginalsTab(){
     <div class="row no-print" style="justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
       <h3 style="margin:0;">📖 Original production tools</h3>
       <button class="ghost" type="button" onclick="printOriginalsAll()">🖨️ Print the original pages</button>
+      <button class="ghost" type="button" onclick="(window.exportOriginalXlsx479||window.exportAsIsXlsxWithPhotos||function(){})('upload')" title="One tab per dish with photos embedded when present">📊 Download original .xlsx (with photos)</button>
     </div>
-    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is within 4 days before the function; ingredients with no match, delivery outside that window, or sub-recipes stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
+    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is within 3 days before the function (on the day or 1–3 days prior); ingredients with no match, delivery outside that window, or sub-recipes stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
     ${dishes.map(d=>originalPageImages[d].map((e,i)=>`<div class="orig-page"><div class="orig-head no-print"><b>${escapeHtml(cleanDishName(d))}</b> <span class="meta">${escapeHtml(e.pageLabel||'')}</span> <button class="ghost" type="button" onclick="openOriginalViewer('${encodeURIComponent(d).replace(/'/g,'%27')}')">📖 View original</button></div><img class="orig-img" data-od="${escapeHtml(encodeURIComponent(d))}" data-oi="${i}" src="${e.dataUrl}" alt="${escapeHtml(cleanDishName(d))}"></div>`).join('')).join('')}
   </div>`;
 }
@@ -1386,7 +1419,7 @@ let paxByDish = {}; // dish name -> number (pax count for that dish)
 let originalPageImages = {}; // dish name -> [{dataUrl, pageLabel}, ...] — main page first, then each sub-recipe's own page
 let methodCrops = {}; // dish name -> [{dataUrl, pageLabel}, ...] — just the cropped Method: region of each of those same pages
 let originalImagesTruncated = false; // true once a save had to drop images to fit storage
-let viewMode = 'dish'; // 'dish' | 'section' | 'priority'
+let viewMode = 'dish'; // 'dish' | 'section' | 'priority' | 'week' | 'order47' | 'recipes' | 'voice' | 'item'
 
 // ---------- persistent recipe database ----------
 // Upload once to build this; from then on the tool opens straight into the weekly
@@ -1455,7 +1488,8 @@ let onetimeSaveTimer = null;
 function saveOnetimeSession(){
   if(!ROWS || ROWS.length === 0) return; // nothing real to back up yet — don't clobber a prior save
   const base = {ROWS, leaderBySection, paxByDish, activeFilter, viewMode,
-    eventDayOverride, eventDateByDish, rosteredChefs, sourceInfo};
+    eventDayOverride, eventDateByDish, rosteredChefs, sourceInfo,
+    batching: (window.PreplineBatch && PreplineBatch.exportState) ? PreplineBatch.exportState() : null};
   try{
     // Try with the original-page images included first — they're the whole point of
     // this feature, so only drop them if they genuinely don't fit.
@@ -1487,7 +1521,7 @@ function loadOnetimeSession(){
     const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
     if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
       ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1, prepCat:typeof r.prepCat==='string'?r.prepCat:'', leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:typeof r.prepSrc==='string'?r.prepSrc:'', weekendShift:!!r.weekendShift,
+        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', dayReason:typeof r.dayReason==='string'?r.dayReason:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1, prepCat:typeof r.prepCat==='string'?r.prepCat:'', leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:typeof r.prepSrc==='string'?r.prepSrc:'', weekendShift:!!r.weekendShift,
         // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
         ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
         // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
@@ -1501,10 +1535,12 @@ function loadOnetimeSession(){
       paxByDish = cleanPaxMap(s.paxByDish);
       migratePdfBasePax(ROWS, paxByDish);
       activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
-      viewMode = ['dish','section','priority','order','orig','week'].includes(s.viewMode) ? s.viewMode : 'dish';
+      viewMode = ['dish','section','priority','order','order47','week','recipes','voice','item','orig'].includes(s.viewMode) ? s.viewMode : 'dish';
       eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
       eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
       rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
+      if (isObj(s.batching) && window.PreplineBatch) try{ PreplineBatch.loadState(s.batching); }catch(e){}
+      try{ if (window.PreplineUpgrades47) PreplineUpgrades47.learnSectionsFromRows(ROWS); }catch(e){}
       sourceInfo = isObj(s.sourceInfo) ? s.sourceInfo : sourceInfo;
       originalPageImages = {};
       if (isObj(s.originalPageImages)){
@@ -1624,9 +1660,10 @@ function generateWeekly(){
     const eventDay = getEventDay(dish);
     dishDatabase[dish].items.forEach(it=>{
       const pinf = it.prepCat !== undefined ? {prepCat:it.prepCat||'', leadDays:Number.isFinite(it.leadDays)?it.leadDays:null, prepSrc:it.prepSrc||'', weekendShift:!!it.weekendShift} : prepInfoFor(it.task, null, it.section);
-      const day = eventDay ? prepStartDay(eventDay, {stageNum:it.stageNum, leadDays:pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '';
+      const _pi = eventDay ? prepStartDayInfo(eventDay, {stageNum:it.stageNum, leadDays:pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : {day:'',reason:''};
+      const day = _pi.day || '';
       ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
-        baseCategory:it.baseCategory, flagged:it.flagged, day, stageNum:it.stageNum, ...pinf,
+        baseCategory:it.baseCategory, flagged:it.flagged, day, dayReason:_pi.reason||'', stageNum:it.stageNum, ...pinf,
         pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType,
         ...(Number.isFinite(it.pdfBasePax) ? {pdfBasePax:it.pdfBasePax} : {})});
     });
@@ -1640,6 +1677,7 @@ function generateWeekly(){
   sourceInfo = {name: 'Recipe database — '+includedCount+' dish(es) selected this week', loadedAt: new Date()};
   viewMode = 'dish';
   setWeeklyStatus('Generated this week\'s preplist for '+includedCount+' dish(es).', 'ok');
+  try{ afterRowsLoaded47({name:'weekly'}); }catch(e){}
   renderApp();
 }
 
@@ -1767,7 +1805,7 @@ function setDayOrder(d){ dayOrderDesc = d === 'desc'; try{ localStorage.setItem(
 // Rank of a prep day in the chosen order (unscheduled / unknown always last).
 function dayRank(w){ const i = WEEKDAYS.indexOf(w); return i < 0 ? 99 : (dayOrderDesc ? 6 - i : i); }
 function dayOrderList(){ return dayOrderDesc ? WEEKDAYS.slice().reverse() : WEEKDAYS.slice(); }
-let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}, order:{col:null,dir:'asc'}};
+let sortState = {dish:{col:null,dir:'asc'}, section:{col:null,dir:'asc'}, priority:{col:null,dir:'asc'}, order:{col:null,dir:'asc'}, week:{col:null,dir:'asc'}, order47:{col:null,dir:'asc'}, recipes:{col:null,dir:'asc'}, voice:{col:null,dir:'asc'}, item:{col:null,dir:'asc'}};
 function setAllSort(col, dir){
   col = SORT_COLS.includes(col) ? col : null; dir = dir==='desc' ? 'desc' : 'asc';
   Object.keys(sortState).forEach(v=>{ sortState[v] = {col, dir}; });
@@ -1852,9 +1890,10 @@ function sortOrderLines(lines){
 }
 function printOrderControlHtml(){
   const view = viewMode;
-  if (view === 'week' || view === 'orig') return '';
-  const opts = sortColumnOptions(view) || [];
-  const s = sortState[view] || { col: '', dir: 'asc' };
+  if (view==='recipes' || view==='voice' || view==='order47') return '';
+  const opts = sortColumnOptions(view);
+  const s = sortState[view] || {col:null,dir:'asc'};
+  if (!sortState[view]) sortState[view] = s;
   return `<div class="no-print print-order-ctl" data-view="${view}" style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:0 0 18px; padding:12px 16px; background:var(--paper2); border:1px solid var(--line); border-radius:var(--radius);">
     <b style="font-size:12.5px;">Before printing — order by:</b>
     <span class="meta" style="font-size:11.5px;">Rows in every view${view==='order'?' (lines within each supplier)':''}, on screen and in print. Remembered on this device.</span>
@@ -1966,15 +2005,18 @@ function setRosteredChefs(day, val){
   render();
 }
 
-// Internal 4-stage prep-difficulty classification (collect/wash → cook → portion/tray up →
-// box-off/tools). Not shown in the UI directly — it's just how the tool decides which
-// actual weekday (Monday–Sunday) each task lands on, based on the dish's event day.
-const STAGE_NAMES = ['Collect/Trim/Wash','Cook/Steam/Roast','Portion/Tray up/Box off','Box off cont./Tools'];
+// Internal 4-stage protein-style timeline (Gerard 4.8.12). Used when stage/task-per-day
+// views need a label; prep START for 4-day proteins stays at lead=4 (collect/trim day).
+// Stage 1 = day 4 before event: collect & trim
+// Stage 2 = day 3 before: sear / cool down
+// Stage 3 = day 2 before: re-tray or roast
+// Stage 4 = day 1 (event day): box off
+const STAGE_NAMES = ['Collect & trim (day 4)','Sear / cool down (day 3)','Re-tray or roast (day 2)','Box off (event day)'];
 
 // ---------- event-day → calendar prep-day mapping ----------
 // Each dish tab is named with its event weekday (e.g. "Mains Beef Fillet Saturday").
 // With a 4-day prep lead: Stage 1 = event day − 3, Stage 2 = event day − 2,
-// Stage 3 = event day − 1, Stage 4 = the event day itself (final box-off/continuation).
+// Stage 3 = event day − 1, Stage 4 = the event day itself (box off).
 const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 // v3.4.8: days are shown numbered everywhere ("1 Monday" ... "7 Sunday"): pickers, every view, all prints.
 const CLASSIC_KEY = 'prepline.classicDays.v1';
@@ -2098,21 +2140,65 @@ function prepWordRe(w){
   return (_pvRe[w] = new RegExp('(^|[^a-z])' + core + (star ? '' : '(?![a-z])'), 'i'));
 }
 function prepNormText(t){ return String(t == null ? '' : t).toLowerCase().replace(/[ée]/g, m=>m==='é'?'e':m).replace(/['’]s\b/g, ''); }
-function prepCatByWords(text, family){
-  const t = prepNormText(text);
-  if (/\bgoat'?s?\s+(cheese|curd)\b/i.test(String(text))) { /* goat's cheese is not red meat */ }
-  // Eggplant "steak" / centrepiece painted protein-colour is still a vegetable job
-  if (/\b(eggplant|aubergine)\b/.test(t)){
+function prepCatByWords(text, family, dishCtx){
+  const raw = String(text == null ? '' : text);
+  const head = prepNormText(raw.split('/')[0] || raw); // ingredient head before method pipeline
+  const t = prepNormText(raw);
+  const dish = prepNormText(dishCtx || '');
+  if (/\bgoat'?s?\s+(cheese|curd)\b/i.test(raw)) { /* goat's cheese is not red meat */ }
+  // Eggplant centrepiece: keyword path prefers veg; legend colour still overrides in applyColourLegend
+  if (/\b(eggplant|aubergine)\b/.test(head)){
     if (!family || family === 'veg' || family === 'protein'){
       const v = prepVocab().find(c => c.key === 'veg'); if (v) return v;
     }
   }
+  // Product-type in the NAME wins over garnish herbs / veg produce words
+  // e.g. "Pea Tarragon Puree" → puree (2d); "Porcini Mushroom Soil" → dry; "Yuzu Gel" → gels long-life; "Chicken Jus" → gels
+  // 4.8.26: puree (2d) before gels; cheese (3d) before dairy butters; soils/croutons→dry long-life
+  const productRules = [
+    { re: /\b(puree|purees|purée|purées|pureed)\b/, key: 'puree' },
+    { re: /\b(coulis|fluid gel|gel|gels)\b/, key: 'gels' },
+    { re: /\b(jus|gravy|reduction|ragu|ragout|romesco|ponzu|salsa|relish|chutney)\b/, key: 'gels' },
+    { re: /\b(dressing|vinaigrette|mayo|mayonnaise|aioli)\b/, key: 'dressing' },
+    { re: /\b(oil|oils)\b/, key: 'oil' },
+    { re: /\b(parmesan|parmigiano|pecorino|mozzarella|burrata|ricotta|feta|haloumi|halloumi|mascarpone|cheddar|brie|camembert|blue cheese|goat curd|labneh|stracciatella|gruyere|grana padano|cheese)\b/, key: 'cheese' },
+    { re: /\b(butter|beurre)\b/, key: 'dairy', neg: /\b(no|without|df|dairy[- ]free)\b.{0,12}\bbutter\b|\bbutter\b.{0,8}\b(free|omit)/ },
+    { re: /\b(soil|crumb|crumbs|crumble|dust|powder|tuile|dukkah|granola|crouton)\b/, key: 'dry' },
+    { re: /\b(microherb|micro herbs|micro greens|micros|cress|tendril)\b/, key: 'micro' },
+  ];
+  for (const rule of productRules){
+    if (rule.re.test(head) && !(rule.neg && rule.neg.test(head))){
+      const hit = prepCatByKey(rule.key);
+      if (hit && (!family || hit.family === family || (family === 'garnish' && hit.family === 'garnish') || (family === 'sauce' && (hit.family === 'sauce' || hit.family === 'dressing' || hit.family === 'dairy')))){
+        return hit;
+      }
+    }
+  }
+  // Score matches: head-noun hits beat trailing method words (glaze on a protein/veg line)
+  let best = null, bestScore = -1;
   for (const c of prepVocab()){
     if (family && c.family !== family) continue;
     if (c.key === 'redmeat' && /\bgoat'?s?\s*(cheese|curd|milk)\b/.test(t) && !/\b(beef|lamb|pork|veal|venison)\b/.test(t)) continue;
-    if ((c.words || []).some(w => prepWordRe(w).test(t))) return c;
+    let score = 0;
+    for (const w of (c.words || [])){
+      const re = prepWordRe(w);
+      if (re.test(head)) score = Math.max(score, 100 + w.replace('*','').length);
+      else if (re.test(t)) score = Math.max(score, 40 + w.replace('*','').length);
+    }
+    if (score > 0 && dish){
+      if (c.family === 'protein' && c.key === 'poultry' && /\b(duck|chicken|poultry|quail)\b/.test(dish)) score += 15;
+      if (c.family === 'protein' && c.key === 'prawn' && /\b(prawn|shrimp)\b/.test(dish)) score += 15;
+      if (c.family === 'protein' && c.key === 'seafood' && /\b(salmon|fish|barra|cod|crab)\b/.test(dish)) score += 15;
+      if (c.family === 'protein' && c.key === 'redmeat' && /\b(beef|lamb|pork|wagyu|eye fillet)\b/.test(dish)) score += 15;
+    }
+    if (c.key === 'gels' && score > 0 && score < 100 && /\b(asparagus|carrot|chicken|duck|beef|lamb|salmon|prawn|eggplant)\b/.test(head)){
+      score -= 30;
+    }
+    // Herb garnish words inside a puree/jus name already handled by productRules
+    if (c.family === 'garnish' && score >= 100 && /\b(puree|jus|sauce|gel|ragu|oil)\b/.test(head)) score -= 50;
+    if (score > bestScore){ bestScore = score; best = c; }
   }
-  return null;
+  return bestScore > 0 ? best : null;
 }
 // a legend label ("2. Vege", "Proteins", "Garnish, herbs, oils") -> {key} exact category, or {family} to split by keyword
 function prepCatFromLegendLabel(label){
@@ -2146,21 +2232,40 @@ function prepWeekendShiftEnabled(){
   }catch(e){}
   return true;
 }
-function prepInfoFor(text, legendPrep, section){
+function prepAllowSaturdayStarts(){
+  try{
+    if (window.PreplineRules && typeof window.PreplineRules.getProfile === 'function'){
+      const p = window.PreplineRules.getProfile();
+      if (p && p.allowSaturdayStarts === true) return true;
+    }
+  }catch(e){}
+  return false;
+}
+function prepSaturdayCap(){
+  try{
+    if (window.PreplineRules && typeof window.PreplineRules.getProfile === 'function'){
+      const p = window.PreplineRules.getProfile();
+      const n = Number(p && p.saturdayCap);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+  }catch(e){}
+  return 3;
+}
+function prepInfoFor(text, legendPrep, section, dishCtx){
   let c = null, src = '';
   if (legendPrep){
     if (legendPrep.key){
       c = prepCatByKey(legendPrep.key);
       // a generic garnish legend colour can still be a micro herb / oil / dry garnish line
-      if (c && c.family === 'garnish' && c.key === 'garnish'){ const k = prepCatByWords(text, 'garnish'); if (k) c = k; }
+      if (c && c.family === 'garnish' && c.key === 'garnish'){ const k = prepCatByWords(text, 'garnish', dishCtx); if (k) c = k; }
     } else if (legendPrep.family){
-      c = prepCatByWords(text, legendPrep.family) || (legendPrep.family === 'garnish' ? prepCatByKey('garnish') : null);
+      c = prepCatByWords(text, legendPrep.family, dishCtx) || (legendPrep.family === 'garnish' ? prepCatByKey('garnish') : null);
     }
     if (c) src = 'legend';
   }
-  if (!c){ c = prepCatByWords(text, null); if (c) src = 'keyword'; }
+  if (!c){ c = prepCatByWords(text, null, dishCtx); if (c) src = 'keyword'; }
   if (!c && section){
-    if (section === 'Proteins'){ c = prepCatByWords(text, 'protein'); if (c) src = 'section'; }
+    if (section === 'Proteins'){ c = prepCatByWords(text, 'protein', dishCtx); if (c) src = 'section'; }
     else {
       const fb = sectionPrepFallback(section);
       if (fb){ c = prepCatByKey(fb); if (c) src = 'section'; }
@@ -2169,6 +2274,79 @@ function prepInfoFor(text, legendPrep, section){
   let info = c
     ? {prepCat: c.key, leadDays: c.lead, prepSrc: src, weekendShift: !!c.weekendShift}
     : {prepCat: '', leadDays: null, prepSrc: '', weekendShift: false};
+  /* 4.8.26: ANY puree → lead 2 only (overrides gels/sauce legend & long-life). */
+  try{
+    const head0 = String(text || '').toLowerCase().split('/')[0] || '';
+    if (/\bpurees?\b|\bpurées?\b|\bpureed\b/.test(head0) || info.prepCat === 'puree'){
+      const pc = prepCatByKey('puree') || { key: 'puree', lead: 2, weekendShift: true };
+      info.prepCat = 'puree';
+      info.leadDays = 2;
+      info.weekendShift = !!pc.weekendShift;
+      info.prepSrc = (info.prepSrc ? info.prepSrc + '+' : '') + 'puree-2';
+    }
+  }catch(e){}
+  /* 4.8.26: cheese → 3 days; butters/creams stay dairy 4. */
+  try{
+    const head1 = String(text || '').toLowerCase().split('/')[0] || '';
+    if (/\b(cheese|parmesan|parmigiano|pecorino|mozzarella|burrata|ricotta|feta|haloumi|halloumi|mascarpone|cheddar|brie|camembert|goat curd|labneh|stracciatella|gruyere|grana padano)\b/.test(head1)
+        && !/\b(butter|cream|creme|crème)\b/.test(head1)){
+      const cc = prepCatByKey('cheese') || { key: 'cheese', lead: 3, weekendShift: true };
+      info.prepCat = 'cheese';
+      info.leadDays = 3;
+      info.weekendShift = !!cc.weekendShift;
+      info.prepSrc = (info.prepSrc ? info.prepSrc + '+' : '') + 'cheese-3';
+    }
+  }catch(e){}
+  /* 4.8.26: butters stay dairy lead 4 (not gels/cheese). */
+  try{
+    const head2 = String(text || '').toLowerCase().split('/')[0] || '';
+    if (/\b(butter|beurre|maître|maitre)\b/.test(head2) && !/\b(no|without)\s+butter\b|\bbutter\s+lettuce\b|\bbutter\s+poached\b|df\b.{0,20}\bbutter|\bbutter\b.{0,12}\b(free|omit)/i.test(String(text||''))){
+      if (/\bbutter\b|\bbeurre\b/.test(head2)){
+        const dc = prepCatByKey('dairy') || { key: 'dairy', lead: 4, weekendShift: true };
+        info.prepCat = 'dairy';
+        info.leadDays = 4;
+        info.weekendShift = !!dc.weekendShift;
+        info.prepSrc = (info.prepSrc ? info.prepSrc + '+' : '') + 'butter-4';
+      }
+    }
+  }catch(e){}
+  /* 4.8.25: Gerard soft(2)/hard(4) named lists first; else vegraw≤4 / vegcook≤3 fallback.
+   * Also reclassify garnish hits that match hard list (karkalla, samphire, flowers, …). */
+  try{
+    const gerard = (typeof window.classifyGerardVeg === 'function') ? window.classifyGerardVeg(text) : null;
+    if (gerard && gerard.covered){
+      const vc = prepCatByKey(gerard.key) || { key: gerard.key, lead: gerard.lead, weekendShift: true };
+      info.prepCat = vc.key;
+      info.leadDays = Number.isFinite(gerard.lead) ? gerard.lead : vc.lead;
+      info.weekendShift = !!vc.weekendShift;
+      info.vegStage = gerard.stage;
+      info.vegStageClear = true;
+      info.vegStageReason = gerard.reason || '';
+      info.prepSrc = (info.prepSrc ? info.prepSrc + '+' : '') + 'gerard-' + gerard.stage;
+    } else {
+      const isVegFamily = info.prepCat === 'veg' || info.prepCat === 'vegraw' || info.prepCat === 'vegcook'
+        || info.prepCat === 'vegsoft' || info.prepCat === 'veghard'
+        || (c && c.family === 'veg')
+        || section === 'Vegetables';
+      if (isVegFamily && typeof window.classifyVegPrepStage === 'function'){
+        const alreadyNonVeg = info.prepCat && !/^veg/.test(info.prepCat);
+        if (!alreadyNonVeg){
+          const st = window.classifyVegPrepStage(text);
+          const leadMap = { vegraw: 4, vegcook: 3, vegsoft: 2, veghard: 4 };
+          const vc = prepCatByKey(st.key) || { key: st.key, lead: leadMap[st.key] != null ? leadMap[st.key] : 3, weekendShift: true };
+          info.prepCat = vc.key;
+          info.leadDays = vc.lead;
+          info.weekendShift = !!vc.weekendShift;
+          info.vegStage = st.stage;
+          info.vegStageClear = !!st.clear;
+          info.vegStageReason = st.reason || '';
+          if (!st.clear) info.prepSrc = (info.prepSrc ? info.prepSrc + '+' : '') + 'veg-default-cook';
+          else if (info.prepSrc === 'legend' || info.prepSrc === 'section' || info.prepSrc === 'keyword')
+            info.prepSrc = info.prepSrc + '+veg-' + st.stage;
+        }
+      }
+    }
+  }catch(e){}
   // Editable Rules overrides (e.g. crab croquettes → 4-day weekend-shift group)
   try{
     if (window.PreplineRules && typeof window.PreplineRules.evaluate === 'function'){
@@ -2190,34 +2368,91 @@ function prepInfoFor(text, legendPrep, section){
   return info;
 }
 // the weekday a line starts: lead days before the event (closed days push it earlier), else the old stage rule.
-// 4.4.2 weekend soft-shift (4-day group only, when profile.weekendShift !== false and r.weekendShift):
-//   if 4 days before is Sat/Sun → use 3; if that lands on Sat/Sun → next working day (Mon). Never Sat/Sun.
-function prepStartDay(eventDay, r){
-  if (!eventDay) return '';
+// 4.6.3 weekend avoidance for ALL categories (when Rules profile weekendShift is on):
+//   Sunday never; Sat/Sun raw → forward to Monday, or back to Friday if Monday is on/after the function day.
+//   Saturday starts only when allowSaturdayStarts is on (default off). Shift reason stored on r.dayReason.
+function prepStartDayInfo(eventDay, r){
+  if (!eventDay) return { day: '', reason: '', raw: '' };
   const lead = r && Number.isFinite(r.leadDays) ? r.leadDays : null;
-  if (lead === null) return calendarDayForPrepNum(eventDay, r ? r.stageNum : null) || '';
-  const idx = WEEKDAYS.indexOf(eventDay); if (idx < 0) return '';
+  if (lead === null){
+    const d = calendarDayForPrepNum(eventDay, r ? r.stageNum : null) || '';
+    return { day: d, reason: '', raw: d };
+  }
+  const avoid = prepWeekendShiftEnabled();
+  const allowSat = prepAllowSaturdayStarts();
+  if (window.PreplineBatch && typeof PreplineBatch.prepStartFromLead === 'function'){
+    PreplineBatch.setAvoidWeekend(avoid);
+    PreplineBatch.setAllowSaturday(allowSat);
+    const info = PreplineBatch.prepStartFromLead(eventDay, lead, {
+      avoidWeekend: avoid,
+      allowSaturday: allowSat,
+      blockedDays: blockedDays
+    });
+    return info || { day: '', reason: '', raw: '' };
+  }
+  // Fallback without batching module
+  const idx = WEEKDAYS.indexOf(eventDay); if (idx < 0) return { day: '', reason: '', raw: '' };
   let offset = lead;
-  const shift = prepWeekendShiftEnabled() && r && r.weekendShift && lead >= 4;
-  if (shift){
-    const day4 = WEEKDAYS[((idx - 4) % 7 + 7) % 7];
-    if (day4 === 'Saturday' || day4 === 'Sunday'){
-      offset = 3;
-      let day3 = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
-      // if 3-days-before is still weekend (Sun after Wed event), start next working day (Mon)
-      while (offset > 0 && (day3 === 'Saturday' || day3 === 'Sunday')){
-        offset--;
-        day3 = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
-      }
-    }
+  let raw = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+  let day = raw, reason = '';
+  if (avoid && (day === 'Saturday' || day === 'Sunday') && !(day === 'Saturday' && allowSat)){
+    const forward = day === 'Saturday' ? 2 : 1;
+    const leadMon = offset - forward;
+    if (leadMon <= 0){ day = 'Friday'; reason = 'Moved from ' + raw.slice(0,3) + ' to Fri (weekend)'; }
+    else { day = 'Monday'; reason = 'Moved from ' + raw.slice(0,3) + ' to Mon (weekend)'; }
   }
   for (let tries=0; tries<7; tries++){
-    const day = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
-    const weekendBlocked = shift && (day === 'Saturday' || day === 'Sunday');
-    if (!blockedDays.has(day) && !weekendBlocked) return day;
-    offset++; // day-omit / residual weekend: push earlier
+    if (day && !blockedDays.has(day) && day !== 'Sunday' && (day !== 'Saturday' || allowSat)) return { day, reason, raw };
+    offset++;
+    raw = WEEKDAYS[((idx - offset) % 7 + 7) % 7];
+    day = raw; reason = '';
   }
-  return WEEKDAYS[((idx - lead) % 7 + 7) % 7];
+  return { day: WEEKDAYS[((idx - lead) % 7 + 7) % 7], reason: '', raw };
+}
+function prepStartDay(eventDay, r){
+  return prepStartDayInfo(eventDay, r).day;
+}
+
+// 4.7.3: balance daily prep load (Mon–Sat), never Sunday; respect lead windows roughly by not moving past event day.
+function balancePrepLoad(rows, opts){
+  opts = opts || {};
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const getEventDay = opts.getEventDay || (typeof getEventDay === 'function' ? getEventDay : ()=>'');
+  const list = (rows || []).filter(r => r && r.day && r.day !== 'Sunday');
+  if (list.length < 8) return rows;
+  const load = {}; days.forEach(d => load[d]=0);
+  list.forEach(r => { if (load[r.day]!=null) load[r.day]++; });
+  const avg = list.length / 6;
+  const overloaded = days.filter(d => load[d] > avg * 1.45 + 2);
+  const under = days.filter(d => load[d] < avg * 0.75);
+  if (!overloaded.length || !under.length) return rows;
+  overloaded.forEach(from => {
+    const cands = list.filter(r => r.day === from).slice().sort((a,b)=>(b.leadDays||0)-(a.leadDays||0));
+    for (const r of cands){
+      if (load[from] <= avg * 1.2) break;
+      const ed = getEventDay(r.dish) || r.eventDay || '';
+      const ei = days.indexOf(ed);
+      for (const to of under){
+        if (load[to] >= avg) continue;
+        const ti = days.indexOf(to);
+        // do not place prep on/after event day
+        if (ei >= 0 && ti >= 0 && ti >= ei) continue;
+        if (to === 'Sunday') continue;
+        r.day = to;
+        r.dayReason = (r.dayReason ? r.dayReason + ' · ' : '') + 'Balanced from ' + from.slice(0,3);
+        load[from]--; load[to]++;
+        break;
+      }
+    }
+  });
+  return rows;
+}
+
+function applyPrepStartDay(r, eventDay){
+  const info = prepStartDayInfo(eventDay, r);
+  r.day = info.day || '';
+  r.dayReason = info.reason || '';
+  return r.day;
 }
 function prepCatChip(r){
   if (!r) return '';
@@ -2227,7 +2462,7 @@ function prepCatChip(r){
   const when = lead === 0 ? 'on the day' : (lead + (lead === 1 ? ' day' : ' days') + ' before');
   const ev = prepEventLabel(r.dish);
   const srcTip = r.prepSrc === 'legend' ? 'From the colour legend' : (r.prepSrc === 'rule' ? 'From venue rules' : (r.prepSrc === 'section' ? 'From section' : 'From keywords'));
-  const wk = r.weekendShift ? ' · weekend soft-shift' : '';
+  const wk = r.dayReason ? ' · '+r.dayReason : (r.weekendShift ? ' · weekend avoid' : '');
   return ` <span class="pd-chip" title="${srcTip}${wk}">${escapeHtml(c.label)} · ${when}${r.day ? ' · starts '+escapeHtml(dayLabel(r.day)) : ''}${ev ? ' · '+escapeHtml(ev) : ''}</span>`;
 }
 function prepEventLabel(dish){
@@ -2245,7 +2480,7 @@ function setEventDay(encodedDish, val){
   if (val) eventDayOverride[dish] = val; else delete eventDayOverride[dish];
   const eventDay = getEventDay(dish);
   ROWS.forEach(r=>{
-    if (r.dish===dish && (r.stageNum || Number.isFinite(r.leadDays))) r.day = eventDay ? prepStartDay(eventDay, r) : '';
+    if (r.dish===dish && (r.stageNum || Number.isFinite(r.leadDays))){ if (eventDay) applyPrepStartDay(r, eventDay); else { r.day=''; r.dayReason=''; } }
   });
   render();
 }
@@ -2256,21 +2491,23 @@ function eventDaySelect(encodedDish, current){
   </select>`;
 }
 
-// ---- 4-day lead time auto-assignment ----
-// Day 1: collecting, trimming, washing, counting, topping up orders
-// Day 2: cooking — steaming, blanching, chargrilling, roasting and similar
-// Day 3: portioning, tray up, organising, box off, trolley cards
-// Day 4: box-off continuation, filling production tools/cambros
+// ---- 4-day lead time auto-assignment (proteins / similar; Gerard 4.8.12) ----
+// Day 1 keywords → stageNum 1 → calendar event−3 (= day 4 before): collect & trim
+// Day 2 keywords → stageNum 2 → event−2 (= day 3 before): sear / cool down
+// Day 3 keywords → stageNum 3 → event−1 (= day 2 before): re-tray or roast
+// Day 4 keywords → stageNum 4 → event day: box off
+// Seafood/fish lead=2. Prawns lead=1. Veg 4.8.25 soft/hard. Micro=1. 4.8.26: puree=2; poultry/cheese=3; long-life +gels/soils.
 const DAY1_KW = ['collect','trim','wash','count','top up order','topup order','top-up order','order top up','order',
   'peel','devein','de-vein','unpack','receive delivery','receiving','stocktake','par level','tally','defrost',
   'thaw','pat dry','squeeze','drain'];
-const DAY2_KW = ['cook','charred','steam','blanch','chargrill','char-grill','char grill','roast','grill','sear','saute','sauté',
-  'braise','sous vide','deep fry','smoke','poach','simmer','reduce','bake','ferment','infuse','char','griddle',
-  'pan-fry','panfry','confit','render','caramelise','caramelize','toast','dehydrate','vac cook','melt','glaze'];
-const DAY3_KW = ['portion','tray up','trolley card','trolley','organise','organize','box off','plate up',
-  'divide into','allocate','arrange on tray','set up tray','label and store','wrap individually','crumb'];
-const DAY4_KW = ['continuation','production tool','fill up cambro','fill cambro','restock','top up trolley',
-  'replenish','fill up','pack extra','spare stock','buffer stock','contingency'];
+const DAY2_KW = ['sear','cool down','cooldown','cool','charred','chargrill','char-grill','char grill','grill',
+  'pan-fry','panfry','saute','sauté','char','griddle','smoke','poach','sous vide'];
+const DAY3_KW = ['re-tray','retray','re tray','roast','cook','steam','blanch','braise','bake','portion','tray up',
+  'trolley card','trolley','organise','organize','plate up','divide into','allocate','arrange on tray','set up tray',
+  'label and store','wrap individually','crumb','deep fry','simmer','reduce','ferment','infuse','confit','render',
+  'caramelise','caramelize','toast','dehydrate','vac cook','melt','glaze'];
+const DAY4_KW = ['box off','box-off','continuation','production tool','fill up cambro','fill cambro','restock',
+  'top up trolley','replenish','fill up','pack extra','spare stock','buffer stock','contingency'];
 const DAY_WORDBOUND = new Set(['order','count','char','melt']);   // v3.2.1: 'char' not "swiss chard"/"charcuterie", 'melt' not "smelt"
 
 // Fallback default per base category when no day-keyword is found in the task text —
@@ -2303,8 +2540,8 @@ function paveDayOverride(t){
   if (t.includes('tray up')) return 2;
   return null;
 }
-// All proteins that get seared: collect/count/tray up/brine/marinate/decant = Stage 1,
-// sear/chargrill/grill (+its tray up) = Stage 2 — every protein, not just beef fillet.
+// Proteins (4-day): collect/trim/brine/marinate/decant = Stage 1 (day 4);
+// sear/cool = Stage 2 (day 3). Seafood/fish use lead=2 via seafood; prawns lead=1 via prawn prepCat (4.8.24).
 function proteinSearOverride(t, baseCategory){
   const isProteinTask = baseCategory === 'Proteins' || t.includes('beef') || t.includes('chicken') ||
     t.includes('lamb') || t.includes('duck') || t.includes('pork') || t.includes('salmon') ||
@@ -2375,9 +2612,9 @@ function classifyPrepStage(taskText, baseCategory, contextStage){
 // instead (see calendarDayForPrepNum). Purely a per-session setting, same as everything
 // else here — reopen a day any time by unticking it again.
 function blockedDaysPanelHtml(){
-  return `<div class="panel no-print" style="padding:12px 16px; margin-bottom:16px;">
+  return `<div class="panel no-print" id="blockedDaysPanel" style="padding:12px 16px; margin-bottom:16px;">
     <div style="font-weight:700; font-size:12.5px; margin-bottom:8px;">Kitchen closed on (public holiday etc.) — prep auto-shifts off these days</div>
-    <div style="font-size:11.5px; color:#5C5A52; margin-bottom:8px;">4-day group (veg / red meat / poultry / dairy / dressings / crab croquettes): weekend soft-shift is on by default in Venue rules — Sat/Sun starts move to a 3-day lead or Monday. Day-omit below still pushes earlier.</div>
+    <div style="font-size:11.5px; color:#5C5A52; margin-bottom:8px;">Weekend avoidance (all categories) is on by default in Venue rules — Sat/Sun starts move forward to Monday, or back to Friday if Monday is on/after the function day. Sunday never; Saturday starts off unless allowed. Day-omit below still pushes earlier.</div>
     <div class="row" style="gap:14px; flex-wrap:wrap;">
       ${WEEKDAYS.map(w=>`<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;">
         <input type="checkbox" ${blockedDays.has(w)?'checked':''} onchange="toggleBlockedDay('${w}', this.checked)">${w}
@@ -2395,7 +2632,7 @@ function toggleBlockedDay(day, checked){
     if (!r.stageNum && !Number.isFinite(r.leadDays)) return;
     const eventDay = getEventDay(r.dish);
     if (!eventDay) return;
-    r.day = prepStartDay(eventDay, r) || r.day;
+    applyPrepStartDay(r, eventDay);
   });
   render();
 }
@@ -2547,6 +2784,7 @@ function computeTotal(r){
     return Math.round(r.pdfFixedTotal * pax / base * 1e9)/1e9;   // v3.2.3: only float noise removed, so it matches Excel's per-pax × PAX exactly (display rounds)
   }
   // Prefer the sheet's own "total" / "total amount prepped" when present (Eggplant tabs).
+  // Scale if the user later changes pax (sheetBasePax captured at import).
   if (Number.isFinite(r.sheetTotal) && r.sheetTotal > 0){
     const base = r.sheetBasePax;
     if (hasPax && Number.isFinite(base) && base > 0 && pax !== base)
@@ -2559,6 +2797,7 @@ function computeTotal(r){
     if (tot >= 100000){ r.totalFlag = 'check-total'; }
     return tot;
   }
+  // No pax and no sheet total → UI shows "set pax"
   return null;
 }
 // Totals of 1000 g or more display as kg (and 1000 ml+ as L): "10 kg", never "10000 g".
@@ -2617,6 +2856,7 @@ function addRows(dish, items){
     if (!it || it.item===undefined || it.item===null) continue;
     it.item = String(it.item);
     if (!it.item.trim()) continue;
+    // Never let a bare unit / header leak into the task list (Eggplant blank-Item wrong-column path)
     if (typeof isUnitToken==='function' && isUnitToken(it.item)) continue;
     if (typeof HEADER_LABELS!=='undefined' && HEADER_LABELS.has(it.item.trim().toLowerCase())) continue;
     // A Section column in the file (e.g. this tool's own Excel export, re-uploaded with
@@ -2625,6 +2865,12 @@ function addRows(dish, items){
     if (typeof it.section==='string') it.section = secLegacy(it.section.trim());
     const sectionOverride = (typeof it.section==='string' && SECTIONS.includes(it.section)) ? it.section : null;
     let cat = sectionOverride || categorize(it.item, dish);
+    if (!sectionOverride && window.PreplineUpgrades47) {
+      try {
+        const sug = PreplineUpgrades47.suggestSection(it.item, cat && cat!=='REVIEW' ? cat : '');
+        if (sug.source === 'learned' && sug.section && SECTIONS.includes(sug.section)) cat = sug.section;
+      } catch (e) {}
+    }
     if (cat === null) continue;
     let flagged = false;
     if (cat === 'REVIEW'){
@@ -2641,8 +2887,10 @@ function addRows(dish, items){
     lastCore = core || lastCore;
     // A Prep day column in the file wins over auto-calculation too, for the same reason.
     const pinf = prepInfoFor(taskText, it.legendPrep || null, cat);
-    const day = (typeof it.day==='string' && it.day) ? it.day : (eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '');
-    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, stageNum, ...pinf,
+    let day = '', dayReason = '';
+    if (typeof it.day==='string' && it.day){ day = it.day; }
+    else if (eventDay){ const _pi = prepStartDayInfo(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}); day = _pi.day||''; dayReason = _pi.reason||''; }
+    ROWS.push({dish, task: taskText, qty: it.qty||'', unit: it.unit||'', section: cat, baseCategory: cat, flagged, day, dayReason, stageNum, ...pinf,
       ...(Number.isFinite(it.sheetTotal) ? {sheetTotal: it.sheetTotal, sheetBasePax: (typeof paxByDish[dish]==='number' ? paxByDish[dish] : undefined)} : {}),
       ...(typeof it.srcSheet==='string' ? {srcSheet: it.srcSheet} : {})});
   }
@@ -2674,7 +2922,7 @@ const SECTION_HEADERS = new Set(['section','category','team']);
 const SOURCE_HEADERS = new Set(['source tab']);   // v3.2: written by this tool's own Excel export
 const TOTAL_HEADERS = new Set(['total','total needed','total amount prepped','total amount']);
 // Short unit tokens that must never be treated as an ingredient name (Pass 2 used to pick the Unit column when Item was blank).
-const UNIT_TOKEN_RE = /^(g|gm|gms|kg|mg|ml|l|lt|ltr|litre|liter|pcs?|pc|ea|each|unit|units|uom|half\s*pcs?|pax\/tray|pax\/pun|punnet|pun|tray|bunch|bk|tsp|tbsp|cup|oz|lb|portion|portions)$/i;
+const UNIT_TOKEN_RE = /^(g|gm|gms|kg|mg|ml|l|lt|ltr|litre|liter|pcs?|pc|ea|each|unit|units|uom|pax\/tray|pax\/pun|punnet|pun|tray|bunch|bk|tsp|tbsp|cup|oz|lb|portion|portions|half\s*pcs?)$/i;
 const HEADER_LABELS = new Set([...ITEM_HEADERS, ...QTY_HEADERS, ...UNIT_HEADERS, ...DAY_HEADERS, ...SECTION_HEADERS, ...SOURCE_HEADERS, ...TOTAL_HEADERS, 'pax','comments','menu pres']);
 function cellHeaderLow(v){ return typeof v==='string' ? v.trim().toLowerCase() : ''; }
 function isUnitToken(v){ return typeof v==='string' && UNIT_TOKEN_RE.test(v.trim()); }
@@ -2698,12 +2946,6 @@ function extractAllBlocks(aoa){
   const blocks = [];
   const isClaimed = (r,c) => claimedRects.some(x => r>=x.r1 && r<=x.r2 && c>=x.c1 && c<=x.c2);
 
-  function totalColFromHeader(hdr, itemCol){
-    for (let c=0; c<hdr.length; c++){ if (TOTAL_HEADERS.has(hdr[c]||'')) return c; }
-    // Classic layout: Item | per person | unit | total
-    if (itemCol!=null && itemCol+3 < (hdr.length+4)) return itemCol+3;
-    return null;
-  }
   function readItemsDownward(itemCol, qtyCol, unitCol, startRow, dayCol, sectionCol, sourceCol, totalCol){
     const items = [];
     let blank = 0, endRow = startRow;
@@ -2716,10 +2958,11 @@ function extractAllBlocks(aoa){
       if (HEADER_LABELS.has(low) || isUnitToken(item) || isNonIngredientNote(item)){ blank = 0; endRow = r; continue; }
       blank = 0; endRow = r;
       const entry = {item:String(item), qty:row[qtyCol], unit:row[unitCol]};
-      if (totalCol!=null && !isBlankCell(row[totalCol])){
+      // Sheet "total" / "total amount prepped" — used when pax is missing so we never show "set pax" for a row that already has a total.
+      if (totalCol!=null && totalCol>=0 && !isBlankCell(row[totalCol])){
         const tv = row[totalCol];
-        const n = typeof tv==='number' ? tv : parseFloat(String(tv).replace(/,/g,''));
-        if (Number.isFinite(n)) entry.sheetTotal = n;
+        const tn = typeof tv==='number' ? tv : (typeof tv==='string' && /^\s*\d+([.,]\d+)?\s*$/.test(tv) ? parseFloat(tv.replace(',','.')) : NaN);
+        if (Number.isFinite(tn)) entry.sheetTotal = tn;
       }
       if (dayCol!=null && !isBlankCell(row[dayCol])) entry.day = String(row[dayCol]).trim().replace(/^[1-7]\s*[.)-]?\s+(?=(mon|tue|wed|thu|fri|sat|sun))/i, '');   // r7: '1 Monday' from an export reads back as Monday
       if (sectionCol!=null && !isBlankCell(row[sectionCol])) entry.section = String(row[sectionCol]).trim();
@@ -2727,6 +2970,20 @@ function extractAllBlocks(aoa){
       items.push(entry);
     }
     return {items, endRow};
+  }
+  function totalColFromHeader(hdr, itemCol){
+    const tf = nearInRow(hdr, itemCol, TOTAL_HEADERS);
+    return tf>=0 ? tf : -1;
+  }
+  // Reject a block whose "items" are mostly unit tokens / headers (wrong itemCol — classic Eggplant blank-Item bug)
+  function blockLooksLikeUnitColumn(items){
+    if (!items || items.length<2) return false;
+    let bad = 0;
+    for (const it of items){
+      const t = String(it.item||'').trim();
+      if (isUnitToken(t) || HEADER_LABELS.has(t.toLowerCase()) || t.length<=3) bad++;
+    }
+    return bad >= Math.ceil(items.length * 0.5);
   }
 
   function findTitleNear(anchorRow, anchorCol, colSpan, rowSpan){
@@ -2796,9 +3053,9 @@ function extractAllBlocks(aoa){
         if (uf>=0 && !UNIT_HEADERS.has(hdr[c+2]||'')) unitCol = uf;
         else if (qf>=0 && uf<0) unitCol = qtyCol+1;
         const dayCol = nearInRow(hdr, c, DAY_HEADERS), sectionColFound = nearInRow(hdr, c, SECTION_HEADERS), sourceColFound = nearInRow(hdr, c, SOURCE_HEADERS);
-        const totCol = totalColFromHeader(hdr, itemCol);
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null, totCol);
-        if (items.length===0) continue; // false hit — keep scanning the rest of the row
+        const totalCol = totalColFromHeader(hdr, itemCol);
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null, totalCol);
+        if (items.length===0 || blockLooksLikeUnitColumn(items)) continue; // false hit / wrong itemCol
         const title = findTitleNear(r, itemCol, 4);
         blocks.push({title, items, pax: readPaxNear(r, itemCol)});
         claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:unitCol+4});
@@ -2831,9 +3088,9 @@ function extractAllBlocks(aoa){
     }
     if (nameHits<1) continue;
     const dayCol = nearInRow(hdr, itemCol, DAY_HEADERS), sectionColFound = nearInRow(hdr, itemCol, SECTION_HEADERS), sourceColFound = nearInRow(hdr, itemCol, SOURCE_HEADERS);
-    const totCol = totalColFromHeader(hdr, itemCol);
-    const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null, totCol);
-    if (items.length===0) continue;
+    const totalCol = totalColFromHeader(hdr, itemCol);
+    const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, r+1, dayCol>=0?dayCol:null, sectionColFound>=0?sectionColFound:null, sourceColFound>=0?sourceColFound:null, totalCol);
+    if (items.length===0 || blockLooksLikeUnitColumn(items)) continue;
     const title = findTitleNear(r, itemCol, 4);
     blocks.push({title, items, pax: readPaxNear(r, itemCol)});
     claimedRects.push({r1:Math.max(0,r-3), r2:endRow, c1:Math.max(0,itemCol-2), c2:unitCol+4});
@@ -2878,9 +3135,9 @@ function extractAllBlocks(aoa){
           ({qtyCol, unitCol} = inferQtyUnit(itemCol, probeRow, qtyCol, unitCol));
         }
         const startRow = headerNext ? r+2 : r+1;
-        const totCol = headerNext ? totalColFromHeader(nextRow.map(v=> typeof v==='string' ? v.trim().toLowerCase() : ''), itemCol) : (itemCol+3);
-        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, startRow, null, null, null, totCol);
-        if (items.length===0) continue; // false hit — keep scanning the rest of the row
+        const totalCol = headerNext ? totalColFromHeader(nextRow.map(v=> typeof v==='string' ? v.trim().toLowerCase() : ''), itemCol) : -1;
+        const {items, endRow} = readItemsDownward(itemCol, qtyCol, unitCol, startRow, null, null, null, totalCol);
+        if (items.length===0 || blockLooksLikeUnitColumn(items)) continue; // false hit / wrong itemCol
         const title = findTitleNear(r, itemCol, 2, 45);
         blocks.push({title, items, pax:paxVal});
         const lo = Math.min(itemCol,c), hi = Math.max(itemCol,c,qtyCol,unitCol);
@@ -2940,7 +3197,7 @@ const LEGEND_LABELS = [
   [/^(red\s+meats?|seafood|fish|shellfish|beef|lamb|poultry|chicken|duck)$/i, 'Proteins'],
   [/^(dressings?|vinaigrettes?|butters?|creams?|dairy|butters?\s*(and|&|,)\s*creams?)$/i, 'Sauce, Purees and Gels'],
   [/^(cheeses?|cheese\s*(and|&|,|\/)\s*dairy)$/i, 'Garnishes, Herbs, Powders, Oils Etc.'],
-  [/^(micro[\s-]+herbs?|oils?|dry\s+garnish(es)?|crumbs?|dry\s+garnish(es)?\s*(and|&|,)\s*crumbs?|pick(ed)?\s+herbs|herbs)$/i, 'Garnishes, Herbs, Powders, Oils Etc.']  // 4.4.6: 'Microherbs' (one word) is an ingredient
+  [/^(micro[\s-]+herbs?|oils?|dry\s+garnish(es)?|crumbs?|dry\s+garnish(es)?\s*(and|&|,)\s*crumbs?|pick(ed)?\s+herbs|herbs)$/i, 'Garnishes, Herbs, Powders, Oils Etc.']  // 4.7.5: 'Microherbs' (one word) is an ingredient — only spaced 'Micro herbs' is a legend label
 ];
 function legendLabelCategory(text){
   let t = String(text == null ? '' : text).trim().replace(/^\d{1,2}\s*[.):-]?\s*/, '').replace(/\s+/g, ' ').replace(/[.:]$/, '');
@@ -2983,7 +3240,8 @@ function isNonIngredientNote(text){
   if (/^(notes?|comments?|total|sub\s*total|menu\s*pres)\b/.test(low)) return true;
   if (/^pax(\s*\/\s*\w+)?$/.test(low)) return true;
   if (/^thursday\b|^monday\b|^tuesday\b|^wednesday\b|^friday\b|^saturday\b|^sunday\b/i.test(low) && /\d{1,2}\/\d{1,2}/.test(low)) return true;
-  // Only short station legend words — never finer labels like "Microherbs" (real Eggplant ingredient rows).
+  // Only the short station legend words (Vege / Garnish / Protein / Starch / Sauce…) —
+  // never finer labels like "Microherbs" which are real ingredient rows on Eggplant tabs.
   if (/^(veg|vege|veges|veggies?|vegetables?|vegs|garnish(es)?|proteins?|meats?|starch(es)?|sauces?|pur[eé]es?|gels?|big\s+jobs?)$/i.test(t)) return true;
   return false;
 }
@@ -3384,10 +3642,10 @@ function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((i
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
 const PO_LINK_KEY = 'prepline.poLinks.v1';
 let poLinks = (function(){ try{ return JSON.parse(localStorage.getItem(PO_LINK_KEY)||'{}') || {}; }catch(e){ return {}; } })();
-// 4.4.4: Ref# fill only when requisition Required Delivery Date is within 0..4 days
-// before the dish function date (inclusive; never after). Among same/similar matches
-// across multiple requisition PDFs, pick the delivery closest to (and not after) the function.
-const PO_DELIVERY_WINDOW_DAYS = 4;
+// 4.4.4 / preview 4.6.1 / 4.8.22: Ref# fill only when requisition Required Delivery Date is within 0..3 days
+// before the dish BAT/function date (inclusive; never after, never 4+). Among matches in window,
+// list ALL deliveries for the item nearest-first ("Supplier dd/mm/yyyy; Supplier dd/mm/yyyy").
+const PO_DELIVERY_WINDOW_DAYS = 3;
 function poParseDate(s){
   const m = String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (!m) return null;
@@ -3437,34 +3695,60 @@ function poMatchFor(task, opts){
     const daysBefore = functionDate ? poDaysBefore(it.po && it.po.delivery, functionDate) : null;
     cands.push({item: it, score: sc, daysBefore});
   });
+  // 4.8.22: all in-window deliveries for this ingredient, nearest to BAT/event first
+  function poCollectInWindow(list, minScore){
+    const win = (list || []).filter(c=>c.daysBefore !== null && c.daysBefore >= 0 && c.daysBefore <= PO_DELIVERY_WINDOW_DAYS && c.score >= minScore)
+      .slice()
+      .sort((a,b)=>(a.daysBefore - b.daysBefore) || (b.score - a.score));
+    const seen = new Set(), items = [], days = [];
+    win.forEach(c=>{
+      const k = String(poSupplierShort(c.item.supplier)||'').toLowerCase() + '|' + String((c.item.po && c.item.po.delivery) || '');
+      if (seen.has(k)) return;
+      seen.add(k);
+      items.push(c.item);
+      days.push(c.daysBefore);
+    });
+    return {items, daysBefore: days.length ? days[0] : null, score: win.length ? win[0].score : 0};
+  }
+  function poAttachBox(res){
+    if (!res) return res;
+    if (res.items && res.items.length){
+      res.item = res.items[0];
+      res.boxText = poBoxTextAll(res.items);
+    } else if (res.item){
+      res.items = [res.item];
+      res.boxText = poBoxText(res.item);
+    }
+    return res;
+  }
   const link = poLinks[ingKey(task)];
   let res;
   if (link === 'none') res = {status:'none', manual:true};
   else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)){
     const item = poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link);
-    // Manual link still respects the 4-day window when a function date is known (and always when filling Ref#).
     if (functionDate && !poDeliveryInWindow(item.po && item.po.delivery, functionDate))
-      res = {status:'nodelivery', reason:'no delivery within 4 days', item, score:1, manual:true, daysBefore: poDaysBefore(item.po && item.po.delivery, functionDate)};
-    else res = {status:'ok', item, score:1, manual:true, daysBefore: functionDate ? poDaysBefore(item.po && item.po.delivery, functionDate) : null};
+      res = {status:'nodelivery', reason:'no delivery within 3 days', item, score:1, manual:true, daysBefore: poDaysBefore(item.po && item.po.delivery, functionDate)};
+    else res = poAttachBox({status:'ok', item, items:[item], score:1, manual:true, daysBefore: functionDate ? poDaysBefore(item.po && item.po.delivery, functionDate) : null});
   } else {
     const nameHits = cands.filter(c=>c.score >= PO_CHECK);
     if (functionDate){
-      const inWin = cands.filter(c=>c.daysBefore !== null && c.daysBefore >= 0 && c.daysBefore <= PO_DELIVERY_WINDOW_DAYS);
-      const best = poPickBestCand(inWin);
-      if (best && best.score >= PO_CHECK)
-        res = {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score, daysBefore: best.daysBefore};
+      const okPack = poCollectInWindow(cands, PO_OK);
+      const checkPack = poCollectInWindow(cands, PO_CHECK);
+      if (okPack.items.length)
+        res = poAttachBox({status:'ok', items: okPack.items, score: okPack.score, daysBefore: okPack.daysBefore});
+      else if (checkPack.items.length)
+        res = poAttachBox({status:'check', items: checkPack.items, score: checkPack.score, daysBefore: checkPack.daysBefore});
       else if (nameHits.length)
-        res = {status:'nodelivery', reason:'no delivery within 4 days', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0};
+        res = {status:'nodelivery', reason:'no delivery within 3 days', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0};
       else
         res = {status:'none', best: poPickBestCand(cands)};
     } else if (forFill){
-      // Ref# fill requires a function date to validate the delivery window.
       res = nameHits.length
         ? {status:'nodelivery', reason:'no function date', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0}
         : {status:'none', best: poPickBestCand(cands)};
     } else {
       const best = poPickBestCand(cands);
-      res = !best || best.score < PO_CHECK ? {status:'none', best} : {status: best.score >= PO_OK ? 'ok' : 'check', item: best.item, score: best.score};
+      res = !best || best.score < PO_CHECK ? {status:'none', best} : poAttachBox({status: best.score >= PO_OK ? 'ok' : 'check', items:[best.item], score: best.score});
     }
   }
   return (poMatchCache.byKey[cacheKey] = res);
@@ -3491,6 +3775,9 @@ function poNumFor(it){
 // No codes, labels, PO / REQ numbers, prices, quantities or hint that it came from a requisition.
 function poSupplierShort(n){ return String(n||'').replace(/\b(pty\.?|ltd\.?|limited|inc\.?|p\/l)\b/gi,' ').replace(/\bprovidores?\b/gi,' ').replace(/[,.]+\s*$/,'').replace(/\s+/g,' ').trim(); }
 function poBoxText(it){ const d = it.po && it.po.delivery ? it.po.delivery.replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4}).*$/, (m,a,b,c)=>String(a).padStart(2,'0')+'/'+String(b).padStart(2,'0')+'/'+c) : ''; return [poSupplierShort(it.supplier), d].filter(Boolean).join(' '); }
+// 4.8.22: multiple in-window deliveries → "Supplier dd/mm/yyyy; Supplier dd/mm/yyyy" (nearest first)
+function poBoxTextAll(items){ return (items || []).map(poBoxText).filter(Boolean).join('; '); }
+function poRefFillText(m){ if (!m) return ''; if (m.boxText) return m.boxText; if (m.items && m.items.length) return poBoxTextAll(m.items); return m.item ? poBoxText(m.item) : ''; }
 function poRefText(it){
   const po = it.po, n = poNumFor(it);
   return [it.supplier, poLongDate(po.delivery), poTitle(it.desc), it.qty!==null ? fmtNum(it.qty)+' '+it.uom : ''].filter(Boolean).join(', ') + (n.txt ? ' · ' + n.txt + (n.ok ? '' : ' (unverified)') : '');
@@ -3503,7 +3790,7 @@ function poChipHtml(r){
   if (!poInViews) return '';
   const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return '';
   if (m.status==='none') return ' <span class="po-chip none" title="No line on the uploaded purchase orders matches this ingredient.">no PO</span>';
-  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is within 4 days before the function.">no delivery within 4 days</span>';
+  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is within 3 days before the function.">no delivery within 3 days</span>';
   const it = m.item, po = it.po;
   const tip = `${it.supplier}${po.poNumbers.length?' · PO '+poNumberText(po):''} · line ${it.n}: ${it.desc} · ${it.qty!==null?it.qty+' '+it.uom:''} · delivery ${po.delivery}${m.status==='check'?' — weak name match, please check':''}`;
   return ` <span class="po-chip ${m.status}" title="${escapeHtml(tip)}"><b class="po-ref-l">REF</b> ${escapeHtml(poRefText(it))}${m.status==='check'?' (check)':''}</span>`;
@@ -3530,13 +3817,13 @@ function poPanelHtml(){
       <h3 style="margin:0;">🧾 Requisitions (${POS.length})</h3>
       <button class="ghost" type="button" onclick="clearPOs()">Clear requisitions</button>
     </div>
-    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is within 4 days before that dish's function date (closest match wins if the same item appears on several PDFs). See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
+    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is within 3 days before that dish's BAT/function date (on the day or 1–3 days prior). If the same item has several deliveries in that window, all are listed nearest-first. See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
     <table class="po-table"><thead><tr><th>PO number(s)</th><th>Delivery</th><th>Suppliers</th><th>Lines</th><th>File</th></tr></thead><tbody>
     ${POS.map(po=>`<tr><td><b>${po.poNumbers.length?escapeHtml(poNumberText(po)):'no PO number'}</b>${po.req?'<div class="meta">'+escapeHtml(po.req)+'</div>':''}${po.subject?'<div class="meta">'+escapeHtml(po.subject)+'</div>':''}</td><td>${escapeHtml(po.delivery||'—')}</td><td>${escapeHtml([...new Set(po.items.map(i=>i.supplier))].join(', '))}</td><td>${po.items.length}</td><td class="meta">${escapeHtml(po.file||'')}</td></tr>`).join('')}
     </tbody></table>
-    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery within 4 days`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
+    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery within 3 days`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
     ${listRows.length ? `<details class="po-fix"><summary>Check or link ingredients (${listRows.length})</summary>
-      ${listRows.map(x=>{ const t=x.task; const m = poMatchFor(t, {functionDate:x.functionDate}); const flag = m.status==='check'?'<span class="po-chip check">check</span>':(m.status==='nodelivery'?'<span class="po-chip none">no delivery within 4 days</span>':'<span class="po-chip none">no PO</span>'); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${flag}</span>
+      ${listRows.map(x=>{ const t=x.task; const m = poMatchFor(t, {functionDate:x.functionDate}); const flag = m.status==='check'?'<span class="po-chip check">check</span>':(m.status==='nodelivery'?'<span class="po-chip none">no delivery within 3 days</span>':'<span class="po-chip none">no PO</span>'); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${flag}</span>
         <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):(m.status==='nodelivery'?'Name match outside 4-day window':'— not on a PO —')}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+') · del '+(i.po.delivery||'?'))}</option>`).join('')}</select></div>`; }).join('')}
     </details>` : ''}
     ${st && st.unusedLines.length ? `<details class="po-fix"><summary>PO lines not used by any recipe (${st.unusedLines.length})</summary><ul>${st.unusedLines.map(i=>`<li>${escapeHtml(i.supplier)} · ${escapeHtml(i.desc)} · ${i.qty!==null?escapeHtml(i.qty+' '+i.uom):''} <span class="meta">(${escapeHtml(i.po.req)})</span></li>`).join('')}</ul></details>` : ''}
@@ -4012,10 +4299,11 @@ function addPdfRows(dish, tasks, eventDay){
     const disp = pdfQtyToDisplay(t.parsedQty);
     const taskLabel = cleanName + (t.note ? ' — ' + t.note : (disp.value===null ? ' ('+t.qtyRaw+')' : ''));
     const pinf = prepInfoFor(cleanName, null, cat);
-    const day = eventDay ? prepStartDay(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : '';
+    const _pi = eventDay ? prepStartDayInfo(eventDay, {stageNum, leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : {day:'',reason:''};
+    const day = _pi.day || '';
     ROWS.push({
       dish, task: taskLabel, qty:'', unit: disp.unit, section: cat, baseCategory: cat,
-      flagged, day, stageNum, ...pinf, pdfFixedTotal: disp.value,
+      flagged, day, dayReason:_pi.reason||'', stageNum, ...pinf, pdfFixedTotal: disp.value,
     });
   }
   return skipped;
@@ -4168,7 +4456,7 @@ async function handlePdfFiles(fileList, opts){
       try{
         if (!opts.append && window.PreplineSheet && typeof window.PreplineSheet.offerPdfRowEdit==='function'){
           const extracted = ROWS.map(r=>({dish:r.dish, task:r.task||r.item, qty:r.qty, unit:r.unit, section:r.section||'', date:eventDateByDish[r.dish]||'', pax:paxByDish[r.dish], prepCat:r.prepCat||''}));
-          // Offer edit of structured rows (PDF binary itself is never edited)
+          // Offer PDF editor (page tools + editable extract grid). Original PDF text is not reflowable.
           setTimeout(()=>window.PreplineSheet.offerPdfRowEdit(extracted, {name: tagName}), 0);
         }
       }catch(e){}
@@ -4199,7 +4487,7 @@ document.getElementById('fileInput').addEventListener('change', e=>{
 // 4.4.3: parse an in-memory workbook that already carries cellStyles (.s fills).
 // Used by the sheet-builder so Sort now / edited grids never round-trip through a
 // community SheetJS write that strips fills.
-function handleWorkbookObject(wbObj, fileName){
+function handleWorkbookObject(wbObj, fileName, rawBytes){
   if (!wbObj) return;
   try{
     const name = fileName || 'edited.xlsx';
@@ -4215,24 +4503,33 @@ function handleWorkbookObject(wbObj, fileName){
     document.getElementById('fileTag').textContent = name;
     const dishNames = [];
     ROWS.forEach(r=>{ const n=cleanDishName(r.dish); if(!dishNames.includes(n)) dishNames.push(n); });
-    if (toolMode==='onetime'){
-      sourceInfo = {name: name, loadedAt: new Date()};
-      let msg = 'Sorted '+itemsFound+' tasks into '+dishNames.length+' dishes: '+dishNames.join(', ')+'.';
-      if (lastColourSort) msg += ' Colour legend'+(lastColourSort.usedDefault?' (defaults)':'')+' ('+lastColourSort.found.map(f=>f.label+' = '+(f.cat==='Garnishes, Herbs, Powders, Oils Etc.'?'Garnish':f.cat)).join(', ')+'): '+lastColourSort.jobs+' job(s) sorted by colour, the rest by name.';
+    const finishWorkbookLoad = ()=>{
+      if (toolMode==='onetime'){
+        sourceInfo = {name: name, loadedAt: new Date()};
+        let msg = 'Sorted '+itemsFound+' tasks into '+dishNames.length+' dishes: '+dishNames.join(', ')+'.';
+        if (lastColourSort) msg += ' Colour legend'+(lastColourSort.usedDefault?' (defaults)':'')+' ('+lastColourSort.found.map(f=>f.label+' = '+(f.cat==='Garnishes, Herbs, Powders, Oils Etc.'?'Garnish':f.cat)).join(', ')+'): '+lastColourSort.jobs+' job(s) sorted by colour, the rest by name.';
+        if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
+        if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
+        setStatus(msg, errored.length ? 'err' : 'ok');
+        renderApp();
+        if (typeof showOutputChoice==='function'){ if (pbSorting){ pbSorting = false; const oc=document.getElementById('outputChoice'); if (oc){ oc.hidden = true; oc.innerHTML=''; } const v=document.getElementById('preplistTab'); if (v) v.scrollIntoView(); } else showOutputChoice('upload'); }
+        return;
+      }
+      const added = commitRowsToDatabase();
+      let msg = 'Added '+added+' dishes to your recipe database ('+itemsFound+' tasks): '+dishNames.join(', ')+'.';
       if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
       if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
       setStatus(msg, errored.length ? 'err' : 'ok');
+      appMode = 'weekly';
       renderApp();
-      if (typeof showOutputChoice==='function'){ if (pbSorting){ pbSorting = false; const oc=document.getElementById('outputChoice'); if (oc){ oc.hidden = true; oc.innerHTML=''; } const v=document.getElementById('preplistTab'); if (v) v.scrollIntoView(); } else showOutputChoice('upload'); }
+    };
+    // 4.7.9: attach plated-dish photos on Sort-now / sheet-builder path (handleFile already did this).
+    if (rawBytes && typeof attachXlsxDishPhotos === 'function'){
+      const u8 = rawBytes instanceof Uint8Array ? rawBytes : new Uint8Array(rawBytes);
+      Promise.resolve(attachXlsxDishPhotos(u8)).catch(e=>console.warn('xlsx dish photos', e)).then(finishWorkbookLoad);
       return;
     }
-    const added = commitRowsToDatabase();
-    let msg = 'Added '+added+' dishes to your recipe database ('+itemsFound+' tasks): '+dishNames.join(', ')+'.';
-    if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
-    if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
-    setStatus(msg, errored.length ? 'err' : 'ok');
-    appMode = 'weekly';
-    renderApp();
+    finishWorkbookLoad();
   } catch(err){
     setStatus('Could not read that file ('+(err && err.message ? err.message : 'unknown error')+'). Please upload an .xlsx, .xls or .csv spreadsheet, or a production tool PDF.', 'err');
   }
@@ -4246,18 +4543,19 @@ function handleFile(file){
   }
   setStatus('Reading '+file.name+' — this can take a moment on a big workbook…');
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     try{
       const data = new Uint8Array(ev.target.result);
       const wbObj = XLSX.read(data, {type:'array', cellDates:false, sheetStubs:false, cellStyles:true});   // r7: cellStyles = cell fill colours (colour legend)
       const prev = {ROWS, paxByDish, eventDateByDish};   // restored if this file turns out unreadable
-      ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};  // a spreadsheet has no page image or method text to keep
+      ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};  // 4.7.6: plated-dish photos attached from xlsx when present
       const {sheetsUsed, itemsFound, skipped, errored} = processWorkbook(wbObj);
       if (itemsFound===0){
         ({ROWS, paxByDish, eventDateByDish} = prev);
         setStatus('Could not find any recipe rows in "'+file.name+'". Each dish needs a table with a column headed Item, Ingredient or Product (quantity and unit beside it), or a PAX cell above the list — or use the paste box. Your previous list has been kept.', 'err');
         return;
       }
+            try { if (typeof attachXlsxDishPhotos === 'function') await attachXlsxDishPhotos(data); } catch (e) { console.warn('xlsx dish photos', e); }
       document.getElementById('fileTag').textContent = file.name;
       const dishNames = [];
       ROWS.forEach(r=>{ const n=cleanDishName(r.dish); if(!dishNames.includes(n)) dishNames.push(n); });
@@ -4317,6 +4615,7 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
   if (toolMode==='onetime'){
     sourceInfo = {name: 'Pasted rows (no file)', loadedAt: new Date()};
     setStatus('Sorted '+ROWS.length+' pasted rows.', 'ok');
+    try{ afterRowsLoaded47({name:'paste'}); }catch(e){}
     renderApp();
     return;
   }
@@ -5027,7 +5326,8 @@ function exportGroupedToXlsx(groupFn, tabNameFn, filenamePrefix, emptyMsg, sortF
     setStatus('The spreadsheet export could not load. This tool needs an internet connection when it opens — connect, reload the page, and try again.', 'err');
     return;
   }
-  const exportRows = activeRows();
+  // 4.6.0: export respects sticky day/section/search filters (viewRows); full list when filters are All.
+  const exportRows = (typeof viewRows === 'function') ? viewRows() : activeRows();
   if (!exportRows.length){
     setStatus('Nothing to export yet — load a preplist first (or tick at least one dish in the summary above).', 'err');
     return;
@@ -5120,6 +5420,15 @@ function render(){
   invalidateDishNumbers();
   const area = document.getElementById('resultsArea');
   scheduleOnetimeSave();   // v3.2.2: every change that re-renders is saved (pax edits were lost on reload)
+  try { if (window.PreplineUpgrades47) {
+    PreplineUpgrades47.learnSectionsFromRows(ROWS);
+    if (window.PreplineBatch) { PreplineBatch.setBatchAcross(true); }
+    if (PreplineUpgrades47.bindShortcuts) PreplineUpgrades47.bindShortcuts({
+      onChange: ()=>render(),
+      exportXlsx: ()=>exportOrganisedXlsx47(),
+      exportPdf: ()=>exportOrganisedPdf47 && exportOrganisedPdf47()
+    });
+  } } catch(e){}
   renderPaxPanel();
   renderStaffingPanel();
   if (ROWS.length===0){
@@ -5133,31 +5442,69 @@ function render(){
   maybeSurveyPrompt();
   let html = versionSwitchHtml() + sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + poPanelHtml() + yieldPanelHtml() + blockedDaysPanelHtml() + costSummaryHtml();
 
-  html += `<div class="viewtoggle no-print">
-    <button class="${viewMode==='dish'?'':'secondary'}" onclick="setView('dish')" type="button">By dish — how much to make</button>
-    <button class="${viewMode==='section'?'':'secondary'}" onclick="setView('section')" type="button">By team section</button>
-    <button class="${viewMode==='priority'?'':'secondary'}" onclick="setView('priority')" type="button">By prep day</button>
+  const u480MoreViews = `<button class="${viewMode==='item'?'':'secondary'}" onclick="setView('item')" type="button" id="itemViewBtn">By item</button>
     <button class="${viewMode==='week'?'':'secondary'}" onclick="setView('week')" type="button" id="weekViewBtn">Week calendar</button>
-    <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet (by supplier)</button>
-    ${Object.keys(originalPageImages).length ? `<button class="${viewMode==='orig'?'':'secondary'}" onclick="setView('orig')" type="button" id="origViewBtn">📖 Original PTs (Ref # filled)</button>` : ''}
-  </div>
-  <div class="row no-print" style="margin-bottom:10px; gap:8px;">
-    ${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="Exports this view (By dish) as an editable .xlsx">📊 Export to Excel (editable)</button>`
-      : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="Exports this view (By team section) as an editable .xlsx">📊 Export to Excel (editable)</button>`
-      : (viewMode==='order' || viewMode==='week') ? ''
-      : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="Exports this view (By prep day) as an editable .xlsx">📊 Export to Excel (editable)</button>`}
-    <button class="secondary" onclick="exportOrganisedXlsx447()" type="button" title="Paula Sorted layout: one tab per section, yellow header, Total needed = qty × pax, A–Z by dish/prep/event">📊 Organised export (yellow header)</button>
-  </div>
-  <div class="row no-print print-row" style="margin-bottom:20px; gap:8px; align-items:center;">
-    <button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one page complete)</button>
+    <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet</button>
+    <button class="${viewMode==='order47'?'':'secondary'}" onclick="setView('order47')" type="button" id="order47ViewBtn">Order (batched)</button>
+    <button class="${viewMode==='recipes'?'':'secondary'}" onclick="setView('recipes')" type="button" id="recipesViewBtn">Yield library</button>
+    <button class="${viewMode==='voice'?'':'secondary'}" onclick="setView('voice')" type="button" id="voiceViewBtn">Voice add</button>
+    ${Object.keys(originalPageImages).length ? `<button class="${viewMode==='orig'?'':'secondary'}" onclick="setView('orig')" type="button" id="origViewBtn">📖 Original PTs</button>` : ''}`;
+  const u480ExportBtns = `${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="By dish Excel">📊 Excel · By dish</button>`
+      : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="By section Excel">📊 Excel · By section</button>`
+      : viewMode==='priority' || viewMode==='week' ? `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="By day Excel">📊 Excel · By day</button>`
+      : viewMode==='order' || viewMode==='order47' || viewMode==='recipes' || viewMode==='voice' || viewMode==='item' ? ''
+      : `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx">📊 Export to Excel</button>`}
+    ${(viewMode==='dish'||viewMode==='section'||viewMode==='priority') ? `<button class="secondary" onclick="exportPlanPdf47()" type="button">🧾 PDF · this view</button>` : ''}
+    <button class="secondary" onclick="exportOrganisedXlsx47()" type="button" title="Paula Sorted layout: one tab per section, yellow header, Total needed = qty × pax">📊 Organised export (yellow header)</button>
+    <button class="secondary" onclick="exportOrganisedPdf47()" type="button" title="Printable A4 organised list">🧾 Export PDF</button>
+    <button class="secondary" onclick="printA3Calendar4820()" type="button" title="One-page A3 landscape prep calendar: days × sections">🖨️ Print A3 calendar</button>
+    <button class="secondary" onclick="exportA3CalendarXlsx4820()" type="button" title="A3 prep calendar as Excel">📊 A3 calendar · Excel</button>
+    <button class="secondary" onclick="exportA3CalendarPdf4820()" type="button" title="Save A3 prep calendar as PDF">🧾 A3 calendar · PDF</button>
+    <button class="secondary" onclick="shareOrganised47()" type="button" title="Share or open email — you press send">✉️ Email sheet</button>`;
+  const u480PrintBtns = `<button class="secondary" onclick="printAllSections()" type="button">🖨️ Print all sections (one page complete)</button>
     <button class="secondary" onclick="printAllDays()" type="button">🖨️ Print all prep days (one page complete)</button>
-    ${printMethodToggleHtml()}
+    ${printMethodToggleHtml()}`;
+  /* 4.8.6: Team ops (Roster/Dispatch/Morning brief/Swap) hidden — restore by setting SHOW_TEAM_OPS true */
+  const SHOW_TEAM_OPS = false;
+  const u480TeamBtns = SHOW_TEAM_OPS ? `<button class="secondary" onclick="setView('roster47')" type="button" id="roster47ViewBtn">Roster</button>
+    <button class="secondary" onclick="setView('dispatch47')" type="button" id="dispatch47ViewBtn">Dispatch</button>
+    <button class="secondary" onclick="setView('brief47')" type="button" id="brief47ViewBtn">Morning brief</button>
+    <button class="secondary" onclick="setView('swap47')" type="button" id="swap47ViewBtn">Swap</button>` : '';
+  const u480Grouped = (window.Prepline480 && Prepline480.groupsHtml)
+    ? Prepline480.groupsHtml({ moreViews: u480MoreViews, exportBtns: u480ExportBtns, printBtns: u480PrintBtns, teamBtns: u480TeamBtns })
+    : `<div class="viewtoggle no-print" style="margin-top:8px;">${u480MoreViews}</div><div class="row no-print" style="margin-bottom:10px;gap:8px;flex-wrap:wrap;">${u480ExportBtns}${u480TeamBtns}</div><div class="row no-print print-row" style="margin-bottom:20px;gap:8px;align-items:center;">${u480PrintBtns}</div>`;
+  html += `<div class="u47-plan-toggle no-print" id="u47PlanToggle" role="tablist" aria-label="Planning view">
+    <button type="button" class="u47-plan-btn ${viewMode==='dish'?'on':''}" onclick="setView('dish')">By dish</button>
+    <button type="button" class="u47-plan-btn ${viewMode==='priority'?'on':''}" onclick="setView('priority')">By day</button>
+    <button type="button" class="u47-plan-btn ${viewMode==='section'?'on':''}" onclick="setView('section')">By section</button>
   </div>
+  ${u480Grouped}
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
 
-  if (viewMode!=='orig' && viewMode!=='week'){ html += searchBarHtml();
-  html += printOrderControlHtml(); }   // v3.4.5: the Order sheet view has it too; week calendar skips
-  html += viewMode==='dish' ? renderByDish() : (viewMode==='section' ? renderBySection() : (viewMode==='order' ? renderOrderSheet() : (viewMode==='week' ? renderWeekCalendar448() : (viewMode==='orig' && Object.keys(originalPageImages).length ? renderOriginalsTab() : renderByPriority()))));
+  if (viewMode!=='orig' && viewMode!=='recipes' && viewMode!=='voice'){ html += searchBarHtml();
+  html += printOrderControlHtml(); }   // v3.4.5: the Order sheet view has it too
+  if (window.PreplineUpgrades47) try{ PreplineUpgrades47.ensureCss(); }catch(e){}
+  let diffBanner = '';
+  try {
+    if (window.PreplineUpgrades47 && PreplineUpgrades47.peekLastDiff) {
+      const d = PreplineUpgrades47.peekLastDiff();
+      if (d) diffBanner = PreplineUpgrades47.changeCheckHtml(d, (s) => escapeHtml(String(s == null ? '' : s))) || '';
+    }
+  } catch (e) { diffBanner = ''; }
+  if (diffBanner) html = diffBanner + html;
+  html += viewMode==='dish' ? renderByDish()
+    : viewMode==='section' ? renderBySection()
+    : viewMode==='order' ? renderOrderSheet()
+    : viewMode==='week' ? renderWeekView47()
+    : viewMode==='order47' ? renderOrder47()
+    : viewMode==='recipes' ? renderRecipes47()
+    : viewMode==='voice' ? renderVoice47()
+    : viewMode==='item' ? renderByItem47()
+    : viewMode==='roster47' ? renderRoster47()
+    : viewMode==='dispatch47' ? renderDispatch47()
+    : viewMode==='brief47' ? renderBrief47()
+    : viewMode==='swap47' ? renderSwap47()
+    : (viewMode==='orig' && Object.keys(originalPageImages).length ? renderOriginalsTab() : renderByPriority());
   // v3.4.4: re-rendering after a manual edit keeps the page where it was and keeps focus
   // on the control that was just changed (it used to jump back to the top).
   const keepY = window.scrollY, keepX = window.scrollX, ae = document.activeElement;
@@ -5166,6 +5513,8 @@ function render(){
   const keepH = area.offsetHeight; area.style.minHeight = keepH + 'px';
   area.innerHTML = html;
   area.style.minHeight = '';
+  try{ bindBatchingBar(); }catch(e){}
+  try{ bindUpgrades47(); }catch(e){}
   if (focusKey){ const el = [...area.querySelectorAll(focusKey.tag)].find(e=>e.getAttribute(focusKey.attr)===focusKey.val); if (el){ try{ el.focus({preventScroll:true}); }catch(e){} } }
   if (window.scrollY !== keepY || window.scrollX !== keepX) window.scrollTo(keepX, keepY);
   try{ numberDaysIn(document.getElementById('preplistTab') || document.body); }catch(e){}
@@ -5202,10 +5551,35 @@ function rowMatchesSearch(r){
     (leaderBySection[r.section]||'').toLowerCase().includes(q) ||
     (r.day||'').toLowerCase().includes(q);
 }
+function batchDeps(){
+  return {
+    getEventDay, computeTotal, toBaseQty, cleanDishName,
+    blockedDays: (typeof blockedDays !== 'undefined' && blockedDays) ? blockedDays : new Set()
+  };
+}
+function viewRows(){
+  // Active dishes → sticky day/section filter → search. Used by views + print/export.
+  let rows = activeRows();
+  if (window.PreplineBatch) rows = PreplineBatch.filterRows(rows, batchDeps());
+  return rows.filter(rowMatchesSearch);
+}
 function searchBarHtml(){
-  const visibleRows = activeRows();
+  if (window.PreplineBatch) try{ PreplineBatch.ensureCss(); }catch(e){}
+  const baseRows = activeRows();
+  const filtered = window.PreplineBatch ? PreplineBatch.filterRows(baseRows, batchDeps()) : baseRows;
+  const visibleRows = filtered;
   const matchCount = searchQuery.trim() ? visibleRows.filter(rowMatchesSearch).length : visibleRows.length;
-  return `<div class="row no-print" style="margin-bottom:16px; align-items:center;">
+  const sections = [...new Set(baseRows.map(r=>r.section).filter(Boolean))].sort();
+  const counts = window.PreplineBatch ? PreplineBatch.dayCounts(
+    (window.PreplineBatch.getState().sectionFilter && window.PreplineBatch.getState().sectionFilter !== 'all')
+      ? baseRows.filter(r=>r.section === window.PreplineBatch.getState().sectionFilter)
+      : baseRows,
+    batchDeps()
+  ) : { all: baseRows.length };
+  const sticky = window.PreplineBatch
+    ? PreplineBatch.stickyBarHtml({ counts, sections, escapeHtml })
+    : '';
+  return sticky + `<div class="row no-print" style="margin-bottom:16px; align-items:center;">
     <div class="field" style="flex:0 1 360px;">
       <input type="text" id="globalSearch" placeholder="Search tasks, dishes, sections, leads, days…" value="${escapeHtml(searchQuery)}"
         oninput="setSearch(this.value)" style="width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:13px;">
@@ -5213,6 +5587,26 @@ function searchBarHtml(){
     ${searchQuery.trim() ? `<button class="ghost" onclick="clearSearch()" type="button">Clear</button>` : ''}
     <div class="meta" style="font-size:12px; color:var(--ink-soft);">${searchQuery.trim() ? matchCount+' of '+visibleRows.length+' tasks match' : visibleRows.length+' tasks total'}</div>
   </div>`;
+}
+function bindBatchingBar(){
+  if (!window.PreplineBatch) return;
+  const root = document.getElementById('pbSticky');
+  if (!root) return;
+  root.querySelectorAll('[data-pb-day]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ PreplineBatch.setDayFilter(btn.getAttribute('data-pb-day')); render(); });
+  });
+  root.querySelectorAll('[data-pb-anchor]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ PreplineBatch.setListAnchor(btn.getAttribute('data-pb-anchor')); render(); });
+  });
+  const sec = root.querySelector('#pbSection');
+  if (sec) sec.addEventListener('change', ()=>{ PreplineBatch.setSectionFilter(sec.value); render(); });
+  const ba = root.querySelector('#pbBatchAcross');
+  if (ba) ba.addEventListener('change', ()=>{ PreplineBatch.setBatchAcross(ba.checked); render(); });
+}
+function unbatchLine(encodedKey){
+  if (!window.PreplineBatch) return;
+  PreplineBatch.toggleUnbatch(decodeURIComponent(encodedKey));
+  render();
 }
 // Small inline control appended after a task's text — clicking it filters to every
 // task sharing that same core ingredient, anywhere in the workbook.
@@ -5410,11 +5804,39 @@ function renderByPriority(){
   // Groups by the ACTUAL calendar weekday each task needs to happen — resolved from
   // that task's own dish event-day plus its Day 1-4 prep stage. Dishes with no event
   // day detected/set yet fall into "Unscheduled" so they're never silently lost.
+  // 4.6.0: build cross-day batches from the full filtered set FIRST, then bucket by
+  // assigned batch prep day (or by function day when the sticky bar says so).
   const order = [...dayOrderList(), 'Unscheduled'];
   const dayKeyMap = {'Monday':'day1','Tuesday':'day2','Wednesday':'day3','Thursday':'day4',
     'Friday':'day1','Saturday':'day2','Sunday':'day3','Unscheduled':'review'};
+  const anchorFn = window.PreplineBatch && PreplineBatch.getState().listAnchor === 'function';
+  const batchOn = window.PreplineBatch && PreplineBatch.getState().batchAcrossOn;
+  const allRows = viewRows();
+  const allBatches = batchOn ? PreplineBatch.buildBatches(allRows, batchDeps()) : null;
+
   const rowsByDay = {}; order.forEach(d=>rowsByDay[d]=[]);
-  activeRows().filter(rowMatchesSearch).forEach(r=>{ rowsByDay[r.day || 'Unscheduled'].push(r); });
+  const batchesByDay = {}; order.forEach(d=>batchesByDay[d]=[]);
+
+  if (batchOn){
+    allBatches.forEach(g=>{
+      if (anchorFn){
+        // Show a batch under each distinct function day it covers (rare duplicate), else once under first
+        const eds = [...new Set(g.rows.map(r=>getEventDay(r.dish)||'Unscheduled'))];
+        const bucket = eds[0] || 'Unscheduled';
+        (batchesByDay[bucket] || (batchesByDay[bucket]=[])).push(g);
+        g.rows.forEach(r=>{ (rowsByDay[bucket]||(rowsByDay[bucket]=[])).push(r); });
+      } else {
+        const bucket = g.day || 'Unscheduled';
+        (batchesByDay[bucket] || (batchesByDay[bucket]=[])).push(g);
+        g.rows.forEach(r=>{ (rowsByDay[bucket]||(rowsByDay[bucket]=[])).push(r); });
+      }
+    });
+  } else {
+    allRows.forEach(r=>{
+      const bucket = anchorFn ? (getEventDay(r.dish) || 'Unscheduled') : (r.day || 'Unscheduled');
+      (rowsByDay[bucket] || (rowsByDay[bucket]=[])).push(r);
+    });
+  }
 
   let html = '<div class="summary no-print">';
   order.forEach(d=>{
@@ -5429,7 +5851,8 @@ function renderByPriority(){
         : gap>0 ? `<div class="lead" style="color:var(--veg1); font-weight:700;">+${gap} spare</div>`
         : `<div class="lead" style="font-weight:700;">Exactly covered</div>`;
     }
-    html += `<div class="sumcard ${key}"><div class="n">${chefs}</div><div class="lbl">${d}</div><div class="lead">${rowsByDay[d].length} tasks · ${fmtHours(totalMin)}</div>${gapLine}</div>`;
+    const nLabel = batchOn ? ((batchesByDay[d]||[]).length + ' batches') : (rowsByDay[d].length + ' tasks');
+    html += `<div class="sumcard ${key}"><div class="n">${chefs}</div><div class="lbl">${d}</div><div class="lead">${nLabel} · ${fmtHours(totalMin)}</div>${gapLine}</div>`;
   });
   html += '</div>';
   html += consolidateToggleHtml();
@@ -5453,8 +5876,11 @@ function renderByPriority(){
          <input type="text" inputmode="numeric" class="leader-input" style="width:60px;" placeholder="—"
            value="${rosteredChefs[d]!==undefined?rosteredChefs[d]:''}" onchange="setRosteredChefs('${d}', this.value)">`
       : '';
-    const groups = consolidateOn ? sortGroups(buildConsolidatedGroups(rowsForDay), 'priority') : null;
-    const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForDay.length} tasks)` : `${rowsForDay.length} tasks`;
+    const batchGroups = batchOn ? (batchesByDay[d] || []) : null;
+    const groups = (!batchOn && consolidateOn) ? sortGroups(buildConsolidatedGroups(rowsForDay), 'priority') : null;
+    const rowCountLabel = batchOn
+      ? `${batchGroups.length} batch lines (from ${rowsForDay.length} tasks)`
+      : (consolidateOn ? `${groups.length} lines (from ${rowsForDay.length} tasks)` : `${rowsForDay.length} tasks`);
     html += `<div class="section-head no-print" style="background:var(--${key}-bg);">
       <div><h3 style="color:var(--${key})">${heading}</h3><div class="meta">${rowCountLabel} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)${gapText}</div></div>
       <div class="section-actions">
@@ -5465,7 +5891,18 @@ function renderByPriority(){
     </div>
     <div class="section-table-wrap no-print">`;
 
-    if (consolidateOn){
+    if (batchOn){
+      html += `<table><thead><tr>
+        <th style="width:34%">Task / batch</th>
+        <th style="width:22%">Dishes</th>
+        <th style="width:12%">Total needed</th>
+        <th style="width:12%">Section</th>
+        <th style="width:10%">Lead</th>
+        <th style="width:10%">Prep day</th>
+      </tr></thead><tbody>`;
+      batchGroups.forEach(g=>{ html += batchGroupRowHtml(g); });
+      html += `</tbody></table></div>`;
+    } else if (consolidateOn){
       html += `<table><thead><tr>
         <th style="width:32%">Task</th>
         <th style="width:26%">Dishes</th>
@@ -5520,7 +5957,9 @@ function renderByPriority(){
     }
 
     let printRowsHtml2;
-    if (consolidateOn){
+    if (batchOn){
+      printRowsHtml2 = batchGroups.map(g=>batchGroupRowHtml(g, {print:true})).join('');
+    } else if (consolidateOn){
       printRowsHtml2 = groups.map(g=>{
         const isMerged = g.rows.length>1;
         const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
@@ -5559,12 +5998,14 @@ function renderByPriority(){
       ${paxReferenceBlock(rowsForDay)}
       <div class="print-head">
         <h2>${heading}</h2>
-        <div class="meta">${consolidateOn ? groups.length+' lines (from '+rowsForDay.length+' tasks)' : rowsForDay.length+' tasks'} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)</div>
+        <div class="meta">${batchOn ? batchGroups.length+' batch lines (from '+rowsForDay.length+' tasks)' : (consolidateOn ? groups.length+' lines (from '+rowsForDay.length+' tasks)' : rowsForDay.length+' tasks')} · ~${chefs} chef${chefs===1?'':'s'} needed (${fmtHours(totalMin)} total)</div>
       </div>
       ${alPrintNote(rowsForDay)}
-      <table><thead>${consolidateOn
+      <table><thead>${batchOn
+        ? '<tr><th style="width:30%">Task / batch</th><th style="width:18%">Dishes</th><th style="width:10%">Total</th><th style="width:14%">Section</th><th style="width:12%">Lead</th><th style="width:16%">Prep day</th></tr>'
+        : (consolidateOn
         ? '<tr><th style="width:27%">Task</th><th style="width:22%">Dishes</th><th style="width:11%">Total needed</th><th style="width:21%">Section</th><th style="width:19%">Lead</th></tr>'
-        : '<tr><th style="width:14%">Dish</th><th>Task</th><th style="width:6%">Pax</th><th style="width:8%">Per pax</th><th style="width:9%">Total needed</th><th style="width:16%">Section</th><th style="width:14%">Lead</th></tr>'}</thead>
+        : '<tr><th style="width:14%">Dish</th><th>Task</th><th style="width:6%">Pax</th><th style="width:8%">Per pax</th><th style="width:9%">Total needed</th><th style="width:16%">Section</th><th style="width:14%">Lead</th></tr>')}</thead>
       <tbody>
       ${printRowsHtml2}
       </tbody></table>
@@ -5579,11 +6020,17 @@ function printPriority(key){
 }
 
 function copyPriority(label, key){
-  const rowsForDay = ROWS.filter(r=> (r.day || 'Unscheduled') === label);
+  const rowsForDay = viewRows().filter(r=> (r.day || 'Unscheduled') === label);
   let text = `${label}\n`;
   if (pdfRowsPresent(rowsForDay)) text += `ALL ITEMS BELOW ARE COOKED WEIGHT — refer to the production tool for raw weights\n`;
   text += `\n`;
-  if (consolidateOn){
+  if (window.PreplineBatch && PreplineBatch.getState().batchAcrossOn){
+    const groups = PreplineBatch.buildBatches(rowsForDay, batchDeps()).filter(g => (g.day || 'Unscheduled') === label);
+    groups.forEach(g=>{
+      const totalTxt = g.hasTotal ? `${qN(g.total,g.unit)} ${qU(g.total,g.unit)}` : '(set pax for total)';
+      text += `  [ ] ${g.taskLabel} — ${totalTxt} · prep ${g.day||'—'} · ${g.reason||''}${g.merged ? ' — covers: '+g.covers : ''}\n`;
+    });
+  } else if (consolidateOn){
     const groups = buildConsolidatedGroups(rowsForDay);
     groups.forEach(g=>{
       const totalTxt = g.hasTotal ? `${qN(g.total,g.unit)} ${qU(g.total,g.unit)}` : '(set pax for total)';
@@ -5613,7 +6060,7 @@ function copyPriority(label, key){
 function renderBySection(){
   const counts = {}; SECTIONS.forEach(s=>counts[s]=0);
   let flaggedCount=0;
-  activeRows().filter(rowMatchesSearch).forEach(r=>{ counts[r.section]++; if (r.flagged) flaggedCount++; });
+  viewRows().forEach(r=>{ counts[r.section]++; if (r.flagged) flaggedCount++; });
 
   let html = '<div class="summary no-print">';
   SECTIONS.forEach(s=>{
@@ -5637,7 +6084,7 @@ function renderBySection(){
 
   sectionsToShow.forEach(s=>{
     const key = SECTION_KEY[s];
-    const rowsForSection = applySort(activeRows().filter(r=> r.section===s && (activeFilter!=='REVIEW' || r.flagged) && rowMatchesSearch(r)), 'section');
+    const rowsForSection = applySort(viewRows().filter(r=> r.section===s && (activeFilter!=='REVIEW' || r.flagged)), 'section');
     if (rowsForSection.length===0) return;
     const groups = consolidateOn ? sortGroups(buildConsolidatedGroups(rowsForSection), 'section') : null;
     const rowCountLabel = consolidateOn ? `${groups.length} lines (from ${rowsForSection.length} tasks)` : `${rowsForSection.length} tasks`;
@@ -5872,10 +6319,53 @@ function sortGroups(groups, view){
   return groups.map((g,i)=>[g,i]).sort((A,B)=>{ const mult = m2; const a=val(A[0]), b=val(B[0]); return a<b ? -mult : a>b ? mult : A[1]-B[1]; }).map(x=>x[0]);
 }
 function consolidateToggleHtml(){
+  const batchOn = window.PreplineBatch && PreplineBatch.getState().batchAcrossOn;
+  if (batchOn){
+    return `<div class="no-print" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:14px;">
+      Cross-dish batching is on (sticky bar). Same ingredient + method + unit merges across function days.
+      <label style="display:inline-flex; align-items:center; gap:6px; margin-left:10px; cursor:pointer;">
+        <input type="checkbox" ${consolidateOn?'checked':''} onchange="setConsolidate(this.checked)" style="width:auto;">
+        Also group leftover identical same-day lines
+      </label>
+    </div>`;
+  }
   return `<label class="no-print" style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; cursor:pointer;">
     <input type="checkbox" ${consolidateOn?'checked':''} onchange="setConsolidate(this.checked)" style="width:auto;">
     Group identical tasks across dishes into one line (recommended — keeps long lists readable)
   </label>`;
+}
+function batchGroupRowHtml(g, opts){
+  opts = opts || {};
+  const isMerged = !!g.merged;
+  const totalCell = g.hasTotal ? `<b>${qN(g.total,g.unit)}</b> ${escapeHtml(qU(g.total,g.unit))}` : '<span class="needpax">set pax</span>';
+  const dishList = (g.dishes||[]).map(dh=>escapeHtml(cleanDishName(dh))).join(', ');
+  const reason = window.PreplineBatch ? PreplineBatch.batchReasonHtml(g, escapeHtml, { cleanDishName }) : '';
+  const unbatch = isMerged
+    ? `<button class="ghost pb-unbatch" type="button" onclick="unbatchLine('${encodeURIComponent(g.batchKey)}')" title="Split this batch back into per-dish lines">unbatch</button>`
+    : '';
+  const moveNext = (!opts.print && g.batchKey && g.day)
+    ? `<button class="ghost u489-move-next" type="button" data-u489-move="${encodeURIComponent(g.batchKey)}" data-u489-day="${encodeURIComponent(g.day)}" title="Push this prep group to the next weekday">→ next day</button>`
+    : '';
+  const tick = (window.PreplineUpgrades47 && !opts.print) ? PreplineUpgrades47.tickControlsHtml(g, escapeHtml) : '';
+  const flag = isMerged ? `<span class="flagtag" style="background:var(--veg1-bg);color:var(--veg1);">×${g.rows.length} dishes</span>` : '';
+  if (opts.print){
+    return `<tr class="${isMerged?'job-band-1':''}">
+      <td class="task">${escapeHtml(g.taskLabel)}${flag}${alChipsRowsHtml(g.rows)}${reason}</td>
+      <td class="dish">${dishList}</td>
+      <td class="qty">${totalCell}</td>
+      <td class="pf-section">${escapeHtml(g.section||'')}</td>
+      <td class="pf-lead">${escapeHtml(leaderBySection[g.section] || '—')}</td>
+      <td class="pf-day">${escapeHtml(g.day||'—')}</td>
+    </tr>`;
+  }
+  return `<tr class="${isMerged?'job-band-1':''}">
+    <td class="task">${escapeHtml(g.taskLabel)}${flag}${alChipsRowsHtml(g.rows)} ${findSimilarBtn(g.taskLabel)}${unbatch}${moveNext}${reason}${tick}</td>
+    <td class="dish">${dishList}</td>
+    <td class="qty">${totalCell}</td>
+    <td>${escapeHtml(g.section||'')}</td>
+    <td>${escapeHtml(leaderBySection[g.section] || '—')}</td>
+    <td>${escapeHtml(g.day||'—')}</td>
+  </tr>`;
 }
 
 function escapeHtml(s){
@@ -6686,7 +7176,7 @@ const ORDER_GROUP_FOOT = [];   // feature 6 adds a cost total line: (group) => h
 function poOrderCell(L, print){
   const m = L.po; if (!m || m.status==='sub') return '';
   if (m.status==='none') return print ? 'not on a PO' : '<span class="po-chip none">no PO</span>';
-  if (m.status==='nodelivery') return print ? 'no delivery within 4 days' : '<span class="po-chip none">no delivery within 4 days</span>';
+  if (m.status==='nodelivery') return print ? 'no delivery within 3 days' : '<span class="po-chip none">no delivery within 3 days</span>';
   const it = m.item, po = it.po;
   const txt = poRefText(it) + (m.status==='check'?' (check)':'');
   return print ? escapeHtml(txt) : `<span class="po-chip ${m.status}" title="${escapeHtml(it.supplier+' · '+it.desc)}">🧾 ${escapeHtml(txt)}</span>`;
@@ -6829,49 +7319,6 @@ function renderOrderSheet(){
 // Excel: one tab per supplier (and "No supplier yet"). Order qty is a plain number to edit.
 const ORDER_XLSX_EXTRA = [];   // feature 6: {header, value(L), formula?(L, excelRow) -> {f, v}, wch}
 const ORDER_XLSX_FOOT = [];    // feature 6: (ctx) -> adds a total row
-function renderWeekCalendar448(){
-  if (window.Prepline486 && typeof Prepline486.renderCalendarView === 'function') {
-    try {
-      const rows = (typeof activeRows === 'function') ? activeRows() : (ROWS || []);
-      const deps = (typeof batchDeps === 'function') ? batchDeps() : {};
-      return Prepline486.renderCalendarView(rows, deps, {
-        escapeHtml: typeof escapeHtml === 'function' ? escapeHtml : undefined,
-        cleanDishName: typeof cleanDishName === 'function' ? cleanDishName : undefined,
-        dayLabel: typeof dayLabel === 'function' ? dayLabel : undefined,
-        getEventDay: typeof getEventDay === 'function' ? getEventDay : undefined,
-        getEventDateStr: typeof getEventDateStr === 'function' ? getEventDateStr : undefined
-      });
-    } catch (e) {
-      return '<div class="panel">Week calendar failed: ' + (e && e.message || e) + '</div>';
-    }
-  }
-  return '<div class="panel">Week calendar unavailable</div>';
-}
-function exportOrganisedXlsx447(){
-  if (!window.PreplineOrganisedExport || typeof PreplineOrganisedExport.exportOrganisedXlsx !== 'function'){
-    setStatus('Organised export unavailable', 'err'); return;
-  }
-  try{
-    const rows = (typeof activeRows === 'function' ? activeRows() : ROWS).filter(r => typeof rowMatchesSearch !== 'function' || rowMatchesSearch(r));
-    if (!rows.length){
-      setStatus('Nothing to export yet — load a preplist first (or tick at least one dish in the summary above).', 'err');
-      return;
-    }
-    const res = PreplineOrganisedExport.exportOrganisedXlsx(rows, {}, {
-      cleanDishName, paxByDish,
-      allergenText: typeof allergenText==='function' ? allergenText : undefined,
-      dayLabel: typeof dayLabel==='function' ? dayLabel : undefined,
-      srcName: typeof srcName==='function' ? srcName : undefined,
-      exportPerPax: typeof exportPerPax==='function' ? exportPerPax : undefined,
-      getEventDay: typeof getEventDay==='function' ? getEventDay : undefined,
-      getEventDateStr: typeof getEventDateStr==='function' ? getEventDateStr : undefined
-    });
-    const done = (r) => setStatus('Organised export: '+(r&&r.rows)+' rows · Paula layout (Section=tab, Total cached, STAFF/BAT blank, A–Z by dish/prep/event'+(r&&r.layout? ', '+r.layout : '')+') · '+(r&&r.engine||'xlsx')+'.', 'ok');
-    if (res && typeof res.then === 'function') res.then(done).catch(e=>setStatus('Organised export failed: '+(e&&e.message||e), 'err'));
-    else done(res);
-  }catch(e){ setStatus('Organised export failed: '+(e&&e.message||e), 'err'); }
-}
-
 function exportOrderToXlsx(){
   if (typeof XLSX === 'undefined' || !XLSX.utils){ setStatus('The spreadsheet export could not load. Reload the page and try again.', 'err'); return; }
   const groups = orderGroups();
@@ -7564,8 +8011,8 @@ function closePrivacy(){ const m = document.getElementById('privacyModal'); if (
 //    at most 5 tries, then dropped.
 const ALLOW_SKIP = false;   // true = show a small "Skip for now" link (asks again next visit)
 const SIGNUP_CONFIG = {
-  endpoint: '',   // 4.4.5: signup/welcome disabled — no Apps Script call
-  sites: {},
+  endpoint: 'https://script.google.com/macros/s/AKfycbxv8HWUatM_nqMmlgyaNtjVAuqHSfLWqrwSwgVttVKlAdNwzSLyeVkMKzmrs9q8GqME2A/exec',
+  sites: { '/preplist-sorter/': 'live', '/prepline-test/': 'test' },
   positions: ['Head Chef', 'Sous Chef', 'Chef de Partie', 'Cook', 'Kitchen Hand', 'Other'],
   doneKey: 'prepline.signup.v1', queueKey: 'prepline.signupQueue.v1', skipKey: 'prepline.signupSkip.v1',
   maxTries: 5, minMs: 1500, timeoutMs: 30000,   // Apps Script can take 10-30 s on a cold start
@@ -7760,7 +8207,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 // its own manifest, service worker (scope = its own path) and cache names, so they never clash.
 // A file:// copy (offline zip, single file, team build) or any other path: nothing is injected,
 // no service worker is registered, silently.
-const PWA_CONFIG = { paths: ['/preplist-sorter/', '/prepline-test/', '/prepline-team/'], basePath: null, checkEveryMin: 60 };
+const PWA_CONFIG = { paths: ['/preplist-sorter/', '/prepline-test/', '/prepline-team/', '/prepline-trial-preview/'], basePath: null, checkEveryMin: 60 };
 function pwaEnabled(){
   if (!/^https?:$/.test(location.protocol)) return false;
   PWA_CONFIG.basePath = PWA_CONFIG.paths.find(p => location.pathname.startsWith(p)) || null;
@@ -7815,6 +8262,9 @@ render = function(){ _v33BaseRender(); renderIngPanel(); };
 proBeforeInit();
 loadDatabase();
 loadOnetimeSession();
+try{
+  if (window.PreplineRules && PreplineRules.syncBatchableToUi) PreplineRules.syncBatchableToUi();
+}catch(e){}
 const hasExistingDb = Object.keys(dishDatabase).length>0;
 toolMode = (ROWS && ROWS.length>0) ? 'onetime' : (hasExistingDb ? 'database' : 'onetime');
 appMode = hasExistingDb ? 'weekly' : 'database';
@@ -7955,6 +8405,7 @@ function outputChoiceHtml(src){
     </div></div>`;
 }
 function showOutputChoice(src){
+  try{ afterRowsLoaded47({name: src||'upload'}); }catch(e){}
   const host = document.getElementById('outputChoice'); if (!host) return;
   host.innerHTML = outputChoiceHtml(src); host.hidden = false;
 }
@@ -7977,9 +8428,18 @@ let pbSorting = false;
 // ---------- print as-is ----------
 function asIsModelFromRows(){
   // from an uploaded sheet: the rows as read, colour from each row's group
+  // 4.8.22: Ref# autofill from POs (Supplier dd/mm/yyyy; multi in-window nearest-first)
   const dishes = [];
-  (typeof ROWS!=='undefined'?ROWS:[]).forEach(r=>{ let d = dishes.find(x=>x.name===r.dish); if (!d){ d = {name:r.dish, pax:(typeof paxByDish!=='undefined' && paxByDish[r.dish]!=null)?paxByDish[r.dish]:'', rows:[]}; dishes.push(d); }
-    const c = pbCatForSection(r.section); d.rows.push({item:r.task, qty:r.qty, unit:r.unit||'', cat:c?c.k:'', section:r.section||'', day:r.day||'', ref:''}); });
+  (typeof ROWS!=='undefined'?ROWS:[]).forEach(r=>{ let d = dishes.find(x=>x.name===r.dish); if (!d){ d = {name:r.dish, pax:(typeof paxByDish!=='undefined' && paxByDish[r.dish]!=null)?paxByDish[r.dish]:'', srcSheet:r.srcSheet||'', rows:[]}; dishes.push(d); }
+    const c = pbCatForSection(r.section);
+    let ref = '';
+    try {
+      if (typeof poMatchFor === 'function' && POS && POS.length) {
+        const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish), forFill:true});
+        if (m && m.status === 'ok') ref = (typeof poRefFillText === 'function' ? poRefFillText(m) : (m.boxText || ''));
+      }
+    } catch (e) { ref = ''; }
+    d.rows.push({item:r.task, qty:r.qty, unit:r.unit||'', cat:c?c.k:'', section:r.section||'', day:r.day||'', ref}); });
   return dishes;
 }
 function asIsHtml(dishes){
@@ -7994,7 +8454,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0}.asis-page{page-
 .asis-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #111;margin-bottom:8px}.asis-head h1{font-size:22px;margin:0 0 4px}.asis-pax{font-size:16px}
 table.asis{width:100%;border-collapse:collapse;font-size:13px}table.asis th{background:#333;color:#fff;text-align:left;padding:6px}table.asis td{border:1px solid #bbb;padding:6px;height:22px}
 table.asis .mk{width:14px;padding:0}table.asis .n{text-align:right}table.asis .ref{min-width:110px}
-.asis-legend{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}.lg{padding:4px 10px;border:1px solid #888;font-weight:700;font-size:12px}.asis-foot{margin-top:8px;font-size:10px;color:#666}`;
+.asis-legend{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}.lg{padding:4px 10px;border:1px solid #888;font-weight:700;font-size:12px}.asis-foot{margin-top:8px;font-size:10px;color:#666}.asis-body{display:flex;gap:14px;align-items:flex-start}.asis-table-wrap{flex:1;min-width:0}.asis-photo{flex:0 0 240px;max-width:34%;text-align:center}.asis-photo img{width:100%;max-height:320px;height:auto;object-fit:contain;border:1px solid #bbb;background:#fafafa}.asis-photo .ph-lbl{font-size:10px;color:#666;margin-top:4px}`;
 function printAsIs(src){
   const dishes = src==='builder' ? pbValid() : asIsModelFromRows();
   if (!dishes.length) return;
@@ -8178,7 +8638,7 @@ function pbImportWorkbook(wb, forced){
       const s = pbSectionFromText(cell('section')); x.section = s.section;
       x.cat = pbRowColour(ws, r, m, legend) || s.cat;
       if (x.cat && pbCat(x.cat).sec === x.section) x.section = '';      // the colour already says it
-      x.day = pbDay(cell('day')); x.ref = String(cell('ref')||'').trim().slice(0,40);
+      x.day = pbDay(cell('day')); x.ref = String(cell('ref')||'').trim().slice(0,160);
       if (!byDish[curDish]){ byDish[curDish] = []; order.push(curDish); }
       byDish[curDish].push(x);
     }
@@ -8242,16 +8702,254 @@ function pbWireDrop(){
 }
 
 // Bridge for sheet-builder / rules (let-scoped state is not on window)
+
+// ---- 4.7.0 upgrades (trial) ----
+function renderWeekView47(){
+  if (!window.PreplineUpgrades47) return '<div class="panel">Week view unavailable</div>';
+  const rows = viewRows();
+  const groups = window.PreplineBatch ? PreplineBatch.buildBatches(rows, batchDeps()) : [];
+  /* 4.8.21: progress feature removed from UI */
+  return PreplineUpgrades47.renderWeekView(rows, batchDeps(), { escapeHtml, qN, qU, cleanDishName });
+}
+function renderOrder47(){
+  if (!window.PreplineUpgrades47) return '';
+  return PreplineUpgrades47.renderOrderFromBatches(viewRows(), batchDeps(), {
+    escapeHtml, applyYield: (n,g)=>PreplineUpgrades47.applyYieldToQty(n, g)
+  });
+}
+function renderRecipes47(){
+  if (!window.PreplineUpgrades47) return '';
+  return PreplineUpgrades47.recipeLibHtml(escapeHtml);
+}
+function renderVoice47(){
+  if (!window.PreplineUpgrades47) return '';
+  return PreplineUpgrades47.voicePanelHtml();
+}
+function renderByItem47(){
+  if (!window.PreplineUpgrades47) return '<div class="panel">By item view unavailable</div>';
+  const staffBySection = {};
+  (typeof SECTIONS!=='undefined'?SECTIONS:[]).forEach(s=>{ staffBySection[s] = leaderBySection[s] || 'Unallocated'; });
+  const tickControlsHtml = (g) => PreplineUpgrades47.tickControlsHtml(g, escapeHtml);
+  const batchReasonHtml = (g) => {
+    try {
+      if (window.PreplineBatch && PreplineBatch.batchReasonHtml)
+        return PreplineBatch.batchReasonHtml(g, escapeHtml, batchDeps()) || '';
+    } catch(e){}
+    return PreplineUpgrades47.mergedSubtitleHtml(g, escapeHtml) || '';
+  };
+  const unbatchButtonHtml = (g) => {
+    try {
+      if (!g || !g.merged || !g.batchKey) return '';
+      return '<button class="ghost pb-unbatch" type="button" onclick="unbatchLine(\''+encodeURIComponent(g.batchKey)+'\')" title="Split this batch back into per-dish lines">unbatch</button>';
+    } catch(e){ return ''; }
+  };
+  return PreplineUpgrades47.renderByItemView(viewRows(), batchDeps(), {
+    escapeHtml, cleanDishName, staffBySection, defaultStaff: 'Unallocated', paxByDish,
+    tickControlsHtml, batchReasonHtml, unbatchButtonHtml
+  });
+}
+function exportPlanPdf47(){
+  // Print current plan view (dish / day / section) via browser print — clean A4
+  try{
+    document.body.classList.add('u47-plan-print');
+    window.print();
+    setTimeout(()=>document.body.classList.remove('u47-plan-print'), 800);
+    setStatus('PDF/print for '+viewMode+' view — use your browser Save as PDF.', 'ok');
+  }catch(e){ setStatus('Print failed: '+(e&&e.message||e), 'err'); }
+}
+function exportOrganisedPdf47(){
+  if (!window.PreplineUpgrades47 || !PreplineUpgrades47.exportOrganisedPdf){ setStatus('PDF export unavailable', 'err'); return; }
+  try{
+    const staffBySection = {};
+    (typeof SECTIONS!=='undefined'?SECTIONS:[]).forEach(s=>{ staffBySection[s] = leaderBySection[s] || 'Unallocated'; });
+    const r = PreplineUpgrades47.exportOrganisedPdf(viewRows(), batchDeps(), {
+      cleanDishName, staffBySection, defaultStaff: 'Unallocated', paxByDish
+    });
+    setStatus('PDF opened for print ('+(r&&r.rows||0)+' rows).', 'ok');
+  }catch(e){ setStatus('PDF failed: '+(e&&e.message||e), 'err'); }
+}
+function shareOrganised47(){
+  if (!window.PreplineUpgrades47 || !PreplineUpgrades47.shareOrMailtoOrganised){ setStatus('Share unavailable', 'err'); return; }
+  const staffBySection = {};
+  (typeof SECTIONS!=='undefined'?SECTIONS:[]).forEach(s=>{ staffBySection[s] = leaderBySection[s] || 'Unallocated'; });
+  PreplineUpgrades47.shareOrMailtoOrganised(viewRows(), batchDeps(), {
+    cleanDishName, staffBySection, defaultStaff: 'Unallocated', paxByDish,
+    weekLabel: (typeof localYMD==='function'?localYMD():new Date().toISOString().slice(0,10))
+  }).then(r=>setStatus('Share: '+(r&&r.mode||'ok')+(r&&r.to?(' · to field: '+r.to):'')+' — you press send.', 'ok'))
+    .catch(e=>setStatus('Share failed: '+(e&&e.message||e), 'err'));
+}
+function renderShop47(){
+  /* 4.7.3: shopping list removed — keep 4.7.0 order sheet only */
+  return '<div class="panel"><b>Shopping list removed</b> — use <button type="button" class="secondary" onclick="setView(\'order\')">Order sheet</button> (unchanged from 4.7.0).</div>';
+}
+function renderRoster47(){
+  if (!window.PreplineUpgrades47 || !PreplineUpgrades47.rosterHtml) return '<div class="panel">Roster unavailable</div>';
+  return PreplineUpgrades47.rosterHtml(viewRows(), batchDeps(), { cleanDishName, escapeHtml, paxByDish, defaultStaff:'Unallocated', staffBySection: Object.fromEntries((typeof SECTIONS!=='undefined'?SECTIONS:[]).map(s=>[s, leaderBySection[s]||'Unallocated'])) });
+}
+function renderDispatch47(){
+  if (!window.PreplineUpgrades47 || !PreplineUpgrades47.dispatchTrackerHtml) return '<div class="panel">Dispatch unavailable</div>';
+  return PreplineUpgrades47.dispatchTrackerHtml(viewRows(), batchDeps(), { cleanDishName, escapeHtml, paxByDish, defaultStaff:'Unallocated', todayName: PreplineUpgrades47.todayWeekday && PreplineUpgrades47.todayWeekday() });
+}
+function renderBrief47(){
+  if (!window.PreplineUpgrades47 || !PreplineUpgrades47.morningBriefHtml) return '<div class="panel">Morning brief unavailable</div>';
+  return PreplineUpgrades47.morningBriefHtml(viewRows(), batchDeps(), { cleanDishName, escapeHtml, paxByDish, defaultStaff:'Unallocated', todayName: PreplineUpgrades47.todayWeekday && PreplineUpgrades47.todayWeekday() });
+}
+function renderSwap47(){
+  if (!window.PreplineUpgrades47 || !PreplineUpgrades47.swapToolHtml) return '<div class="panel">Swap tool unavailable</div>';
+  return PreplineUpgrades47.swapToolHtml(viewRows(), batchDeps(), { cleanDishName, escapeHtml, paxByDish, defaultStaff:'Unallocated' });
+}
+function a3CalHelpers4820(){
+  const staffBySection = {};
+  (typeof SECTIONS!=='undefined'?SECTIONS:[]).forEach(s=>{ staffBySection[s] = leaderBySection[s] || 'Unallocated'; });
+  const srcFile = (typeof sourceInfo!=='undefined' && sourceInfo && sourceInfo.name)
+    || (document.getElementById('fileTag') && document.getElementById('fileTag').textContent)
+    || '';
+  return {
+    cleanDishName, staffBySection, defaultStaff: 'Unallocated', paxByDish,
+    allergenText: typeof allergenText==='function' ? allergenText : undefined,
+    dayLabel: typeof dayLabel==='function' ? dayLabel : undefined,
+    srcName: typeof srcName==='function' ? srcName : undefined,
+    exportPerPax: typeof exportPerPax==='function' ? exportPerPax : undefined,
+    getEventDay: typeof getEventDay==='function' ? getEventDay : undefined,
+    getEventDateStr: typeof getEventDateStr==='function' ? getEventDateStr : undefined,
+    sourceFileName: srcFile,
+    staffEstimates: true,
+    weekLabel: (typeof localYMD==='function'?localYMD():new Date().toISOString().slice(0,10))
+  };
+}
+function printA3Calendar4820(){
+  if (!window.Prepline4820){ setStatus('A3 calendar unavailable', 'err'); return; }
+  try{
+    const r = Prepline4820.printA3Calendar(viewRows(), a3CalHelpers4820());
+    setStatus('A3 calendar print · '+(r&&r.lines||0)+' jobs · font '+(r&&r.baseFont)+'pt — choose A3 landscape / Save as PDF.', 'ok');
+  }catch(e){ setStatus('A3 calendar failed: '+(e&&e.message||e), 'err'); }
+}
+function exportA3CalendarXlsx4820(){
+  if (!window.Prepline4820){ setStatus('A3 calendar unavailable', 'err'); return; }
+  try{
+    const res = Prepline4820.exportA3CalendarXlsx(viewRows(), a3CalHelpers4820());
+    const done = (r)=>setStatus('A3 calendar Excel: '+(r&&r.rows)+' jobs · '+(r&&r.days)+' days · '+(r&&r.engine||'xlsx')+'.', 'ok');
+    if (res && typeof res.then==='function') res.then(done).catch(e=>setStatus('A3 Excel failed: '+(e&&e.message||e), 'err'));
+    else done(res);
+  }catch(e){ setStatus('A3 Excel failed: '+(e&&e.message||e), 'err'); }
+}
+function exportA3CalendarPdf4820(){
+  /* Opens the same A3 print document — user Save as PDF at A3 landscape. */
+  printA3Calendar4820();
+}
+function exportOrganisedXlsx47(){
+  if (!window.PreplineUpgrades47){ setStatus('Organised export unavailable', 'err'); return; }
+  try{
+    const staffBySection = {};
+    (typeof SECTIONS!=='undefined'?SECTIONS:[]).forEach(s=>{ staffBySection[s] = leaderBySection[s] || 'Unallocated'; });
+    const srcFile = (typeof sourceInfo!=='undefined' && sourceInfo && sourceInfo.name)
+      || (document.getElementById('fileTag') && document.getElementById('fileTag').textContent)
+      || '';
+    const res = PreplineUpgrades47.exportOrganisedXlsx(viewRows(), batchDeps(), {
+      cleanDishName, staffBySection, defaultStaff: 'Unallocated', paxByDish,
+      allergenText: typeof allergenText==='function' ? allergenText : undefined,
+      dayLabel: typeof dayLabel==='function' ? dayLabel : undefined,
+      srcName: typeof srcName==='function' ? srcName : undefined,
+      exportPerPax: typeof exportPerPax==='function' ? exportPerPax : undefined,
+      getEventDay: typeof getEventDay==='function' ? getEventDay : undefined,
+      getEventDateStr: typeof getEventDateStr==='function' ? getEventDateStr : undefined,
+      sourceFileName: srcFile,
+      staffEstimates: true
+    });
+    const done = (r) => setStatus('Organised export: '+(r&&r.rows)+' rows · Paula layout (section tabs, yellow header, Prep day→Item→Source A–Z'+(r&&r.layout? ', '+r.layout : '')+') · '+(r&&r.engine||'xlsx')+'.', 'ok');
+    if (res && typeof res.then === 'function') res.then(done).catch(e=>setStatus('Organised export failed: '+(e&&e.message||e), 'err'));
+    else done(res);
+  }catch(e){ setStatus('Organised export failed: '+(e&&e.message||e), 'err'); }
+}
+
+function autoAllocateOnLoad473(){
+  try{
+    if (!window.PreplineUpgrades47 || !PreplineUpgrades47.autoAllocateStaff) return;
+    if (window._prepline473AllocBusy) return;
+    window._prepline473AllocBusy = true;
+    const staffBySection = {};
+    (typeof SECTIONS!=='undefined'?SECTIONS:[]).forEach(s=>{ staffBySection[s] = leaderBySection[s] || ''; });
+    PreplineUpgrades47.autoAllocateStaff(viewRows(), batchDeps(), { cleanDishName, paxByDish, defaultStaff:'Unallocated', staffBySection });
+    setTimeout(function(){ window._prepline473AllocBusy = false; }, 50);
+  }catch(e){ window._prepline473AllocBusy = false; console.warn('autoAlloc', e); }
+}
+
+function bindUpgrades47(){
+  if (!window.PreplineUpgrades47) return;
+  const area = document.getElementById('resultsArea');
+  PreplineUpgrades47.bindTickControls(area, ()=>render());
+  PreplineUpgrades47.bindRecipeLib(document.getElementById('u47Recipes'), ()=>render());
+  try{ PreplineUpgrades47.bindByItemView(document.getElementById('u47ItemView'), ()=>render()); }catch(e){}
+  try{ if (PreplineUpgrades47.bind473Views) PreplineUpgrades47.bind473Views(()=>render()); }catch(e){}
+  PreplineUpgrades47.bindVoice(document.getElementById('u47Voice'), {
+    onAdd: (p)=>{
+      const dish = 'Voice add';
+      if (!paxByDish[dish]) paxByDish[dish] = 1;
+      if (p.day) eventDayOverride[dish] = p.day;
+      let section = '';
+      const sug = PreplineUpgrades47.suggestSection(p.task, '');
+      if (sug.section) section = sug.section;
+      else if (typeof categorize==='function'){ const c = categorize(p.task, dish); if (c && c!=='REVIEW') section = c; }
+      if (!section) section = 'Vegetables';
+      const pinf = typeof prepInfoFor==='function' ? prepInfoFor(p.task, null, section) : {};
+      let day = p.day || '';
+      let dayReason = '';
+      if (!day && eventDayOverride[dish]) {
+        const info = prepStartDayInfo(eventDayOverride[dish], { leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat, stageNum:1 });
+        day = info.day||''; dayReason = info.reason||'';
+      } else if (day && typeof prepStartDayInfo==='function') {
+        // day given is function day — convert to prep day
+        eventDayOverride[dish] = day;
+        const info = prepStartDayInfo(day, { leadDays: pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat, stageNum:1 });
+        day = info.day || day; dayReason = info.reason||'';
+      }
+      ROWS.push({
+        dish, task: p.task, qty: p.qty||'', unit: p.unit||'', section, baseCategory: section,
+        flagged: false, day, dayReason, stageNum: 1, ...pinf, srcSheet: 'Voice'
+      });
+      try{ PreplineUpgrades47.learnSectionsFromRows(ROWS); }catch(e){}
+      render();
+      setStatus('Added voice line: '+p.task+(sug.section?' → '+sug.section:''), 'ok');
+    }
+  });
+  const csv = document.getElementById('u47OrderCsv');
+  if (csv) csv.addEventListener('click', ()=>{
+    const text = PreplineUpgrades47.orderCsv(viewRows(), batchDeps(), {
+      applyYield: (n,g)=>PreplineUpgrades47.applyYieldToQty(n,g)
+    });
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([text],{type:'text/csv'}));
+    a.download='Prepline_Order_Batched.csv'; a.click();
+  });
+  const pr = document.getElementById('u47OrderPrint');
+  if (pr) pr.addEventListener('click', ()=>window.print());
+}
+function afterRowsLoaded47(meta){
+  try{ autoAllocateOnLoad473(); }catch(e){}
+  if (!window.PreplineUpgrades47) return;
+  try{
+    PreplineUpgrades47.learnSectionsFromRows(ROWS);
+    meta = meta || {};
+    if (meta.snapshot === false) return;
+    // Only snapshot when we have rows (upload/paste/weekly), not on every re-render.
+    if (!ROWS || !ROWS.length) return;
+    PreplineUpgrades47.rememberSnapshot(ROWS, meta);
+  }catch(e){}
+}
+
 window.__preplineBridge = {
   getRows: () => ROWS,
   setRows: (rows) => { ROWS = rows; },
-  clearList: () => { ROWS = []; paxByDish = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {}; },
+  clearList: () => { ROWS = []; paxByDish = {}; eventDateByDish = {}; eventDayOverride = {}; originalPageImages = {}; methodCrops = {}; },
   setPax: (d, n) => { paxByDish[d] = n; },
+  setEventDay: (d, v) => { eventDayOverride[d] = v; },
+  setLeader: (sec, name) => { leaderBySection[sec] = name; },
+  setView: (v) => { if (typeof setView==='function') setView(v); },
   setDate: (d, v) => { eventDateByDish[d] = v; },
   getPax: () => paxByDish,
   getDates: () => eventDateByDish,
   processWorkbook: (wb) => processWorkbook(wb),
-  render: () => { if (typeof renderApp==='function') renderApp(); else if (typeof render==='function') render(); },
+  render: () => { try{ afterRowsLoaded47({name:'bridge', snapshot:false}); }catch(e){} if (typeof renderApp==='function') renderApp(); else if (typeof render==='function') render(); },
   setStatus: (m, k) => { if (typeof setStatus==='function') setStatus(m, k); },
   showOutput: (k) => { if (typeof showOutputChoice==='function') showOutputChoice(k); },
   prepInfoFor: (text, leg, sec) => (typeof prepInfoFor==='function' ? prepInfoFor(text, leg, sec) : {prepCat:'', leadDays:null, prepSrc:'', weekendShift:false}),
