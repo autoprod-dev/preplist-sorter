@@ -206,7 +206,8 @@
     if (!nodes.length) return;
     var wrap = document.createElement('div');
     wrap.id = 'u4827HowtoWrap';
-    wrap.className = 'no-print';
+    wrap.className = 'u4827-wrap no-print';
+    wrap.setAttribute('data-u4827', 'howto');
     if (!openState.howto) wrap.classList.add('u480-settings-collapsed');
     wrap.innerHTML =
       '<div class="u480-settings-bar no-print">' +
@@ -384,8 +385,8 @@
       if (root.Prepline4826) root.Prepline4826.VERSION = VERSION;
       var meta = document.querySelector('meta[name="prepline-version"]');
       if (meta) {
-        var cur = meta.getAttribute('content') || '';
-        var trial = /-trial\b/i.test(cur) || /trial/i.test(location.pathname || '');
+        /* Path-only: older 4823–4826 used to force -trial into meta; ignore cur. */
+        var trial = /trial/i.test((typeof location !== 'undefined' && location.pathname) || '');
         meta.setAttribute('content', trial ? (VERSION + '-trial') : VERSION);
       }
       var badge = document.getElementById('appVersion');

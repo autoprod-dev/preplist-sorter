@@ -14,7 +14,10 @@
       if (root.Prepline4821) root.Prepline4821.VERSION = VERSION;
       if (root.Prepline4822) root.Prepline4822.VERSION = VERSION;
       var meta = document.querySelector('meta[name="prepline-version"]');
-      if (meta) meta.setAttribute('content', VERSION + '-trial');
+      if (meta && !root.Prepline4827) {
+        var trialPath = /trial/i.test((typeof location !== 'undefined' && location.pathname) || '');
+        meta.setAttribute('content', trialPath ? (VERSION + '-trial') : VERSION);
+      }
       var badge = document.getElementById('appVersion');
       if (badge && /Prepline v/.test(badge.textContent || '')) {
         badge.textContent = 'Prepline v' + VERSION;
