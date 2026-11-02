@@ -1,2 +1,283 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(t){"use strict";const e=t=>{let e=0;for(let r=0;r<t.length;r++)e=26*e+(t.charCodeAt(r)-64);return e-1},r=/^(\$?)([A-Z]+)(\$?)(\d+)$/i;function n(t){const n=String(t).trim().match(r);return n?{c:e(n[2].toUpperCase()),r:parseInt(n[4],10)-1,a:n[2].toUpperCase()+n[4]}:null}function o(t){const e=[];let n=0;const o=String(t).replace(/^\s*=/,"").trim();for(;n<o.length;){const t=o[n];if(/\s/.test(t))n++;else{if(/[A-Za-z$]/.test(t)){let t=n+1;for(;t<o.length&&/[A-Za-z0-9$]/.test(o[t]);)t++;const c=o.slice(n,t);if(/^SUM$/i.test(c)&&"("===o[t]){e.push({type:"func",v:"SUM"}),n=t;continue}if(r.test(c.replace(/\$/g,"$")),r.test(c)||/^\$?[A-Z]+\$?\d+$/i.test(c)){e.push({type:"ref",v:c.toUpperCase().replace(/\$/g,""),raw:c}),n=t;continue}throw new Error("unknown token "+c)}if(/[0-9.]/.test(t)){let t=n+1;for(;t<o.length&&/[0-9.]/.test(o[t]);)t++;e.push({type:"num",v:parseFloat(o.slice(n,t))}),n=t;continue}if(!("+-*/(),:".indexOf(t)>=0))throw new Error("bad char "+t+" in "+o);e.push({type:"op",v:t}),n++}}return e}function c(t,e){let r="",n=t+1;for(;n;){const t=(n-1)%26;r=String.fromCharCode(65+t)+r,n=Math.floor((n-1)/26)}return r+(e+1)}function s(t,e){return null==t||""===t?null:function(t,e){let r=0;function o(){return t[r]}function s(){return t[r++]}function f(){let t=i();for(;o()&&"op"===o().type&&("+"===o().v||"-"===o().v);){const e=s().v,r=i();t="+"===e?t+r:t-r}return t}function i(){let t=p();for(;o()&&"op"===o().type&&("*"===o().v||"/"===o().v);){const e=s().v,r=p();t="*"===e?t*r:t/r}return t}function p(){const t=o();if(!t)throw new Error("unexpected end");if("op"===t.type&&"+"===t.v)return s(),p();if("op"===t.type&&"-"===t.v)return s(),-p();if("num"===t.type)return s(),t.v;if("ref"===t.type){s();const r=e(t.v);return null==r||""===r?0:Number(r)}if("func"===t.type&&"SUM"===t.v){if(s(),!o()||"("!==o().v)throw new Error("SUM expects (");s();let t=0;if(o()&&"ref"===o().type){const r=s().v;if(o()&&":"===o().v){if(s(),!o()||"ref"!==o().type)throw new Error("bad range");t=function(t,e,r){const o=n(t),s=n(e);if(!o||!s)return 0;let f=0;const i=Math.min(o.r,s.r),p=Math.max(o.r,s.r),u=Math.min(o.c,s.c),l=Math.max(o.c,s.c);for(let t=i;t<=p;t++)for(let e=u;e<=l;e++){e>=26&&String.fromCharCode(64+Math.floor(e/26)),String.fromCharCode(65+e%26);const n=c(e,t);f+=Number(r(n))||0}return f}(r,s().v,e)}else for(t=Number(e(r))||0;o()&&","===o().v;)s(),"ref"===o().type?t+=Number(e(s().v))||0:t+=f()}else for(t=f();o()&&","===o().v;)s(),t+=f();if(!o()||")"!==o().v)throw new Error("SUM expects )");return s(),t}if("op"===t.type&&"("===t.v){s();const t=f();if(!o()||")"!==o().v)throw new Error("expected )");return s(),t}throw new Error("unexpected "+JSON.stringify(t))}const u=f();if(r<t.length)throw new Error("trailing "+JSON.stringify(t[r]));return u}(o(t),t=>e(String(t).toUpperCase().replace(/\$/g,"")))}const f={evalFormula:s,recalcSheet:function(t){const e={},r=[];for(const n of Object.keys(t)){if("!"===n[0])continue;const o=t[n];if(!o)continue;const c=n.toUpperCase();o.f?r.push({addr:c,f:o.f}):"n"===o.t||"number"==typeof o.v?e[c]=o.v:null==o.v||""===o.v||isNaN(Number(o.v))||(e[c]=Number(o.v))}const n=t=>{const r=String(t).toUpperCase().replace(/\$/g,"");return Object.prototype.hasOwnProperty.call(e,r),e[r]},c=[],f={},i=r.map(t=>({...t}));let p=0;for(;i.length&&p<r.length*r.length+5;){p++;let u=!1;for(let p=0;p<i.length;){const{addr:l,f:a}=i[p];try{const c=[];o(a).forEach(t=>{"ref"===t.type&&c.push(t.v.toUpperCase().replace(/\$/g,""))}),c.some(t=>!Object.prototype.hasOwnProperty.call(e,t)&&r.some(r=>r.addr===t&&!Object.prototype.hasOwnProperty.call(e,t)));const h=new Set(i.map(t=>t.addr));if(c.some(t=>h.has(t)&&t!==l)){p++;continue}const d=s(a,n);e[l]=d,f[l]=d,t[l]&&(t[l].v=d,t[l].t="n"),i.splice(p,1),u=!0}catch(t){c.push({addr:l,f:a,error:String(t.message||t)}),i.splice(p,1),u=!0}}if(!u)for(const{addr:r,f:o}of i.splice(0))try{const c=s(o,n);e[r]=c,f[r]=c,t[r]&&(t[r].v=c,t[r].t="n")}catch(t){c.push({addr:r,f:o,error:String(t.message||t)})}}return{ok:0===c.length,values:f,errors:c}},tokenize:o,parseAddr:n};t.AllocFormula=f,"undefined"!=typeof module&&(module.exports=f)}("undefined"!=typeof window?window:globalThis);
+/* Prepline: evaluate plated master-copy Excel formulas (subset).
+   Supports the patterns found in Plated Entrees/Mains 2026 masters:
+   cell refs (A1 / $C$2), numbers, + - * /, parentheses, unary minus, SUM(range).
+   Used so totals match master sheet logic when pax changes — not a uniform multiplier. */
+(function (root) {
+  'use strict';
+
+  const COL = (c) => {
+    let n = 0;
+    for (let i = 0; i < c.length; i++) n = n * 26 + (c.charCodeAt(i) - 64);
+    return n - 1;
+  };
+  const ADDR = /^(\$?)([A-Z]+)(\$?)(\d+)$/i;
+
+  function parseAddr(a) {
+    const m = String(a).trim().match(ADDR);
+    if (!m) return null;
+    return { c: COL(m[2].toUpperCase()), r: parseInt(m[4], 10) - 1, a: m[2].toUpperCase() + m[4] };
+  }
+
+  function tokenize(s) {
+    const t = [];
+    let i = 0;
+    const str = String(s).replace(/^\s*=/, '').trim();
+    while (i < str.length) {
+      const ch = str[i];
+      if (/\s/.test(ch)) {
+        i++;
+        continue;
+      }
+      if (/[A-Za-z$]/.test(ch)) {
+        let j = i + 1;
+        while (j < str.length && /[A-Za-z0-9$]/.test(str[j])) j++;
+        const word = str.slice(i, j);
+        if (/^SUM$/i.test(word) && str[j] === '(') {
+          t.push({ type: 'func', v: 'SUM' });
+          i = j;
+          continue;
+        }
+        if (ADDR.test(word.replace(/\$/g, '$'))) {
+          // already has $
+        }
+        if (ADDR.test(word) || /^\$?[A-Z]+\$?\d+$/i.test(word)) {
+          t.push({ type: 'ref', v: word.toUpperCase().replace(/\$/g, '') /* store bare for lookup */, raw: word });
+          i = j;
+          continue;
+        }
+        throw new Error('unknown token ' + word);
+      }
+      if (/[0-9.]/.test(ch)) {
+        let j = i + 1;
+        while (j < str.length && /[0-9.]/.test(str[j])) j++;
+        t.push({ type: 'num', v: parseFloat(str.slice(i, j)) });
+        i = j;
+        continue;
+      }
+      if ('+-*/(),:'.indexOf(ch) >= 0) {
+        t.push({ type: 'op', v: ch });
+        i++;
+        continue;
+      }
+      throw new Error('bad char ' + ch + ' in ' + str);
+    }
+    return t;
+  }
+
+  function evalTokens(tokens, get) {
+    let p = 0;
+    function peek() {
+      return tokens[p];
+    }
+    function take() {
+      return tokens[p++];
+    }
+    function parseExpr() {
+      let left = parseTerm();
+      while (peek() && peek().type === 'op' && (peek().v === '+' || peek().v === '-')) {
+        const op = take().v;
+        const right = parseTerm();
+        left = op === '+' ? left + right : left - right;
+      }
+      return left;
+    }
+    function parseTerm() {
+      let left = parseFactor();
+      while (peek() && peek().type === 'op' && (peek().v === '*' || peek().v === '/')) {
+        const op = take().v;
+        const right = parseFactor();
+        left = op === '*' ? left * right : left / right;
+      }
+      return left;
+    }
+    function parseFactor() {
+      const t = peek();
+      if (!t) throw new Error('unexpected end');
+      if (t.type === 'op' && t.v === '+') {
+        take();
+        return parseFactor();
+      }
+      if (t.type === 'op' && t.v === '-') {
+        take();
+        return -parseFactor();
+      }
+      if (t.type === 'num') {
+        take();
+        return t.v;
+      }
+      if (t.type === 'ref') {
+        take();
+        const n = get(t.v);
+        return n == null || n === '' ? 0 : Number(n);
+      }
+      if (t.type === 'func' && t.v === 'SUM') {
+        take();
+        if (!peek() || peek().v !== '(') throw new Error('SUM expects (');
+        take();
+        // SUM(A1:A3) or SUM(A1,A2)
+        let sum = 0;
+        if (peek() && peek().type === 'ref') {
+          const a = take().v;
+          if (peek() && peek().v === ':') {
+            take();
+            if (!peek() || peek().type !== 'ref') throw new Error('bad range');
+            const b = take().v;
+            sum = sumRange(a, b, get);
+          } else {
+            sum = Number(get(a)) || 0;
+            while (peek() && peek().v === ',') {
+              take();
+              if (peek().type === 'ref') sum += Number(get(take().v)) || 0;
+              else sum += parseExpr();
+            }
+          }
+        } else {
+          sum = parseExpr();
+          while (peek() && peek().v === ',') {
+            take();
+            sum += parseExpr();
+          }
+        }
+        if (!peek() || peek().v !== ')') throw new Error('SUM expects )');
+        take();
+        return sum;
+      }
+      if (t.type === 'op' && t.v === '(') {
+        take();
+        const v = parseExpr();
+        if (!peek() || peek().v !== ')') throw new Error('expected )');
+        take();
+        return v;
+      }
+      throw new Error('unexpected ' + JSON.stringify(t));
+    }
+    const v = parseExpr();
+    if (p < tokens.length) throw new Error('trailing ' + JSON.stringify(tokens[p]));
+    return v;
+  }
+
+  function sumRange(a, b, get) {
+    const A = parseAddr(a),
+      B = parseAddr(b);
+    if (!A || !B) return 0;
+    let s = 0;
+    const r0 = Math.min(A.r, B.r),
+      r1 = Math.max(A.r, B.r);
+    const c0 = Math.min(A.c, B.c),
+      c1 = Math.max(A.c, B.c);
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const col =
+          (c >= 26 ? String.fromCharCode(64 + Math.floor(c / 26)) : '') + String.fromCharCode(65 + (c % 26));
+        // fix multi-col: use encode
+        const addr = requireEncode(c, r);
+        s += Number(get(addr)) || 0;
+      }
+    }
+    return s;
+  }
+
+  function requireEncode(c, r) {
+    let s = '';
+    let n = c + 1;
+    while (n) {
+      const m = (n - 1) % 26;
+      s = String.fromCharCode(65 + m) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s + (r + 1);
+  }
+
+  function evalFormula(formula, get) {
+    if (formula == null || formula === '') return null;
+    const tokens = tokenize(formula);
+    return evalTokens(tokens, (ref) => get(String(ref).toUpperCase().replace(/\$/g, '')));
+  }
+
+  /** Recalculate all formula cells on a SheetJS worksheet after pax (and other inputs) change.
+   *  get/set operate on bare addresses like 'C2'. Returns {ok, values, errors}. */
+  function recalcSheet(ws) {
+    const cells = {};
+    const formulas = [];
+    for (const addr of Object.keys(ws)) {
+      if (addr[0] === '!') continue;
+      const cell = ws[addr];
+      if (!cell) continue;
+      const bare = addr.toUpperCase();
+      if (cell.f) formulas.push({ addr: bare, f: cell.f });
+      else if (cell.t === 'n' || typeof cell.v === 'number') cells[bare] = cell.v;
+      else if (cell.v != null && cell.v !== '' && !isNaN(Number(cell.v))) cells[bare] = Number(cell.v);
+    }
+    const get = (ref) => {
+      const a = String(ref).toUpperCase().replace(/\$/g, '');
+      if (Object.prototype.hasOwnProperty.call(cells, a)) return cells[a];
+      // formula not yet computed — try resolve later
+      return cells[a];
+    };
+    const errors = [];
+    const values = {};
+    // iterate to resolve dependencies (E8 before E4*E8 etc.)
+    const pending = formulas.map((x) => ({ ...x }));
+    let guard = 0;
+    while (pending.length && guard < formulas.length * formulas.length + 5) {
+      guard++;
+      let progressed = false;
+      for (let i = 0; i < pending.length; ) {
+        const { addr, f } = pending[i];
+        try {
+          // dependency check: all refs either non-formula or already in cells
+          const refs = [];
+          tokenize(f).forEach((t) => {
+            if (t.type === 'ref') refs.push(t.v.toUpperCase().replace(/\$/g, ''));
+          });
+          const blocked = refs.some((r) => {
+            if (Object.prototype.hasOwnProperty.call(cells, r)) return false;
+            return formulas.some((ff) => ff.addr === r && !Object.prototype.hasOwnProperty.call(cells, r));
+          });
+          // allow if we can still eval (missing → 0); only block if ref is a pending formula
+          const pendingAddrs = new Set(pending.map((p) => p.addr));
+          const wait = refs.some((r) => pendingAddrs.has(r) && r !== addr);
+          if (wait) {
+            i++;
+            continue;
+          }
+          const v = evalFormula(f, get);
+          cells[addr] = v;
+          values[addr] = v;
+          if (ws[addr]) {
+            ws[addr].v = v;
+            ws[addr].t = 'n';
+            // keep .f
+          }
+          pending.splice(i, 1);
+          progressed = true;
+        } catch (e) {
+          errors.push({ addr, f, error: String(e.message || e) });
+          pending.splice(i, 1);
+          progressed = true;
+        }
+      }
+      if (!progressed) {
+        // break cycles: evaluate anyway
+        for (const { addr, f } of pending.splice(0)) {
+          try {
+            const v = evalFormula(f, get);
+            cells[addr] = v;
+            values[addr] = v;
+            if (ws[addr]) {
+              ws[addr].v = v;
+              ws[addr].t = 'n';
+            }
+          } catch (e) {
+            errors.push({ addr, f, error: String(e.message || e) });
+          }
+        }
+      }
+    }
+    return { ok: errors.length === 0, values, errors };
+  }
+
+  const API = { evalFormula, recalcSheet, tokenize, parseAddr };
+  root.AllocFormula = API;
+  if (typeof module !== 'undefined') module.exports = API;
+})(typeof window !== 'undefined' ? window : globalThis);

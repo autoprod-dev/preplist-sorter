@@ -1,2 +1,304 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(e){"use strict";var t=function(){return e.PreplineRules};function a(){(function(){if(!document.getElementById("rulesPanel")){var e=document.createElement("style");e.textContent=["#rulesPanel{position:fixed;inset:0;z-index:9400;background:rgba(28,30,27,.45);display:none;align-items:stretch;justify-content:center;padding:24px}","#rulesPanel.open{display:flex}","#rulesPanel .rp-card{background:#F7F4EC;border:1px solid #D9D3C4;border-radius:14px;width:min(960px,100%);max-height:92vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.25);padding:18px 20px 24px;font-family:Inter,sans-serif;color:#1C1E1B}","#rulesPanel h2{margin:0 0 4px;font-family:Fraunces,serif;font-size:22px}","#rulesPanel .rp-sub{color:#5C5A52;font-size:13px;margin:0 0 14px}","#rulesPanel .rp-top{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}","#rulesPanel select,#rulesPanel input,#rulesPanel textarea{font:inherit;padding:6px 8px;border:1px solid #C9C2B0;border-radius:8px;background:#fff}","#rulesPanel button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid #C9C2B0;background:#fff;cursor:pointer}","#rulesPanel button.primary{background:#1C1E1B;color:#F7F4EC;border-color:#1C1E1B}","#rulesPanel button.ghost{background:transparent}","#rulesPanel table{width:100%;border-collapse:collapse;font-size:13px}","#rulesPanel th,#rulesPanel td{border-bottom:1px solid #E4DED0;padding:7px 6px;text-align:left;vertical-align:top}","#rulesPanel tr.disabled{opacity:.45}","#rulesPanel .rp-type{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#7A7568}","#rulesPanel .rp-edit{background:#fff;border:1px solid #D9D3C4;border-radius:10px;padding:12px;margin:12px 0}","#rulesPanel .rp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}","#rulesPanel .rp-preview{background:#EDEAE2;border-radius:8px;padding:10px;font-size:13px;margin-top:10px}","#rulesPanel .rp-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}","#openRulesBtn{margin-left:6px}"].join("\n"),document.head.appendChild(e);var t=document.createElement("div");t.id="rulesPanel",t.setAttribute("role","dialog"),t.setAttribute("aria-label","Venue rules"),t.innerHTML='<div class="rp-card" id="rulesCard"></div>',document.body.appendChild(t),t.addEventListener("click",function(e){e.target===t&&n()})}})(),document.getElementById("rulesPanel").classList.add("open"),o()}function n(){var e=document.getElementById("rulesPanel");e&&e.classList.remove("open")}function r(){return t().getProfile()}function o(){var e=document.getElementById("rulesCard");if(e){var a=t().listProfiles(),c=r(),u=a.map(function(e){return'<option value="'+e.id+'"'+(e.id===c.id?" selected":"")+">"+y(e.name)+(e.builtIn?" (built-in)":"")+"</option>"}).join(""),p=(c.rules||[]).slice().sort(function(e,t){return(e.priority||0)-(t.priority||0)}).map(function(e,t){return'<tr class="'+(!1===e.enabled?"disabled":"")+'" data-id="'+e.id+'"><td><input type="checkbox" data-act="en" '+(!1===e.enabled?"":"checked")+"></td><td>"+(e.priority||0)+'</td><td><span class="rp-type">'+y(e.type)+"</span><div><b>"+y(e.name||e.type)+'</b></div><div style="color:#5C5A52;font-size:12px">'+y(function(e){return"colour"===e.type?(e.legendLabel||e.colour||"?")+" → "+(e.category||"")+(null!=e.leadDays?" · lead "+e.leadDays:""):"keyword"===e.type?(e.field||"name")+" "+(e.op||"contains")+' "'+(e.value||"")+'" → '+(e.category||"")+(null!=e.leadDays&&""!==e.leadDays?" · lead "+e.leadDays:"")+(e.weekendShift?" · weekend-shift":"")+(e.overridePrep?" · override":""):"packs"===e.type?"1 "+(e.unit||"pack")+" per "+(e.per||10)+" pax · round "+(e.round||"up"):"staffing"===e.type?(e.section||"any")+" ≤"+e.paxMax+" → "+e.chefs+" chefs":"ifthen"===e.type?"IF "+(e.field||"name")+" "+(e.op||"contains")+' "'+(e.value||"")+'" THEN…':""}(e))+'</div></td><td style="white-space:nowrap"><button type="button" data-act="up" title="Higher priority">↑</button> <button type="button" data-act="down" title="Lower priority">↓</button> <button type="button" data-act="edit">Edit</button> <button type="button" data-act="del" class="ghost">Delete</button></td></tr>'}).join("");e.innerHTML='<div class="rp-top"><h2 style="flex:1">Venue rules</h2><button type="button" class="ghost" id="rpClose">Close</button></div><p class="rp-sub">Colour, keyword, packs, staffing and IF/THEN rules for this kitchen. Profiles stay on this device. The Default profile mirrors the built-in prep-day vocabulary and staffing ratios. Weekend avoidance (all categories) is on by default — Sat/Sun → Mon, or Fri if Mon is on/after function; Sunday never. Optional Saturday starts + soft cap below. Crab croquettes (frozen bulk) is an editable keyword exception → 4-day protein window.</p><div class="rp-top"><label>Profile <select id="rpProfile">'+u+'</select></label><label>Match <select id="rpMode"><option value="first"'+("stack"!==c.matchMode?" selected":"")+'>First match wins</option><option value="stack"'+("stack"===c.matchMode?" selected":"")+'>Stack / continue</option></select></label><label title="All categories: Sat/Sun raw starts move forward to Monday, or back to Friday if Monday is on/after the function day. Sunday never."><input type="checkbox" id="rpWeekend"'+(!1===c.weekendShift?"":" checked")+'> Weekend avoidance (all categories)</label><label title="When off (default), Saturday starts are shifted like weekend. When on, Saturday is allowed as a prep start day."><input type="checkbox" id="rpAllowSat"'+(c.allowSaturdayStarts?" checked":"")+'> Allow Saturday starts</label><label title="Soft guidance when Saturday starts are allowed (not a hard lock).">Sat cap <input type="number" id="rpSatCap" min="0" max="20" step="1" value="'+(Number.isFinite(Number(c.saturdayCap))?Number(c.saturdayCap):3)+'" style="width:3.2em"></label><button type="button" id="rpNewProf">New profile</button><button type="button" id="rpDup">Duplicate</button><button type="button" id="rpExport">Export JSON</button><button type="button" id="rpImport">Import JSON</button><button type="button" id="rpReset"'+("default"===c.id?"":" hidden")+'>Reset Default</button><button type="button" id="rpDelProf" class="ghost"'+(c.builtIn?" hidden":"")+'>Delete profile</button></div><div class="rp-top"><button type="button" class="primary" data-add="colour">+ Colour</button><button type="button" class="primary" data-add="keyword">+ Keyword</button><button type="button" class="primary" data-add="packs">+ Packs</button><button type="button" class="primary" data-add="staffing">+ Staffing</button><button type="button" class="primary" data-add="ifthen">+ IF / THEN</button><button type="button" id="rpTest">Test preview</button></div><div class="rp-batch" id="rpBatch" style="margin:12px 0;padding:12px;border:1px solid #D9D3C3;border-radius:8px;background:#fff"><div style="font-weight:600;margin-bottom:6px">Cross-dish batching (per section)</div><p style="margin:0 0 8px;font-size:12.5px;color:#5C5A52">When “Batch across dishes” is on, matching ingredients merge across dishes/function days within each category’s batch window (4-day redmeat/dairy-butter/dry/oil/dressing/crab croq; 3 poultry/cheese/gels/starch; 2 puree/garnish; 1 fish/micro; long-life dressings/croutons/powders/crumbs/oils/soils/gels). Sunday never; Saturday only if allowed. Untick a category to keep it as separate lines.</p><div id="rpBatchChecks" style="display:flex;flex-wrap:wrap;gap:8px 14px"></div></div><div id="rpEdit"></div><table><thead><tr><th>On</th><th>Pri</th><th>Rule</th><th></th></tr></thead><tbody id="rpBody">'+(p||'<tr><td colspan="4">No rules yet.</td></tr>')+'</tbody></table><div class="rp-preview" id="rpPrev" hidden></div>',e.querySelector("#rpClose").onclick=n,e.querySelector("#rpProfile").onchange=function(){t().setActiveId(this.value),o()},e.querySelector("#rpMode").onchange=function(){c.matchMode=this.value,t().saveProfile(c)},e.querySelector("#rpWeekend").onchange=function(){c.weekendShift=!!this.checked,t().saveProfile(c),t().syncBatchableToUi&&t().syncBatchableToUi(c)};var s=e.querySelector("#rpAllowSat");s&&(s.onchange=function(){c.allowSaturdayStarts=!!this.checked,t().saveProfile(c),t().syncBatchableToUi&&t().syncBatchableToUi(c)});var f=e.querySelector("#rpSatCap");f&&(f.onchange=function(){var e=Number(this.value);c.saturdayCap=Number.isFinite(e)&&e>=0?e:3,t().saveProfile(c),t().syncBatchableToUi&&t().syncBatchableToUi(c)}),function(){var a=e.querySelector("#rpBatchChecks");if(a){c.batchable||(c.batchable={});var n=window.PREP_DAYS_VOCAB||[];a.innerHTML=n.map(function(e){var t=!1!==c.batchable[e.key]&&(!0===c.batchable[e.key]||["poultry","redmeat","seafood","veg","vegsoft","veghard","vegraw","vegcook","dry","oil","gels","puree","dressing","dairy","cheese","starch","crabcroq"].indexOf(e.key)>=0);return void 0===c.batchable[e.key]&&(c.batchable[e.key]=t),"prawn"===e.key&&(c.batchable.prawn=!1,t=!1),'<label style="font-size:12.5px;display:inline-flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" data-batch-cat="'+e.key+'"'+(c.batchable[e.key]?" checked":"")+"> "+(e.label||e.key)+"</label>"}).join(""),a.querySelectorAll("[data-batch-cat]").forEach(function(e){e.onchange=function(){c.batchable[e.getAttribute("data-batch-cat")]=!!e.checked,t().saveProfile(c),t().syncBatchableToUi&&t().syncBatchableToUi(c);try{o()}catch(e){}}}),t().syncBatchableToUi&&t().syncBatchableToUi(c)}}(),e.querySelector("#rpNewProf").onclick=function(){var e=prompt("Profile name","My kitchen");if(e){var a={id:t().uid(),name:e,builtIn:!1,matchMode:"first",rules:[]};t().saveProfile(a),t().setActiveId(a.id),o()}},e.querySelector("#rpDup").onclick=function(){var e=JSON.parse(JSON.stringify(c));e.id=t().uid(),e.name=c.name+" copy",e.builtIn=!1,t().saveProfile(e),t().setActiveId(e.id),o()},e.querySelector("#rpExport").onclick=function(){var e=new Blob([t().exportProfile(c.id)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(e),a.download="prepline-rules-"+(c.name||"profile").replace(/\s+/g,"-")+".json",a.click()},e.querySelector("#rpImport").onclick=function(){var e=document.createElement("input");e.type="file",e.accept=".json,application/json",e.onchange=function(){var a=e.files[0];if(a){var n=new FileReader;n.onload=function(){try{var e=t().importProfile(n.result,!0);t().setActiveId(e.id),o()}catch(e){alert("Import failed: "+(e.message||e))}},n.readAsText(a)}},e.click()},e.querySelector("#rpReset").onclick=function(){confirm("Reset Default profile to built-in prep-day vocabulary and staffing ratios?")&&(t().resetDefault(),o())},e.querySelector("#rpDelProf").onclick=function(){confirm("Delete this profile?")&&(t().deleteProfile(c.id),o())},e.querySelectorAll("[data-add]").forEach(function(e){e.onclick=function(){var a;l((a=e.getAttribute("data-add"),{id:t().uid(),type:a,enabled:!0,priority:50,name:a+" rule",stack:!1,colour:"",legendLabel:"",category:"veg",leadDays:4,weekendShift:!1,overridePrep:!1,field:"name",op:"contains",value:"",wildcard:!1,per:10,unit:"pack",round:"up",section:"Sandwich",mode:"service",paxMax:150,chefs:1,thenCategory:"",thenLead:"",thenStaff:"",thenHighlight:"",thenHide:!1,thenNote:""}))}}),e.querySelector("#rpTest").onclick=d,e.querySelectorAll("#rpBody tr[data-id]").forEach(function(e){var a=e.getAttribute("data-id"),n=(c.rules||[]).find(function(e){return e.id===a});e.querySelector("[data-act=en]").onchange=function(){n.enabled=!!this.checked,t().saveProfile(c),o()},e.querySelector("[data-act=up]").onclick=function(){i(n,-10)},e.querySelector("[data-act=down]").onclick=function(){i(n,10)},e.querySelector("[data-act=edit]").onclick=function(){l(n)},e.querySelector("[data-act=del]").onclick=function(){confirm("Delete rule?")&&(c.rules=c.rules.filter(function(e){return e.id!==a}),t().saveProfile(c),o())}})}}function i(e,a){var n=r();e.priority=(e.priority||0)+a,t().saveProfile(n),o()}function l(e){var a=document.getElementById("rpEdit");if(a){var n=!(r().rules||[]).some(function(t){return t.id===e.id});a.innerHTML='<div class="rp-edit"><b>'+(n?"New":"Edit")+" "+y(e.type)+' rule</b><div class="rp-grid" style="margin-top:8px">'+c("Name",'<input id="reName" value="'+f(e.name||"")+'">')+c("Priority",'<input id="rePri" type="number" value="'+(e.priority||0)+'">')+("colour"===e.type?c("Legend label",'<input id="reLab" value="'+f(e.legendLabel||"")+'">')+c("Colour hex",'<input id="reCol" value="'+f(e.colour||"")+'" placeholder="optional AABBCC">'):"")+("keyword"===e.type||"ifthen"===e.type?c("Field",u("reField",["name","section","pax","date","day","colour","category"],e.field||"name"))+c("Op",u("reOp",["contains","equals","gt","lt","between"],e.op||"contains"))+c("Value",'<input id="reVal" value="'+f(e.value||"")+'">'):"")+("keyword"===e.type?c("Wildcard prefix",'<label><input type="checkbox" id="reWild"'+(e.wildcard?" checked":"")+"> starts-with *</label>"):"")+("packs"===e.type?c("Per pax",'<input id="rePer" type="number" value="'+(e.per||10)+'">')+c("Unit",'<input id="reUnit" value="'+f(e.unit||"pack")+'">')+c("Round",u("reRound",["up","down","nearest"],e.round||"up")):"")+("staffing"===e.type?c("Section",'<input id="reSec" value="'+f(e.section||"")+'">')+c("Pax max",'<input id="rePax" type="number" value="'+(null==e.paxMax?"":e.paxMax)+'">')+c("Chefs",'<input id="reChefs" type="number" value="'+(null==e.chefs?"":e.chefs)+'">')+c("Round",u("reRound",["none","up","down","nearest"],e.round||"none")):"")+("colour"===e.type||"keyword"===e.type||"ifthen"===e.type?c("Category",'<input id="reCat" value="'+f(e.category||e.thenCategory||"")+'" placeholder="veg, starch…">')+c("Lead days",'<input id="reLead" type="number" value="'+(null!=e.leadDays?e.leadDays:e.thenLead||"")+'">'):"")+("ifthen"===e.type?c("Then staff",'<input id="reThenStaff" value="'+f(null==e.thenStaff?"":e.thenStaff)+'">')+c("Then note",'<input id="reThenNote" value="'+f(e.thenNote||"")+'">')+c("Hide",'<label><input type="checkbox" id="reHide"'+(e.thenHide?" checked":"")+"> hide row</label>"):"")+("colour"===e.type||"keyword"===e.type||"ifthen"===e.type?c("Weekend avoidance",'<label><input type="checkbox" id="reWk"'+(e.weekendShift?" checked":"")+"> Weekend avoidance</label>")+c("Override prep",'<label><input type="checkbox" id="reOv"'+(e.overridePrep?" checked":"")+"> wins over legend/keywords</label>"):"")+c("Stack",'<label><input type="checkbox" id="reStack"'+(e.stack?" checked":"")+"> keep matching after this</label>")+'</div><div class="rp-actions"><button type="button" class="primary" id="reSave">Save rule</button><button type="button" class="ghost" id="reCancel">Cancel</button></div></div>',a.querySelector("#reCancel").onclick=function(){a.innerHTML=""},a.querySelector("#reSave").onclick=function(){e.name=p("reName"),e.priority=s("rePri",0),e.stack=!!(document.getElementById("reStack")||{}).checked,"colour"===e.type&&(e.legendLabel=p("reLab"),e.colour=p("reCol"),e.category=p("reCat"),e.leadDays=s("reLead",null),e.weekendShift=!!(document.getElementById("reWk")||{}).checked,e.overridePrep=!!(document.getElementById("reOv")||{}).checked),"keyword"===e.type&&(e.field=p("reField"),e.op=p("reOp"),e.value=p("reVal"),e.wildcard=!!(document.getElementById("reWild")||{}).checked,e.category=p("reCat"),e.leadDays=s("reLead",null),e.weekendShift=!!(document.getElementById("reWk")||{}).checked,e.overridePrep=!!(document.getElementById("reOv")||{}).checked),"packs"===e.type&&(e.per=s("rePer",10),e.unit=p("reUnit")||"pack",e.round=p("reRound")||"up"),"staffing"===e.type&&(e.section=p("reSec"),e.paxMax=s("rePax",1/0),e.chefs=s("reChefs",1),e.round=p("reRound")||"none"),"ifthen"===e.type&&(e.field=p("reField"),e.op=p("reOp"),e.value=p("reVal"),e.thenCategory=p("reCat"),e.category=e.thenCategory,e.thenLead=s("reLead",""),e.leadDays=e.thenLead,e.thenStaff=s("reThenStaff",""),e.thenNote=p("reThenNote"),e.thenHide=!!(document.getElementById("reHide")||{}).checked,e.weekendShift=!!(document.getElementById("reWk")||{}).checked,e.overridePrep=!!(document.getElementById("reOv")||{}).checked);var n=r(),i=(n.rules||[]).findIndex(function(t){return t.id===e.id});i>=0?n.rules[i]=e:(n.rules=n.rules||[],n.rules.push(e)),t().saveProfile(n),a.innerHTML="",o()}}}function d(){var e=prompt("Test item / dish wording","roasted pumpkin puree");if(null!=e){var a=prompt("Legend label (optional)","puree"),n=t().preview({task:e,item:e,legendLabel:a||"",section:"Sandwich",pax:120}),r=document.getElementById("rpPrev");r.hidden=!1,r.innerHTML="<b>Preview</b> for <code>"+y(e)+"</code>"+(a?" · legend <code>"+y(a)+"</code>":"")+"<div>category: <b>"+y(n.category||"—")+"</b> · lead: <b>"+(null==n.leadDays?"—":n.leadDays)+"</b> · staff: <b>"+(null==n.staff?"—":n.staff)+'</b></div><div style="font-size:12px;color:#5C5A52">matched '+n.matched.length+" rule(s)"+(n.notes.length?" · "+y(n.notes.join("; ")):"")+"</div>"}}function c(e,t){return'<label style="display:flex;flex-direction:column;gap:4px;font-size:12px"><span>'+e+"</span>"+t+"</label>"}function u(e,t,a){return'<select id="'+e+'">'+t.map(function(e){return'<option value="'+e+'"'+(e===a?" selected":"")+">"+e+"</option>"}).join("")+"</select>"}function p(e){var t=document.getElementById(e);return t?t.value:""}function s(e,t){var a=document.getElementById(e);if(!a||""===a.value)return t;var n=Number(a.value);return Number.isFinite(n)?n:t}function y(e){return String(e??"").replace(/[&<>"']/g,function(e){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[e]})}function f(e){return y(e).replace(/\n/g," ")}function b(){var e=document.getElementById("sampleRow")||document.getElementById("dbPanel");if(e&&!document.getElementById("openRulesBtn")){var t=document.createElement("button");t.type="button",t.className="secondary",t.id="openRulesBtn",t.textContent="⚙️ Venue rules",t.onclick=a,e.appendChild(t)}}e.openRules=a,e.closeRules=n,document.addEventListener("DOMContentLoaded",b),"loading"!==document.readyState&&b()}(window);
+/* Venue Rules UI — profiles, rule CRUD, test preview. No real venue names. */
+(function (root) {
+  'use strict';
+  var R = function () { return root.PreplineRules; };
+
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+
+  function ensurePanel() {
+    if (document.getElementById('rulesPanel')) return;
+    var css = document.createElement('style');
+    css.textContent = [
+      '#rulesPanel{position:fixed;inset:0;z-index:9400;background:rgba(28,30,27,.45);display:none;align-items:stretch;justify-content:center;padding:24px}',
+      '#rulesPanel.open{display:flex}',
+      '#rulesPanel .rp-card{background:#F7F4EC;border:1px solid #D9D3C4;border-radius:14px;width:min(960px,100%);max-height:92vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.25);padding:18px 20px 24px;font-family:Inter,sans-serif;color:#1C1E1B}',
+      '#rulesPanel h2{margin:0 0 4px;font-family:Fraunces,serif;font-size:22px}',
+      '#rulesPanel .rp-sub{color:#5C5A52;font-size:13px;margin:0 0 14px}',
+      '#rulesPanel .rp-top{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}',
+      '#rulesPanel select,#rulesPanel input,#rulesPanel textarea{font:inherit;padding:6px 8px;border:1px solid #C9C2B0;border-radius:8px;background:#fff}',
+      '#rulesPanel button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid #C9C2B0;background:#fff;cursor:pointer}',
+      '#rulesPanel button.primary{background:#1C1E1B;color:#F7F4EC;border-color:#1C1E1B}',
+      '#rulesPanel button.ghost{background:transparent}',
+      '#rulesPanel table{width:100%;border-collapse:collapse;font-size:13px}',
+      '#rulesPanel th,#rulesPanel td{border-bottom:1px solid #E4DED0;padding:7px 6px;text-align:left;vertical-align:top}',
+      '#rulesPanel tr.disabled{opacity:.45}',
+      '#rulesPanel .rp-type{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#7A7568}',
+      '#rulesPanel .rp-edit{background:#fff;border:1px solid #D9D3C4;border-radius:10px;padding:12px;margin:12px 0}',
+      '#rulesPanel .rp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}',
+      '#rulesPanel .rp-preview{background:#EDEAE2;border-radius:8px;padding:10px;font-size:13px;margin-top:10px}',
+      '#rulesPanel .rp-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}',
+      '#openRulesBtn{margin-left:6px}'
+    ].join('\n');
+    document.head.appendChild(css);
+
+    var wrap = el('div');
+    wrap.id = 'rulesPanel';
+    wrap.setAttribute('role', 'dialog');
+    wrap.setAttribute('aria-label', 'Venue rules');
+    wrap.innerHTML = '<div class="rp-card" id="rulesCard"></div>';
+    document.body.appendChild(wrap);
+    wrap.addEventListener('click', function (e) { if (e.target === wrap) closeRules(); });
+  }
+
+  function openRules() {
+    ensurePanel();
+    document.getElementById('rulesPanel').classList.add('open');
+    render();
+  }
+  function closeRules() {
+    var p = document.getElementById('rulesPanel');
+    if (p) p.classList.remove('open');
+  }
+
+  function activeProfile() { return R().getProfile(); }
+
+  function render() {
+    var card = document.getElementById('rulesCard');
+    if (!card) return;
+    var profiles = R().listProfiles();
+    var p = activeProfile();
+    var opts = profiles.map(function (x) {
+      return '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>' + esc(x.name) + (x.builtIn ? ' (built-in)' : '') + '</option>';
+    }).join('');
+    var rows = (p.rules || []).slice().sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); }).map(function (r, i) {
+      return '<tr class="' + (r.enabled === false ? 'disabled' : '') + '" data-id="' + r.id + '">' +
+        '<td><input type="checkbox" data-act="en" ' + (r.enabled === false ? '' : 'checked') + '></td>' +
+        '<td>' + (r.priority || 0) + '</td>' +
+        '<td><span class="rp-type">' + esc(r.type) + '</span><div><b>' + esc(r.name || r.type) + '</b></div><div style="color:#5C5A52;font-size:12px">' + esc(summary(r)) + '</div></td>' +
+        '<td style="white-space:nowrap">' +
+          '<button type="button" data-act="up" title="Higher priority">↑</button> ' +
+          '<button type="button" data-act="down" title="Lower priority">↓</button> ' +
+          '<button type="button" data-act="edit">Edit</button> ' +
+          '<button type="button" data-act="del" class="ghost">Delete</button>' +
+        '</td></tr>';
+    }).join('');
+    card.innerHTML =
+      '<div class="rp-top"><h2 style="flex:1">Venue rules</h2><button type="button" class="ghost" id="rpClose">Close</button></div>' +
+      '<p class="rp-sub">Colour, keyword, packs, staffing and IF/THEN rules for this kitchen. Profiles stay on this device. The Default profile mirrors the built-in prep-day vocabulary and staffing ratios. Weekend avoidance (all categories) is on by default — Sat/Sun → Mon, or Fri if Mon is on/after function; Sunday never. Optional Saturday starts + soft cap below. Crab croquettes (frozen bulk) is an editable keyword exception → 4-day protein window.</p>' +
+      '<div class="rp-top">' +
+        '<label>Profile <select id="rpProfile">' + opts + '</select></label>' +
+        '<label>Match <select id="rpMode"><option value="first"' + (p.matchMode !== 'stack' ? ' selected' : '') + '>First match wins</option><option value="stack"' + (p.matchMode === 'stack' ? ' selected' : '') + '>Stack / continue</option></select></label>' +
+        '<label title="All categories: Sat/Sun raw starts move forward to Monday, or back to Friday if Monday is on/after the function day. Sunday never."><input type="checkbox" id="rpWeekend"' + (p.weekendShift === false ? '' : ' checked') + '> Weekend avoidance (all categories)</label>' +
+        '<label title="When off (default), Saturday starts are shifted like weekend. When on, Saturday is allowed as a prep start day."><input type="checkbox" id="rpAllowSat"' + (p.allowSaturdayStarts ? ' checked' : '') + '> Allow Saturday starts</label>' +
+        '<label title="Soft guidance when Saturday starts are allowed (not a hard lock).">Sat cap <input type="number" id="rpSatCap" min="0" max="20" step="1" value="' + (Number.isFinite(Number(p.saturdayCap)) ? Number(p.saturdayCap) : 3) + '" style="width:3.2em"></label>' +
+        '<button type="button" id="rpNewProf">New profile</button>' +
+        '<button type="button" id="rpDup">Duplicate</button>' +
+        '<button type="button" id="rpExport">Export JSON</button>' +
+        '<button type="button" id="rpImport">Import JSON</button>' +
+        '<button type="button" id="rpReset"' + (p.id === 'default' ? '' : ' hidden') + '>Reset Default</button>' +
+        '<button type="button" id="rpDelProf" class="ghost"' + (p.builtIn ? ' hidden' : '') + '>Delete profile</button>' +
+      '</div>' +
+      '<div class="rp-top">' +
+        '<button type="button" class="primary" data-add="colour">+ Colour</button>' +
+        '<button type="button" class="primary" data-add="keyword">+ Keyword</button>' +
+        '<button type="button" class="primary" data-add="packs">+ Packs</button>' +
+        '<button type="button" class="primary" data-add="staffing">+ Staffing</button>' +
+        '<button type="button" class="primary" data-add="ifthen">+ IF / THEN</button>' +
+        '<button type="button" id="rpTest">Test preview</button>' +
+      '</div>' +
+      '<div class="rp-batch" id="rpBatch" style="margin:12px 0;padding:12px;border:1px solid #D9D3C3;border-radius:8px;background:#fff">' +
+        '<div style="font-weight:600;margin-bottom:6px">Cross-dish batching (per section)</div>' +
+        '<p style="margin:0 0 8px;font-size:12.5px;color:#5C5A52">When “Batch across dishes” is on, matching ingredients merge across dishes/function days within each category’s batch window (4-day redmeat/dairy-butter/dry/oil/dressing/crab croq; 3 poultry/cheese/gels/starch; 2 puree/garnish; 1 fish/micro; long-life dressings/croutons/powders/crumbs/oils/soils/gels). Sunday never; Saturday only if allowed. Untick a category to keep it as separate lines.</p>' +
+        '<div id="rpBatchChecks" style="display:flex;flex-wrap:wrap;gap:8px 14px"></div>' +
+      '</div>' +
+      '<div id="rpEdit"></div>' +
+      '<table><thead><tr><th>On</th><th>Pri</th><th>Rule</th><th></th></tr></thead><tbody id="rpBody">' + (rows || '<tr><td colspan="4">No rules yet.</td></tr>') + '</tbody></table>' +
+      '<div class="rp-preview" id="rpPrev" hidden></div>';
+
+    card.querySelector('#rpClose').onclick = closeRules;
+    card.querySelector('#rpProfile').onchange = function () { R().setActiveId(this.value); render(); };
+    card.querySelector('#rpMode').onchange = function () { p.matchMode = this.value; R().saveProfile(p); };
+    card.querySelector('#rpWeekend').onchange = function () { p.weekendShift = !!this.checked; R().saveProfile(p); if (R().syncBatchableToUi) R().syncBatchableToUi(p); };
+    var allowSat = card.querySelector('#rpAllowSat');
+    if (allowSat) allowSat.onchange = function () { p.allowSaturdayStarts = !!this.checked; R().saveProfile(p); if (R().syncBatchableToUi) R().syncBatchableToUi(p); };
+    var satCap = card.querySelector('#rpSatCap');
+    if (satCap) satCap.onchange = function () { var n = Number(this.value); p.saturdayCap = Number.isFinite(n) && n >= 0 ? n : 3; R().saveProfile(p); if (R().syncBatchableToUi) R().syncBatchableToUi(p); };
+    (function fillBatch(){
+      var box = card.querySelector('#rpBatchChecks'); if (!box) return;
+      if (!p.batchable) p.batchable = {};
+      var vocab = (window.PREP_DAYS_VOCAB || []);
+      box.innerHTML = vocab.map(function (c) {
+        /* 4.8.24: prawn omitted from default-on list → stays false (no Mon/Sat early batch). */
+        var on = p.batchable[c.key] !== false && (p.batchable[c.key] === true || ['poultry','redmeat','seafood','veg','vegsoft','veghard','vegraw','vegcook','dry','oil','gels','puree','dressing','dairy','cheese','starch','crabcroq'].indexOf(c.key) >= 0);
+        if (p.batchable[c.key] === undefined) p.batchable[c.key] = on;
+        if (c.key === 'prawn') { p.batchable.prawn = false; on = false; }
+        return '<label style="font-size:12.5px;display:inline-flex;align-items:center;gap:5px;cursor:pointer">' +
+          '<input type="checkbox" data-batch-cat="' + c.key + '"' + (p.batchable[c.key] ? ' checked' : '') + '> ' +
+          (c.label || c.key) + '</label>';
+      }).join('');
+      box.querySelectorAll('[data-batch-cat]').forEach(function (inp) {
+        inp.onchange = function () {
+          p.batchable[inp.getAttribute('data-batch-cat')] = !!inp.checked;
+          R().saveProfile(p);
+          if (R().syncBatchableToUi) R().syncBatchableToUi(p);
+          if (typeof render === 'function') try { render(); } catch (e) {}
+        };
+      });
+      if (R().syncBatchableToUi) R().syncBatchableToUi(p);
+    })();
+    card.querySelector('#rpNewProf').onclick = function () {
+      var name = prompt('Profile name', 'My kitchen');
+      if (!name) return;
+      var np = { id: R().uid(), name: name, builtIn: false, matchMode: 'first', rules: [] };
+      R().saveProfile(np); R().setActiveId(np.id); render();
+    };
+    card.querySelector('#rpDup').onclick = function () {
+      var copy = JSON.parse(JSON.stringify(p));
+      copy.id = R().uid(); copy.name = p.name + ' copy'; copy.builtIn = false;
+      R().saveProfile(copy); R().setActiveId(copy.id); render();
+    };
+    card.querySelector('#rpExport').onclick = function () {
+      var blob = new Blob([R().exportProfile(p.id)], { type: 'application/json' });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'prepline-rules-' + (p.name || 'profile').replace(/\s+/g, '-') + '.json'; a.click();
+    };
+    card.querySelector('#rpImport').onclick = function () {
+      var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+      inp.onchange = function () {
+        var f = inp.files[0]; if (!f) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          try { var imp = R().importProfile(reader.result, true); R().setActiveId(imp.id); render(); }
+          catch (err) { alert('Import failed: ' + (err.message || err)); }
+        };
+        reader.readAsText(f);
+      };
+      inp.click();
+    };
+    card.querySelector('#rpReset').onclick = function () {
+      if (!confirm('Reset Default profile to built-in prep-day vocabulary and staffing ratios?')) return;
+      R().resetDefault(); render();
+    };
+    card.querySelector('#rpDelProf').onclick = function () {
+      if (!confirm('Delete this profile?')) return;
+      R().deleteProfile(p.id); render();
+    };
+    card.querySelectorAll('[data-add]').forEach(function (b) {
+      b.onclick = function () { showEditor(blankRule(b.getAttribute('data-add'))); };
+    });
+    card.querySelector('#rpTest').onclick = showTest;
+    card.querySelectorAll('#rpBody tr[data-id]').forEach(function (tr) {
+      var id = tr.getAttribute('data-id');
+      var rule = (p.rules || []).find(function (x) { return x.id === id; });
+      tr.querySelector('[data-act=en]').onchange = function () { rule.enabled = !!this.checked; R().saveProfile(p); render(); };
+      tr.querySelector('[data-act=up]').onclick = function () { bump(rule, -10); };
+      tr.querySelector('[data-act=down]').onclick = function () { bump(rule, 10); };
+      tr.querySelector('[data-act=edit]').onclick = function () { showEditor(rule); };
+      tr.querySelector('[data-act=del]').onclick = function () {
+        if (!confirm('Delete rule?')) return;
+        p.rules = p.rules.filter(function (x) { return x.id !== id; });
+        R().saveProfile(p); render();
+      };
+    });
+  }
+
+  function bump(rule, delta) {
+    var p = activeProfile();
+    rule.priority = (rule.priority || 0) + delta;
+    R().saveProfile(p); render();
+  }
+
+  function blankRule(type) {
+    return {
+      id: R().uid(), type: type, enabled: true, priority: 50,
+      name: type + ' rule', stack: false,
+      colour: '', legendLabel: '', category: 'veg', leadDays: 4, weekendShift: false, overridePrep: false,
+      field: 'name', op: 'contains', value: '', wildcard: false,
+      per: 10, unit: 'pack', round: 'up',
+      section: 'Sandwich', mode: 'service', paxMax: 150, chefs: 1,
+      thenCategory: '', thenLead: '', thenStaff: '', thenHighlight: '', thenHide: false, thenNote: ''
+    };
+  }
+
+  function summary(r) {
+    if (r.type === 'colour') return (r.legendLabel || r.colour || '?') + ' → ' + (r.category || '') + (r.leadDays != null ? ' · lead ' + r.leadDays : '');
+    if (r.type === 'keyword') return (r.field || 'name') + ' ' + (r.op || 'contains') + ' "' + (r.value || '') + '" → ' + (r.category || '') + (r.leadDays != null && r.leadDays !== '' ? ' · lead ' + r.leadDays : '') + (r.weekendShift ? ' · weekend-shift' : '') + (r.overridePrep ? ' · override' : '');
+    if (r.type === 'packs') return '1 ' + (r.unit || 'pack') + ' per ' + (r.per || 10) + ' pax · round ' + (r.round || 'up');
+    if (r.type === 'staffing') return (r.section || 'any') + ' ≤' + r.paxMax + ' → ' + r.chefs + ' chefs';
+    if (r.type === 'ifthen') return 'IF ' + (r.field || 'name') + ' ' + (r.op || 'contains') + ' "' + (r.value || '') + '" THEN…';
+    return '';
+  }
+
+  function showEditor(rule) {
+    var box = document.getElementById('rpEdit');
+    if (!box) return;
+    var isNew = !(activeProfile().rules || []).some(function (x) { return x.id === rule.id; });
+    box.innerHTML = '<div class="rp-edit"><b>' + (isNew ? 'New' : 'Edit') + ' ' + esc(rule.type) + ' rule</b>' +
+      '<div class="rp-grid" style="margin-top:8px">' +
+      field('Name', '<input id="reName" value="' + escAttr(rule.name || '') + '">') +
+      field('Priority', '<input id="rePri" type="number" value="' + (rule.priority || 0) + '">') +
+      (rule.type === 'colour' ? field('Legend label', '<input id="reLab" value="' + escAttr(rule.legendLabel || '') + '">') + field('Colour hex', '<input id="reCol" value="' + escAttr(rule.colour || '') + '" placeholder="optional AABBCC">') : '') +
+      (rule.type === 'keyword' || rule.type === 'ifthen' ? field('Field', sel('reField', ['name', 'section', 'pax', 'date', 'day', 'colour', 'category'], rule.field || 'name')) + field('Op', sel('reOp', ['contains', 'equals', 'gt', 'lt', 'between'], rule.op || 'contains')) + field('Value', '<input id="reVal" value="' + escAttr(rule.value || '') + '">') : '') +
+      (rule.type === 'keyword' ? field('Wildcard prefix', '<label><input type="checkbox" id="reWild"' + (rule.wildcard ? ' checked' : '') + '> starts-with *</label>') : '') +
+      (rule.type === 'packs' ? field('Per pax', '<input id="rePer" type="number" value="' + (rule.per || 10) + '">') + field('Unit', '<input id="reUnit" value="' + escAttr(rule.unit || 'pack') + '">') + field('Round', sel('reRound', ['up', 'down', 'nearest'], rule.round || 'up')) : '') +
+      (rule.type === 'staffing' ? field('Section', '<input id="reSec" value="' + escAttr(rule.section || '') + '">') + field('Pax max', '<input id="rePax" type="number" value="' + (rule.paxMax == null ? '' : rule.paxMax) + '">') + field('Chefs', '<input id="reChefs" type="number" value="' + (rule.chefs == null ? '' : rule.chefs) + '">') + field('Round', sel('reRound', ['none', 'up', 'down', 'nearest'], rule.round || 'none')) : '') +
+      ((rule.type === 'colour' || rule.type === 'keyword' || rule.type === 'ifthen') ? field('Category', '<input id="reCat" value="' + escAttr(rule.category || rule.thenCategory || '') + '" placeholder="veg, starch…">') + field('Lead days', '<input id="reLead" type="number" value="' + (rule.leadDays != null ? rule.leadDays : (rule.thenLead || '')) + '">') : '') +
+      (rule.type === 'ifthen' ? field('Then staff', '<input id="reThenStaff" value="' + escAttr(rule.thenStaff == null ? '' : rule.thenStaff) + '">') + field('Then note', '<input id="reThenNote" value="' + escAttr(rule.thenNote || '') + '">') + field('Hide', '<label><input type="checkbox" id="reHide"' + (rule.thenHide ? ' checked' : '') + '> hide row</label>') : '') +
+      ((rule.type === 'colour' || rule.type === 'keyword' || rule.type === 'ifthen') ? field('Weekend avoidance', '<label><input type="checkbox" id="reWk"' + (rule.weekendShift ? ' checked' : '') + '> Weekend avoidance</label>') + field('Override prep', '<label><input type="checkbox" id="reOv"' + (rule.overridePrep ? ' checked' : '') + '> wins over legend/keywords</label>') : '') +
+      field('Stack', '<label><input type="checkbox" id="reStack"' + (rule.stack ? ' checked' : '') + '> keep matching after this</label>') +
+      '</div><div class="rp-actions"><button type="button" class="primary" id="reSave">Save rule</button><button type="button" class="ghost" id="reCancel">Cancel</button></div></div>';
+    box.querySelector('#reCancel').onclick = function () { box.innerHTML = ''; };
+    box.querySelector('#reSave').onclick = function () {
+      rule.name = val('reName');
+      rule.priority = num('rePri', 0);
+      rule.stack = !!(document.getElementById('reStack') || {}).checked;
+      if (rule.type === 'colour') { rule.legendLabel = val('reLab'); rule.colour = val('reCol'); rule.category = val('reCat'); rule.leadDays = num('reLead', null); rule.weekendShift = !!(document.getElementById('reWk') || {}).checked; rule.overridePrep = !!(document.getElementById('reOv') || {}).checked; }
+      if (rule.type === 'keyword') { rule.field = val('reField'); rule.op = val('reOp'); rule.value = val('reVal'); rule.wildcard = !!(document.getElementById('reWild') || {}).checked; rule.category = val('reCat'); rule.leadDays = num('reLead', null); rule.weekendShift = !!(document.getElementById('reWk') || {}).checked; rule.overridePrep = !!(document.getElementById('reOv') || {}).checked; }
+      if (rule.type === 'packs') { rule.per = num('rePer', 10); rule.unit = val('reUnit') || 'pack'; rule.round = val('reRound') || 'up'; }
+      if (rule.type === 'staffing') { rule.section = val('reSec'); rule.paxMax = num('rePax', Infinity); rule.chefs = num('reChefs', 1); rule.round = val('reRound') || 'none'; }
+      if (rule.type === 'ifthen') {
+        rule.field = val('reField'); rule.op = val('reOp'); rule.value = val('reVal');
+        rule.thenCategory = val('reCat'); rule.category = rule.thenCategory;
+        rule.thenLead = num('reLead', ''); rule.leadDays = rule.thenLead;
+        rule.thenStaff = num('reThenStaff', ''); rule.thenNote = val('reThenNote');
+        rule.thenHide = !!(document.getElementById('reHide') || {}).checked;
+        rule.weekendShift = !!(document.getElementById('reWk') || {}).checked;
+        rule.overridePrep = !!(document.getElementById('reOv') || {}).checked;
+      }
+      var p = activeProfile();
+      var i = (p.rules || []).findIndex(function (x) { return x.id === rule.id; });
+      if (i >= 0) p.rules[i] = rule; else { p.rules = p.rules || []; p.rules.push(rule); }
+      R().saveProfile(p); box.innerHTML = ''; render();
+    };
+  }
+
+  function showTest() {
+    var name = prompt('Test item / dish wording', 'roasted pumpkin puree');
+    if (name == null) return;
+    var legend = prompt('Legend label (optional)', 'puree');
+    var out = R().preview({ task: name, item: name, legendLabel: legend || '', section: 'Sandwich', pax: 120 });
+    var box = document.getElementById('rpPrev');
+    box.hidden = false;
+    box.innerHTML = '<b>Preview</b> for <code>' + esc(name) + '</code>' + (legend ? ' · legend <code>' + esc(legend) + '</code>' : '') +
+      '<div>category: <b>' + esc(out.category || '—') + '</b> · lead: <b>' + (out.leadDays == null ? '—' : out.leadDays) + '</b> · staff: <b>' + (out.staff == null ? '—' : out.staff) + '</b></div>' +
+      '<div style="font-size:12px;color:#5C5A52">matched ' + out.matched.length + ' rule(s)' + (out.notes.length ? ' · ' + esc(out.notes.join('; ')) : '') + '</div>';
+  }
+
+  function field(label, html) { return '<label style="display:flex;flex-direction:column;gap:4px;font-size:12px"><span>' + label + '</span>' + html + '</label>'; }
+  function sel(id, opts, cur) {
+    return '<select id="' + id + '">' + opts.map(function (o) { return '<option value="' + o + '"' + (o === cur ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>';
+  }
+  function val(id) { var e = document.getElementById(id); return e ? e.value : ''; }
+  function num(id, d) { var e = document.getElementById(id); if (!e || e.value === '') return d; var n = Number(e.value); return Number.isFinite(n) ? n : d; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function escAttr(s) { return esc(s).replace(/\n/g, ' '); }
+
+  function wireButton() {
+    var row = document.getElementById('sampleRow') || document.getElementById('dbPanel');
+    if (!row || document.getElementById('openRulesBtn')) return;
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'secondary'; b.id = 'openRulesBtn';
+    b.textContent = '⚙️ Venue rules';
+    b.onclick = openRules;
+    row.appendChild(b);
+  }
+
+  root.openRules = openRules;
+  root.closeRules = closeRules;
+  document.addEventListener('DOMContentLoaded', wireButton);
+  if (document.readyState !== 'loading') wireButton();
+})(window);

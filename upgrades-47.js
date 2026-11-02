@@ -1,2 +1,1788 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(e){"use strict";var t=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],n={Monday:"Mon",Tuesday:"Tue",Wednesday:"Wed",Thursday:"Thu",Friday:"Fri",Saturday:"Sat",Sunday:"Sun"},a=["Sauce, Purees and Gels","Vegetables","Garnishes, Herbs, Powders, Oils Etc.","Starch","Proteins","Box off/ Trolley organising team"],r={"Sauce, Purees and Gels":{bg:"FFD6EAF7",css:"#D6EAF7",ink:"#1A56DB",short:"Sauce"},Vegetables:{bg:"FFE4F0E1",css:"#E4F0E1",ink:"#2F6B3A",short:"Vege"},"Garnishes, Herbs, Powders, Oils Etc.":{bg:"FFF6E6D2",css:"#F6E6D2",ink:"#C97A2E",short:"Garnish"},Starch:{bg:"FFFFF4C2",css:"#FFF4C2",ink:"#7A5A00",short:"Starch"},Proteins:{bg:"FFF5E3DC",css:"#F5E3DC",ink:"#B5442E",short:"Protein"},"Box off/ Trolley organising team":{bg:"FFEFE1D2",css:"#EFE1D2",ink:"#8A5A34",short:"Box"}};function i(e){return r[e]||{bg:"FFF2F2F2",css:"#F2F2F2",ink:"#5C5A52",short:e||"—"}}var o="prepline.organised.notes.v1",s="prepline.organised.staff.v1",l="prepline.history.v1",c="prepline.undo.v1",d="prepline.deviceWho.v1";function u(){return S(o,{})||{}}function p(){return S(s,{})||{}}function f(){var e=S(d,null);if(e&&e.name)return e;try{var t=JSON.parse(localStorage.getItem("prepline.account.v1")||"null");if(t&&(t.name||t.email))return e={name:t.name||"",email:t.email||""},E(d,e),e}catch(e){}return{name:"",email:""}}function h(e){e=e||new Date;try{return new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Sydney",year:"numeric",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:!0}).format(e)+" Sydney"}catch(t){return e.toISOString()}}function m(){var e=S(l,[]);return Array.isArray(e)?e:[]}function v(){var e=S(c,[]);return Array.isArray(e)?e:[]}var y={poultry:4,redmeat:4,crabcroq:4,seafood:2,fish:2,prawn:1,vegsoft:2,veghard:4,veg:4,dry:4,oil:4,gels:3,puree:2,dressing:4,dairy:4,cheese:3,poultry:3,starch:3,garnish:2,micro:1};function g(e){return String(e??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}function b(e){return function(t){try{return(e||g)(String(t??""))}catch(e){return g(t)}}}function x(e){return n[e]||(e?String(e).slice(0,3):"—")}function k(e){return t.indexOf(e)}function w(e){return String(e||"").toLowerCase().replace(/\([^)]*\)/g," ").replace(/[^a-z0-9\s/]/g," ").replace(/\s+/g," ").trim()}function S(e,t){try{var n=localStorage.getItem(e);return null==n?t:JSON.parse(n)}catch(e){return t}}function E(e,t){try{return localStorage.setItem(e,JSON.stringify(t)),!0}catch(e){return!1}}function C(e,t,n){var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:n||"text/plain"})),a.download=e,document.body.appendChild(a),a.click(),a.remove(),setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}},1500)}function D(n,a){a=a||{};var r=e.PreplineBatch&&e.PreplineBatch.buildBatches?e.PreplineBatch.buildBatches(n,a):(n||[]).map(function(e){return{taskLabel:e.task,day:e.day||"",section:e.section||"",total:0,hasTotal:!1,unit:e.unit||"",rows:[e],dishes:[e.dish],merged:!1,covers:"",reason:"",batchKey:e.task}}),i={};return t.forEach(function(e){"Sunday"!==e&&(i[e]={})}),i.Unscheduled={},r.forEach(function(e){var t=e.day&&k(e.day)>=0&&"Sunday"!==e.day?e.day:"Unscheduled",n=e.section||"Uncategorised";i[t]||(i[t]={}),i[t][n]||(i[t][n]=[]),i[t][n].push(e)}),i}function F(e,t){t=t||function(e){return e};var n=[],a={};return(e.dishes||[]).forEach(function(e){var r=t(e)||e;r&&!a[r]&&(a[r]=!0,n.push(r))}),n}function L(e,t){if(t=t||{},!e||!e.merged)return"";var n=F(e,t.cleanDishName);if(!n.length)return"Merged";var a=null!=t.maxNames?t.maxNames:99,r=n.slice(0,a),i=n.length-r.length;return"Merged: "+r.join(" + ")+(i>0?" +"+i+" more":"")}function N(e,t,n){if(n=n||{},!e||!e.merged)return"";t=b(t);var a=L(e,Object.assign({},n,{maxNames:99})),r=L(e,Object.assign({},n,{maxNames:n.phoneMax||2})),i=e.covers?'<span class="pb-covers">'+t(e.covers)+"</span> · ":"";return'<div class="pb-reason u47-merged" title="'+t(a)+'">'+i+'<span class="u47-merged-full">'+t(a)+'</span><span class="u47-merged-short">'+t(r)+"</span></div>"}var A="prepline.tickoff.v1";function P(){return S(A,{lines:{},listId:"",updated:0})||{lines:{},listId:"",updated:0}}function O(e){e.updated=Date.now(),E(A,e)}function q(e){return w((e.batchKey||e.taskLabel||"")+"|"+(e.day||"")+"|"+(e.section||""))}function T(e){return P().lines[q(e)]||{status:"todo",pct:0,qtyDone:"",note:""}}function B(e,t){t=b(t);var n=T(e),a=encodeURIComponent(q(e));return'<div class="u47-tickbar no-print u47-tick u47-tick-'+(n.status||"todo")+'" data-tick-key="'+a+'"><button type="button" class="u47-tickbtn" data-tick="todo" aria-label="Not done">○</button><button type="button" class="u47-tickbtn" data-tick="part" aria-label="Part done">◐</button><button type="button" class="u47-tickbtn" data-tick="done" aria-label="Done">●</button>'+("part"===n.status?'<input class="u47-tickpct" type="number" min="0" max="100" value="'+t(n.pct||50)+'" aria-label="Percent done">%':"")+("done"===n.status?'<span class="u47-ticklab">Done</span>':"part"===n.status?'<span class="u47-ticklab">Part</span>':"")+"</div>"}function I(){var e=P(),t=JSON.stringify({v:1,t:e.updated,lines:e.lines});try{return btoa(unescape(encodeURIComponent(t)))}catch(e){return""}}function j(e){try{var t=decodeURIComponent(escape(atob(String(e||"").trim()))),n=JSON.parse(t);if(!n||!n.lines)return!1;var a=P();return a.lines=Object.assign({},a.lines,n.lines),O(a),!0}catch(e){return!1}}var R="prepline.wo.snapshot.v1";function U(e){return w(e.dish)+"|"+w(e.task)+"|"+String(e.qty)+"|"+String(e.unit||"")}function M(e,t){var n={},a={};function r(e){return w(e.dish)+"|"+w(e.task)}(e.rows||[]).forEach(function(e){n[U(e)]=e}),(t.rows||[]).forEach(function(e){a[U(e)]=e});var i={},o={};(e.rows||[]).forEach(function(e){i[r(e)]=e}),(t.rows||[]).forEach(function(e){o[r(e)]=e});var s=[],l=[],c=[];return Object.keys(o).forEach(function(e){if(i[e]){var t=i[e],n=o[e];String(t.qty)===String(n.qty)&&String(t.unit||"")===String(n.unit||"")||c.push({before:t,after:n})}else s.push(o[e])}),Object.keys(i).forEach(function(e){o[e]||l.push(i[e])}),{prevName:e.name||"",nextName:t.name||"",added:s,removed:l,changed:c,summary:s.length+" added, "+l.length+" removed, "+c.length+" qty changed"}}function V(e){if(!e||k(e)<0)return"";var n,a=(n=k(e))<0?"":t[((n-1)%7+7)%7];return"Sunday"===a&&(a="Saturday"),a}function z(t,n,a){a=a||{};var r=e.PreplineBatch&&e.PreplineBatch.buildBatches?e.PreplineBatch.buildBatches(t,n):[],i=a.applyYield||function(e){return e},o={},s=[];return r.forEach(function(e){var t=(e.name||e.taskLabel||"").toLowerCase(),n=String(e.unit||"").toLowerCase();/^(g|gm|grams?)$/.test(n)&&(n="g"),/^(kg|kgs|kilos?)$/.test(n)&&(n="g"),/^(ml|millilitres?)$/.test(n)&&(n="ml"),/^(l|lt|ltr|litres?)$/.test(n)&&(n="ml");var a=t+"|"+n;o[a]||(o[a]={name:e.name||e.taskLabel,unitKey:n,total:0,hasTotal:!1,unit:e.unit||"",prepDays:[],deliveryDays:[],dishes:[]},s.push(a));var r=o[a];if(e.hasTotal){var l=i(e.total,e);/^kg/.test(String(e.unit||"").toLowerCase())&&(l*=1e3),/^l$|^lt|^ltr|^litre/.test(String(e.unit||"").toLowerCase())&&(l*=1e3),r.total+=l,r.hasTotal=!0,"g"===n&&(r.unit="g"),"ml"===n&&(r.unit="ml")}e.day&&r.prepDays.indexOf(e.day)<0&&r.prepDays.push(e.day);var c=V(e.day);c&&r.deliveryDays.indexOf(c)<0&&r.deliveryDays.push(c),(e.dishes||[]).forEach(function(e){r.dishes.indexOf(e)<0&&r.dishes.push(e)})}),s.map(function(e){var t=o[e];return t.prepDays.sort(function(e,t){return k(e)-k(t)}),t.deliveryDays.sort(function(e,t){return k(e)-k(t)}),t.latestDelivery=t.deliveryDays.length?t.deliveryDays[t.deliveryDays.length-1]:"","g"===t.unit&&t.total>=1e3?(t.displayN=Math.round(t.total)/1e3,t.displayU="kg"):"ml"===t.unit&&t.total>=1e3?(t.displayN=Math.round(t.total)/1e3,t.displayU="L"):(t.displayN=Math.round(100*t.total)/100,t.displayU=t.unit||""),t})}var H="prepline.recipes.v1";function _(){return S(H,{items:[]})||{items:[]}}function X(e){E(H,e)}function W(e,n){var a=null!=y[n]?y[n]:3;if(!e||k(e)<0)return"";var r=k(e);return t[(r+Math.max(a-1,0))%7]}function J(){return["@media print{","  body.u47-station-print *{visibility:hidden;}","  body.u47-station-print .u47-stations,body.u47-station-print .u47-stations *{visibility:visible;}","  body.u47-station-print .u47-stations{position:absolute;left:0;top:0;width:100%;}","  body.u47-station-print .u47-page-break{page-break-after:always;}","  body.u47-station-print .noprint,body.u47-station-print .no-print{display:none!important;}","}",".u47-station-sheet{font:12px/1.35 Arial,Helvetica,sans-serif;color:#111;padding:12mm;max-width:210mm;margin:0 auto 16px;background:#fff;border:1px solid #ddd;}",".u47-station-sheet h2{margin:4px 0 8px;font-size:18px;}",".u47-brand{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#555;}",".u47-station-sheet table{width:100%;border-collapse:collapse;}",".u47-station-sheet th,.u47-station-sheet td{border:1px solid #333;padding:5px 6px;text-align:left;}",".u47-station-sheet th{background:#FFFF00;font-weight:700;}"].join("")}function $(e){var n=String(e||"").trim();if(!n)return null;var a="";t.forEach(function(e){var t=new RegExp("\\b(for\\s+)?"+e+"\\b","i"),r=new RegExp("\\b(for\\s+)?"+x(e)+"\\b","i");(t.test(n)||r.test(n))&&(a=e)});var r="",i="",o=n=n.replace(/\b(for\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/gi," ").trim(),s=n.match(/^(\d+(?:\.\d+)?)\s*(kilos?|kilograms?|kg|grams?|g|gms?|litres?|liters?|l|lt|ml|millilitres?|cups?|bunches?|bunch|each|pcs?|pieces?)?\s+(?:of\s+)?(.+)$/i);return s&&(r=s[1],i=(s[2]||"").toLowerCase(),o=s[3],/^kilos?$|^kilograms?$/.test(i)&&(i="kg"),/^grams?$|^gms?$/.test(i)&&(i="g"),/^litres?$|^liters?$|^lt$/.test(i)&&(i="L"),/^bunches?$/.test(i)&&(i="bunch"),/^pieces?$|^pcs?$/.test(i)&&(i="pc")),(o=o.replace(/\s+/g," ").trim())?{qty:r,unit:i,task:o,day:a,raw:e}:null}function G(){return!(!e.SpeechRecognition&&!e.webkitSpeechRecognition)}var Q="prepline.sectionMap.v1";function Y(){return S(Q,{byIngredient:{}})||{byIngredient:{}}}var K=["Function name","Dish name","Pax / packs","Prep day","Event day","Item name","Section","Qty each","Qty total needed","Batch no.","Staff allocated","Prep min","Notes"],Z="prepline.organised.prepMin.v1";function ee(){return S(Z,{})||{}}var te="prepline.organised.order.v1",ne="prepline.organised.itemView.v1";function ae(e){return String(e||"").toLowerCase().replace(/\([^)]*\)/g," ").replace(/[^a-z0-9\s/+.-]/g," ").replace(/\s+/g," ").trim()}function re(e,t){var n=t&&t.paxByDish||{},a=[],r={};return(e||[]).forEach(function(e){var t=n[e];if(null!=t&&""!==t){var i=String(t);r[i]||(r[i]=!0,a.push(i))}}),a.length?a.join(" / "):"—"}function ie(){var e=S(te,[]);return Array.isArray(e)?e:[]}function oe(e){E(te,e||[])}function se(){try{localStorage.removeItem(te)}catch(e){}}function le(){var e=S(ne,null)||{};return{mode:"section"===e.mode?"section":"item",sortCol:e.sortCol||null,sortDir:"desc"===e.sortDir?"desc":"asc",filters:e.filters&&"object"==typeof e.filters?e.filters:{},search:"string"==typeof e.search?e.search:""}}function ce(e){var t=le();return Object.keys(e||{}).forEach(function(n){t[n]=e[n]}),E(ne,t),t}function de(t,n,a){n=n||{};var r=(a=a||{}).cleanDishName||function(e){return e},o=a.staffBySection||{},s=e.PreplineBatch&&e.PreplineBatch.buildBatches?e.PreplineBatch.buildBatches(t,n):[],l=[],c=0;s.forEach(function(e){c+=1;var t=F(e,r),s=e.merged?L(e,{cleanDishName:r,maxNames:99}):t[0]||r(e.dishes&&e.dishes[0]||"")||"—";s||(s="—");var d,f,h,m=t.length?t.join(" + "):"—",v=e.day||"—",y=function(e,t){var n=t&&t.getEventDay||function(){return""},a=[],r={};return(e.rows||[]).forEach(function(e){var t=n(e.dish)||"";t&&!r[t]&&(r[t]=!0,a.push(t))}),!a.length&&e.covers?String(e.covers):(a.sort(function(e,t){return k(e)-k(t)}),a.length?1===a.length?a[0]:a.map(x).join("/"):"—")}(e,n),g=function(e,t){var n=t&&t.getEventDay||function(){return""},a="",r=-1;return(e.rows||[]).forEach(function(e){var t=n(e.dish)||"",i=k(t);i>r&&(r=i,a=t)}),a}(e,n),b=v&&"—"!==v&&g?(d=g,f=k(v),h=k(d),f<0||h<0?null:(h-f+7)%7):null,w=null!=b&&b>4,S="—";e.rows&&e.rows[0]&&""!==e.rows[0].qty&&null!=e.rows[0].qty&&(S=String(e.rows[0].qty)+(e.rows[0].unit?" "+e.rows[0].unit:""));var E=e.hasTotal?(String(Math.round(1e3*e.total)/1e3)+" "+(e.unit||"")).trim():"set pax",C=e.taskLabel||"—",D=e.section||"—",N=function(e,t){var n=(e.dishes||[]).slice().sort().join("|");return[e.taskLabel||"",e.day||"",n,String(t)].join("::")}(e,c),A=p(),P=null!=A[N]&&""!==A[N]?A[N]:o[e.section]||a.defaultStaff||"Unallocated",O=null!=u()[N]?String(u()[N]):"",q=ee()[N],T=null!=q&&""!==q?String(q):"",B={functionName:s||"—",dishName:m||"—",paxPacks:re(e.dishes,a)||"—",prepDay:v||"—",eventDay:y||"—",itemName:C||"—",section:D||"—",qtyEach:S||"—",qtyTotal:E||"—",batchNo:String(c),staff:P||"Unallocated",prepMin:T,notes:""===O?"—":O};Object.keys(B).forEach(function(e){"prepMin"!==e&&(null!=B[e]&&""!==B[e]||(B[e]="—"))}),l.push({key:N,cells:B,values:[B.functionName,B.dishName,B.paxPacks,B.prepDay,B.eventDay,B.itemName,B.section,B.qtyEach,B.qtyTotal,B.batchNo,B.staff,""===B.prepMin?"":B.prepMin,B.notes],section:D||"—",sectionFill:i(D),merged:!!e.merged,shadeLate:w,gap:b,group:e,itemNorm:ae(C),eventIdx:k(g),functionNorm:ae(s),dup:!1,dupCount:0})});var d={};l.forEach(function(e){if(!e.merged){var t=e.itemNorm+"||"+e.functionNorm;d[t]||(d[t]=[]),d[t].push(e)}}),Object.keys(d).forEach(function(e){var t=d[e];t.length<2||t.forEach(function(e){e.dup=!0,e.dupCount=t.length})}),l.sort(function(e,t){return e.itemNorm<t.itemNorm?-1:e.itemNorm>t.itemNorm?1:e.eventIdx!==t.eventIdx?e.eventIdx<0?1:t.eventIdx<0?-1:e.eventIdx-t.eventIdx:e.functionNorm<t.functionNorm?-1:e.functionNorm>t.functionNorm?1:0});var f=ie();if(f&&f.length){var h={};l.forEach(function(e){h[e.key]=e});var m=[],v={};f.forEach(function(e){h[e]&&!v[e]&&(m.push(h[e]),v[e]=!0)}),l.forEach(function(e){v[e.key]||m.push(e)}),l=m}return l}var ue=["functionName","dishName","paxPacks","prepDay","eventDay","itemName","section","qtyEach","qtyTotal","batchNo","staff","notes"];function pe(e,t){var n=(t=t||le()).filters||{},r=String(t.search||"").trim().toLowerCase(),i=e.filter(function(e){return!(r&&(e.values||[]).join(" ").toLowerCase().indexOf(r)<0)&&ue.every(function(t){var a=n[t];if(!a)return!0;var r=String(e.cells[t]||"");return"object"!=typeof a||Array.isArray(a)?Array.isArray(a)?a.indexOf(r)>=0:r.toLowerCase().indexOf(String(a).toLowerCase())>=0:!(a.text&&r.toLowerCase().indexOf(String(a.text).toLowerCase())<0||Array.isArray(a.values)&&a.values.length&&a.values.indexOf(r)<0)})});if(t.sortCol&&ue.indexOf(t.sortCol)>=0){var o=t.sortCol,s="desc"===t.sortDir?-1:1;i=i.slice().sort(function(e,t){var n=String(e.cells[o]||""),r=String(t.cells[o]||"");if("prepDay"===o||"eventDay"===o){var i=k(n),l=k(r);if(i>=0||l>=0)return i<0?1*s:l<0?-1*s:(i-l)*s}if("section"===o){var c=a.indexOf(n),d=a.indexOf(r);if(c<0&&(c=999),d<0&&(d=999),c!==d)return(c-d)*s}return"itemName"===o&&(n=e.itemNorm,r=t.itemNorm),n<r?-1*s:n>r?1*s:0})}return i}e.PreplineUpgrades47={VERSION:"4.7.2",buildWeekGroups:D,renderWeekView:function(e,n,r){var o=b((r=r||{}).escapeHtml),s=r.qN||function(e){return String(e)},l=r.qU||function(e,t){return t||""},c=r.cleanDishName||function(e){return e},d=D(e,n),u=t.filter(function(e){return"Sunday"!==e}).concat(["Unscheduled"]),p='<div class="u47-week" id="u47Week">';return p+='<div class="u47-note no-print">Prep-day calendar: dishes/items by the day they are prepped (same batching as By prep day). Tap a day chip to jump.</div>',p+='<div class="u47-calgrid no-print" role="navigation">',u.forEach(function(e){var t=d[e]||{},n=Object.keys(t).reduce(function(e,n){return e+t[n].length},0);p+='<a class="u47-calchip'+(n?"":" empty")+'" href="#u47-day-'+encodeURIComponent(e)+'"><b>'+o("Unscheduled"===e?"TBC":x(e))+"</b><span>"+n+"</span></a>"}),p+="</div>",u.forEach(function(e){var t=d[e]||{},n=Object.keys(t);if(n.length){n.sort(function(e,t){var n=a.indexOf(e),r=a.indexOf(t);return n<0&&(n=99),r<0&&(r=99),n!==r?n-r:e.localeCompare(t)});var r=n.reduce(function(e,n){return e+t[n].length},0);p+='<div class="panel u47-daypanel" id="u47-day-'+o(e)+'"><h3 class="u47-dayhead">'+o("Unscheduled"===e?"Unscheduled":e)+' <span class="meta">'+r+" line"+(1===r?"":"s")+" · prep day</span></h3>",n.forEach(function(e){p+='<h4 class="u47-sechead">'+o(e)+"</h4>",p+='<div class="section-table-wrap"><table><thead><tr><th>Task</th><th>For</th><th>Qty</th><th>Covers</th></tr></thead><tbody>',t[e].forEach(function(t){var n=t.hasTotal?"<b>"+o(s(t.total,t.unit))+"</b> "+o(l(t.total,t.unit)):"—",a=(t.dishes||[]).map(c).join(", "),r=N(t,o),d=B(t,o),u=i(e);p+='<tr style="background:'+u.css+'"><td class="task">'+o(t.taskLabel)+r+d+'</td><td class="dish">'+o(a)+'</td><td class="qty">'+n+"</td><td>"+o(t.covers||"—")+"</td></tr>"}),p+="</tbody></table></div>"}),p+="</div>"}}),p+="</div>"},mergedSubtitleText:L,mergedSubtitleHtml:N,functionNamesForGroup:F,getTick:T,setTick:function(e,t){var n=P(),a=q(e);return n.lines[a]=Object.assign({status:"todo",pct:0,qtyDone:"",note:""},n.lines[a]||{},t||{}),O(n),n.lines[a]},tickControlsHtml:B,progressSummaryHtml:function(e){var t=0,n=0,a=0;(e||[]).forEach(function(e){t++;var r=T(e);"done"===r.status?n++:"part"===r.status&&a++});var r=t?Math.round((n+.5*a)/t*100):0;return'<div class="u47-progress no-print panel" id="u47Progress"><b>Progress</b> '+n+" done · "+a+" part · "+(t-n-a)+" left · ~"+r+'%<div class="u47-progbar"><div style="width:'+r+'%"></div></div><div class="meta">Saved on this phone only. For another device, use Share progress code below. True live multi-device sync needs a backend — ask Gerard.</div><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;"><button type="button" class="secondary" id="u47ShareProg">Copy progress code</button><button type="button" class="ghost" id="u47LoadProg">Paste progress code</button><button type="button" class="ghost" id="u47ClearProg">Clear ticks</button></div></div>'},exportProgressCode:I,importProgressCode:j,bindTickControls:function(e,t){if(e){e.querySelectorAll("[data-tick-key]").forEach(function(e){var n=decodeURIComponent(e.getAttribute("data-tick-key")||"");e.querySelectorAll("[data-tick]").forEach(function(e){e.addEventListener("click",function(){var a=e.getAttribute("data-tick"),r=P();r.lines[n]=Object.assign({status:"todo",pct:0},r.lines[n]||{},{status:a,pct:"part"===a?r.lines[n]&&r.lines[n].pct||50:"done"===a?100:0}),O(r),t&&t()})});var a=e.querySelector(".u47-tickpct");a&&a.addEventListener("change",function(){var e=P();e.lines[n]=Object.assign({},e.lines[n]||{},{status:"part",pct:Number(a.value)||0}),O(e),t&&t()})});var n=e.querySelector("#u47ShareProg");n&&n.addEventListener("click",function(){var e=I();navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(e).then(function(){alert("Progress code copied. Paste it on another phone to sync ticks.")}):prompt("Copy this progress code:",e)});var a=e.querySelector("#u47LoadProg");a&&a.addEventListener("click",function(){var e=prompt("Paste progress code:");e&&j(e)?t&&t():e&&alert("Could not read that code.")});var r=e.querySelector("#u47ClearProg");r&&r.addEventListener("click",function(){confirm("Clear all tick-off progress on this device?")&&(E(A,{lines:{},listId:"",updated:Date.now()}),t&&t())})}},rememberSnapshot:function(e,t){var n=S(R,null),a=function(e,t){return{at:Date.now(),name:t&&t.name||"",rows:(e||[]).map(function(e){return{dish:e.dish,task:e.task,qty:e.qty,unit:e.unit,section:e.section,day:e.day}})}}(e,t),r=n?M(n,a):null;return E(R,a),E(R+".lastDiff",r),r},peekLastDiff:function(){return S(R+".lastDiff",null)},diffSnapshots:M,changeCheckHtml:function(e,t){if(t=b(t),!e)return"";if(!e.added.length&&!e.removed.length&&!e.changed.length)return'<div class="panel u47-diff no-print" id="u47Diff"><b>Change check</b> — same as last upload (no line changes).</div>';function n(e){return t(String(null==e.task?"":e.task))+" · "+t(String(null==e.dish?"":e.dish))+" · "+t(String(null==e.qty?"":e.qty))+" "+t(String(e.unit||""))}var a='<div class="panel u47-diff no-print" id="u47Diff"><b>Change check</b> — '+t(String(e.summary||""));return e.added.length&&(a+="<details open><summary>Added ("+e.added.length+")</summary><ul>"+e.added.slice(0,40).map(function(e){return'<li class="u47-add">'+n(e)+"</li>"}).join("")+"</ul></details>"),e.removed.length&&(a+="<details open><summary>Removed ("+e.removed.length+")</summary><ul>"+e.removed.slice(0,40).map(function(e){return'<li class="u47-rem">'+n(e)+"</li>"}).join("")+"</ul></details>"),e.changed.length&&(a+="<details open><summary>Qty changed ("+e.changed.length+")</summary><ul>"+e.changed.slice(0,40).map(function(e){return'<li class="u47-chg">'+t(String(e.after.task||""))+" · "+t(String(e.after.dish||""))+": "+t(String(null==e.before.qty?"":e.before.qty))+" → <b>"+t(String(null==e.after.qty?"":e.after.qty))+"</b> "+t(String(e.after.unit||""))+"</li>"}).join("")+"</ul></details>"),a+'<button type="button" class="ghost" onclick="document.getElementById(\'u47Diff\').remove()">Dismiss</button></div>'},buildOrderFromBatches:z,renderOrderFromBatches:function(e,t,n){var a=b((n=n||{}).escapeHtml),r=z(e,t,n),i='<div class="u47-order" id="u47Order"><div class="panel"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><h3 style="margin:0;">Order list (from batches)</h3><div class="row" style="gap:8px;"><button type="button" class="secondary" id="u47OrderCsv">Export CSV</button><button type="button" class="secondary" id="u47OrderPrint">Print</button></div></div><div class="meta">Totals from batched prep. Latest delivery = day before prep start (Sunday → Saturday).</div>';return r.length?(i+='<div class="section-table-wrap"><table><thead><tr><th>Ingredient</th><th>Total</th><th>Latest delivery</th><th>Prep days</th><th>Used in</th></tr></thead><tbody>',r.forEach(function(e){i+='<tr><td class="task">'+a(e.name)+'</td><td class="qty"><b>'+(e.hasTotal?a(e.displayN)+" "+a(e.displayU):"—")+"</b></td><td>"+a(e.latestDelivery||"—")+"</td><td>"+a(e.prepDays.map(x).join(", ")||"—")+'</td><td class="dish">'+a(e.dishes.join(", "))+"</td></tr>"}),i+="</tbody></table></div></div></div>"):i+='<div class="empty"><div class="big">Nothing to order yet</div>Load a list and turn batching on.</div></div></div>'},orderCsv:function(e,t,n){var a=z(e,t,n),r=["Ingredient,Total,Unit,Latest delivery,Prep days,Used in"];return a.forEach(function(e){r.push(['"'+String(e.name).replace(/"/g,'""')+'"',e.hasTotal?e.displayN:"",e.hasTotal?e.displayU:"",e.latestDelivery||"",e.prepDays.join(" "),'"'+e.dishes.join("; ").replace(/"/g,'""')+'"'].join(","))}),r.join("\n")},recipeLib:_,saveRecipes:X,applyYieldToQty:function(e,t){if(!Number.isFinite(e))return e;var n=function(e){for(var t=_(),n=w(e),a=0;a<t.items.length;a++){var r=t.items[a];if(w(r.name)===n||n&&w(r.name)&&n.indexOf(w(r.name))>=0)return r}return null}("string"==typeof t?t:t&&(t.name||t.taskLabel||""));return!n||!Number.isFinite(n.yieldPct)||n.yieldPct<=0?e:Math.round(e/(n.yieldPct/100)*1e3)/1e3},recipeLibHtml:function(e){e=b(e);var t=_(),n='<div class="panel u47-recipes no-print" id="u47Recipes"><h3 style="margin:0 0 6px;">Recipe &amp; yield library</h3><div class="meta">Saved on this device. Yield % = usable weight ÷ raw weight × 100. Applied to order list totals (raw needed). Prep min blank until set — shows as "set time".</div><div class="section-table-wrap"><table><thead><tr><th>Ingredient</th><th>Yield %</th><th>Prep min</th><th>Note</th><th></th></tr></thead><tbody>';return t.items.forEach(function(t,a){n+='<tr><td><input data-ri="'+a+'" data-f="name" value="'+e(t.name)+'"></td><td><input data-ri="'+a+'" data-f="yieldPct" type="number" min="1" max="100" step="0.1" value="'+e(t.yieldPct)+'" style="width:80px"></td><td><input data-ri="'+a+'" data-f="prepMinutes" type="number" min="0" step="1" placeholder="set time" value="'+e(null!=t.prepMinutes&&""!==t.prepMinutes?t.prepMinutes:"")+'" style="width:80px" title="Minutes — blank until set"></td><td><input data-ri="'+a+'" data-f="note" value="'+e(t.note||"")+'"></td><td><button type="button" class="ghost" data-rdel="'+a+'">Remove</button></td></tr>'}),n+='</tbody></table></div><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;"><button type="button" class="secondary" id="u47RecAdd">Add row</button><button type="button" class="secondary" id="u47RecExport">Export JSON</button><button type="button" class="ghost" id="u47RecImport">Import JSON</button><button type="button" class="ghost" id="u47RecSeed">Add chicken/beef examples</button></div></div>'},bindRecipeLib:function(e,t){if(e){e.querySelectorAll("[data-ri]").forEach(function(n){n.addEventListener("change",function(){var n;n={items:[]},e.querySelectorAll('[data-ri][data-f="name"]').forEach(function(t){var a=+t.getAttribute("data-ri"),r=e.querySelector('[data-ri="'+a+'"][data-f="yieldPct"]'),i=e.querySelector('[data-ri="'+a+'"][data-f="note"]');n.items[a]={name:t.value,yieldPct:r?Number(r.value):100,prepMinutes:function(){var t=e.querySelector('[data-ri="'+a+'"][data-f="prepMinutes"]');if(!t||""===t.value)return"";var n=Number(t.value);return Number.isFinite(n)?n:""}(),note:i?i.value:""}}),n.items=n.items.filter(Boolean),X(n),t&&t()})}),e.querySelectorAll("[data-rdel]").forEach(function(e){e.addEventListener("click",function(){var n=_();n.items.splice(+e.getAttribute("data-rdel"),1),X(n),t&&t()})});var n=e.querySelector("#u47RecAdd");n&&n.addEventListener("click",function(){var e=_();e.items.push({name:"",yieldPct:70,note:"",prepMinutes:""}),X(e),t&&t()});var a=e.querySelector("#u47RecExport");a&&a.addEventListener("click",function(){C("prepline-recipes.json",JSON.stringify(_(),null,2),"application/json")});var r=e.querySelector("#u47RecImport");r&&r.addEventListener("click",function(){var e=prompt("Paste recipes JSON:");if(e)try{var n=JSON.parse(e);n&&Array.isArray(n.items)?(X(n),t&&t()):alert("JSON needs an items array.")}catch(e){alert("Invalid JSON")}});var i=e.querySelector("#u47RecSeed");i&&i.addEventListener("click",function(){var e=_();[{name:"chicken breast",yieldPct:70,note:"raw → trimmed",prepMinutes:""},{name:"beef short rib",yieldPct:65,note:"raw → trimmed",prepMinutes:""},{name:"salmon",yieldPct:80,note:"raw → portioned",prepMinutes:""}].forEach(function(t){e.items.some(function(e){return w(e.name)===w(t.name)})||e.items.push(t)}),X(e),t&&t()})}},useByFromPrep:W,buildStationSheetsFromAlloc:function(e){if(!e||!e.res||!e.res.sheets)return[];var t={};return e.res.sheets.forEach(function(e){["service","prep"].forEach(function(n){(e[n]||[]).forEach(function(a){(a.lines||[]).forEach(function(r){var i=String(r.alloc||r.staff||"Unallocated").trim()||"Unallocated";t[i]||(t[i]=[]),t[i].push({dish:r.dish||"",pax:r.paxValue,day:r.dayWord||e.dayName||"",section:a.key||a.title||"",prepDay:e.dayName||"",notes:r.notes||"",block:n})})})})}),Object.keys(t).sort().map(function(e){return{chef:e,lines:t[e]}})},stationSheetHtml:function(e,t){var n=b((t=t||{}).escapeHtml),a='<div class="u47-stations" id="u47Stations">';return(e||[]).forEach(function(r,i){a+='<section class="u47-station-sheet" data-chef="'+n(r.chef)+'"><header><div class="u47-brand">Prepline by Autoprod</div><h2>Station sheet — '+n(r.chef)+'</h2><div class="meta">Printed '+n((new Date).toLocaleDateString("en-AU"))+"</div></header><table><thead><tr><th>Dish / line</th><th>Section</th><th>Function day</th><th>Prep day</th><th>Use-by</th><th>Pax</th><th>Notes</th></tr></thead><tbody>",r.lines.forEach(function(e){var r=W(e.prepDay,t.prepCat||"");a+="<tr><td>"+n(e.dish)+"</td><td>"+n(e.section)+"</td><td>"+n(e.day)+"</td><td>"+n(e.prepDay)+"</td><td>"+n(r||"—")+"</td><td>"+n(null==e.pax?"":e.pax)+"</td><td>"+n(e.notes)+"</td></tr>"}),a+="</tbody></table></section>",i<e.length-1&&(a+='<div class="u47-page-break"></div>')}),a+="</div>"},stationPrintCss:J,parseVoiceUtterance:$,voiceSupported:G,voicePanelHtml:function(){return'<div class="panel u47-voice no-print" id="u47Voice"><h3 style="margin:0 0 6px;">Voice add</h3>'+(G()?'<button type="button" class="u47-mic" id="u47Mic" aria-label="Start dictation">🎤 Tap to dictate</button><div class="meta">Example: “5 kilo diced chicken for Wednesday”. Confirm before it is added.</div>':'<div class="meta">Voice input is not supported in this browser. Use Chrome or Edge on Android/desktop, or type the line below.</div>')+'<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;align-items:end;"><div class="field"><label>Qty</label><input id="u47VQty" style="width:70px"></div><div class="field"><label>Unit</label><input id="u47VUnit" style="width:70px"></div><div class="field" style="flex:1"><label>Item</label><input id="u47VItem" style="width:100%"></div><div class="field"><label>Day</label><select id="u47VDay"><option value="">—</option>'+t.filter(function(e){return"Sunday"!==e}).map(function(e){return'<option value="'+e+'">'+e+"</option>"}).join("")+'</select></div><button type="button" class="secondary" id="u47VAdd">Add line</button></div><div class="meta" id="u47VStatus"></div></div>'},bindVoice:function(t,n){if(n=n||{},t){var a=t.querySelector("#u47VQty"),r=t.querySelector("#u47VUnit"),i=t.querySelector("#u47VItem"),o=t.querySelector("#u47VDay"),s=t.querySelector("#u47VStatus"),l=t.querySelector("#u47Mic");l&&G()&&l.addEventListener("click",function(){var t=new(e.SpeechRecognition||e.webkitSpeechRecognition);t.lang="en-AU",t.interimResults=!1,t.maxAlternatives=1,s&&(s.textContent="Listening…"),l.classList.add("u47-mic-on"),t.onresult=function(e){d($(e.results[0][0].transcript)),l.classList.remove("u47-mic-on")},t.onerror=function(){s&&(s.textContent="Could not hear that. Try again or type the line."),l.classList.remove("u47-mic-on")},t.onend=function(){l.classList.remove("u47-mic-on")};try{t.start()}catch(e){s&&(s.textContent="Mic busy — try again."),l.classList.remove("u47-mic-on")}}),e.PreplineUpgrades47.simulateVoice=function(e){return d($(e)),$(e)};var c=t.querySelector("#u47VAdd");c&&c.addEventListener("click",function(){var e={qty:a&&a.value,unit:r&&r.value,task:i&&i.value,day:o&&o.value};e.task?(n.onAdd&&n.onAdd(e),s&&(s.textContent="Added."),i&&(i.value=""),a&&(a.value="")):s&&(s.textContent="Enter an item first.")})}function d(e){e&&(a&&(a.value=e.qty||""),r&&(r.value=e.unit||""),i&&(i.value=e.task||""),o&&e.day&&(o.value=e.day),s&&(s.textContent="Heard: "+(e.raw||"")+" — check, then Add line."))}},simulateVoice:function(e){var t=$(e);if(t&&"undefined"!=typeof document){var n=document.getElementById("u47VQty"),a=document.getElementById("u47VUnit"),r=document.getElementById("u47VItem"),i=document.getElementById("u47VDay"),o=document.getElementById("u47VStatus");n&&(n.value=t.qty||""),a&&(a.value=t.unit||""),r&&(r.value=t.task||""),i&&t.day&&(i.value=t.day),o&&(o.textContent="Heard: "+(t.raw||"")+" — check, then Add line.")}return t},learnSectionsFromRows:function(t){var n=Y();return(t||[]).forEach(function(t){if(t&&t.task&&t.section){var a=e.PreplineBatch&&e.PreplineBatch.parseTaskParts?e.PreplineBatch.parseTaskParts(t.task):{name:w(t.task)},r=w(a.name||t.task);r&&(n.byIngredient[r]||(n.byIngredient[r]={}),n.byIngredient[r][t.section]=(n.byIngredient[r][t.section]||0)+1)}}),function(e){E(Q,e)}(n),n},suggestSection:function(t,n){var a=e.PreplineBatch&&e.PreplineBatch.parseTaskParts?e.PreplineBatch.parseTaskParts(t):{name:w(t)},r=w(a.name||t),i=Y().byIngredient[r];if(!i)return{section:n||"",source:"fallback",key:r};var o="",s=0;return Object.keys(i).forEach(function(e){i[e]>s&&(s=i[e],o=e)}),{section:o||n||"",source:o?"learned":"fallback",key:r,count:s}},sectionBadgeHtml:function(e,t){return t=b(t),e&&e.section?'<span class="u47-secbadge" title="'+t("learned"===e.source?"Usually goes to "+e.section+" ("+(e.count||0)+" prior lines)":"Suggested from rules")+'">→ '+t(e.section)+"</span>":""},ORGANISED_HEADERS:K,COL_KEYS:ue,SECTION_ORDER:a,sectionColour:i,notesMap:u,saveNotesMap:function(e){E(o,e||{})},prepMinMap:ee,savePrepMinMap:function(e){E(Z,e||{})},staffOverrideMap:p,saveStaffOverrideMap:function(e){E(s,e||{})},pushHistory:function(e){var t,n=m();return n.unshift({at:Date.now(),sydney:h(),who:(t=f(),t.name&&t.email?t.name+" <"+t.email+">":t.name||t.email||"This device"),what:e.what||"",from:null==e.from?"":String(e.from),to:null==e.to?"":String(e.to),key:e.key||""}),n.length>500&&(n=n.slice(0,500)),E(l,n),n},historyList:m,exportHistoryCsv:function(){var e=[["When (Sydney)","Who","What","From","To","Key"]];m().forEach(function(t){e.push([t.sydney||"",t.who||"",t.what||"",t.from||"",t.to||"",t.key||""])});var t=e.map(function(e){return e.map(function(e){var t=String(e??"");return/[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t}).join(",")}).join("\n");return C("Prepline_History_"+(new Date).toISOString().slice(0,10)+".csv",t,"text/csv"),e.length-1},pushUndo:function(e){var t=v();t.push(Object.assign({at:Date.now()},e||{})),t.length>40&&(t=t.slice(-40)),E(c,t)},popUndo:function(){var e=v(),t=e.pop();return E(c,e),t||null},showToast:function e(t,n){if("undefined"!=typeof document){var a=document.getElementById("u47Toast");a||((a=document.createElement("div")).id="u47Toast",a.className="u47-toast no-print",document.body.appendChild(a)),a.innerHTML="";var r=document.createElement("span");if(r.textContent=t||"",a.appendChild(r),"function"==typeof n){var i=document.createElement("button");i.type="button",i.textContent="Undo",i.className="u47-toast-undo",i.onclick=function(){n(),a.classList.remove("show")},a.appendChild(i)}a.classList.add("show"),clearTimeout(e._t),e._t=setTimeout(function(){a.classList.remove("show")},6e3)}},markSavedIndicator:function e(){if("undefined"!=typeof document){var t=document.getElementById("u47Saved");t||((t=document.createElement("div")).id="u47Saved",t.className="u47-saved no-print",t.textContent="Saved",document.body.appendChild(t)),t.classList.add("show"),clearTimeout(e._t),e._t=setTimeout(function(){t.classList.remove("show")},1600)}},getDeviceWho:f,setDeviceWho:function(e){var t=f();return t.name=String(e||"").trim(),E(d,t),t},sydneyStamp:h,buildOrganisedRows:de,buildExportRows:function(e,t,n){return de(e,t,n).map(function(e){return{dishName:e.cells.dishName,itemName:e.cells.itemName,section:e.cells.section,notes:e.cells.notes,qtyEach:e.cells.qtyEach,qtyTotal:e.cells.qtyTotal,batchNo:e.cells.batchNo,staff:e.cells.staff,functionName:e.cells.functionName,paxPacks:e.cells.paxPacks,prepDay:e.cells.prepDay,eventDay:e.cells.eventDay,merged:e.merged,shadeLate:e.shadeLate,group:e.group,key:e.key,values:e.values,cells:e.cells}})},exportOrganisedXlsx:function(t,n,a){var r=de(t,n,a=a||{});a.allRows||(r=pe(r,le()));var i=K.slice(),o="Prepline_Organised_"+(new Date).toISOString().slice(0,10)+".xlsx",s={type:"pattern",pattern:"solid",fgColor:{argb:"FFF2F2F2"}};function l(){if("undefined"==typeof XLSX||!XLSX.utils)throw new Error("XLSX not loaded");var e=[i];r.forEach(function(t){e.push(t.values.map(function(e){return null==e||""===e?"—":e}))});var t=XLSX.utils.aoa_to_sheet(e),n={patternType:"solid",fgColor:{rgb:"FFFF00"}},a={bold:!0,name:"Arial",sz:11},s={vertical:"top",wrapText:!0,horizontal:"left"},l={patternType:"solid",fgColor:{rgb:"F2F2F2"}};i.forEach(function(e,r){var o=XLSX.utils.encode_cell({r:0,c:r});t[o]||(t[o]={t:"s",v:i[r]}),t[o].s={fill:n,font:a,alignment:s}});for(var c=i.length,d=1;d<e.length;d++)for(var u=0;u<c;u++){var p=XLSX.utils.encode_cell({r:d,c:u});t[p]&&""!==t[p].v&&null!=t[p].v||(t[p]={t:"s",v:"—"});var f={alignment:s},h=r[d-1];h&&h.sectionFill&&h.sectionFill.bg?f.fill={patternType:"solid",fgColor:{rgb:h.sectionFill.bg.slice(2)}}:h&&h.shadeLate&&(f.fill=l),t[p].s=Object.assign({},t[p].s||{},f)}t["!cols"]=[{wch:28},{wch:28},{wch:12},{wch:12},{wch:14},{wch:32},{wch:22},{wch:12},{wch:16},{wch:10},{wch:16},{wch:10},{wch:24}];var m=XLSX.utils.encode_col(c-1);t["!autofilter"]={ref:"A1:"+m+Math.max(1,e.length)},t["!freeze"]="A2",t["!views"]=[{state:"frozen",xSplit:0,ySplit:1,topLeftCell:"A2",activeCell:"A2"}];var v=XLSX.utils.book_new();return XLSX.utils.book_append_sheet(v,t,"Prep list"),XLSX.writeFile(v,o),{name:o,rows:r.length,headers:i,data:r,engine:"xlsx"}}if("undefined"!=typeof document){if(a.forceXlsx)return l();var c=new Promise(function(t,n){if(e.ExcelJS)return t(e.ExcelJS);var a=document.createElement("script");a.src="vendor/exceljs/exceljs.min.js",a.onload=function(){t(e.ExcelJS)},a.onerror=function(){n(new Error("ExcelJS failed to load"))},document.head.appendChild(a)}).then(function(e){var t=new e.Workbook,n=t.addWorksheet("Prep list",{views:[{state:"frozen",ySplit:1,activeCell:"A2",showGridLines:!0}]});n.columns=[{key:"functionName",width:28},{key:"dishName",width:28},{key:"paxPacks",width:12},{key:"prepDay",width:12},{key:"eventDay",width:14},{key:"itemName",width:32},{key:"section",width:22},{key:"qtyEach",width:12},{key:"qtyTotal",width:16},{key:"batchNo",width:10},{key:"staff",width:16},{key:"prepMin",width:10},{key:"notes",width:24}],n.addRow(i).eachCell(function(e){e.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFFF00"}},e.font={bold:!0,name:"Arial",size:11},e.alignment={vertical:"top",wrapText:!0,horizontal:"left"}}),r.forEach(function(e){var t=n.addRow(e.values.map(function(e){return null==e||""===e?"—":e})),a=e.sectionFill&&e.sectionFill.bg?{type:"pattern",pattern:"solid",fgColor:{argb:e.sectionFill.bg}}:null;t.eachCell(function(t){t.alignment={vertical:"top",wrapText:!0,horizontal:"left"},a?t.fill=a:e.shadeLate&&(t.fill=s),null!=t.value&&""!==t.value||(t.value="—")})});var a=i.length;return n.eachRow(function(e,t){if(1!==t)for(var n=1;n<=a;n++){var r=e.getCell(n);null!=r.value&&""!==r.value||(r.value="—"),r.alignment={vertical:"top",wrapText:!0,horizontal:"left"}}}),n.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,r.length+1),column:a}},t.xlsx.writeBuffer().then(function(e){return function(e,t){var n=document.createElement("a");n.href=URL.createObjectURL(new Blob([e],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})),n.download=t,document.body.appendChild(n),n.click(),n.remove(),setTimeout(function(){try{URL.revokeObjectURL(n.href)}catch(e){}},1500)}(e,o),{name:o,rows:r.length,headers:i,data:r,engine:"exceljs"}})}).catch(function(){return l()});return c.name=o,c.rows=r.length,c.headers=i,c.data=r,c}return l()},renderByItemView:function(t,n,r){var i=b((r=r||{}).escapeHtml||g),o=le(),s=pe(de(t,n,r),o),l=r.tickControlsHtml||function(){return""},c=r.batchReasonHtml||function(){return""},d=r.unbatchButtonHtml||function(){return""},u="",p="WEEK ENDING: ____";try{if(e.Prepline477&&"function"==typeof e.Prepline477.resolveWeekEndingLabel){var f="undefined"!=typeof sourceInfo&&sourceInfo&&sourceInfo.name||"";p=e.Prepline477.resolveWeekEndingLabel({sourceFileName:f,getEventDateStr:r.getEventDateStr},[]).label}}catch(e){}u+='<div class="u47-itemview" id="u47ItemView" data-no-daynum>';try{!function(){if("undefined"!=typeof document&&!document.getElementById("u47WePrintCss")){var e=document.createElement("style");e.id="u47WePrintCss",e.textContent="@media print{.u47-week-ending{position:fixed;top:0;left:0;right:0;z-index:9999;}.u47-itemview{padding-top:48px;}.u47-week-ending{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}",document.head.appendChild(e)}}()}catch(e){}function h(e){var t=e.group,n="section"!==o.mode||r.print?"":l(t),a=e.merged&&!1!==r.showMerged?c(t):"",s="section"===o.mode&&e.merged?d(t):"";return'<article class="u47-card'+(e.shadeLate?" u47-late":"")+(e.merged?" u47-merged-row":"")+'" draggable="false" data-u47-key="'+i(e.key)+'"><div class="u47-card-top"><button type="button" class="u47-drag" data-u47-drag aria-label="Drag to reorder" title="Drag to reorder">☰</button><div class="u47-card-main"><div class="u47-card-item"><strong>'+i(e.cells.itemName)+"</strong>"+(e.merged?' <span class="u47-pill">merged</span>':"")+'</div><div class="u47-card-meta">'+i(e.cells.functionName)+(e.cells.functionName!==e.cells.dishName?" · "+i(e.cells.dishName):"")+'</div><div class="u47-card-meta">'+i(e.cells.prepDay)+" prep → "+i(e.cells.eventDay)+" · pax "+i(e.cells.paxPacks)+'</div><div class="u47-card-meta">Section: '+i(e.cells.section)+'</div><div class="u47-card-qty">'+i(e.cells.qtyEach)+" each · <b>"+i(e.cells.qtyTotal)+"</b> · batch "+i(e.cells.batchNo)+" · "+i(e.cells.staff)+"</div>"+a+s+"</div>"+n+"</div></article>"}function m(e){var t=e.group,n="section"!==o.mode||r.print?"":'<td class="u47-tickcell">'+l(t)+"</td>",a=e.values.map(function(e){return'<td data-u47-v="'+i(e)+'">'+i(e)+"</td>"}).join("");return'<tr class="'+(e.shadeLate?"u47-late":"")+(e.merged?" u47-merged-row":"")+'" data-u47-key="'+i(e.key)+'" draggable="false"><td class="u47-dragcell no-print"><button type="button" class="u47-drag" data-u47-drag aria-label="Drag to reorder">☰</button></td>'+a+n+"</tr>"}function v(e){var t='<div class="u47-table-wrap u47-desktop-only"><table class="u47-table"><thead><tr><th class="no-print"></th>';return K.forEach(function(e,n){var a,r=ue[n];t+='<th><button type="button" class="u47-sort" data-u47-sort="'+r+'">'+i(e)+(a=r,(o.sortCol!==a?"":"desc"===o.sortDir?" ↓":" ↑")+"</button></th>")}),e&&(t+='<th class="no-print">Tick</th>'),t+="</tr></thead><tbody data-u47-list>"}if(u+='<div class="u47-week-ending" role="banner">'+i(p)+"</div>",u+='<div class="u47-toolbar no-print">',u+='<div class="viewtoggle u47-itemtoggle">',u+='<button type="button" class="'+("item"===o.mode?"":"secondary")+'" data-u47-mode="item">By item</button>',u+='<button type="button" class="'+("section"===o.mode?"":"secondary")+'" data-u47-mode="section">By section</button>',u+="</div>",u+='<button type="button" class="secondary" id="u47ResetOrder" title="Clear saved drag order">Reset order</button>',u+='<span class="u47-note" style="margin:0">'+s.length+" rows · same columns as Organised export · drag ☰ to reorder</span>",u+="</div>",u+='<div class="u47-filters no-print">',ue.forEach(function(e,t){var n=K[t],a=o.filters&&o.filters[e]||"";u+='<label class="u47-filter">'+i(n)+'<input type="search" data-u47-filter="'+e+'" value="'+i(a)+'" placeholder="Filter…"></label>'}),u+="</div>","section"===o.mode){var y={};s.forEach(function(e){var t=e.section||"—";y[t]||(y[t]=[]),y[t].push(e)}),Object.keys(y).sort(function(e,t){var n=a.indexOf(e),r=a.indexOf(t);return n<0&&(n=999),r<0&&(r=999),n!==r?n-r:e.localeCompare(t)}).forEach(function(e){u+='<section class="u47-secblock"><h3 class="u47-sechead">'+i(e)+' <span class="u47-note">('+y[e].length+")</span></h3>",u+='<div class="u47-cards u47-phone-only" data-u47-list>'+y[e].map(h).join("")+"</div>",u+=v(!0)+y[e].map(m).join("")+"</tbody></table></div></section>"})}else u+='<div class="u47-cards u47-phone-only" data-u47-list>'+s.map(h).join("")+"</div>",u+=v(!1)+s.map(m).join("")+"</tbody></table></div>";return s.length||(u+='<div class="panel">No rows match the filters.</div>'),u+="</div>"},bindByItemView:function(e,t){if(e){e.querySelectorAll("[data-u47-mode]").forEach(function(e){e.addEventListener("click",function(){ce({mode:e.getAttribute("data-u47-mode")}),t&&t()})}),e.querySelectorAll("[data-u47-sort]").forEach(function(e){e.addEventListener("click",function(){var n=e.getAttribute("data-u47-sort"),a=le();a.sortCol===n?ce({sortDir:"asc"===a.sortDir?"desc":"asc"}):ce({sortCol:n,sortDir:"asc"}),t&&t()})});var n=null;e.querySelectorAll("[data-u47-filter]").forEach(function(e){e.addEventListener("input",function(){clearTimeout(n),n=setTimeout(function(){var n=le(),a=Object.assign({},n.filters),r=e.getAttribute("data-u47-filter"),i=e.value.trim();i?a[r]=i:delete a[r],ce({filters:a}),t&&t()},200)})});var a=e.querySelector("#u47ResetOrder");a&&a.addEventListener("click",function(){se(),ce({sortCol:null,sortDir:"asc"}),t&&t()});var r=null,i=null,o=!1;e.querySelectorAll("[data-u47-list]").forEach(function(e){e.querySelectorAll("[data-u47-key]").forEach(function(n){var a=n.querySelector("[data-u47-drag]")||n;a.addEventListener("mousedown",function(){n.setAttribute("draggable","true")}),a.addEventListener("mouseup",function(){n.setAttribute("draggable","false")}),a.addEventListener("touchstart",function(){i=setTimeout(function(){o=!0,r=n.getAttribute("data-u47-key"),n.classList.add("u47-dragging")},350)},{passive:!0}),a.addEventListener("touchend",function(){clearTimeout(i),o&&(o=!1,n.classList.remove("u47-dragging"),l(),t&&t()),r=null}),a.addEventListener("touchmove",function(t){if(o){var a=t.touches[0],r=document.elementFromPoint(a.clientX,a.clientY),s=r&&r.closest?r.closest("[data-u47-key]"):null;if(s&&s.parentNode===e&&s!==n){var l=s.getBoundingClientRect();a.clientY<l.top+l.height/2?e.insertBefore(n,s):e.insertBefore(n,s.nextSibling)}}else clearTimeout(i)},{passive:!0}),n.addEventListener("dragstart",function(e){r=n.getAttribute("data-u47-key"),n.classList.add("u47-dragging");try{e.dataTransfer.setData("text/plain",r),e.dataTransfer.effectAllowed="move"}catch(e){}}),n.addEventListener("dragend",function(){n.classList.remove("u47-dragging"),n.setAttribute("draggable","false"),l(),r=null,t&&t()})}),e.addEventListener("dragover",function(t){t.preventDefault();var n=t.target.closest?t.target.closest("[data-u47-key]"):null;if(n&&r){var a=null;try{a=e.querySelector('[data-u47-key="'+r.replace(/"/g,'\\"')+'"]')}catch(t){e.querySelectorAll("[data-u47-key]").forEach(function(e){e.getAttribute("data-u47-key")===r&&(a=e)})}if(a&&a!==n){var i=n.getBoundingClientRect();t.clientY<i.top+i.height/2?e.insertBefore(a,n):e.insertBefore(a,n.nextSibling)}}})})}function s(e){return Array.prototype.map.call(e.querySelectorAll("[data-u47-key]"),function(e){return e.getAttribute("data-u47-key")})}function l(){var t=e.querySelectorAll("[data-u47-list]"),n=[];if(t.length){for(var a=s(t[0]),r=0;r<t.length;r++){var i=s(t[r]);i.length>=a.length&&(a=i)}n=a}oe(n)}},applyItemFiltersSort:pe,getItemViewState:le,setItemViewState:ce,getSavedOrder:ie,saveOrder:oe,resetOrder:se,ensureCss:function(){if("undefined"!=typeof document&&!document.getElementById("u47Css")){var e=document.createElement("style");e.id="u47Css",e.textContent=[".u47-note{font-size:12.5px;color:var(--ink-soft,#5C5A52);margin:0 0 12px;}",".u47-dayhead{margin:0 0 8px;}",".u47-sechead{margin:12px 0 6px;font-size:14px;color:var(--ink-soft,#5C5A52);}",".u47-tickbar{display:inline-flex;align-items:center;gap:6px;margin-top:6px;}",".u47-tickbtn{width:44px;height:44px;border-radius:10px;border:1px solid var(--line,#D9D3C3);background:#fff;font-size:20px;cursor:pointer;}",".u47-tick-done .u47-tickbtn[data-tick=done],.u47-tick-part .u47-tickbtn[data-tick=part]{background:#1C1B16;color:#fff;border-color:#1C1B16;}",".u47-tickpct{width:64px;height:40px;font-size:16px;}",".u47-progbar{height:8px;background:#E8E4D8;border-radius:99px;margin:8px 0;overflow:hidden;}",".u47-progbar>div{height:100%;background:#2F6B3A;}",".u47-diff ul{margin:6px 0;padding-left:18px;}",".u47-add{color:#2F6B3A;}",".u47-rem{color:#9B2C2C;}",".u47-chg{color:#7A5A00;}",".u47-mic{width:100%;max-width:320px;height:64px;font-size:18px;border-radius:12px;border:2px solid #1C1B16;background:#fff;cursor:pointer;}",".u47-mic-on{background:#FFF4C2;border-color:#C9A227;}",".u47-secbadge{display:inline-block;margin-left:6px;font-size:11px;padding:2px 7px;border-radius:999px;background:#E8F0FE;color:#1A56DB;}",".u47-merged-short{display:none;}","@media (max-width:520px){.u47-merged-full{display:none;}.u47-merged-short{display:inline;}}",".u47-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;}",".u47-week-ending{font-family:Calibri,Arial,sans-serif;font-size:18px;font-weight:700;text-align:center;padding:8px 10px;margin:0 0 8px;background:#FFF2CC;border:1px solid #000;letter-spacing:0.02em;}",".u47-itemview{margin-top:8px;}",".u47-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin:0 0 12px;}",".u47-filter{font-size:11px;color:var(--ink-soft,#5C5A52);display:flex;flex-direction:column;gap:2px;}",".u47-filter input{font-size:12px;padding:4px 6px;border:1px solid var(--line,#D9D3C3);border-radius:6px;}",".u47-table-wrap{max-height:70vh;overflow:auto;border:1px solid var(--line,#D9D3C3);border-radius:8px;background:#fff;}",".u47-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;}",".u47-table thead th{position:sticky;top:0;z-index:2;background:#FFFF00;font-weight:700;text-align:left;padding:8px 8px;border-bottom:1px solid #ccc;white-space:nowrap;}",".u47-table td{padding:8px;border-bottom:1px solid #eee;vertical-align:top;white-space:normal;word-break:break-word;}",".u47-table tr.u47-late td,.u47-card.u47-late{background:#F2F2F2;}",".u47-sort{background:none;border:none;font:inherit;font-weight:700;cursor:pointer;padding:0;text-align:left;}",".u47-drag{width:36px;height:36px;border:1px solid var(--line,#D9D3C3);border-radius:8px;background:#fff;cursor:grab;font-size:16px;}",".u47-dragging{opacity:.55;outline:2px dashed #1C1B16;}",".u47-cards{display:flex;flex-direction:column;gap:10px;}",".u47-card{border:1px solid var(--line,#D9D3C3);border-radius:10px;padding:10px;background:#fff;}",".u47-card-top{display:flex;gap:8px;align-items:flex-start;}",".u47-card-item{font-size:15px;}",".u47-card-meta{font-size:12px;color:var(--ink-soft,#5C5A52);margin-top:2px;}",".u47-card-qty{font-size:13px;margin-top:6px;}",".u47-pill{font-size:10px;padding:1px 6px;border-radius:999px;background:#FFF4C2;color:#6B4F28;vertical-align:middle;}",".u47-phone-only{display:none;}",".u47-desktop-only{display:block;}","@media (max-width:720px){.u47-phone-only{display:flex;}.u47-desktop-only{display:none;}.u47-filters{grid-template-columns:1fr 1fr;}}"].join("")+J(),document.head.appendChild(e)}},latestDeliveryDay:V,SHELF_DAYS:y}}("undefined"!=typeof window?window:globalThis);
+/* Prepline 4.7.x upgrades (trial copy only). Autoprod.
+ * 1 Week view  2 Tick-off  3 Change check  4 Order-from-batches
+ * 5 Recipe/yield lib  6 Station sheets  7 Voice input  8 Auto-section
+ * 10 Organised yellow-header xlsx (11 cols, Section after Item) + By item view + drag order
+ * Shared row builder used by screen + export.
+ */
+(function (root) {
+  'use strict';
+
+  var WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  var SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' };
+  var SECTION_ORDER = [
+    'Sauce, Purees and Gels',
+    'Vegetables',
+    'Garnishes, Herbs, Powders, Oils Etc.',
+    'Starch',
+    'Proteins',
+    'Box off/ Trolley organising team'
+  ];
+  /* Light legend tints: blue sauce, green vege, orange garnish, yellow starch, red protein */
+  var SECTION_COLOURS = {
+    'Sauce, Purees and Gels': { bg: 'FFD6EAF7', css: '#D6EAF7', ink: '#1A56DB', short: 'Sauce' },
+    'Vegetables': { bg: 'FFE4F0E1', css: '#E4F0E1', ink: '#2F6B3A', short: 'Vege' },
+    'Garnishes, Herbs, Powders, Oils Etc.': { bg: 'FFF6E6D2', css: '#F6E6D2', ink: '#C97A2E', short: 'Garnish' },
+    'Starch': { bg: 'FFFFF4C2', css: '#FFF4C2', ink: '#7A5A00', short: 'Starch' },
+    'Proteins': { bg: 'FFF5E3DC', css: '#F5E3DC', ink: '#B5442E', short: 'Protein' },
+    'Box off/ Trolley organising team': { bg: 'FFEFE1D2', css: '#EFE1D2', ink: '#8A5A34', short: 'Box' }
+  };
+  function sectionColour(sec) {
+    return SECTION_COLOURS[sec] || { bg: 'FFF2F2F2', css: '#F2F2F2', ink: '#5C5A52', short: sec || '—' };
+  }
+  var NOTES_KEY = 'prepline.organised.notes.v1';
+  var STAFF_OVERRIDE_KEY = 'prepline.organised.staff.v1';
+  var HISTORY_KEY = 'prepline.history.v1';
+  var UNDO_KEY = 'prepline.undo.v1';
+  var DEVICE_WHO_KEY = 'prepline.deviceWho.v1';
+  var BULK_SEL_KEY = 'prepline.organised.bulkSel.v1';
+  function notesMap() { return lsGet(NOTES_KEY, {}) || {}; }
+  function saveNotesMap(m) { lsSet(NOTES_KEY, m || {}); }
+  function staffOverrideMap() { return lsGet(STAFF_OVERRIDE_KEY, {}) || {}; }
+  function saveStaffOverrideMap(m) { lsSet(STAFF_OVERRIDE_KEY, m || {}); }
+  function bulkSel() { var a = lsGet(BULK_SEL_KEY, []); return Array.isArray(a) ? a : []; }
+  function saveBulkSel(a) { lsSet(BULK_SEL_KEY, a || []); }
+  function getDeviceWho() {
+    var w = lsGet(DEVICE_WHO_KEY, null);
+    if (w && w.name) return w;
+    try {
+      var acc = JSON.parse(localStorage.getItem('prepline.account.v1') || 'null');
+      if (acc && (acc.name || acc.email)) {
+        w = { name: acc.name || '', email: acc.email || '' };
+        lsSet(DEVICE_WHO_KEY, w);
+        return w;
+      }
+    } catch (e) {}
+    return { name: '', email: '' };
+  }
+  function setDeviceWho(name) {
+    var w = getDeviceWho();
+    w.name = String(name || '').trim();
+    lsSet(DEVICE_WHO_KEY, w);
+    return w;
+  }
+  function whoLabel() {
+    var w = getDeviceWho();
+    if (w.name && w.email) return w.name + ' <' + w.email + '>';
+    return w.name || w.email || 'This device';
+  }
+  function sydneyStamp(d) {
+    d = d || new Date();
+    try {
+      return new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney', year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+      }).format(d) + ' Sydney';
+    } catch (e) { return d.toISOString(); }
+  }
+  function historyList() {
+    var a = lsGet(HISTORY_KEY, []);
+    return Array.isArray(a) ? a : [];
+  }
+  function pushHistory(entry) {
+    var a = historyList();
+    a.unshift({
+      at: Date.now(),
+      sydney: sydneyStamp(),
+      who: whoLabel(),
+      what: entry.what || '',
+      from: entry.from == null ? '' : String(entry.from),
+      to: entry.to == null ? '' : String(entry.to),
+      key: entry.key || ''
+    });
+    if (a.length > 500) a = a.slice(0, 500);
+    lsSet(HISTORY_KEY, a);
+    return a;
+  }
+  function exportHistoryCsv() {
+    var rows = [['When (Sydney)', 'Who', 'What', 'From', 'To', 'Key']];
+    historyList().forEach(function (h) {
+      rows.push([h.sydney || '', h.who || '', h.what || '', h.from || '', h.to || '', h.key || '']);
+    });
+    var csv = rows.map(function (r) {
+      return r.map(function (c) {
+        var s = String(c == null ? '' : c);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',');
+    }).join('\n');
+    downloadText('Prepline_History_' + new Date().toISOString().slice(0, 10) + '.csv', csv, 'text/csv');
+    return rows.length - 1;
+  }
+  function undoStack() {
+    var a = lsGet(UNDO_KEY, []);
+    return Array.isArray(a) ? a : [];
+  }
+  function pushUndo(action) {
+    var a = undoStack();
+    a.push(Object.assign({ at: Date.now() }, action || {}));
+    if (a.length > 40) a = a.slice(-40);
+    lsSet(UNDO_KEY, a);
+  }
+  function popUndo() {
+    var a = undoStack();
+    var last = a.pop();
+    lsSet(UNDO_KEY, a);
+    return last || null;
+  }
+  function showToast(msg, undoFn) {
+    if (typeof document === 'undefined') return;
+    var el = document.getElementById('u47Toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'u47Toast';
+      el.className = 'u47-toast no-print';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = '';
+    var span = document.createElement('span');
+    span.textContent = msg || '';
+    el.appendChild(span);
+    if (typeof undoFn === 'function') {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = 'Undo'; b.className = 'u47-toast-undo';
+      b.onclick = function () { undoFn(); el.classList.remove('show'); };
+      el.appendChild(b);
+    }
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { el.classList.remove('show'); }, 6000);
+  }
+  function markSavedIndicator() {
+    if (typeof document === 'undefined') return;
+    var el = document.getElementById('u47Saved');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'u47Saved';
+      el.className = 'u47-saved no-print';
+      el.textContent = 'Saved';
+      document.body.appendChild(el);
+    }
+    el.classList.add('show');
+    clearTimeout(markSavedIndicator._t);
+    markSavedIndicator._t = setTimeout(function () { el.classList.remove('show'); }, 1600);
+  }
+
+  var SHELF_DAYS = {
+    poultry: 4, redmeat: 4, crabcroq: 4, seafood: 2, fish: 2, prawn: 1, vegsoft: 2, veghard: 4,
+    veg: 4, dry: 4, oil: 4, gels: 3, puree: 2, dressing: 4, dairy: 4, cheese: 3, poultry: 3, starch: 3,
+    garnish: 2, micro: 1
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function wrapEsc(fn) {
+    return function (s) {
+      try { return (fn || esc)(String(s == null ? '' : s)); }
+      catch (e) { return esc(s); }
+    };
+  }
+  function shortDay(d) { return SHORT[d] || (d ? String(d).slice(0, 3) : '—'); }
+  function dayIdx(d) { return WEEKDAYS.indexOf(d); }
+  function shiftBack(day, n) {
+    var i = dayIdx(day);
+    if (i < 0) return '';
+    return WEEKDAYS[((i - n) % 7 + 7) % 7];
+  }
+  function normKey(s) {
+    return String(s || '').toLowerCase().replace(/\([^)]*\)/g, ' ')
+      .replace(/[^a-z0-9\s/]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function lsGet(k, fallback) {
+    try {
+      var v = localStorage.getItem(k);
+      return v == null ? fallback : JSON.parse(v);
+    } catch (e) { return fallback; }
+  }
+  function lsSet(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; }
+  }
+  function downloadText(name, text, mime) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: mime || 'text/plain' }));
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 1500);
+  }
+
+  /* ---------- 1) Week view ---------- */
+  function buildWeekGroups(rows, deps) {
+    deps = deps || {};
+    var batches = (root.PreplineBatch && root.PreplineBatch.buildBatches)
+      ? root.PreplineBatch.buildBatches(rows, deps)
+      : (rows || []).map(function (r) {
+          return {
+            taskLabel: r.task, day: r.day || '', section: r.section || '',
+            total: 0, hasTotal: false, unit: r.unit || '', rows: [r],
+            dishes: [r.dish], merged: false, covers: '', reason: '', batchKey: r.task
+          };
+        });
+    var byDay = {};
+    WEEKDAYS.forEach(function (d) { if (d !== 'Sunday') byDay[d] = {}; });
+    byDay.Unscheduled = {};
+    batches.forEach(function (g) {
+      var day = g.day && dayIdx(g.day) >= 0 && g.day !== 'Sunday' ? g.day : 'Unscheduled';
+      var sec = g.section || 'Uncategorised';
+      if (!byDay[day]) byDay[day] = {};
+      if (!byDay[day][sec]) byDay[day][sec] = [];
+      byDay[day][sec].push(g);
+    });
+    return byDay;
+  }
+
+  function renderWeekView(rows, deps, helpers) {
+    helpers = helpers || {};
+    var escH = wrapEsc(helpers.escapeHtml);
+    var qN = helpers.qN || function (n) { return String(n); };
+    var qU = helpers.qU || function (n, u) { return u || ''; };
+    var clean = helpers.cleanDishName || function (d) { return d; };
+    var byDay = buildWeekGroups(rows, deps);
+    var days = WEEKDAYS.filter(function (d) { return d !== 'Sunday'; }).concat(['Unscheduled']);
+    var html = '<div class="u47-week" id="u47Week">';
+    html += '<div class="u47-note no-print">Prep-day calendar: dishes/items by the day they are prepped (same batching as By prep day). Tap a day chip to jump.</div>';
+    html += '<div class="u47-calgrid no-print" role="navigation">';
+    days.forEach(function (day) {
+      var secs0 = byDay[day] || {};
+      var n0 = Object.keys(secs0).reduce(function (s, k) { return s + secs0[k].length; }, 0);
+      html += '<a class="u47-calchip' + (n0 ? '' : ' empty') + '" href="#u47-day-' + encodeURIComponent(day) + '">' +
+        '<b>' + escH(day === 'Unscheduled' ? 'TBC' : shortDay(day)) + '</b><span>' + n0 + '</span></a>';
+    });
+    html += '</div>';
+    days.forEach(function (day) {
+      var secs = byDay[day] || {};
+      var keys = Object.keys(secs);
+      if (!keys.length) return;
+      keys.sort(function (a, b) {
+        var ia = SECTION_ORDER.indexOf(a), ib = SECTION_ORDER.indexOf(b);
+        if (ia < 0) ia = 99; if (ib < 0) ib = 99;
+        return ia !== ib ? ia - ib : a.localeCompare(b);
+      });
+      var n = keys.reduce(function (s, k) { return s + secs[k].length; }, 0);
+      html += '<div class="panel u47-daypanel" id="u47-day-' + escH(day) + '"><h3 class="u47-dayhead">' + escH(day === 'Unscheduled' ? 'Unscheduled' : day) +
+        ' <span class="meta">' + n + ' line' + (n === 1 ? '' : 's') + ' · prep day</span></h3>';
+      keys.forEach(function (sec) {
+        html += '<h4 class="u47-sechead">' + escH(sec) + '</h4>';
+        html += '<div class="section-table-wrap"><table><thead><tr><th>Task</th><th>For</th><th>Qty</th><th>Covers</th></tr></thead><tbody>';
+        secs[sec].forEach(function (g) {
+          var total = g.hasTotal ? ('<b>' + escH(qN(g.total, g.unit)) + '</b> ' + escH(qU(g.total, g.unit))) : '—';
+          var dishes = (g.dishes || []).map(clean).join(', ');
+          var sub = mergedSubtitleHtml(g, escH);
+          var tick = tickControlsHtml(g, escH);
+          var sc = sectionColour(sec);
+          html += '<tr style="background:' + sc.css + '"><td class="task">' + escH(g.taskLabel) + sub + tick + '</td><td class="dish">' +
+            escH(dishes) + '</td><td class="qty">' + total + '</td><td>' + escH(g.covers || '—') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  /* ---------- Merged subtitle (shared screen + export) ---------- */
+  function functionNamesForGroup(g, cleanFn) {
+    cleanFn = cleanFn || function (d) { return d; };
+    var names = [], seen = {};
+    (g.dishes || []).forEach(function (d) {
+      var c = cleanFn(d) || d;
+      if (!c || seen[c]) return;
+      seen[c] = true;
+      names.push(c);
+    });
+    return names;
+  }
+
+  function mergedSubtitleText(g, opts) {
+    opts = opts || {};
+    if (!g || !g.merged) return '';
+    var names = functionNamesForGroup(g, opts.cleanDishName);
+    if (!names.length) return 'Merged';
+    var max = opts.maxNames != null ? opts.maxNames : 99;
+    var shown = names.slice(0, max);
+    var extra = names.length - shown.length;
+    var body = shown.join(' + ') + (extra > 0 ? ' +' + extra + ' more' : '');
+    return 'Merged: ' + body;
+  }
+
+  function mergedSubtitleHtml(g, escH, opts) {
+    opts = opts || {};
+    if (!g || !g.merged) return '';
+    escH = wrapEsc(escH);
+    var full = mergedSubtitleText(g, Object.assign({}, opts, { maxNames: 99 }));
+    var short = mergedSubtitleText(g, Object.assign({}, opts, { maxNames: opts.phoneMax || 2 }));
+    var days = g.covers ? ('<span class="pb-covers">' + escH(g.covers) + '</span> · ') : '';
+    return '<div class="pb-reason u47-merged" title="' + escH(full) + '">' +
+      days + '<span class="u47-merged-full">' + escH(full) + '</span>' +
+      '<span class="u47-merged-short">' + escH(short) + '</span></div>';
+  }
+
+  /* ---------- 2) Tick-off (local + share code) ---------- */
+  var TICK_KEY = 'prepline.tickoff.v1';
+  function tickStore() { return lsGet(TICK_KEY, { lines: {}, listId: '', updated: 0 }) || { lines: {}, listId: '', updated: 0 }; }
+  function tickSave(st) { st.updated = Date.now(); lsSet(TICK_KEY, st); }
+  function tickLineKey(g) {
+    return normKey((g.batchKey || g.taskLabel || '') + '|' + (g.day || '') + '|' + (g.section || ''));
+  }
+  function getTick(g) {
+    var st = tickStore();
+    return st.lines[tickLineKey(g)] || { status: 'todo', pct: 0, qtyDone: '', note: '' };
+  }
+  function setTick(g, patch) {
+    var st = tickStore();
+    var k = tickLineKey(g);
+    st.lines[k] = Object.assign({ status: 'todo', pct: 0, qtyDone: '', note: '' }, st.lines[k] || {}, patch || {});
+    tickSave(st);
+    return st.lines[k];
+  }
+  function tickControlsHtml(g, escH) {
+    escH = wrapEsc(escH);
+    var t = getTick(g);
+    var k = encodeURIComponent(tickLineKey(g));
+    var cls = 'u47-tick u47-tick-' + (t.status || 'todo');
+    return '<div class="u47-tickbar no-print ' + cls + '" data-tick-key="' + k + '">' +
+      '<button type="button" class="u47-tickbtn" data-tick="todo" aria-label="Not done">○</button>' +
+      '<button type="button" class="u47-tickbtn" data-tick="part" aria-label="Part done">◐</button>' +
+      '<button type="button" class="u47-tickbtn" data-tick="done" aria-label="Done">●</button>' +
+      (t.status === 'part' ? '<input class="u47-tickpct" type="number" min="0" max="100" value="' + escH(t.pct || 50) + '" aria-label="Percent done">%' : '') +
+      (t.status === 'done' ? '<span class="u47-ticklab">Done</span>' : (t.status === 'part' ? '<span class="u47-ticklab">Part</span>' : '')) +
+      '</div>';
+  }
+  function progressSummaryHtml(groups) {
+    var total = 0, done = 0, part = 0;
+    (groups || []).forEach(function (g) {
+      total++;
+      var t = getTick(g);
+      if (t.status === 'done') done++;
+      else if (t.status === 'part') part++;
+    });
+    var pct = total ? Math.round((done + part * 0.5) / total * 100) : 0;
+    return '<div class="u47-progress no-print panel" id="u47Progress">' +
+      '<b>Progress</b> ' + done + ' done · ' + part + ' part · ' + (total - done - part) + ' left · ~' + pct + '%' +
+      '<div class="u47-progbar"><div style="width:' + pct + '%"></div></div>' +
+      '<div class="meta">Saved on this phone only. For another device, use Share progress code below. True live multi-device sync needs a backend — ask Gerard.</div>' +
+      '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">' +
+      '<button type="button" class="secondary" id="u47ShareProg">Copy progress code</button>' +
+      '<button type="button" class="ghost" id="u47LoadProg">Paste progress code</button>' +
+      '<button type="button" class="ghost" id="u47ClearProg">Clear ticks</button>' +
+      '</div></div>';
+  }
+  function exportProgressCode() {
+    var st = tickStore();
+    var raw = JSON.stringify({ v: 1, t: st.updated, lines: st.lines });
+    try { return btoa(unescape(encodeURIComponent(raw))); } catch (e) { return ''; }
+  }
+  function importProgressCode(code) {
+    try {
+      var raw = decodeURIComponent(escape(atob(String(code || '').trim())));
+      var o = JSON.parse(raw);
+      if (!o || !o.lines) return false;
+      var st = tickStore();
+      st.lines = Object.assign({}, st.lines, o.lines);
+      tickSave(st);
+      return true;
+    } catch (e) { return false; }
+  }
+  function bindTickControls(rootEl, onChange) {
+    if (!rootEl) return;
+    rootEl.querySelectorAll('[data-tick-key]').forEach(function (bar) {
+      var key = decodeURIComponent(bar.getAttribute('data-tick-key') || '');
+      bar.querySelectorAll('[data-tick]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var status = btn.getAttribute('data-tick');
+          var st = tickStore();
+          st.lines[key] = Object.assign({ status: 'todo', pct: 0 }, st.lines[key] || {}, {
+            status: status,
+            pct: status === 'part' ? (st.lines[key] && st.lines[key].pct) || 50 : (status === 'done' ? 100 : 0)
+          });
+          tickSave(st);
+          if (onChange) onChange();
+        });
+      });
+      var pct = bar.querySelector('.u47-tickpct');
+      if (pct) pct.addEventListener('change', function () {
+        var st = tickStore();
+        st.lines[key] = Object.assign({}, st.lines[key] || {}, { status: 'part', pct: Number(pct.value) || 0 });
+        tickSave(st);
+        if (onChange) onChange();
+      });
+    });
+    var share = rootEl.querySelector('#u47ShareProg');
+    if (share) share.addEventListener('click', function () {
+      var c = exportProgressCode();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(c).then(function () { alert('Progress code copied. Paste it on another phone to sync ticks.'); });
+      } else { prompt('Copy this progress code:', c); }
+    });
+    var load = rootEl.querySelector('#u47LoadProg');
+    if (load) load.addEventListener('click', function () {
+      var c = prompt('Paste progress code:');
+      if (c && importProgressCode(c)) { if (onChange) onChange(); }
+      else if (c) alert('Could not read that code.');
+    });
+    var clr = rootEl.querySelector('#u47ClearProg');
+    if (clr) clr.addEventListener('click', function () {
+      if (!confirm('Clear all tick-off progress on this device?')) return;
+      lsSet(TICK_KEY, { lines: {}, listId: '', updated: Date.now() });
+      if (onChange) onChange();
+    });
+  }
+
+  /* ---------- 3) Change check ---------- */
+  var SNAP_KEY = 'prepline.wo.snapshot.v1';
+  function rowSig(r) {
+    return normKey(r.dish) + '|' + normKey(r.task) + '|' + String(r.qty) + '|' + String(r.unit || '');
+  }
+  function snapshotFromRows(rows, meta) {
+    return {
+      at: Date.now(),
+      name: (meta && meta.name) || '',
+      rows: (rows || []).map(function (r) {
+        return { dish: r.dish, task: r.task, qty: r.qty, unit: r.unit, section: r.section, day: r.day };
+      })
+    };
+  }
+  function rememberSnapshot(rows, meta) {
+    var prev = lsGet(SNAP_KEY, null);
+    var next = snapshotFromRows(rows, meta);
+    var diff = prev ? diffSnapshots(prev, next) : null;
+    lsSet(SNAP_KEY, next);
+    lsSet(SNAP_KEY + '.lastDiff', diff);
+    return diff;
+  }
+  function peekLastDiff() { return lsGet(SNAP_KEY + '.lastDiff', null); }
+  function diffSnapshots(prev, next) {
+    var oldMap = {}, neuMap = {};
+    (prev.rows || []).forEach(function (r) { oldMap[rowSig(r)] = r; });
+    (next.rows || []).forEach(function (r) { neuMap[rowSig(r)] = r; });
+    // Quantity-aware: match by dish+task, compare qty
+    function keyDT(r) { return normKey(r.dish) + '|' + normKey(r.task); }
+    var oldDT = {}, neuDT = {};
+    (prev.rows || []).forEach(function (r) { oldDT[keyDT(r)] = r; });
+    (next.rows || []).forEach(function (r) { neuDT[keyDT(r)] = r; });
+    var added = [], removed = [], changed = [];
+    Object.keys(neuDT).forEach(function (k) {
+      if (!oldDT[k]) added.push(neuDT[k]);
+      else {
+        var a = oldDT[k], b = neuDT[k];
+        if (String(a.qty) !== String(b.qty) || String(a.unit || '') !== String(b.unit || '')) {
+          changed.push({ before: a, after: b });
+        }
+      }
+    });
+    Object.keys(oldDT).forEach(function (k) {
+      if (!neuDT[k]) removed.push(oldDT[k]);
+    });
+    return {
+      prevName: prev.name || '', nextName: next.name || '',
+      added: added, removed: removed, changed: changed,
+      summary: added.length + ' added, ' + removed.length + ' removed, ' + changed.length + ' qty changed'
+    };
+  }
+  function changeCheckHtml(diff, escH) {
+    escH = wrapEsc(escH);
+    if (!diff) return '';
+    if (!diff.added.length && !diff.removed.length && !diff.changed.length) {
+      return '<div class="panel u47-diff no-print" id="u47Diff"><b>Change check</b> — same as last upload (no line changes).</div>';
+    }
+    function line(r) { return escH(String(r.task == null ? '' : r.task)) + ' · ' + escH(String(r.dish == null ? '' : r.dish)) + ' · ' + escH(String(r.qty == null ? '' : r.qty)) + ' ' + escH(String(r.unit || '')); }
+    var html = '<div class="panel u47-diff no-print" id="u47Diff"><b>Change check</b> — ' + escH(String(diff.summary || ''));
+    if (diff.added.length) {
+      html += '<details open><summary>Added (' + diff.added.length + ')</summary><ul>' +
+        diff.added.slice(0, 40).map(function (r) { return '<li class="u47-add">' + line(r) + '</li>'; }).join('') + '</ul></details>';
+    }
+    if (diff.removed.length) {
+      html += '<details open><summary>Removed (' + diff.removed.length + ')</summary><ul>' +
+        diff.removed.slice(0, 40).map(function (r) { return '<li class="u47-rem">' + line(r) + '</li>'; }).join('') + '</ul></details>';
+    }
+    if (diff.changed.length) {
+      html += '<details open><summary>Qty changed (' + diff.changed.length + ')</summary><ul>' +
+        diff.changed.slice(0, 40).map(function (c) {
+          return '<li class="u47-chg">' + escH(String(c.after.task||'')) + ' · ' + escH(String(c.after.dish||'')) + ': ' +
+            escH(String(c.before.qty==null?'':c.before.qty)) + ' → <b>' + escH(String(c.after.qty==null?'':c.after.qty)) + '</b> ' + escH(String(c.after.unit || '')) + '</li>';
+        }).join('') + '</ul></details>';
+    }
+    html += '<button type="button" class="ghost" onclick="document.getElementById(\'u47Diff\').remove()">Dismiss</button></div>';
+    return html;
+  }
+
+  /* ---------- 4) Order list from batches ---------- */
+  function latestDeliveryDay(prepDay) {
+    if (!prepDay || dayIdx(prepDay) < 0) return '';
+    // Delivery the day before prep start (never Sunday → Saturday)
+    var d = shiftBack(prepDay, 1);
+    if (d === 'Sunday') d = 'Saturday';
+    return d;
+  }
+  function buildOrderFromBatches(rows, deps, helpers) {
+    helpers = helpers || {};
+    var batches = (root.PreplineBatch && root.PreplineBatch.buildBatches)
+      ? root.PreplineBatch.buildBatches(rows, deps) : [];
+    var applyY = helpers.applyYield || function (n) { return n; };
+    var map = {}, order = [];
+    batches.forEach(function (g) {
+      var name = (g.name || g.taskLabel || '').toLowerCase();
+      var uk = String(g.unit || '').toLowerCase();
+      if (/^(g|gm|grams?)$/.test(uk)) uk = 'g';
+      if (/^(kg|kgs|kilos?)$/.test(uk)) uk = 'g';
+      if (/^(ml|millilitres?)$/.test(uk)) uk = 'ml';
+      if (/^(l|lt|ltr|litres?)$/.test(uk)) uk = 'ml';
+      var key = name + '|' + uk;
+      if (!map[key]) {
+        map[key] = {
+          name: g.name || g.taskLabel, unitKey: uk, total: 0, hasTotal: false,
+          unit: g.unit || '', prepDays: [], deliveryDays: [], dishes: []
+        };
+        order.push(key);
+      }
+      var o = map[key];
+      if (g.hasTotal) {
+        var n = applyY(g.total, g);
+        // normalise to g/ml base if possible
+        if (/^kg/.test(String(g.unit || '').toLowerCase())) n = n * 1000;
+        if (/^l$|^lt|^ltr|^litre/.test(String(g.unit || '').toLowerCase())) n = n * 1000;
+        o.total += n; o.hasTotal = true;
+        if (uk === 'g') o.unit = 'g';
+        if (uk === 'ml') o.unit = 'ml';
+      }
+      if (g.day && o.prepDays.indexOf(g.day) < 0) o.prepDays.push(g.day);
+      var del = latestDeliveryDay(g.day);
+      if (del && o.deliveryDays.indexOf(del) < 0) o.deliveryDays.push(del);
+      (g.dishes || []).forEach(function (d) { if (o.dishes.indexOf(d) < 0) o.dishes.push(d); });
+    });
+    return order.map(function (k) {
+      var o = map[k];
+      o.prepDays.sort(function (a, b) { return dayIdx(a) - dayIdx(b); });
+      o.deliveryDays.sort(function (a, b) { return dayIdx(a) - dayIdx(b); });
+      // Latest delivery = latest among needed delivery days
+      o.latestDelivery = o.deliveryDays.length ? o.deliveryDays[o.deliveryDays.length - 1] : '';
+      if (o.unit === 'g' && o.total >= 1000) { o.displayN = Math.round(o.total) / 1000; o.displayU = 'kg'; }
+      else if (o.unit === 'ml' && o.total >= 1000) { o.displayN = Math.round(o.total) / 1000; o.displayU = 'L'; }
+      else { o.displayN = Math.round(o.total * 100) / 100; o.displayU = o.unit || ''; }
+      return o;
+    });
+  }
+  function renderOrderFromBatches(rows, deps, helpers) {
+    helpers = helpers || {};
+    var escH = wrapEsc(helpers.escapeHtml);
+    var lines = buildOrderFromBatches(rows, deps, helpers);
+    var html = '<div class="u47-order" id="u47Order"><div class="panel">' +
+      '<div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+      '<h3 style="margin:0;">Order list (from batches)</h3>' +
+      '<div class="row" style="gap:8px;"><button type="button" class="secondary" id="u47OrderCsv">Export CSV</button>' +
+      '<button type="button" class="secondary" id="u47OrderPrint">Print</button></div></div>' +
+      '<div class="meta">Totals from batched prep. Latest delivery = day before prep start (Sunday → Saturday).</div>';
+    if (!lines.length) {
+      html += '<div class="empty"><div class="big">Nothing to order yet</div>Load a list and turn batching on.</div></div></div>';
+      return html;
+    }
+    html += '<div class="section-table-wrap"><table><thead><tr><th>Ingredient</th><th>Total</th><th>Latest delivery</th><th>Prep days</th><th>Used in</th></tr></thead><tbody>';
+    lines.forEach(function (L) {
+      html += '<tr><td class="task">' + escH(L.name) + '</td><td class="qty"><b>' +
+        (L.hasTotal ? escH(L.displayN) + ' ' + escH(L.displayU) : '—') + '</b></td><td>' +
+        escH(L.latestDelivery || '—') + '</td><td>' + escH(L.prepDays.map(shortDay).join(', ') || '—') +
+        '</td><td class="dish">' + escH(L.dishes.join(', ')) + '</td></tr>';
+    });
+    html += '</tbody></table></div></div></div>';
+    return html;
+  }
+  function orderCsv(rows, deps, helpers) {
+    var lines = buildOrderFromBatches(rows, deps, helpers);
+    var out = ['Ingredient,Total,Unit,Latest delivery,Prep days,Used in'];
+    lines.forEach(function (L) {
+      out.push([
+        '"' + String(L.name).replace(/"/g, '""') + '"',
+        L.hasTotal ? L.displayN : '',
+        L.hasTotal ? L.displayU : '',
+        L.latestDelivery || '',
+        L.prepDays.join(' '),
+        '"' + L.dishes.join('; ').replace(/"/g, '""') + '"'
+      ].join(','));
+    });
+    return out.join('\n');
+  }
+
+  /* ---------- 5) Recipe & yield library ---------- */
+  var RECIPE_KEY = 'prepline.recipes.v1';
+  function recipeLib() { return lsGet(RECIPE_KEY, { items: [] }) || { items: [] }; }
+  function saveRecipes(lib) { lsSet(RECIPE_KEY, lib); }
+  function findYield(task) {
+    var lib = recipeLib();
+    var k = normKey(task);
+    for (var i = 0; i < lib.items.length; i++) {
+      var it = lib.items[i];
+      if (normKey(it.name) === k || (k && normKey(it.name) && k.indexOf(normKey(it.name)) >= 0)) return it;
+    }
+    return null;
+  }
+  function applyYieldToQty(n, taskOrGroup) {
+    if (!Number.isFinite(n)) return n;
+    var task = typeof taskOrGroup === 'string' ? taskOrGroup : (taskOrGroup && (taskOrGroup.name || taskOrGroup.taskLabel || ''));
+    var y = findYield(task);
+    if (!y || !Number.isFinite(y.yieldPct) || y.yieldPct <= 0) return n;
+    // raw needed = cooked / (yield/100)
+    return Math.round(n / (y.yieldPct / 100) * 1000) / 1000;
+  }
+  function recipeLibHtml(escH) {
+    escH = wrapEsc(escH);
+    var lib = recipeLib();
+    var html = '<div class="panel u47-recipes no-print" id="u47Recipes"><h3 style="margin:0 0 6px;">Recipe &amp; yield library</h3>' +
+      '<div class="meta">Saved on this device. Yield % = usable weight ÷ raw weight × 100. Applied to order list totals (raw needed). Prep min blank until set — shows as "set time".</div>' +
+      '<div class="section-table-wrap"><table><thead><tr><th>Ingredient</th><th>Yield %</th><th>Prep min</th><th>Note</th><th></th></tr></thead><tbody>';
+    lib.items.forEach(function (it, i) {
+      html += '<tr><td><input data-ri="' + i + '" data-f="name" value="' + escH(it.name) + '"></td>' +
+        '<td><input data-ri="' + i + '" data-f="yieldPct" type="number" min="1" max="100" step="0.1" value="' + escH(it.yieldPct) + '" style="width:80px"></td>' +
+        '<td><input data-ri="' + i + '" data-f="prepMinutes" type="number" min="0" step="1" placeholder="set time" value="' +
+          escH(it.prepMinutes != null && it.prepMinutes !== '' ? it.prepMinutes : '') + '" style="width:80px" title="Minutes — blank until set"></td>' +
+        '<td><input data-ri="' + i + '" data-f="note" value="' + escH(it.note || '') + '"></td>' +
+        '<td><button type="button" class="ghost" data-rdel="' + i + '">Remove</button></td></tr>';
+    });
+    html += '</tbody></table></div>' +
+      '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap;">' +
+      '<button type="button" class="secondary" id="u47RecAdd">Add row</button>' +
+      '<button type="button" class="secondary" id="u47RecExport">Export JSON</button>' +
+      '<button type="button" class="ghost" id="u47RecImport">Import JSON</button>' +
+      '<button type="button" class="ghost" id="u47RecSeed">Add chicken/beef examples</button>' +
+      '</div></div>';
+    return html;
+  }
+  function bindRecipeLib(rootEl, onChange) {
+    if (!rootEl) return;
+    function refreshFromInputs() {
+      var lib = { items: [] };
+      rootEl.querySelectorAll('[data-ri][data-f="name"]').forEach(function (inp) {
+        var i = +inp.getAttribute('data-ri');
+        var row = rootEl.querySelector('[data-ri="' + i + '"][data-f="yieldPct"]');
+        var note = rootEl.querySelector('[data-ri="' + i + '"][data-f="note"]');
+        lib.items[i] = {
+          name: inp.value,
+          yieldPct: row ? Number(row.value) : 100,
+          prepMinutes: (function () {
+            var pm = rootEl.querySelector('[data-ri="' + i + '"][data-f="prepMinutes"]');
+            if (!pm || pm.value === '') return '';
+            var n = Number(pm.value);
+            return Number.isFinite(n) ? n : '';
+          })(),
+          note: note ? note.value : ''
+        };
+      });
+      lib.items = lib.items.filter(Boolean);
+      saveRecipes(lib);
+    }
+    rootEl.querySelectorAll('[data-ri]').forEach(function (inp) {
+      inp.addEventListener('change', function () { refreshFromInputs(); if (onChange) onChange(); });
+    });
+    rootEl.querySelectorAll('[data-rdel]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var lib = recipeLib();
+        lib.items.splice(+btn.getAttribute('data-rdel'), 1);
+        saveRecipes(lib);
+        if (onChange) onChange();
+      });
+    });
+    var add = rootEl.querySelector('#u47RecAdd');
+    if (add) add.addEventListener('click', function () {
+      var lib = recipeLib();
+      lib.items.push({ name: '', yieldPct: 70, note: '', prepMinutes: '' });
+      saveRecipes(lib);
+      if (onChange) onChange();
+    });
+    var exp = rootEl.querySelector('#u47RecExport');
+    if (exp) exp.addEventListener('click', function () {
+      downloadText('prepline-recipes.json', JSON.stringify(recipeLib(), null, 2), 'application/json');
+    });
+    var imp = rootEl.querySelector('#u47RecImport');
+    if (imp) imp.addEventListener('click', function () {
+      var t = prompt('Paste recipes JSON:');
+      if (!t) return;
+      try {
+        var o = JSON.parse(t);
+        if (o && Array.isArray(o.items)) { saveRecipes(o); if (onChange) onChange(); }
+        else alert('JSON needs an items array.');
+      } catch (e) { alert('Invalid JSON'); }
+    });
+    var seed = rootEl.querySelector('#u47RecSeed');
+    if (seed) seed.addEventListener('click', function () {
+      var lib = recipeLib();
+      [
+        { name: 'chicken breast', yieldPct: 70, note: 'raw → trimmed', prepMinutes: '' },
+        { name: 'beef short rib', yieldPct: 65, note: 'raw → trimmed', prepMinutes: '' },
+        { name: 'salmon', yieldPct: 80, note: 'raw → portioned', prepMinutes: '' }
+      ].forEach(function (ex) {
+        if (!lib.items.some(function (x) { return normKey(x.name) === normKey(ex.name); })) lib.items.push(ex);
+      });
+      saveRecipes(lib);
+      if (onChange) onChange();
+    });
+  }
+
+  /* ---------- 6) Station sheets (allocation + main) ---------- */
+  function useByFromPrep(prepDay, prepCat) {
+    var life = SHELF_DAYS[prepCat] != null ? SHELF_DAYS[prepCat] : 3;
+    if (!prepDay || dayIdx(prepDay) < 0) return '';
+    var i = dayIdx(prepDay);
+    // use-by = prep day + (life-1), cap before next week conceptually
+    return WEEKDAYS[(i + Math.max(life - 1, 0)) % 7];
+  }
+  function buildStationSheetsFromAlloc(state) {
+    // Group allocation lines by allocated Staff / staff field
+    if (!state || !state.res || !state.res.sheets) return [];
+    var byChef = {};
+    state.res.sheets.forEach(function (sh) {
+      ['service', 'prep'].forEach(function (blk) {
+        (sh[blk] || []).forEach(function (sec) {
+          (sec.lines || []).forEach(function (l) {
+            var chef = String(l.alloc || l.staff || 'Unallocated').trim() || 'Unallocated';
+            if (!byChef[chef]) byChef[chef] = [];
+            byChef[chef].push({
+              dish: l.dish || '',
+              pax: l.paxValue,
+              day: l.dayWord || sh.dayName || '',
+              section: sec.key || sec.title || '',
+              prepDay: sh.dayName || '',
+              notes: l.notes || '',
+              block: blk
+            });
+          });
+        });
+      });
+    });
+    return Object.keys(byChef).sort().map(function (chef) {
+      return { chef: chef, lines: byChef[chef] };
+    });
+  }
+  function stationSheetHtml(sheets, opts) {
+    opts = opts || {};
+    var escH = wrapEsc(opts.escapeHtml);
+    var html = '<div class="u47-stations" id="u47Stations">';
+    (sheets || []).forEach(function (s, idx) {
+      html += '<section class="u47-station-sheet" data-chef="' + escH(s.chef) + '">' +
+        '<header><div class="u47-brand">Prepline by Autoprod</div>' +
+        '<h2>Station sheet — ' + escH(s.chef) + '</h2>' +
+        '<div class="meta">Printed ' + escH(new Date().toLocaleDateString('en-AU')) + '</div></header>' +
+        '<table><thead><tr><th>Dish / line</th><th>Section</th><th>Function day</th><th>Prep day</th><th>Use-by</th><th>Pax</th><th>Notes</th></tr></thead><tbody>';
+      s.lines.forEach(function (l) {
+        var useBy = useByFromPrep(l.prepDay, opts.prepCat || '');
+        html += '<tr><td>' + escH(l.dish) + '</td><td>' + escH(l.section) + '</td><td>' +
+          escH(l.day) + '</td><td>' + escH(l.prepDay) + '</td><td>' + escH(useBy || '—') +
+          '</td><td>' + escH(l.pax == null ? '' : l.pax) + '</td><td>' + escH(l.notes) + '</td></tr>';
+      });
+      html += '</tbody></table></section>';
+      if (idx < sheets.length - 1) html += '<div class="u47-page-break"></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+  function stationPrintCss() {
+    /* Scoped to body.u47-station-print ONLY — an unscoped body *{visibility:hidden}
+     * blanked every other printout (calendar, plan PDF, organised, etc.). */
+    return [
+      '@media print{',
+      '  body.u47-station-print *{visibility:hidden;}',
+      '  body.u47-station-print .u47-stations,body.u47-station-print .u47-stations *{visibility:visible;}',
+      '  body.u47-station-print .u47-stations{position:absolute;left:0;top:0;width:100%;}',
+      '  body.u47-station-print .u47-page-break{page-break-after:always;}',
+      '  body.u47-station-print .noprint,body.u47-station-print .no-print{display:none!important;}',
+      '}',
+      '.u47-station-sheet{font:12px/1.35 Arial,Helvetica,sans-serif;color:#111;padding:12mm;max-width:210mm;margin:0 auto 16px;background:#fff;border:1px solid #ddd;}',
+      '.u47-station-sheet h2{margin:4px 0 8px;font-size:18px;}',
+      '.u47-brand{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#555;}',
+      '.u47-station-sheet table{width:100%;border-collapse:collapse;}',
+      '.u47-station-sheet th,.u47-station-sheet td{border:1px solid #333;padding:5px 6px;text-align:left;}',
+      '.u47-station-sheet th{background:#FFFF00;font-weight:700;}'
+    ].join('');
+  }
+
+  /* ---------- 7) Voice input ---------- */
+  function parseVoiceUtterance(text) {
+    var t = String(text || '').trim();
+    if (!t) return null;
+    var day = '';
+    WEEKDAYS.forEach(function (d) {
+      var re = new RegExp('\\b(for\\s+)?' + d + '\\b', 'i');
+      var re2 = new RegExp('\\b(for\\s+)?' + shortDay(d) + '\\b', 'i');
+      if (re.test(t) || re2.test(t)) day = d;
+    });
+    t = t.replace(/\b(for\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/ig, ' ').trim();
+    var qty = '', unit = '', item = t;
+    var m = t.match(/^(\d+(?:\.\d+)?)\s*(kilos?|kilograms?|kg|grams?|g|gms?|litres?|liters?|l|lt|ml|millilitres?|cups?|bunches?|bunch|each|pcs?|pieces?)?\s+(?:of\s+)?(.+)$/i);
+    if (m) {
+      qty = m[1];
+      unit = (m[2] || '').toLowerCase();
+      item = m[3];
+      if (/^kilos?$|^kilograms?$/.test(unit)) unit = 'kg';
+      if (/^grams?$|^gms?$/.test(unit)) unit = 'g';
+      if (/^litres?$|^liters?$|^lt$/.test(unit)) unit = 'L';
+      if (/^bunches?$/.test(unit)) unit = 'bunch';
+      if (/^pieces?$|^pcs?$/.test(unit)) unit = 'pc';
+    }
+    item = item.replace(/\s+/g, ' ').trim();
+    if (!item) return null;
+    return { qty: qty, unit: unit, task: item, day: day, raw: text };
+  }
+  function voiceSupported() {
+    return !!(root.SpeechRecognition || root.webkitSpeechRecognition);
+  }
+  function voicePanelHtml() {
+    var ok = voiceSupported();
+    return '<div class="panel u47-voice no-print" id="u47Voice">' +
+      '<h3 style="margin:0 0 6px;">Voice add</h3>' +
+      (ok
+        ? '<button type="button" class="u47-mic" id="u47Mic" aria-label="Start dictation">🎤 Tap to dictate</button>' +
+          '<div class="meta">Example: “5 kilo diced chicken for Wednesday”. Confirm before it is added.</div>'
+        : '<div class="meta">Voice input is not supported in this browser. Use Chrome or Edge on Android/desktop, or type the line below.</div>') +
+      '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;align-items:end;">' +
+      '<div class="field"><label>Qty</label><input id="u47VQty" style="width:70px"></div>' +
+      '<div class="field"><label>Unit</label><input id="u47VUnit" style="width:70px"></div>' +
+      '<div class="field" style="flex:1"><label>Item</label><input id="u47VItem" style="width:100%"></div>' +
+      '<div class="field"><label>Day</label><select id="u47VDay"><option value="">—</option>' +
+      WEEKDAYS.filter(function (d) { return d !== 'Sunday'; }).map(function (d) {
+        return '<option value="' + d + '">' + d + '</option>';
+      }).join('') + '</select></div>' +
+      '<button type="button" class="secondary" id="u47VAdd">Add line</button>' +
+      '</div><div class="meta" id="u47VStatus"></div></div>';
+  }
+  function bindVoice(rootEl, handlers) {
+    handlers = handlers || {};
+    if (!rootEl) return;
+    var qty = rootEl.querySelector('#u47VQty');
+    var unit = rootEl.querySelector('#u47VUnit');
+    var item = rootEl.querySelector('#u47VItem');
+    var day = rootEl.querySelector('#u47VDay');
+    var status = rootEl.querySelector('#u47VStatus');
+    function fill(p) {
+      if (!p) return;
+      if (qty) qty.value = p.qty || '';
+      if (unit) unit.value = p.unit || '';
+      if (item) item.value = p.task || '';
+      if (day && p.day) day.value = p.day;
+      if (status) status.textContent = 'Heard: ' + (p.raw || '') + ' — check, then Add line.';
+    }
+    var mic = rootEl.querySelector('#u47Mic');
+    if (mic && voiceSupported()) {
+      mic.addEventListener('click', function () {
+        var SR = root.SpeechRecognition || root.webkitSpeechRecognition;
+        var rec = new SR();
+        rec.lang = 'en-AU';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+        if (status) status.textContent = 'Listening…';
+        mic.classList.add('u47-mic-on');
+        rec.onresult = function (ev) {
+          var said = ev.results[0][0].transcript;
+          fill(parseVoiceUtterance(said));
+          mic.classList.remove('u47-mic-on');
+        };
+        rec.onerror = function () {
+          if (status) status.textContent = 'Could not hear that. Try again or type the line.';
+          mic.classList.remove('u47-mic-on');
+        };
+        rec.onend = function () { mic.classList.remove('u47-mic-on'); };
+        try { rec.start(); } catch (e) {
+          if (status) status.textContent = 'Mic busy — try again.';
+          mic.classList.remove('u47-mic-on');
+        }
+      });
+    }
+    // Test hook: simulate recognition
+    root.PreplineUpgrades47.simulateVoice = function (text) {
+      fill(parseVoiceUtterance(text));
+      return parseVoiceUtterance(text);
+    };
+    var add = rootEl.querySelector('#u47VAdd');
+    if (add) add.addEventListener('click', function () {
+      var payload = {
+        qty: qty && qty.value, unit: unit && unit.value,
+        task: item && item.value, day: day && day.value
+      };
+      if (!payload.task) { if (status) status.textContent = 'Enter an item first.'; return; }
+      if (handlers.onAdd) handlers.onAdd(payload);
+      if (status) status.textContent = 'Added.';
+      if (item) item.value = '';
+      if (qty) qty.value = '';
+    });
+  }
+
+  /* ---------- 8) Auto-assign section ---------- */
+  var SEC_MAP_KEY = 'prepline.sectionMap.v1';
+  function sectionMap() { return lsGet(SEC_MAP_KEY, { byIngredient: {} }) || { byIngredient: {} }; }
+  function saveSectionMap(m) { lsSet(SEC_MAP_KEY, m); }
+  function learnSectionsFromRows(rows) {
+    var m = sectionMap();
+    (rows || []).forEach(function (r) {
+      if (!r || !r.task || !r.section) return;
+      var parts = root.PreplineBatch && root.PreplineBatch.parseTaskParts
+        ? root.PreplineBatch.parseTaskParts(r.task) : { name: normKey(r.task) };
+      var k = normKey(parts.name || r.task);
+      if (!k) return;
+      if (!m.byIngredient[k]) m.byIngredient[k] = {};
+      m.byIngredient[k][r.section] = (m.byIngredient[k][r.section] || 0) + 1;
+    });
+    saveSectionMap(m);
+    return m;
+  }
+  function suggestSection(task, fallback) {
+    var parts = root.PreplineBatch && root.PreplineBatch.parseTaskParts
+      ? root.PreplineBatch.parseTaskParts(task) : { name: normKey(task) };
+    var k = normKey(parts.name || task);
+    var m = sectionMap().byIngredient[k];
+    if (!m) return { section: fallback || '', source: 'fallback', key: k };
+    var best = '', n = 0;
+    Object.keys(m).forEach(function (s) { if (m[s] > n) { n = m[s]; best = s; } });
+    return { section: best || fallback || '', source: best ? 'learned' : 'fallback', key: k, count: n };
+  }
+  function sectionBadgeHtml(suggestion, escH) {
+    escH = wrapEsc(escH);
+    if (!suggestion || !suggestion.section) return '';
+    var tip = suggestion.source === 'learned'
+      ? ('Usually goes to ' + suggestion.section + ' (' + (suggestion.count || 0) + ' prior lines)')
+      : 'Suggested from rules';
+    return '<span class="u47-secbadge" title="' + escH(tip) + '">→ ' + escH(suggestion.section) + '</span>';
+  }
+
+  /* ---------- 10) Organised rows (shared screen + export) ---------- */
+  var ORGANISED_HEADERS = [
+    'Function name', 'Dish name', 'Pax / packs', 'Prep day', 'Event day',
+    'Item name', 'Section', 'Qty each', 'Qty total needed', 'Batch no.', 'Staff allocated', 'Prep min', 'Notes'
+  ];
+  var PREP_MIN_KEY = 'prepline.organised.prepMin.v1';
+  function prepMinMap() { return lsGet(PREP_MIN_KEY, {}) || {}; }
+  function savePrepMinMap(m) { lsSet(PREP_MIN_KEY, m || {}); }
+  var ORDER_KEY = 'prepline.organised.order.v1';
+  var ITEM_VIEW_KEY = 'prepline.organised.itemView.v1';
+
+  function forwardDaysGap(from, to) {
+    var a = dayIdx(from), b = dayIdx(to);
+    if (a < 0 || b < 0) return null;
+    return (b - a + 7) % 7;
+  }
+
+  function normItem(s) {
+    return String(s || '').toLowerCase().replace(/\([^)]*\)/g, ' ')
+      .replace(/[^a-z0-9\s/+.-]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function paxForDishes(dishes, helpers) {
+    var paxMap = (helpers && helpers.paxByDish) || {};
+    var vals = [];
+    var seen = {};
+    (dishes || []).forEach(function (d) {
+      var n = paxMap[d];
+      if (n == null || n === '') return;
+      var s = String(n);
+      if (seen[s]) return;
+      seen[s] = true;
+      vals.push(s);
+    });
+    return vals.length ? vals.join(' / ') : '—';
+  }
+
+  function eventDaysForGroup(g, deps) {
+    var getEventDay = (deps && deps.getEventDay) || function () { return ''; };
+    var days = [], seen = {};
+    (g.rows || []).forEach(function (r) {
+      var ed = getEventDay(r.dish) || '';
+      if (!ed || seen[ed]) return;
+      seen[ed] = true;
+      days.push(ed);
+    });
+    if (!days.length && g.covers) return String(g.covers);
+    days.sort(function (a, b) { return dayIdx(a) - dayIdx(b); });
+    if (!days.length) return '—';
+    if (days.length === 1) return days[0];
+    return days.map(shortDay).join('/');
+  }
+
+  function latestEventDay(g, deps) {
+    var getEventDay = (deps && deps.getEventDay) || function () { return ''; };
+    var best = '', bi = -1;
+    (g.rows || []).forEach(function (r) {
+      var ed = getEventDay(r.dish) || '';
+      var i = dayIdx(ed);
+      if (i > bi) { bi = i; best = ed; }
+    });
+    return best;
+  }
+
+  function rowKeyFor(g, batchNo) {
+    var dishes = (g.dishes || []).slice().sort().join('|');
+    return [g.taskLabel || '', g.day || '', dishes, String(batchNo)].join('::');
+  }
+
+  function getSavedOrder() {
+    var arr = lsGet(ORDER_KEY, []);
+    return Array.isArray(arr) ? arr : [];
+  }
+  function saveOrder(keys) {
+    lsSet(ORDER_KEY, keys || []);
+  }
+  function resetOrder() {
+    try { localStorage.removeItem(ORDER_KEY); } catch (e) {}
+  }
+
+  function getItemViewState() {
+    var s = lsGet(ITEM_VIEW_KEY, null) || {};
+    return {
+      mode: s.mode === 'section' ? 'section' : 'item',
+      sortCol: s.sortCol || null,
+      sortDir: s.sortDir === 'desc' ? 'desc' : 'asc',
+      filters: s.filters && typeof s.filters === 'object' ? s.filters : {},
+      search: typeof s.search === 'string' ? s.search : ''
+    };
+  }
+  function setItemViewState(patch) {
+    var cur = getItemViewState();
+    Object.keys(patch || {}).forEach(function (k) { cur[k] = patch[k]; });
+    lsSet(ITEM_VIEW_KEY, cur);
+    return cur;
+  }
+
+  function buildOrganisedRows(rows, deps, helpers) {
+    helpers = helpers || {};
+    deps = deps || {};
+    var clean = helpers.cleanDishName || function (d) { return d; };
+    var staffBySection = helpers.staffBySection || {};
+    var batches = (root.PreplineBatch && root.PreplineBatch.buildBatches)
+      ? root.PreplineBatch.buildBatches(rows, deps) : [];
+    var out = [];
+    var batchNo = 0;
+    batches.forEach(function (g) {
+      batchNo += 1;
+      var names = functionNamesForGroup(g, clean);
+      var functionName = g.merged
+        ? mergedSubtitleText(g, { cleanDishName: clean, maxNames: 99 })
+        : (names[0] || clean((g.dishes && g.dishes[0]) || '') || '—');
+      if (!functionName) functionName = '—';
+      var dishName = names.length ? names.join(' + ') : '—';
+      var prepDay = g.day || '—';
+      var eventDay = eventDaysForGroup(g, deps);
+      var latestEv = latestEventDay(g, deps);
+      var gap = (prepDay && prepDay !== '—' && latestEv) ? forwardDaysGap(prepDay, latestEv) : null;
+      var shadeLate = gap != null && gap > 4;
+      var qtyEach = '—';
+      if (g.rows && g.rows[0] && g.rows[0].qty !== '' && g.rows[0].qty != null) {
+        qtyEach = String(g.rows[0].qty) + (g.rows[0].unit ? ' ' + g.rows[0].unit : '');
+      }
+      var qtyTotal = g.hasTotal
+        ? (String(Math.round(g.total * 1000) / 1000) + ' ' + (g.unit || '')).trim()
+        : 'set pax';
+      var itemName = g.taskLabel || '—';
+      var sectionName = g.section || '—';
+      var rk = rowKeyFor(g, batchNo);
+      var ov = staffOverrideMap();
+      var staff = (ov[rk] != null && ov[rk] !== '') ? ov[rk]
+        : (staffBySection[g.section] || helpers.defaultStaff || 'Unallocated');
+      var noteVal = (notesMap()[rk] != null) ? String(notesMap()[rk]) : '';
+      var pmRaw = prepMinMap()[rk];
+      var prepMin = (pmRaw != null && pmRaw !== '') ? String(pmRaw) : '';
+      var cells = {
+        functionName: functionName || '—',
+        dishName: dishName || '—',
+        paxPacks: paxForDishes(g.dishes, helpers) || '—',
+        prepDay: prepDay || '—',
+        eventDay: eventDay || '—',
+        itemName: itemName || '—',
+        section: sectionName || '—',
+        qtyEach: qtyEach || '—',
+        qtyTotal: qtyTotal || '—',
+        batchNo: String(batchNo),
+        staff: staff || 'Unallocated',
+        prepMin: prepMin, /* blank until set */
+        notes: noteVal === '' ? '—' : noteVal
+      };
+      Object.keys(cells).forEach(function (k) {
+        if (k === 'prepMin') return; /* blank until set — never force em-dash */
+        if (cells[k] == null || cells[k] === '') cells[k] = '—';
+      });
+      out.push({
+        key: rk,
+        cells: cells,
+        values: [
+          cells.functionName, cells.dishName, cells.paxPacks, cells.prepDay, cells.eventDay,
+          cells.itemName, cells.section, cells.qtyEach, cells.qtyTotal, cells.batchNo, cells.staff,
+          cells.prepMin === '' ? '' : cells.prepMin, cells.notes
+        ],
+        section: sectionName || '—',
+        sectionFill: sectionColour(sectionName),
+        merged: !!g.merged,
+        shadeLate: shadeLate,
+        gap: gap,
+        group: g,
+        itemNorm: normItem(itemName),
+        eventIdx: dayIdx(latestEv),
+        functionNorm: normItem(functionName),
+        dup: false,
+        dupCount: 0
+      });
+    });
+    /* Duplicate warning: same item + same function (not intentional batch merges) */
+    var dupIndex = {};
+    out.forEach(function (r) {
+      if (r.merged) return;
+      var dk = r.itemNorm + '||' + r.functionNorm;
+      if (!dupIndex[dk]) dupIndex[dk] = [];
+      dupIndex[dk].push(r);
+    });
+    Object.keys(dupIndex).forEach(function (dk) {
+      var list = dupIndex[dk];
+      if (list.length < 2) return;
+      list.forEach(function (r) { r.dup = true; r.dupCount = list.length; });
+    });
+
+    out.sort(function (a, b) {
+      if (a.itemNorm < b.itemNorm) return -1;
+      if (a.itemNorm > b.itemNorm) return 1;
+      if (a.eventIdx !== b.eventIdx) {
+        if (a.eventIdx < 0) return 1;
+        if (b.eventIdx < 0) return -1;
+        return a.eventIdx - b.eventIdx;
+      }
+      if (a.functionNorm < b.functionNorm) return -1;
+      if (a.functionNorm > b.functionNorm) return 1;
+      return 0;
+    });
+
+    var saved = getSavedOrder();
+    if (saved && saved.length) {
+      var byKey = {};
+      out.forEach(function (r) { byKey[r.key] = r; });
+      var ordered = [];
+      var used = {};
+      saved.forEach(function (k) {
+        if (byKey[k] && !used[k]) { ordered.push(byKey[k]); used[k] = true; }
+      });
+      out.forEach(function (r) {
+        if (!used[r.key]) ordered.push(r);
+      });
+      out = ordered;
+    }
+    return out;
+  }
+
+  function buildExportRows(rows, deps, helpers) {
+    return buildOrganisedRows(rows, deps, helpers).map(function (r) {
+      return {
+        dishName: r.cells.dishName,
+        itemName: r.cells.itemName,
+        section: r.cells.section,
+        notes: r.cells.notes,
+        qtyEach: r.cells.qtyEach,
+        qtyTotal: r.cells.qtyTotal,
+        batchNo: r.cells.batchNo,
+        staff: r.cells.staff,
+        functionName: r.cells.functionName,
+        paxPacks: r.cells.paxPacks,
+        prepDay: r.cells.prepDay,
+        eventDay: r.cells.eventDay,
+        merged: r.merged,
+        shadeLate: r.shadeLate,
+        group: r.group,
+        key: r.key,
+        values: r.values,
+        cells: r.cells
+      };
+    });
+  }
+
+  function loadExcelJS() {
+    return new Promise(function (resolve, reject) {
+      if (root.ExcelJS) return resolve(root.ExcelJS);
+      var s = document.createElement('script');
+      s.src = 'vendor/exceljs/exceljs.min.js';
+      s.onload = function () { resolve(root.ExcelJS); };
+      s.onerror = function () { reject(new Error('ExcelJS failed to load')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function exportOrganisedXlsx(rows, deps, helpers) {
+    helpers = helpers || {};
+    var data = buildOrganisedRows(rows, deps, helpers);
+    if (!helpers.allRows) data = applyItemFiltersSort(data, getItemViewState());
+    var headers = ORGANISED_HEADERS.slice();
+    var name = 'Prepline_Organised_' + (new Date().toISOString().slice(0, 10)) + '.xlsx';
+    var lateFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+
+    function downloadBlob(buf, filename) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 1500);
+    }
+
+    function withExcelJS(ExcelJS) {
+      var wb = new ExcelJS.Workbook();
+      var ws = wb.addWorksheet('Prep list', {
+        views: [{ state: 'frozen', ySplit: 1, activeCell: 'A2', showGridLines: true }]
+      });
+      ws.columns = [
+        { key: 'functionName', width: 28 },
+        { key: 'dishName', width: 28 },
+        { key: 'paxPacks', width: 12 },
+        { key: 'prepDay', width: 12 },
+        { key: 'eventDay', width: 14 },
+        { key: 'itemName', width: 32 },
+        { key: 'section', width: 22 },
+        { key: 'qtyEach', width: 12 },
+        { key: 'qtyTotal', width: 16 },
+        { key: 'batchNo', width: 10 },
+        { key: 'staff', width: 16 },
+        { key: 'prepMin', width: 10 },
+        { key: 'notes', width: 24 }
+      ];
+      var head = ws.addRow(headers);
+      head.eachCell(function (cell) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+        cell.font = { bold: true, name: 'Arial', size: 11 };
+        cell.alignment = { vertical: 'top', wrapText: true, horizontal: 'left' };
+      });
+      data.forEach(function (r) {
+        var row = ws.addRow(r.values.map(function (v) { return (v == null || v === '') ? '—' : v; }));
+        var secFill = r.sectionFill && r.sectionFill.bg
+          ? { type: 'pattern', pattern: 'solid', fgColor: { argb: r.sectionFill.bg } }
+          : null;
+        row.eachCell(function (cell) {
+          cell.alignment = { vertical: 'top', wrapText: true, horizontal: 'left' };
+          if (secFill) cell.fill = secFill;
+          else if (r.shadeLate) cell.fill = lateFill;
+          if (cell.value == null || cell.value === '') cell.value = '—';
+        });
+      });
+      var ncols = headers.length;
+      ws.eachRow(function (row, rn) {
+        if (rn === 1) return;
+        for (var c = 1; c <= ncols; c++) {
+          var cell = row.getCell(c);
+          if (cell.value == null || cell.value === '') cell.value = '—';
+          cell.alignment = { vertical: 'top', wrapText: true, horizontal: 'left' };
+        }
+      });
+      ws.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: Math.max(1, data.length + 1), column: ncols }
+      };
+      return wb.xlsx.writeBuffer().then(function (buf) {
+        downloadBlob(buf, name);
+        return { name: name, rows: data.length, headers: headers, data: data, engine: 'exceljs' };
+      });
+    }
+
+    function withXLSX() {
+      if (typeof XLSX === 'undefined' || !XLSX.utils) throw new Error('XLSX not loaded');
+      var aoa = [headers];
+      data.forEach(function (r) {
+        aoa.push(r.values.map(function (v) { return (v == null || v === '') ? '—' : v; }));
+      });
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      var yellow = { patternType: 'solid', fgColor: { rgb: 'FFFF00' } };
+      var bold = { bold: true, name: 'Arial', sz: 11 };
+      var wrapTop = { vertical: 'top', wrapText: true, horizontal: 'left' };
+      var late = { patternType: 'solid', fgColor: { rgb: 'F2F2F2' } };
+      headers.forEach(function (_, c) {
+        var addr = XLSX.utils.encode_cell({ r: 0, c: c });
+        if (!ws[addr]) ws[addr] = { t: 's', v: headers[c] };
+        ws[addr].s = { fill: yellow, font: bold, alignment: wrapTop };
+      });
+      var ncols = headers.length;
+      for (var r = 1; r < aoa.length; r++) {
+        for (var c = 0; c < ncols; c++) {
+          var a = XLSX.utils.encode_cell({ r: r, c: c });
+          if (!ws[a] || ws[a].v === '' || ws[a].v == null) ws[a] = { t: 's', v: '—' };
+          var style = { alignment: wrapTop };
+          var dr = data[r - 1];
+          if (dr && dr.sectionFill && dr.sectionFill.bg) style.fill = { patternType: 'solid', fgColor: { rgb: dr.sectionFill.bg.slice(2) } };
+          else if (dr && dr.shadeLate) style.fill = late;
+          ws[a].s = Object.assign({}, ws[a].s || {}, style);
+        }
+      }
+      ws['!cols'] = [
+        { wch: 28 }, { wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
+        { wch: 32 }, { wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 10 }, { wch: 24 }
+      ];
+      var lastCol = XLSX.utils.encode_col(ncols - 1);
+      ws['!autofilter'] = { ref: 'A1:' + lastCol + Math.max(1, aoa.length) };
+      ws['!freeze'] = 'A2';
+      ws['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activeCell: 'A2' }];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Prep list');
+      XLSX.writeFile(wb, name);
+      return { name: name, rows: data.length, headers: headers, data: data, engine: 'xlsx' };
+    }
+
+    if (typeof document !== 'undefined') {
+      if (helpers.forceXlsx) return withXLSX();
+      var pending = loadExcelJS().then(withExcelJS).catch(function () { return withXLSX(); });
+      pending.name = name; pending.rows = data.length; pending.headers = headers; pending.data = data;
+      return pending;
+    }
+    return withXLSX();
+  }
+
+  var COL_KEYS = [
+    'functionName', 'dishName', 'paxPacks', 'prepDay', 'eventDay',
+    'itemName', 'section', 'qtyEach', 'qtyTotal', 'batchNo', 'staff', 'notes'
+  ];
+
+  function applyItemFiltersSort(rows, state) {
+    state = state || getItemViewState();
+    var filters = state.filters || {};
+    var q = String(state.search || '').trim().toLowerCase();
+    var filtered = rows.filter(function (r) {
+      if (q) {
+        var hay = (r.values || []).join(' ').toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return COL_KEYS.every(function (k) {
+        var f = filters[k];
+        if (!f) return true;
+        var cell = String(r.cells[k] || '');
+        if (typeof f === 'object' && !Array.isArray(f)) {
+          if (f.text && cell.toLowerCase().indexOf(String(f.text).toLowerCase()) < 0) return false;
+          if (Array.isArray(f.values) && f.values.length && f.values.indexOf(cell) < 0) return false;
+          return true;
+        }
+        if (Array.isArray(f)) return f.indexOf(cell) >= 0;
+        return cell.toLowerCase().indexOf(String(f).toLowerCase()) >= 0;
+      });
+    });
+    if (state.sortCol && COL_KEYS.indexOf(state.sortCol) >= 0) {
+      var col = state.sortCol;
+      var dir = state.sortDir === 'desc' ? -1 : 1;
+      filtered = filtered.slice().sort(function (a, b) {
+        var va = String(a.cells[col] || '');
+        var vb = String(b.cells[col] || '');
+        if (col === 'prepDay' || col === 'eventDay') {
+          var ia = dayIdx(va), ib = dayIdx(vb);
+          if (ia >= 0 || ib >= 0) {
+            if (ia < 0) return 1 * dir;
+            if (ib < 0) return -1 * dir;
+            return (ia - ib) * dir;
+          }
+        }
+        if (col === 'section') {
+          var sa = SECTION_ORDER.indexOf(va), sb = SECTION_ORDER.indexOf(vb);
+          if (sa < 0) sa = 999; if (sb < 0) sb = 999;
+          if (sa !== sb) return (sa - sb) * dir;
+        }
+        if (col === 'itemName') { va = a.itemNorm; vb = b.itemNorm; }
+        if (va < vb) return -1 * dir;
+        if (va > vb) return 1 * dir;
+        return 0;
+      });
+    }
+    return filtered;
+  }
+
+
+  function injectWeekEndingPrintCss() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('u47WePrintCss')) return;
+    var s = document.createElement('style');
+    s.id = 'u47WePrintCss';
+    s.textContent = '@media print{.u47-week-ending{position:fixed;top:0;left:0;right:0;z-index:9999;}' +
+      '.u47-itemview{padding-top:48px;}.u47-week-ending{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}';
+    document.head.appendChild(s);
+  }
+
+  function renderByItemView(rows, deps, helpers) {
+    helpers = helpers || {};
+    var escH = wrapEsc(helpers.escapeHtml || esc);
+    var state = getItemViewState();
+    var all = buildOrganisedRows(rows, deps, helpers);
+    var list = applyItemFiltersSort(all, state);
+    var tickHtml = helpers.tickControlsHtml || function () { return ''; };
+    var batchReason = helpers.batchReasonHtml || function () { return ''; };
+    var unbatchBtn = helpers.unbatchButtonHtml || function () { return ''; };
+
+    var html = '';
+    var weBanner = 'WEEK ENDING: ____';
+    try {
+      if (root.Prepline477 && typeof root.Prepline477.resolveWeekEndingLabel === 'function') {
+        var srcFile = (typeof sourceInfo !== 'undefined' && sourceInfo && sourceInfo.name) || '';
+        weBanner = root.Prepline477.resolveWeekEndingLabel({ sourceFileName: srcFile, getEventDateStr: helpers.getEventDateStr }, []).label;
+      }
+    } catch (eWe) {}
+    html += '<div class="u47-itemview" id="u47ItemView" data-no-daynum>';
+    try { injectWeekEndingPrintCss(); } catch (eCss) {}
+    html += '<div class="u47-week-ending" role="banner">' + escH(weBanner) + '</div>';
+    html += '<div class="u47-toolbar no-print">';
+    html += '<div class="viewtoggle u47-itemtoggle">';
+    html += '<button type="button" class="' + (state.mode === 'item' ? '' : 'secondary') + '" data-u47-mode="item">By item</button>';
+    html += '<button type="button" class="' + (state.mode === 'section' ? '' : 'secondary') + '" data-u47-mode="section">By section</button>';
+    html += '</div>';
+    html += '<button type="button" class="secondary" id="u47ResetOrder" title="Clear saved drag order">Reset order</button>';
+    html += '<span class="u47-note" style="margin:0">' + list.length + ' rows · same columns as Organised export · drag ☰ to reorder</span>';
+    html += '</div>';
+
+    html += '<div class="u47-filters no-print">';
+    COL_KEYS.forEach(function (k, i) {
+      var label = ORGANISED_HEADERS[i];
+      var val = (state.filters && state.filters[k]) || '';
+      html += '<label class="u47-filter">' + escH(label) +
+        '<input type="search" data-u47-filter="' + k + '" value="' + escH(val) + '" placeholder="Filter…"></label>';
+    });
+    html += '</div>';
+
+    function sortMark(col) {
+      if (state.sortCol !== col) return '';
+      return state.sortDir === 'desc' ? ' ↓' : ' ↑';
+    }
+
+    function rowCard(r) {
+      var g = r.group;
+      var tick = (state.mode === 'section' && !helpers.print) ? tickHtml(g) : '';
+      var sub = (r.merged && helpers.showMerged !== false) ? batchReason(g) : '';
+      var unb = (state.mode === 'section' && r.merged) ? unbatchBtn(g) : '';
+      return '<article class="u47-card' + (r.shadeLate ? ' u47-late' : '') + (r.merged ? ' u47-merged-row' : '') +
+        '" draggable="false" data-u47-key="' + escH(r.key) + '">' +
+        '<div class="u47-card-top">' +
+          '<button type="button" class="u47-drag" data-u47-drag aria-label="Drag to reorder" title="Drag to reorder">☰</button>' +
+          '<div class="u47-card-main">' +
+            '<div class="u47-card-item"><strong>' + escH(r.cells.itemName) + '</strong>' +
+              (r.merged ? ' <span class="u47-pill">merged</span>' : '') + '</div>' +
+            '<div class="u47-card-meta">' + escH(r.cells.functionName) +
+              (r.cells.functionName !== r.cells.dishName ? ' · ' + escH(r.cells.dishName) : '') + '</div>' +
+            '<div class="u47-card-meta">' + escH(r.cells.prepDay) + ' prep → ' + escH(r.cells.eventDay) +
+              ' · pax ' + escH(r.cells.paxPacks) + '</div>' +
+            '<div class="u47-card-meta">Section: ' + escH(r.cells.section) + '</div>' +
+            '<div class="u47-card-qty">' + escH(r.cells.qtyEach) + ' each · <b>' + escH(r.cells.qtyTotal) + '</b>' +
+              ' · batch ' + escH(r.cells.batchNo) + ' · ' + escH(r.cells.staff) + '</div>' +
+            sub + unb +
+          '</div>' + tick +
+        '</div></article>';
+    }
+
+    function rowTr(r) {
+      var g = r.group;
+      var tick = (state.mode === 'section' && !helpers.print)
+        ? ('<td class="u47-tickcell">' + tickHtml(g) + '</td>') : '';
+      var cellsHtml = r.values.map(function (v) {
+        return '<td data-u47-v="' + escH(v) + '">' + escH(v) + '</td>';
+      }).join('');
+      return '<tr class="' + (r.shadeLate ? 'u47-late' : '') + (r.merged ? ' u47-merged-row' : '') +
+        '" data-u47-key="' + escH(r.key) + '" draggable="false">' +
+        '<td class="u47-dragcell no-print"><button type="button" class="u47-drag" data-u47-drag aria-label="Drag to reorder">☰</button></td>' +
+        cellsHtml + tick + '</tr>';
+    }
+
+    function tableHead(withTick) {
+      var h = '<div class="u47-table-wrap u47-desktop-only"><table class="u47-table"><thead><tr>' +
+        '<th class="no-print"></th>';
+      ORGANISED_HEADERS.forEach(function (label, i) {
+        var k = COL_KEYS[i];
+        h += '<th><button type="button" class="u47-sort" data-u47-sort="' + k + '">' +
+          escH(label) + sortMark(k) + '</button></th>';
+      });
+      if (withTick) h += '<th class="no-print">Tick</th>';
+      h += '</tr></thead><tbody data-u47-list>';
+      return h;
+    }
+
+    if (state.mode === 'section') {
+      var bySec = {};
+      list.forEach(function (r) {
+        var s = r.section || '—';
+        if (!bySec[s]) bySec[s] = [];
+        bySec[s].push(r);
+      });
+      var secs = Object.keys(bySec).sort(function (a, b) {
+        var ia = SECTION_ORDER.indexOf(a), ib = SECTION_ORDER.indexOf(b);
+        if (ia < 0) ia = 999; if (ib < 0) ib = 999;
+        if (ia !== ib) return ia - ib;
+        return a.localeCompare(b);
+      });
+      secs.forEach(function (sec) {
+        html += '<section class="u47-secblock"><h3 class="u47-sechead">' + escH(sec) +
+          ' <span class="u47-note">(' + bySec[sec].length + ')</span></h3>';
+        html += '<div class="u47-cards u47-phone-only" data-u47-list>' + bySec[sec].map(rowCard).join('') + '</div>';
+        html += tableHead(true) + bySec[sec].map(rowTr).join('') + '</tbody></table></div></section>';
+      });
+    } else {
+      html += '<div class="u47-cards u47-phone-only" data-u47-list>' + list.map(rowCard).join('') + '</div>';
+      html += tableHead(false) + list.map(rowTr).join('') + '</tbody></table></div>';
+    }
+
+    if (!list.length) html += '<div class="panel">No rows match the filters.</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function bindByItemView(rootEl, onChange) {
+    if (!rootEl) return;
+    rootEl.querySelectorAll('[data-u47-mode]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setItemViewState({ mode: btn.getAttribute('data-u47-mode') });
+        if (onChange) onChange();
+      });
+    });
+    rootEl.querySelectorAll('[data-u47-sort]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var col = btn.getAttribute('data-u47-sort');
+        var st = getItemViewState();
+        if (st.sortCol === col) {
+          setItemViewState({ sortDir: st.sortDir === 'asc' ? 'desc' : 'asc' });
+        } else {
+          setItemViewState({ sortCol: col, sortDir: 'asc' });
+        }
+        if (onChange) onChange();
+      });
+    });
+    var filterTimer = null;
+    rootEl.querySelectorAll('[data-u47-filter]').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(function () {
+          var st = getItemViewState();
+          var filters = Object.assign({}, st.filters);
+          var k = inp.getAttribute('data-u47-filter');
+          var v = inp.value.trim();
+          if (v) filters[k] = v; else delete filters[k];
+          setItemViewState({ filters: filters });
+          if (onChange) onChange();
+        }, 200);
+      });
+    });
+    var reset = rootEl.querySelector('#u47ResetOrder');
+    if (reset) reset.addEventListener('click', function () {
+      resetOrder();
+      setItemViewState({ sortCol: null, sortDir: 'asc' });
+      if (onChange) onChange();
+    });
+
+    var dragKey = null;
+    var longTimer = null;
+    var dragging = false;
+
+    function collectKeys(listEl) {
+      return Array.prototype.map.call(listEl.querySelectorAll('[data-u47-key]'), function (el) {
+        return el.getAttribute('data-u47-key');
+      });
+    }
+    function persistFromDom() {
+      var lists = rootEl.querySelectorAll('[data-u47-list]');
+      var keys = [];
+      if (lists.length) {
+        var best = collectKeys(lists[0]);
+        for (var i = 0; i < lists.length; i++) {
+          var kk = collectKeys(lists[i]);
+          if (kk.length >= best.length) best = kk;
+        }
+        keys = best;
+      }
+      saveOrder(keys);
+    }
+
+    rootEl.querySelectorAll('[data-u47-list]').forEach(function (listEl) {
+      listEl.querySelectorAll('[data-u47-key]').forEach(function (row) {
+        var handle = row.querySelector('[data-u47-drag]') || row;
+        handle.addEventListener('mousedown', function () { row.setAttribute('draggable', 'true'); });
+        handle.addEventListener('mouseup', function () { row.setAttribute('draggable', 'false'); });
+        handle.addEventListener('touchstart', function () {
+          longTimer = setTimeout(function () {
+            dragging = true;
+            dragKey = row.getAttribute('data-u47-key');
+            row.classList.add('u47-dragging');
+          }, 350);
+        }, { passive: true });
+        handle.addEventListener('touchend', function () {
+          clearTimeout(longTimer);
+          if (dragging) {
+            dragging = false;
+            row.classList.remove('u47-dragging');
+            persistFromDom();
+            if (onChange) onChange();
+          }
+          dragKey = null;
+        });
+        handle.addEventListener('touchmove', function (e) {
+          if (!dragging) { clearTimeout(longTimer); return; }
+          var t = e.touches[0];
+          var el = document.elementFromPoint(t.clientX, t.clientY);
+          var target = el && el.closest ? el.closest('[data-u47-key]') : null;
+          if (target && target.parentNode === listEl && target !== row) {
+            var rect = target.getBoundingClientRect();
+            if (t.clientY < rect.top + rect.height / 2) listEl.insertBefore(row, target);
+            else listEl.insertBefore(row, target.nextSibling);
+          }
+        }, { passive: true });
+
+        row.addEventListener('dragstart', function (e) {
+          dragKey = row.getAttribute('data-u47-key');
+          row.classList.add('u47-dragging');
+          try { e.dataTransfer.setData('text/plain', dragKey); e.dataTransfer.effectAllowed = 'move'; } catch (err) {}
+        });
+        row.addEventListener('dragend', function () {
+          row.classList.remove('u47-dragging');
+          row.setAttribute('draggable', 'false');
+          persistFromDom();
+          dragKey = null;
+          if (onChange) onChange();
+        });
+      });
+      listEl.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        var target = e.target.closest ? e.target.closest('[data-u47-key]') : null;
+        if (!target || !dragKey) return;
+        var moving = null;
+        try {
+          moving = listEl.querySelector('[data-u47-key="' + dragKey.replace(/"/g, '\\"') + '"]');
+        } catch (err) {
+          listEl.querySelectorAll('[data-u47-key]').forEach(function (el) {
+            if (el.getAttribute('data-u47-key') === dragKey) moving = el;
+          });
+        }
+        if (!moving || moving === target) return;
+        var rect = target.getBoundingClientRect();
+        if (e.clientY < rect.top + rect.height / 2) listEl.insertBefore(moving, target);
+        else listEl.insertBefore(moving, target.nextSibling);
+      });
+    });
+  }
+
+  /* ---------- CSS ---------- */
+  function css() {
+    return [
+      '.u47-note{font-size:12.5px;color:var(--ink-soft,#5C5A52);margin:0 0 12px;}',
+      '.u47-dayhead{margin:0 0 8px;}',
+      '.u47-sechead{margin:12px 0 6px;font-size:14px;color:var(--ink-soft,#5C5A52);}',
+      '.u47-tickbar{display:inline-flex;align-items:center;gap:6px;margin-top:6px;}',
+      '.u47-tickbtn{width:44px;height:44px;border-radius:10px;border:1px solid var(--line,#D9D3C3);background:#fff;font-size:20px;cursor:pointer;}',
+      '.u47-tick-done .u47-tickbtn[data-tick=done],.u47-tick-part .u47-tickbtn[data-tick=part]{background:#1C1B16;color:#fff;border-color:#1C1B16;}',
+      '.u47-tickpct{width:64px;height:40px;font-size:16px;}',
+      '.u47-progbar{height:8px;background:#E8E4D8;border-radius:99px;margin:8px 0;overflow:hidden;}',
+      '.u47-progbar>div{height:100%;background:#2F6B3A;}',
+      '.u47-diff ul{margin:6px 0;padding-left:18px;}',
+      '.u47-add{color:#2F6B3A;}',
+      '.u47-rem{color:#9B2C2C;}',
+      '.u47-chg{color:#7A5A00;}',
+      '.u47-mic{width:100%;max-width:320px;height:64px;font-size:18px;border-radius:12px;border:2px solid #1C1B16;background:#fff;cursor:pointer;}',
+      '.u47-mic-on{background:#FFF4C2;border-color:#C9A227;}',
+      '.u47-secbadge{display:inline-block;margin-left:6px;font-size:11px;padding:2px 7px;border-radius:999px;background:#E8F0FE;color:#1A56DB;}',
+      '.u47-merged-short{display:none;}',
+      '@media (max-width:520px){.u47-merged-full{display:none;}.u47-merged-short{display:inline;}}',
+      '.u47-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;}',
+      '.u47-week-ending{font-family:Calibri,Arial,sans-serif;font-size:18px;font-weight:700;text-align:center;padding:8px 10px;margin:0 0 8px;background:#FFF2CC;border:1px solid #000;letter-spacing:0.02em;}',
+      '.u47-itemview{margin-top:8px;}',
+      '.u47-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin:0 0 12px;}',
+      '.u47-filter{font-size:11px;color:var(--ink-soft,#5C5A52);display:flex;flex-direction:column;gap:2px;}',
+      '.u47-filter input{font-size:12px;padding:4px 6px;border:1px solid var(--line,#D9D3C3);border-radius:6px;}',
+      '.u47-table-wrap{max-height:70vh;overflow:auto;border:1px solid var(--line,#D9D3C3);border-radius:8px;background:#fff;}',
+      '.u47-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;}',
+      '.u47-table thead th{position:sticky;top:0;z-index:2;background:#FFFF00;font-weight:700;text-align:left;padding:8px 8px;border-bottom:1px solid #ccc;white-space:nowrap;}',
+      '.u47-table td{padding:8px;border-bottom:1px solid #eee;vertical-align:top;white-space:normal;word-break:break-word;}',
+      '.u47-table tr.u47-late td,.u47-card.u47-late{background:#F2F2F2;}',
+      '.u47-sort{background:none;border:none;font:inherit;font-weight:700;cursor:pointer;padding:0;text-align:left;}',
+      '.u47-drag{width:36px;height:36px;border:1px solid var(--line,#D9D3C3);border-radius:8px;background:#fff;cursor:grab;font-size:16px;}',
+      '.u47-dragging{opacity:.55;outline:2px dashed #1C1B16;}',
+      '.u47-cards{display:flex;flex-direction:column;gap:10px;}',
+      '.u47-card{border:1px solid var(--line,#D9D3C3);border-radius:10px;padding:10px;background:#fff;}',
+      '.u47-card-top{display:flex;gap:8px;align-items:flex-start;}',
+      '.u47-card-item{font-size:15px;}',
+      '.u47-card-meta{font-size:12px;color:var(--ink-soft,#5C5A52);margin-top:2px;}',
+      '.u47-card-qty{font-size:13px;margin-top:6px;}',
+      '.u47-pill{font-size:10px;padding:1px 6px;border-radius:999px;background:#FFF4C2;color:#6B4F28;vertical-align:middle;}',
+      '.u47-phone-only{display:none;}',
+      '.u47-desktop-only{display:block;}',
+      '@media (max-width:720px){.u47-phone-only{display:flex;}.u47-desktop-only{display:none;}.u47-filters{grid-template-columns:1fr 1fr;}}'
+    ].join('');
+  }
+  function ensureCss() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('u47Css')) return;
+    var s = document.createElement('style');
+    s.id = 'u47Css';
+    s.textContent = css() + stationPrintCss();
+    document.head.appendChild(s);
+  }
+
+  root.PreplineUpgrades47 = {
+    VERSION: '4.7.2',
+    buildWeekGroups: buildWeekGroups,
+    renderWeekView: renderWeekView,
+    mergedSubtitleText: mergedSubtitleText,
+    mergedSubtitleHtml: mergedSubtitleHtml,
+    functionNamesForGroup: functionNamesForGroup,
+    getTick: getTick,
+    setTick: setTick,
+    tickControlsHtml: tickControlsHtml,
+    progressSummaryHtml: progressSummaryHtml,
+    exportProgressCode: exportProgressCode,
+    importProgressCode: importProgressCode,
+    bindTickControls: bindTickControls,
+    rememberSnapshot: rememberSnapshot,
+    peekLastDiff: peekLastDiff,
+    diffSnapshots: diffSnapshots,
+    changeCheckHtml: changeCheckHtml,
+    buildOrderFromBatches: buildOrderFromBatches,
+    renderOrderFromBatches: renderOrderFromBatches,
+    orderCsv: orderCsv,
+    recipeLib: recipeLib,
+    saveRecipes: saveRecipes,
+    applyYieldToQty: applyYieldToQty,
+    recipeLibHtml: recipeLibHtml,
+    bindRecipeLib: bindRecipeLib,
+    useByFromPrep: useByFromPrep,
+    buildStationSheetsFromAlloc: buildStationSheetsFromAlloc,
+    stationSheetHtml: stationSheetHtml,
+    stationPrintCss: stationPrintCss,
+    parseVoiceUtterance: parseVoiceUtterance,
+    voiceSupported: voiceSupported,
+    voicePanelHtml: voicePanelHtml,
+    bindVoice: bindVoice,
+    simulateVoice: function (text) {
+      var p = parseVoiceUtterance(text);
+      if (p && typeof document !== 'undefined') {
+        var qty = document.getElementById('u47VQty');
+        var unit = document.getElementById('u47VUnit');
+        var item = document.getElementById('u47VItem');
+        var day = document.getElementById('u47VDay');
+        var status = document.getElementById('u47VStatus');
+        if (qty) qty.value = p.qty || '';
+        if (unit) unit.value = p.unit || '';
+        if (item) item.value = p.task || '';
+        if (day && p.day) day.value = p.day;
+        if (status) status.textContent = 'Heard: ' + (p.raw || '') + ' — check, then Add line.';
+      }
+      return p;
+    },
+    learnSectionsFromRows: learnSectionsFromRows,
+    suggestSection: suggestSection,
+    sectionBadgeHtml: sectionBadgeHtml,
+    ORGANISED_HEADERS: ORGANISED_HEADERS,
+    COL_KEYS: COL_KEYS,
+    SECTION_ORDER: SECTION_ORDER,
+    sectionColour: sectionColour,
+    notesMap: notesMap,
+    saveNotesMap: saveNotesMap,
+    prepMinMap: prepMinMap,
+    savePrepMinMap: savePrepMinMap,
+    staffOverrideMap: staffOverrideMap,
+    saveStaffOverrideMap: saveStaffOverrideMap,
+    pushHistory: pushHistory,
+    historyList: historyList,
+    exportHistoryCsv: exportHistoryCsv,
+    pushUndo: pushUndo,
+    popUndo: popUndo,
+    showToast: showToast,
+    markSavedIndicator: markSavedIndicator,
+    getDeviceWho: getDeviceWho,
+    setDeviceWho: setDeviceWho,
+    sydneyStamp: sydneyStamp,
+    buildOrganisedRows: buildOrganisedRows,
+    buildExportRows: buildExportRows,
+    exportOrganisedXlsx: exportOrganisedXlsx,
+    renderByItemView: renderByItemView,
+    bindByItemView: bindByItemView,
+    applyItemFiltersSort: applyItemFiltersSort,
+    getItemViewState: getItemViewState,
+    setItemViewState: setItemViewState,
+    getSavedOrder: getSavedOrder,
+    saveOrder: saveOrder,
+    resetOrder: resetOrder,
+    ensureCss: ensureCss,
+    latestDeliveryDay: latestDeliveryDay,
+    SHELF_DAYS: SHELF_DAYS
+  };
+})(typeof window !== 'undefined' ? window : globalThis);

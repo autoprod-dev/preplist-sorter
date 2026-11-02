@@ -1,2 +1,28 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(){"use strict";try{localStorage.getItem("prepline.signup.v1")||localStorage.setItem("prepline.signup.v1",JSON.stringify({d:(new Date).toISOString().slice(0,10),via:"open_access"}))}catch(e){}function e(){var e=document.getElementById("apGate");e&&e.remove(),document.body&&Array.prototype.forEach.call(document.body.children,function(e){e.removeAttribute("inert")}),document.documentElement.style.overflow="";var t=document.getElementById("apTrialNote");t&&t.remove()}window.__preplineGate={status:"unlimited",reason:"trial_open_access"},document.body?e():document.addEventListener("DOMContentLoaded",e)}();
+// Prepline trial open access (4.7.4): no login, sign-up, trial, email check, PIN,
+// device-token or Apps Script call. App opens straight into full access.
+(function () {
+  'use strict';
+  try {
+    if (!localStorage.getItem('prepline.signup.v1')) {
+      localStorage.setItem('prepline.signup.v1', JSON.stringify({
+        d: new Date().toISOString().slice(0, 10),
+        via: 'open_access'
+      }));
+    }
+  } catch (e) {}
+  window.__preplineGate = { status: 'unlimited', reason: 'trial_open_access' };
+  function clearGate() {
+    var d = document.getElementById('apGate');
+    if (d) d.remove();
+    if (document.body) {
+      Array.prototype.forEach.call(document.body.children, function (el) {
+        el.removeAttribute('inert');
+      });
+    }
+    document.documentElement.style.overflow = '';
+    var note = document.getElementById('apTrialNote');
+    if (note) note.remove();
+  }
+  if (document.body) clearGate();
+  else document.addEventListener('DOMContentLoaded', clearGate);
+})();

@@ -1,2 +1,564 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(e){"use strict";var t=[{key:"sauce",label:"Sauce",rgb:"#4A86E8",xrgb:"FF4A86E8"},{key:"vege",label:"Vege",rgb:"#00FF00",xrgb:"FF00FF00"},{key:"garnish",label:"Garnish",rgb:"#FF9900",xrgb:"FFFF9900"},{key:"starch",label:"Starch",rgb:"#FFFF00",xrgb:"FFFFFF00"},{key:"protein",label:"Protein",rgb:"#FF0000",xrgb:"FFFF0000"}];function n(e,t){var n=document.getElementById("prepMatchStatus")||document.getElementById("woStatus");n&&(n.textContent=e||"",n.style.color=t?"#a00":"")}var r=null;function o(t){if(!e.AllocPrepList)throw new Error("AllocPrepList missing");var n=e.XLSX;if(!n)throw new Error("XLSX missing");var o=t.dish||"Bespoke dish",a=t.date||"",i=t.meal||"Dinner",l=t.acronym||(e.AllocPrepList.eventAcronym?e.AllocPrepList.eventAcronym(t.event||o,i):"EVT"),s=a&&e.AllocPrepList.fmtEventLabel?e.AllocPrepList.fmtEventLabel(a,i,l):i+" ("+l+")",c=null!=t.pax?t.pax:100,p=o.replace(/textures of\s+/i,"").split(/\s+/).slice(0,2).join(" ").slice(0,14)||"Bespoke",d=a&&e.AllocPrepList.tabName?e.AllocPrepList.tabName(a,"M",p,l):(p+" - "+l).slice(0,31);return(r||(r=fetch((e.__PREPLINE_VENDOR_BASE__||"../").replace(/\/?$/,"/")+"allocation/templates/bespoke-blank-plated.xlsx",{cache:"force-cache"}).then(function(e){if(!e.ok)throw new Error("Blank master template HTTP "+e.status);return e.arrayBuffer()}).then(function(e){return new Uint8Array(e)}).catch(function(e){throw r=null,e}))).then(function(r){var p=n.read(r,{type:"array",cellStyles:!0,cellFormula:!0}),u=p.SheetNames[0],h=p.Sheets[u];!function(t,n){var r=n.eventLabel||"Event",o=null!=n.pax?n.pax:100;function a(e,n){var r=t[e]||{};n.s=r.s||n.s,t[e]=n}a("B1",{t:"s",v:n.dish||"Bespoke dish"}),a("B2",{t:"s",v:r}),a("C2",{t:"n",v:Number(o)||0}),t.D2||a("D2",{t:"s",v:"pax"});var i=t["!ref"]||"A1:L18",l=18;try{var s=/:([A-Z]+)(\d+)/.exec(i);s&&(l=Math.max(4,parseInt(s[2],10)))}catch(e){}for(var c=4;c<=l;c++){var p=t["E"+c];p?p.f||(p.f="=$C$2*C"+c,p.t="n",null==p.v&&(p.v=0)):t["E"+c]={t:"n",f:"=$C$2*C"+c,v:0},["B","C","D","F","G"].forEach(function(e){t[e+c]})}e.AllocPrepList&&e.AllocPrepList.applySamplePrintSetup&&e.AllocPrepList.applySamplePrintSetup(t)}(h,{dish:o,eventLabel:s,pax:c}),p.SheetNames[0]=d.slice(0,31),p.Sheets[d.slice(0,31)]=h,u!==d.slice(0,31)&&delete p.Sheets[u];var f=e.AllocPrepList.writePrepXlsx?e.AllocPrepList.writePrepXlsx(p,n):n.write(p,{type:"array",bookType:"xlsx",cellStyles:!0});return{buffer:f instanceof Uint8Array?f:new Uint8Array(f),tab:d,dish:o,date:a,event:t.event||o,meal:i,pax:c,acronym:l,eventLabel:s}}).catch(function(r){return console.warn("Blank master template load failed, using SheetJS structural blank",r),function(){var r=e.AllocPrepList.blankPaulaLegendSheet({dish:o,eventLabel:s,pax:c,rows:t.rows||[],blankRows:15}),p=n.utils.book_new();n.utils.book_append_sheet(p,r,d.slice(0,31));var u=e.AllocPrepList.writePrepXlsx?e.AllocPrepList.writePrepXlsx(p,n):n.write(p,{type:"array",bookType:"xlsx",cellStyles:!0});return{buffer:u instanceof Uint8Array?u:new Uint8Array(u),tab:d,dish:o,date:a,event:t.event||o,meal:i,pax:c,acronym:l,eventLabel:s}}()})}function a(){var n=document.getElementById("sbTop");if(n&&!document.getElementById("sbLegendPicks")){var r=document.createElement("div");r.id="sbLegendPicks",r.style.cssText="display:flex;gap:4px;align-items:center;flex-wrap:wrap",r.innerHTML='<span style="font-size:12px;color:#5C5A52">Legend fill:</span>',t.forEach(function(t){var n=document.createElement("button");n.type="button",n.textContent=t.label,n.title="Apply "+t.label+" fill to selection (and col A marker)",n.style.cssText="padding:5px 8px;border-radius:6px;border:1px solid #C9C2B0;background:"+t.rgb+";color:#111;font:inherit;cursor:pointer;font-size:12px",n.onclick=function(){!function(t){var n=function(){try{var t=e.PreplineSheet&&e.PreplineSheet._getEditor&&e.PreplineSheet._getEditor();if(!t||!t.univerAPI)return null;var n=t.univerAPI.getActiveWorkbook&&t.univerAPI.getActiveWorkbook();if(!n)return null;var r=n.getActiveSheet&&n.getActiveSheet();if(!r)return null;var o=r.getSelection&&r.getSelection(),a=o&&o.getActiveRange&&o.getActiveRange();if(a)return{sheet:r,range:a,api:t.univerAPI};if(r.getRange)return{sheet:r,range:r.getRange(0,0),api:t.univerAPI}}catch(e){}return null}();if(n&&n.range)try{if("function"==typeof n.range.setBackground)n.range.setBackground(t.rgb);else{if("function"!=typeof n.range.setBackgroundColor)return void alert("Fill API unavailable in this build — use the toolbar paint bucket.");n.range.setBackgroundColor(t.rgb)}try{n.range.getA1||n.range.getRange;var r=n.range.getRow?n.range.getRow():0,o=n.range.getLastRow?n.range.getLastRow():r,a=Math.max(0,o-r)+1;if(n.sheet.getRange&&a>0&&a<200){var i=n.sheet.getRange(r,0,a,1);i&&i.setBackground&&i.setBackground(t.rgb)}}catch(e){}var l=document.getElementById("sbHint");l&&(l.textContent="Applied "+t.label+" fill ("+t.rgb+").")}catch(e){alert("Could not apply fill: "+(e&&e.message?e.message:e))}else alert("Select cells in the grid, then tap a legend colour.")}(t)},r.appendChild(n)});var o=document.createElement("button");o.type="button",o.id="sbInsertPhoto",o.textContent="📷 Insert photo",o.title="Insert a dish photo (kept on Save / Add to prep list)",o.onclick=i,r.appendChild(o);var a=document.createElement("input");a.type="file",a.accept="image/*",a.id="sbInsertPhotoInput",a.hidden=!0,r.appendChild(a),n.appendChild(r)}}function i(){var t=document.getElementById("sbInsertPhotoInput");t&&(t.onchange=function(){var n=t.files&&t.files[0];if(t.value="",n){var r=new FileReader;r.onload=function(){var t=r.result,o=String(t).split(",")[1]||"",a=(n.name.split(".").pop()||"png").toLowerCase().replace(/jpeg/,"jpg");"jpg"===a&&(a="jpeg"),function(t){var n="";try{var r=e.PreplineSheet._getEditor(),o=r&&r.univerAPI&&r.univerAPI.getActiveWorkbook(),a=o&&o.getActiveSheet&&o.getActiveSheet();n=a&&a.getSheetName&&a.getSheetName()||a&&a.getName&&a.getName()||""}catch(e){}if(!n){var i=e.PreplineSheet.getPending&&e.PreplineSheet.getPending();n=i&&i.meta&&i.meta.tab||"Prep"}e.__allocEditorPhotos||(e.__allocEditorPhotos={bySheet:{}}),e.__allocEditorPhotos.bySheet[n]=[t];try{e.Prepline485&&e.Prepline485.getEditorPhotos}catch(e){}var s=document.getElementById("sbGrid");if(s){var c=document.getElementById("sbPhotoOverlay");c||((c=document.createElement("div")).id="sbPhotoOverlay",c.style.cssText="position:absolute;top:48px;right:16px;z-index:5;background:#fff;border:1px solid #bbb;padding:6px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15)",c.innerHTML='<div class="sb-ph-badge" style="font-size:11px;color:#666;margin-bottom:4px">Dish photo</div><img alt="Dish photo" style="max-width:220px;max-height:220px;display:block">',s.appendChild(c));var p=c.querySelector("img");p&&(p.src=t.dataUrl)}!function(){if(e.Prepline485&&"function"==typeof e.Prepline485.reembedPhotosIntoBuffer&&!e.Prepline485.reembedPhotosIntoBuffer.__allocHook){var t=e.Prepline485.reembedPhotosIntoBuffer,n=function(n){try{var r=e.__allocEditorPhotos&&e.__allocEditorPhotos.bySheet;if(r&&Object.keys(r).length){var o=e.Prepline485.getEditorPhotos&&e.Prepline485.getEditorPhotos();if(!o||!Object.keys(o).length)return l(n,r)}}catch(e){}return t.apply(this,arguments)};n.__allocHook=!0,e.Prepline485.reembedPhotosIntoBuffer=n}}();var d=document.getElementById("sbHint");d&&(d.textContent="Photo added — will embed when you Save or Add to prep list.")}({dataUrl:t,fullDataUrl:t,base64:o,extension:"jpeg"===a?"jpeg":"png",width:420,height:420,tlRow:.2,tlCol:7,brRow:12,brCol:11,pageLabel:"Dish photo"})},r.readAsDataURL(n)}},t.click())}function l(t,n){return Promise.resolve().then(function(){if(!e.ExcelJS||!e.ExcelJS.Workbook)return{buffer:t,photos:0};var r=new e.ExcelJS.Workbook;return r.xlsx.load(t instanceof ArrayBuffer?t:t.buffer.slice(t.byteOffset,t.byteOffset+t.byteLength)).then(function(){var e=0;return r.eachSheet(function(t){var o=n[t.name];if(!o)for(var a=Object.keys(n),i=0;i<a.length;i++)if(String(a[i]).toLowerCase()===String(t.name).toLowerCase()){o=n[a[i]];break}if(!o||!o.length){var l=Object.keys(n)[0];l&&(o=n[l])}(o||[]).forEach(function(n){try{var o=r.addImage({base64:n.base64,extension:n.extension||"jpeg"});t.addImage(o,{tl:{col:n.tlCol||7,row:n.tlRow||.2},ext:{width:n.width||400,height:n.height||400}}),e++}catch(e){}})}),r.xlsx.writeBuffer().then(function(t){return{buffer:t,photos:e}})})}).catch(function(){return{buffer:t,photos:0}})}function s(){if(e.Prepline485&&"function"==typeof e.Prepline485.printActiveSheetWithPhoto&&!e.Prepline485.printActiveSheetWithPhoto.__a4){var t=e.Prepline485.printActiveSheetWithPhoto,n=function(){try{if(!e.PreplineSheet.getSnapshot())return t();var n=e.PreplineSheet._getEditor();try{var r=n.univerAPI.getActiveWorkbook().getActiveSheet();r.getSheetName?r.getSheetName():r.getName&&r.getName()}catch(e){}var o=window.open;return window.open=function(){var e=o.apply(window,arguments);if(e){var t=e.document.write.bind(e.document);e.document.write=function(e){return"string"==typeof e&&e.indexOf("@media print")>=0&&(e=e.replace("@media print{body{margin:8px}}","@page{size:A4 landscape;margin:10mm}@media print{body{margin:8px}table{font-size:11px}}")),t(e)}}return window.open=o,e},t()}catch(e){return t()}};n.__a4=!0,e.Prepline485.printActiveSheetWithPhoto=n}}function c(){var e=(document.getElementById("bespokeDish")&&document.getElementById("bespokeDish").value||"").trim()||"Bespoke dish";p({dish:e,date:document.getElementById("bespokeDate")&&document.getElementById("bespokeDate").value||"",event:(document.getElementById("bespokeEvent")&&document.getElementById("bespokeEvent").value||"").trim()||e,meal:document.getElementById("bespokeMeal")&&document.getElementById("bespokeMeal").value||"Dinner",pax:Math.max(1,+(document.getElementById("bespokePax")&&document.getElementById("bespokePax").value||100))})}function p(t){e.PreplineSheet&&"function"==typeof e.PreplineSheet.openAllocBespoke?(n("Building blank master-layout sheet…"),Promise.resolve().then(function(){return o(t)}).then(function(t){var r={dish:t.dish,date:t.date,event:t.event,meal:t.meal,pax:t.pax,acronym:t.acronym,tab:t.tab,eventLabel:t.eventLabel,fileName:t.tab};return a(),s(),e.PreplineSheet.openAllocBespoke(t.buffer,r,function(t,o){return function(t,r){var o=t instanceof Uint8Array?t:new Uint8Array(t),a=Promise.resolve(o);return e.__allocEditorPhotos&&Object.keys(e.__allocEditorPhotos.bySheet||{}).length?a=l(o,e.__allocEditorPhotos.bySheet).then(function(e){return e.buffer instanceof Uint8Array?e.buffer:new Uint8Array(e.buffer)}):e.Prepline485&&e.Prepline485.reembedPhotosIntoBuffer&&(a=e.Prepline485.reembedPhotosIntoBuffer(o).then(function(e){var t=e.buffer||o;return t instanceof Uint8Array?t:new Uint8Array(t)})),a.then(function(t){var o=function(t,n){var r=e.XLSX.read(t,{type:"array",cellStyles:!0}),o=n&&r.SheetNames.indexOf(n)>=0?n:r.SheetNames[0];return{name:o,ws:r.Sheets[o],workbook:r}}(t,r.tab),a={tab:(o.name||r.tab||"Bespoke").slice(0,31),dish:r.dish,date:r.date,event:r.event,meal:r.meal,pax:r.pax,acronym:r.acronym,ws:o.ws,master:"(bespoke-editor)",xlsxBytes:t};if(e.__alloc&&"function"==typeof e.__alloc.setBespoke){var i=(e.__alloc.bespoke||[]).slice();i.push(a),e.__alloc.setBespoke(i)}else"function"==typeof e.onAllocBespokeSaved&&e.onAllocBespokeSaved(a);return n('Added "'+a.tab+'" to prep list. Download prep list to include it.'),e.__allocEditorPhotos={bySheet:{}},a})}(t,o||r)}).then(function(){if(a(),s(),!e.ExcelJS){var t=document.createElement("script");t.src=(e.__PREPLINE_VENDOR_BASE__||"../")+"vendor/exceljs/exceljs.min.js",document.head.appendChild(t)}n("Editor open — blank master layout ready. Type items; totals compute from pax.")})}).catch(function(e){n("Editor failed: "+(e&&e.message?e.message:e),!0)})):n("Sheet editor not loaded — refresh the page.",!0)}function d(){var t=document.getElementById("bespokeAdd");t&&!t.__allocEditor&&(t.__allocEditor=!0,t.textContent="Open Excel editor",t.title="Full spreadsheet editor (Univer) with Paula colour legend — formulas, fills, photo, print, then add to prep list",t.onclick=function(e){e.preventDefault(),c()});var n=document.getElementById("bespokeQuickAdd");n&&!n.__wired&&(n.__wired=!0,n.onclick=function(){e.__alloc&&e.__alloc.onAddBespoke&&e.__alloc.onAddBespoke()})}e.PreplineAllocEditor={openFromForm:c,openEditor:p,buildStarterBuffer:o,afterOpen:function(){a(),s()},LEGEND:t},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",d):d(),setTimeout(d,0),setTimeout(d,200)}("undefined"!=typeof window?window:this);
+/* Allocation bespoke Excel-like editor bridge (Univer via PreplineSheet).
+ * Opens Paula-legend starter, legend quick picks, insert photo, A4 landscape print,
+ * saves sheet into prep-list bespokeSheets. Trial only.
+ */
+(function (root) {
+  'use strict';
+
+  var LEGEND = [
+    { key: 'sauce', label: 'Sauce', rgb: '#4A86E8', xrgb: 'FF4A86E8' },
+    { key: 'vege', label: 'Vege', rgb: '#00FF00', xrgb: 'FF00FF00' },
+    { key: 'garnish', label: 'Garnish', rgb: '#FF9900', xrgb: 'FFFF9900' },
+    { key: 'starch', label: 'Starch', rgb: '#FFFF00', xrgb: 'FFFFFF00' },
+    { key: 'protein', label: 'Protein', rgb: '#FF0000', xrgb: 'FFFF0000' }
+  ];
+
+  function status(msg, isErr) {
+    var el = document.getElementById('prepMatchStatus') || document.getElementById('woStatus');
+    if (el) {
+      el.textContent = msg || '';
+      el.style.color = isErr ? '#a00' : '';
+    }
+  }
+
+  var _blankTemplatePromise = null;
+  function blankTemplateUrl() {
+    var base = (root.__PREPLINE_VENDOR_BASE__ || '../').replace(/\/?$/, '/');
+    return base + 'allocation/templates/bespoke-blank-plated.xlsx';
+  }
+  function loadBlankTemplateBytes() {
+    if (_blankTemplatePromise) return _blankTemplatePromise;
+    _blankTemplatePromise = fetch(blankTemplateUrl(), { cache: 'force-cache' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('Blank master template HTTP ' + r.status);
+        return r.arrayBuffer();
+      })
+      .then(function (ab) { return new Uint8Array(ab); })
+      .catch(function (err) {
+        _blankTemplatePromise = null;
+        throw err;
+      });
+    return _blankTemplatePromise;
+  }
+
+  function patchBlankTemplateWs(ws, meta) {
+    var dish = meta.dish || 'Bespoke dish';
+    var eventLabel = meta.eventLabel || 'Event';
+    var pax = meta.pax != null ? meta.pax : 100;
+    function keepStyle(addr, cell) {
+      var prev = ws[addr] || {};
+      cell.s = prev.s || cell.s;
+      ws[addr] = cell;
+    }
+    keepStyle('B1', { t: 's', v: dish });
+    keepStyle('B2', { t: 's', v: eventLabel });
+    keepStyle('C2', { t: 'n', v: Number(pax) || 0 });
+    if (!ws['D2']) keepStyle('D2', { t: 's', v: 'pax' });
+    // Ensure blank data rows keep total formulas (=pax * per person)
+    var ref = ws['!ref'] || 'A1:L18';
+    var maxR = 18;
+    try {
+      var m = /:([A-Z]+)(\d+)/.exec(ref);
+      if (m) maxR = Math.max(4, parseInt(m[2], 10));
+    } catch (e0) {}
+    for (var r = 4; r <= maxR; r++) {
+      var e = ws['E' + r];
+      if (!e) {
+        ws['E' + r] = { t: 'n', f: '=$C$2*C' + r, v: 0 };
+      } else if (!e.f) {
+        e.f = '=$C$2*C' + r;
+        e.t = 'n';
+        if (e.v == null) e.v = 0;
+      }
+      // Clear any leftover values in item/pp/unit if template had placeholders
+      ['B', 'C', 'D', 'F', 'G'].forEach(function (col) {
+        if (!ws[col + r]) return;
+        // leave formulas alone; only clear display leftovers on C when empty string wanted
+      });
+    }
+    if (root.AllocPrepList && root.AllocPrepList.applySamplePrintSetup) {
+      root.AllocPrepList.applySamplePrintSetup(ws);
+    }
+    return ws;
+  }
+
+  function buildStarterBuffer(meta) {
+    if (!root.AllocPrepList) throw new Error('AllocPrepList missing');
+    var X = root.XLSX;
+    if (!X) throw new Error('XLSX missing');
+    var dish = meta.dish || 'Bespoke dish';
+    var date = meta.date || '';
+    var meal = meta.meal || 'Dinner';
+    var acronym = meta.acronym || (root.AllocPrepList.eventAcronym
+      ? root.AllocPrepList.eventAcronym(meta.event || dish, meal)
+      : 'EVT');
+    var eventLabel = date && root.AllocPrepList.fmtEventLabel
+      ? root.AllocPrepList.fmtEventLabel(date, meal, acronym)
+      : (meal + ' (' + acronym + ')');
+    var pax = meta.pax != null ? meta.pax : 100;
+    var key = dish.replace(/textures of\s+/i, '').split(/\s+/).slice(0, 2).join(' ').slice(0, 14) || 'Bespoke';
+    var tab = date && root.AllocPrepList.tabName
+      ? root.AllocPrepList.tabName(date, 'M', key, acronym)
+      : (key + ' - ' + acronym).slice(0, 31);
+
+    function fromBlankPaula() {
+      // Structural SheetJS blank (no private ingredient content)
+      var ws = root.AllocPrepList.blankPaulaLegendSheet({
+        dish: dish,
+        eventLabel: eventLabel,
+        pax: pax,
+        rows: meta.rows || [], // blank unless caller supplies
+        blankRows: 15
+      });
+      var wb = X.utils.book_new();
+      X.utils.book_append_sheet(wb, ws, tab.slice(0, 31));
+      var buf = root.AllocPrepList.writePrepXlsx
+        ? root.AllocPrepList.writePrepXlsx(wb, X)
+        : X.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true });
+      return {
+        buffer: buf instanceof Uint8Array ? buf : new Uint8Array(buf),
+        tab: tab,
+        dish: dish,
+        date: date,
+        event: meta.event || dish,
+        meal: meal,
+        pax: pax,
+        acronym: acronym,
+        eventLabel: eventLabel
+      };
+    }
+
+    // Prefer exact OOXML blank cloned from master structure (public sanitised template)
+    return loadBlankTemplateBytes()
+      .then(function (tpl) {
+        var wb = X.read(tpl, { type: 'array', cellStyles: true, cellFormula: true });
+        var name0 = wb.SheetNames[0];
+        var ws = wb.Sheets[name0];
+        patchBlankTemplateWs(ws, { dish: dish, eventLabel: eventLabel, pax: pax });
+        // Rename sheet
+        wb.SheetNames[0] = tab.slice(0, 31);
+        wb.Sheets[tab.slice(0, 31)] = ws;
+        if (name0 !== tab.slice(0, 31)) delete wb.Sheets[name0];
+        var buf = root.AllocPrepList.writePrepXlsx
+          ? root.AllocPrepList.writePrepXlsx(wb, X)
+          : X.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true });
+        return {
+          buffer: buf instanceof Uint8Array ? buf : new Uint8Array(buf),
+          tab: tab,
+          dish: dish,
+          date: date,
+          event: meta.event || dish,
+          meal: meal,
+          pax: pax,
+          acronym: acronym,
+          eventLabel: eventLabel
+        };
+      })
+      .catch(function (err) {
+        console.warn('Blank master template load failed, using SheetJS structural blank', err);
+        return fromBlankPaula();
+      });
+  }
+
+  function sheetFromBuffer(buf, preferName) {
+    var X = root.XLSX;
+    var wb = X.read(buf, { type: 'array', cellStyles: true });
+    var name = preferName && wb.SheetNames.indexOf(preferName) >= 0
+      ? preferName
+      : wb.SheetNames[0];
+    return { name: name, ws: wb.Sheets[name], workbook: wb };
+  }
+
+  function ensureLegendToolbar() {
+    var top = document.getElementById('sbTop');
+    if (!top || document.getElementById('sbLegendPicks')) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'sbLegendPicks';
+    wrap.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+    wrap.innerHTML = '<span style="font-size:12px;color:#5C5A52">Legend fill:</span>';
+    LEGEND.forEach(function (L) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = L.label;
+      b.title = 'Apply ' + L.label + ' fill to selection (and col A marker)';
+      b.style.cssText = 'padding:5px 8px;border-radius:6px;border:1px solid #C9C2B0;background:' +
+        L.rgb + ';color:#111;font:inherit;cursor:pointer;font-size:12px';
+      b.onclick = function () { applyLegendFill(L); };
+      wrap.appendChild(b);
+    });
+    var imgBtn = document.createElement('button');
+    imgBtn.type = 'button';
+    imgBtn.id = 'sbInsertPhoto';
+    imgBtn.textContent = '📷 Insert photo';
+    imgBtn.title = 'Insert a dish photo (kept on Save / Add to prep list)';
+    imgBtn.onclick = insertPhoto;
+    wrap.appendChild(imgBtn);
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.id = 'sbInsertPhotoInput';
+    inp.hidden = true;
+    wrap.appendChild(inp);
+    top.appendChild(wrap);
+  }
+
+  function getFacadeRange() {
+    try {
+      var ed = root.PreplineSheet && root.PreplineSheet._getEditor && root.PreplineSheet._getEditor();
+      if (!ed || !ed.univerAPI) return null;
+      var wb = ed.univerAPI.getActiveWorkbook && ed.univerAPI.getActiveWorkbook();
+      if (!wb) return null;
+      var sheet = wb.getActiveSheet && wb.getActiveSheet();
+      if (!sheet) return null;
+      var sel = sheet.getSelection && sheet.getSelection();
+      var range = sel && sel.getActiveRange && sel.getActiveRange();
+      if (range) return { sheet: sheet, range: range, api: ed.univerAPI };
+      // fallback A1
+      if (sheet.getRange) return { sheet: sheet, range: sheet.getRange(0, 0), api: ed.univerAPI };
+    } catch (e) {}
+    return null;
+  }
+
+  function applyLegendFill(L) {
+    var pack = getFacadeRange();
+    if (!pack || !pack.range) {
+      alert('Select cells in the grid, then tap a legend colour.');
+      return;
+    }
+    try {
+      if (typeof pack.range.setBackground === 'function') {
+        pack.range.setBackground(L.rgb);
+      } else if (typeof pack.range.setBackgroundColor === 'function') {
+        pack.range.setBackgroundColor(L.rgb);
+      } else {
+        alert('Fill API unavailable in this build — use the toolbar paint bucket.');
+        return;
+      }
+      // Also paint column A marker on the same rows when possible
+      try {
+        var a1 = pack.range.getA1 || pack.range.getRange || null;
+        // Best-effort: get start/end row
+        var start = pack.range.getRow ? pack.range.getRow() : 0;
+        var end = pack.range.getLastRow ? pack.range.getLastRow() : start;
+        var n = Math.max(0, end - start) + 1;
+        if (pack.sheet.getRange && n > 0 && n < 200) {
+          var marker = pack.sheet.getRange(start, 0, n, 1);
+          if (marker && marker.setBackground) marker.setBackground(L.rgb);
+        }
+      } catch (e2) {}
+      var hint = document.getElementById('sbHint');
+      if (hint) hint.textContent = 'Applied ' + L.label + ' fill (' + L.rgb + ').';
+    } catch (e) {
+      alert('Could not apply fill: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  function insertPhoto() {
+    var inp = document.getElementById('sbInsertPhotoInput');
+    if (!inp) return;
+    inp.onchange = function () {
+      var f = inp.files && inp.files[0];
+      inp.value = '';
+      if (!f) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var dataUrl = reader.result;
+        var base64 = String(dataUrl).split(',')[1] || '';
+        var ext = (f.name.split('.').pop() || 'png').toLowerCase().replace(/jpeg/, 'jpg');
+        if (ext === 'jpg') ext = 'jpeg';
+        stashPhoto({
+          dataUrl: dataUrl,
+          fullDataUrl: dataUrl,
+          base64: base64,
+          extension: ext === 'jpeg' ? 'jpeg' : (ext === 'png' ? 'png' : 'png'),
+          width: 420,
+          height: 420,
+          tlRow: 0.2,
+          tlCol: 7,
+          brRow: 12,
+          brCol: 11,
+          pageLabel: 'Dish photo'
+        });
+      };
+      reader.readAsDataURL(f);
+    };
+    inp.click();
+  }
+
+  function stashPhoto(ph) {
+    // Store in Prepline485 editorPhotos shape so Save / Add re-embeds
+    var sheetName = '';
+    try {
+      var ed = root.PreplineSheet._getEditor();
+      var wb = ed && ed.univerAPI && ed.univerAPI.getActiveWorkbook();
+      var sh = wb && wb.getActiveSheet && wb.getActiveSheet();
+      sheetName = (sh && sh.getSheetName && sh.getSheetName()) || (sh && sh.getName && sh.getName()) || '';
+    } catch (e) {}
+    if (!sheetName) {
+      var pending = root.PreplineSheet.getPending && root.PreplineSheet.getPending();
+      sheetName = (pending && pending.meta && pending.meta.tab) || 'Prep';
+    }
+    if (!root.__allocEditorPhotos) root.__allocEditorPhotos = { bySheet: {} };
+    root.__allocEditorPhotos.bySheet[sheetName] = [ph];
+    // Hook into 485 store if present
+    try {
+      if (root.Prepline485 && root.Prepline485.getEditorPhotos) {
+        /* mutate via afterOpen path — inject synthetic bytes later on export */
+      }
+    } catch (e2) {}
+    // Visual overlay (reuse 485 DOM if available)
+    var grid = document.getElementById('sbGrid');
+    if (grid) {
+      var el = document.getElementById('sbPhotoOverlay');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'sbPhotoOverlay';
+        el.style.cssText = 'position:absolute;top:48px;right:16px;z-index:5;background:#fff;border:1px solid #bbb;padding:6px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15)';
+        el.innerHTML = '<div class="sb-ph-badge" style="font-size:11px;color:#666;margin-bottom:4px">Dish photo</div><img alt="Dish photo" style="max-width:220px;max-height:220px;display:block">';
+        grid.appendChild(el);
+      }
+      var img = el.querySelector('img');
+      if (img) img.src = ph.dataUrl;
+    }
+    // Monkey-patch reembed to include our photo if 485 has empty store
+    ensureReembedHook(sheetName, ph);
+    var hint = document.getElementById('sbHint');
+    if (hint) hint.textContent = 'Photo added — will embed when you Save or Add to prep list.';
+  }
+
+  function ensureReembedHook(sheetName, ph) {
+    if (!root.Prepline485 || typeof root.Prepline485.reembedPhotosIntoBuffer !== 'function') return;
+    if (root.Prepline485.reembedPhotosIntoBuffer.__allocHook) return;
+    var orig = root.Prepline485.reembedPhotosIntoBuffer;
+    var wrapped = function (buf) {
+      try {
+        var store = root.__allocEditorPhotos && root.__allocEditorPhotos.bySheet;
+        if (store && Object.keys(store).length) {
+          // Temporarily expose via getEditorPhotos mutation — call ExcelJS ourselves if 485 store empty
+          var existing = root.Prepline485.getEditorPhotos && root.Prepline485.getEditorPhotos();
+          if (!existing || !Object.keys(existing).length) {
+            return embedPhotosExcelJS(buf, store);
+          }
+        }
+      } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+    wrapped.__allocHook = true;
+    root.Prepline485.reembedPhotosIntoBuffer = wrapped;
+  }
+
+  function embedPhotosExcelJS(buf, bySheet) {
+    return Promise.resolve().then(function () {
+      if (!root.ExcelJS || !root.ExcelJS.Workbook) {
+        return { buffer: buf, photos: 0 };
+      }
+      var wb = new root.ExcelJS.Workbook();
+      return wb.xlsx.load(buf instanceof ArrayBuffer ? buf : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))
+        .then(function () {
+          var n = 0;
+          wb.eachSheet(function (ws) {
+            var photos = bySheet[ws.name];
+            if (!photos) {
+              var keys = Object.keys(bySheet);
+              for (var i = 0; i < keys.length; i++) {
+                if (String(keys[i]).toLowerCase() === String(ws.name).toLowerCase()) {
+                  photos = bySheet[keys[i]]; break;
+                }
+              }
+            }
+            if (!photos || !photos.length) {
+              // fallback first photo onto first sheet
+              var any = Object.keys(bySheet)[0];
+              if (any) photos = bySheet[any];
+            }
+            (photos || []).forEach(function (ph) {
+              try {
+                var id = wb.addImage({ base64: ph.base64, extension: ph.extension || 'jpeg' });
+                ws.addImage(id, {
+                  tl: { col: ph.tlCol || 7, row: ph.tlRow || 0.2 },
+                  ext: { width: ph.width || 400, height: ph.height || 400 }
+                });
+                n++;
+              } catch (e) {}
+            });
+          });
+          return wb.xlsx.writeBuffer().then(function (out) {
+            return { buffer: out, photos: n };
+          });
+        });
+    }).catch(function () { return { buffer: buf, photos: 0 }; });
+  }
+
+  function patchPrintA4Landscape() {
+    if (!root.Prepline485 || typeof root.Prepline485.printActiveSheetWithPhoto !== 'function') return;
+    if (root.Prepline485.printActiveSheetWithPhoto.__a4) return;
+    var orig = root.Prepline485.printActiveSheetWithPhoto;
+    var wrapped = function () {
+      // Prefer A4 landscape wrapper
+      try {
+        var snap = root.PreplineSheet.getSnapshot();
+        if (!snap) return orig();
+        // Monkey: call orig but first patch window.open document — simpler: own print
+        var ed = root.PreplineSheet._getEditor();
+        var sheetName = '';
+        try {
+          var sh = ed.univerAPI.getActiveWorkbook().getActiveSheet();
+          sheetName = sh.getSheetName ? sh.getSheetName() : (sh.getName ? sh.getName() : '');
+        } catch (e0) {}
+        // Use 485 AOA via print — wrap by intercepting open
+        var _open = window.open;
+        window.open = function () {
+          var w = _open.apply(window, arguments);
+          if (w) {
+            var _write = w.document.write.bind(w.document);
+            w.document.write = function (html) {
+              if (typeof html === 'string' && html.indexOf('@media print') >= 0) {
+                html = html.replace(
+                  '@media print{body{margin:8px}}',
+                  '@page{size:A4 landscape;margin:10mm}@media print{body{margin:8px}table{font-size:11px}}'
+                );
+              }
+              return _write(html);
+            };
+          }
+          window.open = _open;
+          return w;
+        };
+        return orig();
+      } catch (e) {
+        return orig();
+      }
+    };
+    wrapped.__a4 = true;
+    root.Prepline485.printActiveSheetWithPhoto = wrapped;
+  }
+
+  function openFromForm() {
+    var dish = (document.getElementById('bespokeDish') && document.getElementById('bespokeDish').value || '').trim() || 'Bespoke dish';
+    var date = (document.getElementById('bespokeDate') && document.getElementById('bespokeDate').value) || '';
+    var event = (document.getElementById('bespokeEvent') && document.getElementById('bespokeEvent').value || '').trim() || dish;
+    var meal = (document.getElementById('bespokeMeal') && document.getElementById('bespokeMeal').value) || 'Dinner';
+    var pax = Math.max(1, +((document.getElementById('bespokePax') && document.getElementById('bespokePax').value) || 100));
+    openEditor({ dish: dish, date: date, event: event, meal: meal, pax: pax });
+  }
+
+  function openEditor(meta) {
+    if (!root.PreplineSheet || typeof root.PreplineSheet.openAllocBespoke !== 'function') {
+      status('Sheet editor not loaded — refresh the page.', true);
+      return;
+    }
+    status('Building blank master-layout sheet…');
+    Promise.resolve()
+      .then(function () { return buildStarterBuffer(meta); })
+      .then(function (pack) {
+        var fullMeta = {
+          dish: pack.dish,
+          date: pack.date,
+          event: pack.event,
+          meal: pack.meal,
+          pax: pack.pax,
+          acronym: pack.acronym,
+          tab: pack.tab,
+          eventLabel: pack.eventLabel,
+          fileName: pack.tab
+        };
+        ensureLegendToolbar();
+        patchPrintA4Landscape();
+        return root.PreplineSheet.openAllocBespoke(pack.buffer, fullMeta, function (buf, m) {
+          return onAddToPrep(buf, m || fullMeta);
+        }).then(function () {
+          ensureLegendToolbar();
+          patchPrintA4Landscape();
+          if (!root.ExcelJS) {
+            var s = document.createElement('script');
+            s.src = (root.__PREPLINE_VENDOR_BASE__ || '../') + 'vendor/exceljs/exceljs.min.js';
+            document.head.appendChild(s);
+          }
+          status('Editor open — blank master layout ready. Type items; totals compute from pax.');
+        });
+      })
+      .catch(function (err) {
+        status('Editor failed: ' + (err && err.message ? err.message : err), true);
+      });
+  }
+
+  function onAddToPrep(buf, meta) {
+    var u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    // Prefer alloc photos re-embed
+    var chain = Promise.resolve(u8);
+    if (root.__allocEditorPhotos && Object.keys(root.__allocEditorPhotos.bySheet || {}).length) {
+      chain = embedPhotosExcelJS(u8, root.__allocEditorPhotos.bySheet).then(function (r) {
+        return r.buffer instanceof Uint8Array ? r.buffer : new Uint8Array(r.buffer);
+      });
+    } else if (root.Prepline485 && root.Prepline485.reembedPhotosIntoBuffer) {
+      chain = root.Prepline485.reembedPhotosIntoBuffer(u8).then(function (r) {
+        var b = r.buffer || u8;
+        return b instanceof Uint8Array ? b : new Uint8Array(b);
+      });
+    }
+    return chain.then(function (finalBuf) {
+      var parsed = sheetFromBuffer(finalBuf, meta.tab);
+      var entry = {
+        tab: (parsed.name || meta.tab || 'Bespoke').slice(0, 31),
+        dish: meta.dish,
+        date: meta.date,
+        event: meta.event,
+        meal: meta.meal,
+        pax: meta.pax,
+        acronym: meta.acronym,
+        ws: parsed.ws,
+        master: '(bespoke-editor)',
+        xlsxBytes: finalBuf
+      };
+      if (root.__alloc && typeof root.__alloc.setBespoke === 'function') {
+        var cur = (root.__alloc.bespoke || []).slice();
+        cur.push(entry);
+        root.__alloc.setBespoke(cur);
+      } else if (typeof root.onAllocBespokeSaved === 'function') {
+        root.onAllocBespokeSaved(entry);
+      }
+      status('Added "' + entry.tab + '" to prep list. Download prep list to include it.');
+      root.__allocEditorPhotos = { bySheet: {} };
+      return entry;
+    });
+  }
+
+  function afterOpen() {
+    ensureLegendToolbar();
+    patchPrintA4Landscape();
+  }
+
+  root.PreplineAllocEditor = {
+    openFromForm: openFromForm,
+    openEditor: openEditor,
+    buildStarterBuffer: buildStarterBuffer,
+    afterOpen: afterOpen,
+    LEGEND: LEGEND
+  };
+
+  function wire() {
+    // Prefer full editor button; keep quick-add as secondary
+    var add = document.getElementById('bespokeAdd');
+    if (add && !add.__allocEditor) {
+      add.__allocEditor = true;
+      add.textContent = 'Open Excel editor';
+      add.title = 'Full spreadsheet editor (Univer) with Paula colour legend — formulas, fills, photo, print, then add to prep list';
+      add.onclick = function (ev) {
+        ev.preventDefault();
+        openFromForm();
+      };
+    }
+    var quick = document.getElementById('bespokeQuickAdd');
+    if (quick && !quick.__wired) {
+      quick.__wired = true;
+      quick.onclick = function () {
+        if (root.__alloc && root.__alloc.onAddBespoke) root.__alloc.onAddBespoke();
+      };
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+  setTimeout(wire, 0);
+  setTimeout(wire, 200);
+})(typeof window !== 'undefined' ? window : this);

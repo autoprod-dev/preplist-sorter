@@ -1,2 +1,1463 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(e){"use strict";var t=e.PreplineUpgrades47;if(t){var r=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],a=[{sheet:"Sauce, Purees and Gels",sections:["Sauce, Purees and Gels"]},{sheet:"Vegetables",sections:["Vegetables"]},{sheet:"Garnishes, Herbs, Powders, Oils",sections:["Garnishes, Herbs, Powders, Oils Etc.","Garnishes, Herbs, Powders, Oils"]},{sheet:"Starch",sections:["Starch"]},{sheet:"Proteins",sections:["Proteins"]}],n="Other",i=["Item","Quantity per pax","Unit","PAX ","Total needed","BAT/PO #","Section","Prep day","Source tab","PREP DURATION (estimate only)","STAFF ALLOCATED"],o=[38.75,15.75,8.75,12.75,12.75,11.75,22.75,12.75,32.75,24.75,16.75],s=i.length,l=7.5,u=[10,15,20,30,45,60,90,120,150,180,210,240,300,360,390,420,450,480],f=["FFFFF2CC","FFD9EAD3","FFCFE2F3","FFFCE5CD","FFEAD1DC","FFD0E0E3","FFE8D5F2","FFFFE6CC","FFDDEBF7","FFE2EFDA","FFF8CBAD","FFD9D2E9"],c="Final Roster",p={"Sauce, Purees and Gels":"Sauce",Vegetables:"Vegetables","Garnishes, Herbs, Powders, Oils":"Garnishes",Starch:"Starch",Proteins:"Proteins",Other:"Other"};t.exportOrganisedXlsx=Q,t.buildPaulaOrganisedRows=X,t.PAULA_ORGANISED_HEADERS=i,t.PAULA_ORGANISED_TABS=a.map(function(e){return e.sheet}),e.Prepline477={VERSION:"4.8.23",exportOrganisedXlsx:Q,buildPaulaOrganisedRows:X,HEADERS:i,actualPrepSortKey:A,renameDfPrefix:I,estimateStaffMinutes:F,estimateBatchStaffMinutes:E,staffBatchKey:D,applyStaffBatchGrouping:k,formatGroupStaffLabel:function(e,t){var r=P(e,t),a=x(e);return r?a?r+" · "+a+" shift"+(1===Number(a)?"":"s"):r:""},formatPrepDurationLabel:P,formatStaffShifts:x,shiftsForMinutes:N,chefsForGroupMinutes:function(e){var t=(Number(e)||0)/60;return t<=0?0:t<=4?1:t<=10?2:Math.min(4,Math.ceil(t/l))},formatStaffDuration:S,formatPrepDaySubtotal:function(e){return L(e)+" · "+T(e)},formatPrepDayDurationSubtotal:L,formatPrepDayStaffSubtotal:T,buildRosterModel:V,formatRosterDayLabel:U,CHEF_SHIFT_HOURS:l,prepColourGroupId:G,pastelForGroup:R,PREP_PASTELS:f,weekdayNum:z,resolveWeekEndingLabel:b,loadExcelJS:J,sheetForItem:v,FINAL_ROSTER_NAME:c}}else console.warn("Prepline477: PreplineUpgrades47 missing — Organised Paula layout not applied");function h(e){for(var t=String(e||"").trim(),r=0;r<a.length;r++)if(a[r].sections.indexOf(t)>=0)return a[r].sheet;return n}function g(e){return((e=Number(e))<10?"0":"")+e}function d(e,t,r){var a=String(r);return 4===a.length&&(a=a.slice(2)),"WEEK ENDING "+g(e)+"."+g(t)+"."+a}function m(e){var t=e.getDay();return 0===t?e:new Date(e.getFullYear(),e.getMonth(),e.getDate()+(7-t))}function b(e,t){var r,a,n,i=(r=(e=e||{}).sourceFileName||e.fileName||"",(n=(a=String(r||"")).match(/\bWE[\s._-]*(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})\b/i))||(n=a.match(/\bweek\s*ending\s*:?\s*(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})\b/i)),n?d(n[1],n[2],n[3]):null);if(i)return{label:i,source:"filename"};var o=[],s=e.getEventDateStr;if((t||[]).forEach(function(e){var t=null;if("function"==typeof s)try{var r=e.sourceTab||e.dish||"";t=s(r)||s(String(r).replace(/^\d+\s+\w+\s+/,""))}catch(e){}!t&&e.eventDateStr&&(t=e.eventDateStr);var a=function(e){var t=String(e||"").trim().match(/^(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})$/);if(!t)return null;var r=Number(t[1]),a=Number(t[2]),n=Number(t[3]);if(n<100&&(n+=2e3),a<1||a>12||r<1||r>31)return null;var i=new Date(n,a-1,r);return i.getFullYear()!==n||i.getMonth()!==a-1||i.getDate()!==r?null:i}(t);a&&o.push(a)}),o.length){o.sort(function(e,t){return e-t});var l=m(o[o.length-1]);return{label:d(l.getDate(),l.getMonth()+1,l.getFullYear()),source:"event-dates"}}return{label:"WEEK ENDING: ____",source:"blank"}}function v(e,t){var r=String(e||""),a=r.split(/\s+\/\s+/)[0].toLowerCase();return r.toLowerCase(),/\bbutter\s*poached\b/.test(a)||/\bpoached\s+onions?\b/.test(a)||/\bzucchini\s*blossoms?\b/.test(a)?"Vegetables":/\b(jus|puree|purée|ponzu|dressing|romesco|aioli|vinaigrette|chimichurri|salsa|ragu|rag[uù])\b/.test(a)||/\b(cashew\s*cream|flora\s*cream|cream\s*sauce|umami\s*cream|cauliflower\s*cream)\b/.test(a)||/\bsauce\b/.test(a)||/(?:^|\s)cream\s*$/.test(a.trim())||/\bgel\b/.test(a)||/^(butter|cream)$/.test(a.trim())||/\bparmesan\b/.test(a)?"Sauce, Purees and Gels":/\b(croutons?|fennel\s*seed|burrata|raisin|microherbs?|micro\s*herbs?|powder|pickled|tapenade|pesto|roe|finger\s*lime|kibbled|ma[iî]tre)\b/.test(a)||/\b(soil|dukkah|gremolata|tendrils?|crisps?)\b/.test(a)||/\b(fine\s*dic(?:ed)?|chopped|chiffon|pluck(?:ed)?|picked)\b/.test(a)||/\boil\b/.test(a)||/maître\s*d/.test(a)?"Garnishes, Herbs, Powders, Oils":/\b(prawn|shrimp|lobster|crab|barramundi|barra|salmon|cod|tuna|swordfish|snapper|whiting|flathead|mackerel|trout)\b/.test(a)||/\b(beef|eye\s*fillet|tenderloin|sirloin|scotch|lamb|pork|veal|duck|chicken|turkey|quail|kangaroo|venison|wagyu)\b/.test(a)||/\bcigar\b/.test(a)||/\bcroquettes?\b/.test(a)&&/\b(crab|prawn|shrimp|lobster|fish|salmon|cod|barra|tuna|whiting)\b/.test(a)?"Proteins":/\b(mash|pav[eé]|terrine|parfait|wellington|duxelle|puff\s*pastry|potato\s+and\s+leek|dairy\s*free\s*mash|smoked\s*mash)\b/.test(a)||/\b(polenta|fregola|gnocchi|ravioli|dumpling|risotto)\b/.test(a)||/\bcroquettes?\b/.test(a)||/\b(slice\s+potatoes|blanch\s+cabbage|braise\s+shredded\s+cabbage|cabbage\s+layers|cabbage\s+filling)\b/.test(a)?"Starch":/\b(asparagus|lettuce|onion|carrot|leek|zucchini|cucumber|chard|broccolini|mushroom|shimeji|warrigal|karkalla|samphire|blite|seablight|sea\s*blite|pencil\s*leek)\b/.test(a)||/\b(peas?|radish|celeriac\s*remoulade|remoulade|eggplant)\b/.test(a)||/\bbaby\s*gem\b/.test(a)?"Vegetables":h(t)}function y(e){if(!Number.isFinite(e)||e<=0)return 10;var t=u,r=t[t.length-1];if(e>r){var a=30*Math.ceil(e/30);return Math.abs(e-r)<=Math.abs(e-a)?r:a}for(var n=t[0],i=Math.abs(e-t[0]),o=1;o<t.length;o++){var s=Math.abs(e-t[o]);(s<i||s===i&&t[o]>n)&&(n=t[o],i=s)}return n}function S(e){return!Number.isFinite(e)||e<=0?"":e<60?e+" minutes":60===e?"1 hour":90===e?"1.5 hour":e%60==0||e%60==30?e/60+" hour":Math.floor(e/60)+" hour "+e%60+" minutes"}function C(e){var t=String(e||"").toLowerCase();return/shav|grate|microplane/.test(t)||/parmesan\s+shaved/.test(t)?{base:10,perKg:0,name:"shave"}:/\bwhip\b/.test(t)?{base:20,perKg:0,name:"whip"}:/\bgel\b/.test(t)?{base:55,perKg:40,name:"gel"}:/dressing|vinaigrette|aioli|mayo/.test(t)?{base:55,perKg:.5,name:"dressing"}:/dashi/.test(t)||/infuse/.test(t)&&/sauce|cream/.test(t)?{base:55,perKg:20,name:"sauce_infuse"}:/molasses|pomegranate/.test(t)||/jus/.test(t)&&/infuse|defrost/.test(t)?{base:25,perKg:12,name:"jus_complex"}:/\bjus\b/.test(t)?{base:10,perKg:0,name:"jus_simple"}:/ragu/.test(t)?{base:45,perKg:30,name:"ragu"}:/puree|purée/.test(t)?/steam|pb\s*cream|cream\s*bag/.test(t)&&!/cook\s*\/\s*blend/.test(t)?{base:85,perKg:5,name:"puree_fiddly"}:/pea\s+puree/.test(t)?{base:85,perKg:5,name:"puree_pea"}:{base:55,perKg:2.5,name:"puree"}:/crouton|powder|crumb|dust|dukkah|panko|furikake/.test(t)?{base:20,perKg:5,name:"dry"}:/\boil\b/.test(t.split("/")[0]||t)?{base:30,perKg:5,name:"oil"}:{base:30,perKg:10,name:"generic"}}function w(e,t){var r=null,a="";if(e&&null!=e.fixedTotal&&""!==e.fixedTotal)r=Number(String(e.fixedTotal).replace(/,/g,"")),a=String(e.unit||"").toLowerCase();else{var n=e&&e.qtyPerPax,i=e&&e.pax,o="number"==typeof n?n:Number(String(n??"").replace(/,/g,"")),s="number"==typeof i?i:Number(String(i??"").replace(/,/g,""));Number.isFinite(o)&&Number.isFinite(s)&&(r=o*s),a=String(e&&e.unit||"").toLowerCase()}if((!Number.isFinite(r)||r<=0)&&e&&(null!=e.qty||e.task)){var l=e.qty,u="number"==typeof l?l:Number(String(l??"").replace(/,/g,"")),f=(t&&t.paxByDish||{})[e.dish];"number"!=typeof f&&(f=Number(f)),Number.isFinite(u)&&Number.isFinite(f)&&(r=u*f),a=String(e.unit||"").toLowerCase()}return!Number.isFinite(r)||r<=0?0:"kg"===a||"l"===a||"lt"===a||"litre"===a||"liter"===a?r:r/1e3}function F(e,t){var r=C(e&&(e.task||e.item)||""),a=w(e,t);return y(r.base+r.perKg*a)}function E(e,t){e||(e={base:30,perKg:10});var r=Number(t)||0;r<0&&(r=0);var a=1.2*e.base+1.5*e.perKg*Math.sqrt(r),n=r>80?600:480;return a>n&&(a=n),y(a)}function D(e){var t=String(e??""),r=t.split(/\s*\/\s*/),a=(r[0]||t).toLowerCase();a=(a=a.replace(/\s*\((?:vg|vegan|ve|gf|df|nf|v|pb|plant[\s-]?based)\)\s*/gi," ")).replace(/\s+/g," ").trim();var n=r.slice(1).join(" / ").toLowerCase();return a+"|"+(n=n.replace(/\([^)]*per[^)]*\)/gi,"")).replace(/\s+/g," ").trim()}function P(e,t){var r=function(e){var t=Number(e)||0,r=t/60;return t<=0?"":t<60?t+" minutes":60===t?"1 hour":t%60==0||t%60==30?t/60+" hours":Math.round(10*r)/10+" hours"}(e);if(!r)return"";var a=t||1;return a>1?r+" ("+a+" lines)":r}function N(e){var t=(Number(e)||0)/60;return t<=0?0:Math.round(t/l*100)/100}function x(e){var t=N(e);return t<=0?"":String(t)}function k(e,t){if(t&&!1===t.staffEstimates)return e;for(var r=Array.isArray(e)?e:[],a=0;a<r.length;){for(var n=String(r[a].prepDay||""),i=D(r[a].item||r[a].task||""),o=a+1;o<r.length&&String(r[o].prepDay||"")===n&&D(r[o].item||r[o].task||"")===i;)o++;var s=o-a;if(1!==s){for(var l=0,u=C(r[a].item||r[a].task||""),f=a;f<o;f++){l+=w(r[f],t);var c=C(r[f].item||r[f].task||"");c&&c.perKg>u.perKg&&(u=c)}var p=E(u,l);r[a].staffMinutes=p,r[a].prepDuration=P(p,s),r[a].staffShifts=x(p),r[a].staff=r[a].prepDuration,r[a].staffGrouped=!0,r[a].staffGroupSize=s,r[a].staffGroupKg=l;for(var h=a+1;h<o;h++)r[h].staffMinutes=0,r[h].prepDuration="↑ grouped",r[h].staffShifts="",r[h].staff="↑ grouped",r[h].staffGrouped=!0,r[h].staffGroupSize=s;a=o}else r[a].staffGrouped=!1,r[a].staffGroupSize=1,a=o}return r}function M(e){return!Number.isFinite(e)||e<=0?0:Math.ceil(e/60/l)}function L(e){var t=(Number(e)||0)/60;return t<=0?"0 hours":Math.round(10*t)/10+" hour"+(1===t?"":"s")}function T(e){var t=Number(e)||0;if(t<=0)return"0";var r=t/60/l,a=Math.ceil(r-1e-12);return a<0&&(a=0),a+" chef"+(1===a?"":"s")+" needed (exact "+Math.round(100*r)/100+")"}function _(e,t){var r=(t&&t.paxByDish||{})[e&&e.dish];return"number"==typeof r&&isFinite(r)?r:null!=r&&""!==r&&isFinite(Number(r))?Number(r):""}function O(e,t){var a=String(e||"").trim(),n=a.match(/^(\d+)\b/);if(n)return parseInt(n[1],10);var i=String(t||a).trim();i=i.replace(/^\d+\s+/,"");var o=r.indexOf(i);if(o>=0)return o+1;for(var s=i.toLowerCase(),l=0;l<r.length;l++)if(r[l].toLowerCase()===s)return l+1;return 99}function z(e){var t=String(e||"").trim(),r=t.match(/^(\d+)\b/);if(r){var a=parseInt(r[1],10);if(a>=1&&a<=7)return a}var n={mon:1,monday:1,tue:2,tues:2,tuesday:2,wed:3,wednesday:3,thu:4,thur:4,thurs:4,thursday:4,fri:5,friday:5,sat:6,saturday:6,sun:7,sunday:7},i=(t.replace(/^\d+\s+/,"").split(/\s+/)[0]||"").toLowerCase();if(n[i])return n[i];for(var o in n)if(0===i.indexOf(o))return n[o];return 99}function A(e,t,r,a){var n,i,o=z(e),s=z(t),l=(i=s,99===(n=o)||99===i?0:n<=i?i-n:i+7-n);if(a&&"function"==typeof a.getEventDateStr&&r)try{var u=a.getEventDateStr(r);if(u){var f=String(u).trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);if(f){var c=parseInt(f[1],10),p=parseInt(f[2],10),h=parseInt(f[3],10);h<100&&(h+=2e3);var g=new Date(h,p-1,c);return g.setDate(g.getDate()-l),1e4*g.getFullYear()+100*(g.getMonth()+1)+g.getDate()}}}catch(e){}return 99===s&&99===o?9999:99===s?100+o:s-l}function G(e,t){return String(t)+"|"+String(e||"")}function R(e,t){if(!t[e]){var r=Object.keys(t).length%f.length;t[e]=f[r]}return t[e]}function K(e,t,a){if(a&&"function"==typeof a.getEventDateStr)try{var n=a.getEventDateStr(e);if(n){var i=String(n).trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);if(i){var o=parseInt(i[1],10),s=parseInt(i[2],10),l=parseInt(i[3],10);return l<100&&(l+=2e3),1e4*l+100*s+o}}}catch(e){}var u=function(e,t){if(t&&"function"==typeof t.getEventDay)try{var r=t.getEventDay(e);if(r)return String(r)}catch(e){}return""}(e,a);if(u){var f=r.indexOf(u);if(f>=0)return 1e3+f}var c=String(t||"").match(/^(\d+)\b/);return c?2e3+parseInt(c[1],10):9999}function I(e){var t=String(e??""),r=t.match(/^DF\s+(.+)$/i);if(!r)return t;var a=r[1],n=a.search(/\s*\(/),i=a.indexOf(" /");return n>=0&&(i<0||n<i)?a.slice(0,n).replace(/\s+$/,"")+" DF"+a.slice(n):i>=0?a.slice(0,i).replace(/\s+$/,"")+" DF"+a.slice(i):a.replace(/\s+$/,"")+" DF"}function X(t,i){i=i||{};var o=Array.isArray(t)?t.slice():[],s=null;if(e.Prepline488&&"function"==typeof e.Prepline488.smartPrepDayMap)try{s=e.Prepline488.smartPrepDayMap(o,i)}catch(e){s=null}var l=[];o.forEach(function(t,o){if(t&&t.task){var u=t.section||"",f=function(e,t){if(t&&"function"==typeof t.exportPerPax)try{var r=t.exportPerPax(e);if(r&&null!=r.n)return{n:r.n,unit:r.unit||e.unit||""}}catch(e){}if(e&&void 0!==e.pdfFixedTotal&&null!==e.pdfFixedTotal)return{n:"",unit:e.unit||"",fixedTotal:e.pdfFixedTotal};var a=e&&e.qty;if(null==a||""===a)return{n:"",unit:e&&e.unit||""};if("number"==typeof a&&isFinite(a))return{n:a,unit:e&&e.unit||""};var n=String(a).trim();if(/^[\d.,]+$/.test(n)){var i=parseFloat(n.replace(",",""));if(isFinite(i))return{n:i,unit:e&&e.unit||""}}return{n,unit:e&&e.unit||"",nonNumeric:!0}}(t,i),c=function(e,t){if(t&&"function"==typeof t.srcName)try{return t.srcName(e)||""}catch(e){}return e&&"string"==typeof e.srcSheet&&""!==e.srcSheet?e.srcSheet:e&&e.dish||""}(t,i),p=t.day,h=null;if(s){var g=e.Prepline488.smartPrepDayForRow(t,o,s);g&&g.prepDay&&(p=g.prepDay,h=g.info)}var d=function(e,t){if(t&&"function"==typeof t.dayLabel){var a=t.dayLabel(e);if(a)return a}var n=String(e||"").trim();if(!n)return"";var i=r.indexOf(n);return i>=0?i+1+" "+n:n}(p,i),m=i&&"function"==typeof i.cleanDishName?i.cleanDishName(t.dish)||t.dish||"":t.dish||"",b=String(c||m||"").toLowerCase().replace(/\s+/g," ").trim(),y=v(t.task,u),C=y===n?u||"—":function(e){for(var t=String(e||"").trim(),r=0;r<a.length;r++)if(a[r].sheet===t)return a[r].sections[0];return t||"—"}(y),w=I(t.task),E={item:w,qtyPerPax:f.n,unit:f.unit||"",pax:_(t,i),fixedTotal:f.fixedTotal,nonNumeric:!!f.nonNumeric,batPo:"",section:C,prepDay:d,sourceTab:c,sheet:y,itemNorm:String(w||"").toLowerCase().replace(/\s+/g," ").trim(),dish:t.dish||"",dishKey:b,prepSort:O(d,p),eventSort:K(t.dish,c,i),actualPrep:A(d,c,t.dish,i),colourSection:u||"",smartCovers:h&&h.covers?h.covers:"",smartBatchKey:h&&h.batchKey?h.batchKey:"",task:t.task,qty:t.qty};i&&!1===i.staffEstimates?(E.staff="",E.prepDuration="",E.staffShifts="",E.staffMinutes=0):(E.staffMinutes=F(E,i),E.prepDuration=S(E.staffMinutes),E.staffShifts=x(E.staffMinutes),E.staff=E.prepDuration),l.push(E)}}),l.forEach(function(e){e.prepColourId=G(e.prepDay,e.actualPrep)});var u=i&&i.organisedSheetState||null,f=e.Prepline488&&"function"==typeof e.Prepline488.applySheetState;if(i&&!1===i.organisedSheetState&&(f=!1),f){var c=u||("function"==typeof e.Prepline488.getSheetState?e.Prepline488.getSheetState():null),p=Object.assign({},c||{},{sortCol:"prepDay",sortDir:"asc",sortMode:"",customOrder:null});l=e.Prepline488.applySheetState(l,p)}return e.Prepline488&&"function"==typeof e.Prepline488.smartChefSort?l.sort(e.Prepline488.smartChefSort):l.sort(function(e,t){var r=String(e.prepDay||"").toLowerCase(),a=String(t.prepDay||"").toLowerCase();if(r<a)return-1;if(r>a)return 1;if(e.itemNorm<t.itemNorm)return-1;if(e.itemNorm>t.itemNorm)return 1;var n=String(e.sourceTab||"").toLowerCase(),i=String(t.sourceTab||"").toLowerCase();return n<i?-1:n>i?1:0}),k(l,i),l}function B(){var e={style:"thin",color:{argb:"FF000000"}};return{top:e,left:e,bottom:e,right:e}}function j(e){e.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFFF00"}},e.font={name:"Calibri",size:12,bold:!0,color:{argb:"FF000000"}},e.alignment={vertical:"middle",wrapText:!0,horizontal:"left"},e.border=B()}function q(e,t){t=t||{},e.font={name:"Calibri",size:12,bold:!1},e.alignment={vertical:"top",wrapText:!0,horizontal:t.horizontal||"left"},e.border=B()}function H(e,t){if(null!=e.fixedTotal&&""!==e.fixedTotal){var r=e.fixedTotal;if("number"==typeof r&&isFinite(r))return r;if("string"==typeof r&&""!==r.trim()){var a=Number(String(r).replace(/,/g,""));if(isFinite(a))return a}return r}if(e.nonNumeric)return"";var n=e.qtyPerPax,i=e.pax,o="number"==typeof n?n:NaN,s="number"==typeof i?i:NaN;return"string"==typeof n&&""!==n.trim()&&(o=Number(String(n).replace(/,/g,""))),"string"==typeof i&&""!==i.trim()&&(s=Number(String(i).replace(/,/g,""))),""===n||""===i||null==n||null==i?"":isFinite(o)&&isFinite(s)?o*s:""}function W(e,t,r,a){var n={},l=a||"WEEK ENDING: ____",u=s;e.mergeCells(1,1,1,u);var f=e.getCell(1,1);f.value=l,f.font={name:"Calibri",size:18,bold:!0,color:{argb:"FF000000"}},f.alignment={horizontal:"center",vertical:"middle"},f.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}},f.border=B(),e.getRow(1).height=24,e.mergeCells(2,1,2,u);var c=e.getCell(2,1);c.value=t,c.font={name:"Calibri",size:16,bold:!0,color:{argb:"FF000000"}},c.alignment={horizontal:"center",vertical:"middle"},c.border=B(),e.getRow(2).height=21;var p=e.getRow(3);i.forEach(function(e,t){var r=p.getCell(t+1);r.value=e,j(r)}),p.height=16.5;for(var h=4,g=3,d=0;d<r.length;){for(var m=r[d].prepColourId||G(r[d].prepDay,r[d].actualPrep),b=d,v=0;d<r.length&&(r[d].prepColourId||G(r[d].prepDay,r[d].actualPrep))===m;){var y=r[d],S=e.getRow(h);S.getCell(1).value=y.item,"number"==typeof y.qtyPerPax?S.getCell(2).value=y.qtyPerPax:S.getCell(2).value=null==y.qtyPerPax?"":y.qtyPerPax,S.getCell(3).value=y.unit||"","number"==typeof y.pax?S.getCell(4).value=y.pax:S.getCell(4).value=""===y.pax?"":y.pax,S.getCell(5).value=H(y),S.getCell(6).value=y.batPo||"",S.getCell(7).value=y.section||"",S.getCell(8).value=y.prepDay||"",S.getCell(9).value=y.sourceTab||"",S.getCell(10).value=null!=y.prepDuration&&""!==y.prepDuration?y.prepDuration:y.staff||"",S.getCell(11).value="↑ grouped"===y.prepDuration?"":null!=y.staffShifts?y.staffShifts:"";for(var C=1;C<=u;C++)q(S.getCell(C));"↑ grouped"===y.prepDuration||"↑ grouped"===y.staff?S.getCell(10).font={name:"Calibri",size:11,italic:!0,color:{argb:"FF666666"}}:y.staffGrouped&&y.staffGroupSize>1&&y.staffMinutes>0&&(S.getCell(10).font={name:"Calibri",size:12,bold:!0},S.getCell(11).font={name:"Calibri",size:12,bold:!0}),n||(n={});var w=R(m,n);S.getCell(8).fill={type:"pattern",pattern:"solid",fgColor:{argb:w}};var F=String(y.item||"").length,E=18;F>45&&(E=36),F>80&&(E=54),F>120&&(E=72),S.height=E,v+=Number(y.staffMinutes)||0,h++,d++}if(g=h-1,v>0||d-b>0){var D=e.getRow(h),P=r[b].prepDay||"";D.getCell(1).value="— "+P+" subtotal —";for(var N=2;N<=9;N++)D.getCell(N).value="";D.getCell(10).value=L(v),D.getCell(11).value=T(v);for(var x=1;x<=u;x++)q(D.getCell(x)),D.getCell(x).font={name:"Calibri",size:11,bold:!0,italic:!0};D.getCell(8).fill={type:"pattern",pattern:"solid",fgColor:{argb:R(m,n)}},D.height=18,h++}}o.forEach(function(t,r){e.getColumn(r+1).width=t});var k=Math.max(3,g);0===r.length&&(k=3),e.autoFilter={from:{row:3,column:1},to:{row:Math.max(3,k),column:u}},e.pageSetup={orientation:"landscape",fitToPage:!0,fitToWidth:1,fitToHeight:0,paperSize:9,printTitlesRow:String(1)+":"+String(3)},e.headerFooter={oddHeader:"&C&B"+l,evenHeader:"&C&B"+l,oddFooter:"&C&B"+l+" — Page &P of &N",evenFooter:"&C&B"+l+" — Page &P of &N"},e.views=[{state:"frozen",ySplit:3,activeCell:"A4",showGridLines:!0}]}function U(e,t){var a=function(e,t){if(!t||!e)return null;var a=r.indexOf(e);if(a<0)return null;var n=a-6;return new Date(t.getFullYear(),t.getMonth(),t.getDate()+n)}(e,t);return a?e.slice(0,3)+" "+g(a.getDate())+"/"+g(a.getMonth()+1)+"/"+String(a.getFullYear()).slice(2):e||""}function $(e){return Math.round((Number(e)||0)/60*10)/10}function V(e,t){var i=function(e){var t=String(e||"").match(/(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})/);if(!t)return null;var r=Number(t[1]),a=Number(t[2]),n=Number(t[3]);n<100&&(n+=2e3);var i=new Date(n,a-1,r);return i.getFullYear()!==n||i.getMonth()!==a-1||i.getDate()!==r?null:m(i)}(t),o={};(e||[]).forEach(function(e){var t=function(e){for(var t=String(e||""),a=0;a<r.length;a++)if(new RegExp("\\b"+r[a]+"\\b","i").test(t))return r[a];return null}(e.prepDay);if(t){var a=e.sheet||h(e.section)||n;o[t]||(o[t]={}),o[t][a]=(o[t][a]||0)+(Number(e.staffMinutes)||0)}});var s=[];r.forEach(function(e){if(o[e]){var t=0;Object.keys(o[e]).forEach(function(r){t+=o[e][r]}),s.push({weekday:e,label:U(e,i),bySheet:o[e],dayMins:t})}});var l=0;s.forEach(function(e){l+=e.dayMins});var u=a.map(function(e){return e.sheet});return s.some(function(e){return(e.bySheet[n]||0)>0})&&(u=u.concat([n])),{daysOrdered:s,weekMins:l,sheetNames:u,weSunday:i}}function Y(e){var t=["Prep day"];return e.forEach(function(e){var r=p[e]||e;t.push(r+" hours"),t.push(r+" chefs")}),t.push("Day hours"),t.push("Day chefs"),t}function J(){return new Promise(function(t,r){if(e.ExcelJS)return t(e.ExcelJS);if("undefined"==typeof document)return r(new Error("no DOM"));var a=document.createElement("script");a.src="vendor/exceljs/exceljs.min.js",a.onload=function(){t(e.ExcelJS)},a.onerror=function(){r(new Error("ExcelJS failed to load"))},document.head.appendChild(a)})}function Q(e,r,l){var u=X(e,l=l||{});!l.allRows&&t.applyItemFiltersSort&&t.getItemViewState;var f=function(e){var t=a.map(function(e){return e.sheet}),r={};t.forEach(function(e){r[e]=[]});var i=[];e.forEach(function(e){r[e.sheet]?r[e.sheet].push(e):i.push(e)});var o=t.map(function(e){return{name:e,rows:r[e]||[]}}).filter(function(e){return e.rows.length>0});return i.length&&o.push({name:n,rows:i}),o}(u),p="Prepline_Organised_"+(new Date).toISOString().slice(0,10)+".xlsx",h=u.length,g=b(l,u),d=g.label;function m(){if("undefined"==typeof XLSX||!XLSX.utils)throw new Error("XLSX not loaded");var e=XLSX.utils.book_new();e.Props={Title:"Prepline Organised",Author:"Prepline by Autoprod",Company:"Autoprod"},e.Custprops={Creator:"Prepline by Autoprod"};var t={};(f.length?f:[{name:"Sauce, Purees and Gels",rows:[]}]).forEach(function(r){for(var a=r.name.slice(0,31),n=2,l=a;t[a.toLowerCase()];)a=(l.slice(0,28)+"-"+n).slice(0,31),n++;t[a.toLowerCase()]=!0;var u=function(e,t,r,a){for(var n=a||"WEEK ENDING: ____",l=[],u=[],f=0;f<s;f++)u.push("");var c=u.slice();c[0]=n;var p=u.slice();p[0]=t,l.push(c),l.push(p),l.push(i.slice());for(var h=0;h<r.length;){for(var g=r[h].prepColourId||G(r[h].prepDay,r[h].actualPrep),d=0,m=r[h].prepDay||"";h<r.length&&(r[h].prepColourId||G(r[h].prepDay,r[h].actualPrep))===g;){var b=r[h],v=null==b.qtyPerPax?"":b.qtyPerPax,y=""===b.pax?"":b.pax,S=H(b);""!==S&&null!=S||(S="");var C=null!=b.prepDuration&&""!==b.prepDuration?b.prepDuration:b.staff||"",w="↑ grouped"===b.prepDuration?"":null!=b.staffShifts?b.staffShifts:"";l.push([b.item,v,b.unit||"",y,S,b.batPo||"",b.section||"",b.prepDay||"",b.sourceTab||"",C,w]),d+=Number(b.staffMinutes)||0,h++}l.push(["— "+m+" subtotal —","","","","","","",m,"",L(d),T(d)])}var F=e.utils.aoa_to_sheet(l);F["!merges"]=[{s:{r:0,c:0},e:{r:0,c:s-1}},{s:{r:1,c:0},e:{r:1,c:s-1}}];var E={patternType:"solid",fgColor:{rgb:"FFFF00"}},D={bold:!0,name:"Calibri",sz:12},P={name:"Calibri",sz:12},N={vertical:"center",wrapText:!0},x={style:"thin",color:{rgb:"000000"}},k={top:x,bottom:x,left:x,right:x},M=e.utils.encode_cell({r:0,c:0});F[M]||(F[M]={t:"s",v:n}),F[M].s={font:{bold:!0,name:"Calibri",sz:18},fill:{patternType:"solid",fgColor:{rgb:"FFF2CC"}},alignment:{horizontal:"center",vertical:"center"},border:k};var _=e.utils.encode_cell({r:1,c:0});F[_]||(F[_]={t:"s",v:t}),F[_].s={font:{bold:!0,name:"Calibri",sz:16},alignment:{horizontal:"center",vertical:"center"},border:k};for(var O=0;O<s;O++){var z=e.utils.encode_cell({r:2,c:O});F[z]||(F[z]={t:"s",v:i[O]}),F[z].s={fill:E,font:D,alignment:N,border:k}}for(var A=3;A<l.length;A++)for(var R=0;R<s;R++){var K=e.utils.encode_cell({r:A,c:R});F[K]||(F[K]={t:"s",v:""}),F[K].s=Object.assign({},F[K].s||{},{font:P,alignment:{vertical:"top",wrapText:!0},border:k})}F["!cols"]=o.map(function(e){return{wch:e}});var I=e.utils.encode_col(s-1),X=Math.max(3,l.length);return F["!autofilter"]={ref:"A3:"+I+X},F["!rows"]=[{hpt:24},{hpt:21},{hpt:16.5}],F["!freeze"]="A4",F["!printHeader"]||(F["!printHeader"]=[]),F["!margins"]={left:.25,right:.25,top:.5,bottom:.5,header:.3,footer:.3},F}(XLSX,r.name,r.rows,d);XLSX.utils.book_append_sheet(e,u,a)});for(var r=c,a=2;t[r.toLowerCase()];)r=("Final Roster-"+a).slice(0,31),a++;t[r.toLowerCase()]=!0,XLSX.utils.book_append_sheet(e,function(e,t,r){var a=V(t,r),n=a.sheetNames,i=Y(n),o=r||"WEEK ENDING: ____",s=[],l=i.map(function(){return""});l[0]=o;var u=i.map(function(){return""});u[0]=c,s.push(l),s.push(u),s.push(i),a.daysOrdered.forEach(function(e){var t=[e.label];n.forEach(function(r){var a=e.bySheet[r]||0;t.push(a>0?$(a):""),t.push(a>0?M(a):"")}),t.push($(e.dayMins)),t.push(M(e.dayMins)),s.push(t)});var f=["WEEK TOTAL"],p={};n.forEach(function(e){p[e]=0}),a.daysOrdered.forEach(function(e){n.forEach(function(t){p[t]+=e.bySheet[t]||0})}),n.forEach(function(e){var t=p[e];f.push(t>0?$(t):""),f.push(t>0?M(t):"")}),f.push($(a.weekMins)),f.push(M(a.weekMins)),s.push(f);var h=e.utils.aoa_to_sheet(s);return h["!merges"]=[{s:{r:0,c:0},e:{r:0,c:i.length-1}},{s:{r:1,c:0},e:{r:1,c:i.length-1}}],h["!cols"]=[{wch:16}].concat(i.slice(1).map(function(){return{wch:11}})),h}(XLSX,u,d),r);var n=f.map(function(e){return e.name}).concat([r]);if(l.returnBuffer){var m=XLSX.write(e,{bookType:"xlsx",type:"array"});return Promise.resolve({name:p,rows:h,headers:i,sheets:n,buffer:m,engine:"xlsx",layout:"paula-sorted-az",weekEnding:d,weekEndingSource:g.source})}return XLSX.writeFile(e,p),{name:p,rows:h,headers:i,sheets:n,engine:"xlsx",layout:"paula-sorted-az",weekEnding:d,weekEndingSource:g.source}}if("undefined"!=typeof document){if(l.forceXlsx){var v=m();return v&&"function"==typeof v.then?v:Promise.resolve(v)}return J().then(function(e){var t=new e.Workbook;t.creator="Prepline by Autoprod",f.forEach(function(e){W(t.addWorksheet(e.name.slice(0,31),{views:[{state:"frozen",ySplit:3,activeCell:"A4",showGridLines:!0}]}),e.name,e.rows,d)}),f.length||W(t.addWorksheet("Sauce, Purees and Gels"),"Sauce, Purees and Gels",[],d),function(e,t,r){var a=V(t,r),n=a.sheetNames,i=Y(n),o=i.length,s=r||"WEEK ENDING: ____";e.mergeCells(1,1,1,o);var l=e.getCell(1,1);l.value=s,l.font={name:"Calibri",size:18,bold:!0},l.alignment={horizontal:"center",vertical:"middle"},l.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}},l.border=B(),e.getRow(1).height=24,e.mergeCells(2,1,2,o);var u=e.getCell(2,1);u.value=c,u.font={name:"Calibri",size:16,bold:!0},u.alignment={horizontal:"center",vertical:"middle"},u.border=B(),e.getRow(2).height=21;var f=e.getRow(3);i.forEach(function(e,t){var r=f.getCell(t+1);r.value=e,j(r)}),f.height=28;var p=4;a.daysOrdered.forEach(function(t){var r=e.getRow(p);r.getCell(1).value=t.label;var a=2;n.forEach(function(e){var n=t.bySheet[e]||0;r.getCell(a).value=n>0?$(n):"",r.getCell(a+1).value=n>0?M(n):"",a+=2}),r.getCell(a).value=$(t.dayMins),r.getCell(a+1).value=M(t.dayMins);for(var i=1;i<=o;i++)q(r.getCell(i),{horizontal:1===i?"left":"center"});r.getCell(1).font={name:"Calibri",size:12,bold:!0},r.height=18,p++});var h=e.getRow(p);h.getCell(1).value="WEEK TOTAL";var g=2,d={};n.forEach(function(e){d[e]=0}),a.daysOrdered.forEach(function(e){n.forEach(function(t){d[t]+=e.bySheet[t]||0})}),n.forEach(function(e){var t=d[e];h.getCell(g).value=t>0?$(t):"",h.getCell(g+1).value=t>0?M(t):"",g+=2}),h.getCell(g).value=$(a.weekMins),h.getCell(g+1).value=M(a.weekMins);for(var m=1;m<=o;m++)q(h.getCell(m),{horizontal:1===m?"left":"center"}),h.getCell(m).font={name:"Calibri",size:12,bold:!0,italic:!0},h.getCell(m).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFE2EFDA"}};h.height=20,e.getColumn(1).width=16;for(var b=2;b<=o;b++)e.getColumn(b).width=11;e.pageSetup={orientation:"landscape",fitToPage:!0,fitToWidth:1,fitToHeight:1,paperSize:9,printTitlesRow:"1:3"},e.headerFooter={oddHeader:"&C&B"+s+" — Final Roster",evenHeader:"&C&B"+s+" — Final Roster",oddFooter:"&C&B"+s+" — Page &P of &N",evenFooter:"&C&B"+s+" — Page &P of &N"},e.views=[{state:"frozen",ySplit:3,activeCell:"A4",showGridLines:!0}]}(t.addWorksheet(c),u,d);var r=f.map(function(e){return e.name}).concat([c]);return t.xlsx.writeBuffer().then(function(e){return l.returnBuffer?{name:p,rows:h,headers:i,sheets:r,buffer:e,engine:"exceljs",layout:"paula-sorted-az",weekEnding:d,weekEndingSource:g.source}:(function(e,t){if("undefined"!=typeof document){var r=document.createElement("a");r.href=URL.createObjectURL(new Blob([e],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})),r.download=t,document.body.appendChild(r),r.click(),r.remove(),setTimeout(function(){try{URL.revokeObjectURL(r.href)}catch(e){}},1500)}}(e,p),{name:p,rows:h,headers:i,sheets:r,engine:"exceljs",layout:"paula-sorted-az",weekEnding:d,weekEndingSource:g.source})})}).catch(function(){return m()})}return m()}}("undefined"!=typeof window?window:globalThis);
+/* Prepline 4.7.7 (+… +4.8.23 dual staff cols + Final Roster) — Paula Sorted layout (trial). Autoprod.
+ * One sheet per kitchen section; WEEK ENDING title; section title; yellow header; flat item rows.
+ * Columns: Item | Quantity per pax | Unit | PAX | Total needed | BAT/PO # | Section |
+ * Prep day | Source tab | PREP DURATION (estimate only) | STAFF ALLOCATED (shifts @ 7.5h).
+ * Print titles repeat WE+section+header every page.
+ * 4.8.17–19: duration estimates; batch grouping; H→A→I sort; AutoFilter from row 3.
+ * 4.8.23: split STAFF ALLOCATED (est.) → PREP DURATION + STAFF ALLOCATED (hours/7.5 shifts);
+ * subtotals: duration hours + chefs needed (ceil) with exact; Final Roster tab after Proteins.
+ */
+(function (root) {
+  'use strict';
+
+  var U = root.PreplineUpgrades47;
+  if (!U) {
+    console.warn('Prepline477: PreplineUpgrades47 missing — Organised Paula layout not applied');
+    return;
+  }
+
+  var WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  /* Paula's tab order / names (Excel 31-char limit drops " Etc." from Garnishes). */
+  var PAULA_TABS = [
+    { sheet: 'Sauce, Purees and Gels', sections: ['Sauce, Purees and Gels'] },
+    { sheet: 'Vegetables', sections: ['Vegetables'] },
+    { sheet: 'Garnishes, Herbs, Powders, Oils', sections: ['Garnishes, Herbs, Powders, Oils Etc.', 'Garnishes, Herbs, Powders, Oils'] },
+    { sheet: 'Starch', sections: ['Starch'] },
+    { sheet: 'Proteins', sections: ['Proteins'] }
+  ];
+  var OTHER_SHEET = 'Other';
+
+  var HEADERS = [
+    'Item', 'Quantity per pax', 'Unit', 'PAX ', 'Total needed',
+    'BAT/PO #', 'Section', 'Prep day', 'Source tab',
+    'PREP DURATION (estimate only)', 'STAFF ALLOCATED'
+  ];
+
+  /* 11 cols (4.8.23 split staff) — widths fit landscape print */
+  var COL_WIDTHS = [38.75, 15.75, 8.75, 12.75, 12.75, 11.75, 22.75, 12.75, 32.75, 24.75, 16.75];
+  var COL_COUNT = HEADERS.length;
+  var COL_PREP_DUR = 10; /* 1-based */
+  var COL_STAFF = 11;
+  /* Rows: 1=WEEK ENDING, 2=section title, 3=yellow headers, 4+=data */
+  var TITLE_WE_ROW = 1;
+  var TITLE_SECTION_ROW = 2;
+  var HEADER_ROW = 3;
+  var DATA_START_ROW = 4;
+
+  function sheetForSection(sec) {
+    var s = String(sec || '').trim();
+    for (var i = 0; i < PAULA_TABS.length; i++) {
+      if (PAULA_TABS[i].sections.indexOf(s) >= 0) return PAULA_TABS[i].sheet;
+    }
+    return OTHER_SHEET;
+  }
+
+  /* Canonical Section text for a Paula tab (Garnishes keeps the " Etc." Paula writes). */
+  function sectionForSheet(sheet) {
+    var s = String(sheet || '').trim();
+    for (var i = 0; i < PAULA_TABS.length; i++) {
+      if (PAULA_TABS[i].sheet === s) return PAULA_TABS[i].sections[0];
+    }
+    return s || '—';
+  }
+
+  function pad2(n) {
+    n = Number(n);
+    return (n < 10 ? '0' : '') + n;
+  }
+
+  /** Format as Paula-style DD.MM.YY */
+  function formatWeLabel(dd, mm, yy) {
+    var y = String(yy);
+    if (y.length === 4) y = y.slice(2);
+    return 'WEEK ENDING ' + pad2(dd) + '.' + pad2(mm) + '.' + y;
+  }
+
+  /** Parse WE-15.11.26 / WE 15.11.26 / week ending 15/11/2026 from text. */
+  function parseWeFromText(text) {
+    var s = String(text || '');
+    var m = s.match(/\bWE[\s._-]*(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})\b/i);
+    if (!m) m = s.match(/\bweek\s*ending\s*:?\s*(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})\b/i);
+    if (!m) return null;
+    return formatWeLabel(m[1], m[2], m[3]);
+  }
+
+  /** Parse dd/mm/yyyy or dd.mm.yy → Date (local). */
+  function parseAussieDate(str) {
+    var m = String(str || '').trim().match(/^(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})$/);
+    if (!m) return null;
+    var dd = Number(m[1]), mm = Number(m[2]), yy = Number(m[3]);
+    if (yy < 100) yy += 2000;
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+    var d = new Date(yy, mm - 1, dd);
+    if (d.getFullYear() !== yy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
+    return d;
+  }
+
+  /** Paula convention: week ends on Sunday (WE-15.11.26 = Sunday). */
+  function sundayOnOrAfter(d) {
+    var day = d.getDay(); /* 0=Sun */
+    if (day === 0) return d;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + (7 - day));
+  }
+
+  /**
+   * Resolve WEEK ENDING label for organised export.
+   * 1) Upload filename WE-xx.xx.xx
+   * 2) Max BAT/function date → Sunday ending that week
+   * 3) Fallback hand-entry placeholder
+   */
+  function resolveWeekEndingLabel(helpers, paulaRows) {
+    helpers = helpers || {};
+    var fromFile = parseWeFromText(helpers.sourceFileName || helpers.fileName || '');
+    if (fromFile) return { label: fromFile, source: 'filename' };
+
+    var dates = [];
+    var getDs = helpers.getEventDateStr;
+    (paulaRows || []).forEach(function (r) {
+      var ds = null;
+      if (typeof getDs === 'function') {
+        try {
+          var dish = r.sourceTab || r.dish || '';
+          /* sourceTab is often the dish/tab name used for event lookup */
+          ds = getDs(dish) || getDs(String(dish).replace(/^\d+\s+\w+\s+/, ''));
+        } catch (e) {}
+      }
+      if (!ds && r.eventDateStr) ds = r.eventDateStr;
+      var d = parseAussieDate(ds);
+      if (d) dates.push(d);
+    });
+    if (dates.length) {
+      dates.sort(function (a, b) { return a - b; });
+      var latest = dates[dates.length - 1];
+      var sun = sundayOnOrAfter(latest);
+      return {
+        label: formatWeLabel(sun.getDate(), sun.getMonth() + 1, sun.getFullYear()),
+        source: 'event-dates'
+      };
+    }
+    return { label: 'WEEK ENDING: ____', source: 'blank' };
+  }
+
+
+  /* Paula places rows on tabs by what the item is, not only by the colour-legend Section.
+   * 4.8.7: Section column ALWAYS equals the tab the row is placed on (canonical label,
+   * including " Etc." on Garnishes). Colour/keyword classification still drives the
+   * fallback when no item-head heuristic matches; tab overrides then rewrite Section.
+   * BAT/PO # is always blank (handwritten batch numbers) — never filled from upload.
+   */
+  function sheetForItem(item, sec) {
+    var raw = String(item || '');
+    /* Classify on the dish/item head (text before the first " / " method step) so
+     * words buried in method notes (Jus, Oil, Cream) do not steal the tab.
+     * Rules refined from Paula Sorted samples WE15 + WE-08 + WE-01 (see private RULES.md). */
+    var head = raw.split(/\s+\/\s+/)[0];
+    var t = head.toLowerCase();
+    var full = raw.toLowerCase();
+    /* 0) Vegetables that would otherwise match Butter/Sauce/Section fallbacks. */
+    if (/\bbutter\s*poached\b/.test(t)
+        || /\bpoached\s+onions?\b/.test(t)
+        || /\bzucchini\s*blossoms?\b/.test(t)) {
+      return 'Vegetables';
+    }
+    /* 1) Sauces / purees / gels / dressings / ragu — head only. */
+    if (/\b(jus|puree|purée|ponzu|dressing|romesco|aioli|vinaigrette|chimichurri|salsa|ragu|rag[uù])\b/.test(t)
+        || /\b(cashew\s*cream|flora\s*cream|cream\s*sauce|umami\s*cream|cauliflower\s*cream)\b/.test(t)
+        || /\bsauce\b/.test(t)
+        || /(?:^|\s)cream\s*$/.test(t.trim())
+        || /\bgel\b/.test(t)
+        || /^(butter|cream)$/.test(t.trim())
+        || /\bparmesan\b/.test(t)) {
+      return 'Sauce, Purees and Gels';
+    }
+    /* 2) Garnishes — head: roe, soils, pickles, microherbs, oils-as-product, tendrils, fine herbs, crisps. */
+    if (/\b(croutons?|fennel\s*seed|burrata|raisin|microherbs?|micro\s*herbs?|powder|pickled|tapenade|pesto|roe|finger\s*lime|kibbled|ma[iî]tre)\b/.test(t)
+        || /\b(soil|dukkah|gremolata|tendrils?|crisps?)\b/.test(t)
+        || /\b(fine\s*dic(?:ed)?|chopped|chiffon|pluck(?:ed)?|picked)\b/.test(t)
+        || /\boil\b/.test(t)
+        || /maître\s*d/.test(t)) {
+      return 'Garnishes, Herbs, Powders, Oils';
+    }
+    /* 3) Proteins — head: meat/seafood + cigar; seafood croquettes only. */
+    if (/\b(prawn|shrimp|lobster|crab|barramundi|barra|salmon|cod|tuna|swordfish|snapper|whiting|flathead|mackerel|trout)\b/.test(t)
+        || /\b(beef|eye\s*fillet|tenderloin|sirloin|scotch|lamb|pork|veal|duck|chicken|turkey|quail|kangaroo|venison|wagyu)\b/.test(t)
+        || /\bcigar\b/.test(t)
+        || (/\bcroquettes?\b/.test(t) && /\b(crab|prawn|shrimp|lobster|fish|salmon|cod|barra|tuna|whiting)\b/.test(t))) {
+      return 'Proteins';
+    }
+    /* 4) Starch staples — head (incl. non-seafood croquettes, polenta, pasta, dumpling prep). */
+    if (/\b(mash|pav[eé]|terrine|parfait|wellington|duxelle|puff\s*pastry|potato\s+and\s+leek|dairy\s*free\s*mash|smoked\s*mash)\b/.test(t)
+        || /\b(polenta|fregola|gnocchi|ravioli|dumpling|risotto)\b/.test(t)
+        || /\bcroquettes?\b/.test(t)
+        || /\b(slice\s+potatoes|blanch\s+cabbage|braise\s+shredded\s+cabbage|cabbage\s+layers|cabbage\s+filling)\b/.test(t)) {
+      return 'Starch';
+    }
+    /* 5) Vegetables — head (peas, radish, eggplant, remoulade, mushrooms). */
+    if (/\b(asparagus|lettuce|onion|carrot|leek|zucchini|cucumber|chard|broccolini|mushroom|shimeji|warrigal|karkalla|samphire|blite|seablight|sea\s*blite|pencil\s*leek)\b/.test(t)
+        || /\b(peas?|radish|celeriac\s*remoulade|remoulade|eggplant)\b/.test(t)
+        || /\bbaby\s*gem\b/.test(t)) {
+      return 'Vegetables';
+    }
+    return sheetForSection(sec);
+  }
+
+  function prepDayLabel(day, helpers) {
+    if (helpers && typeof helpers.dayLabel === 'function') {
+      var lab = helpers.dayLabel(day);
+      if (lab) return lab;
+    }
+    var d = String(day || '').trim();
+    if (!d) return '';
+    var i = WEEKDAYS.indexOf(d);
+    if (i >= 0) return (i + 1) + ' ' + d;
+    return d;
+  }
+
+  function sourceTab(r, helpers) {
+    if (helpers && typeof helpers.srcName === 'function') {
+      try { return helpers.srcName(r) || ''; } catch (e) {}
+    }
+    if (r && typeof r.srcSheet === 'string' && r.srcSheet !== '') return r.srcSheet;
+    return (r && r.dish) || '';
+  }
+
+  /* ---- 4.8.17 STAFF ALLOCATED (est.) — calibrated to Gerard Sauce photo ---- */
+  var CHEF_SHIFT_HOURS = 7.5;
+  var TIME_LADDER_MIN = [10, 15, 20, 30, 45, 60, 90, 120, 150, 180, 210, 240, 300, 360, 390, 420, 450, 480];
+
+  function snapToLadder(mins) {
+    if (!Number.isFinite(mins) || mins <= 0) return 10;
+    var L = TIME_LADDER_MIN;
+    var last = L[L.length - 1];
+    if (mins > last) {
+      var stepped = Math.ceil(mins / 30) * 30;
+      /* Prefer last ladder rung when closer than the next 30-min step */
+      if (Math.abs(mins - last) <= Math.abs(mins - stepped)) return last;
+      return stepped;
+    }
+    var best = L[0], bd = Math.abs(mins - L[0]);
+    for (var i = 1; i < L.length; i++) {
+      var d = Math.abs(mins - L[i]);
+      if (d < bd || (d === bd && L[i] > best)) { best = L[i]; bd = d; }
+    }
+    return best;
+  }
+
+  function formatStaffDuration(mins) {
+    if (!Number.isFinite(mins) || mins <= 0) return '';
+    if (mins < 60) return mins + ' minutes';
+    if (mins === 60) return '1 hour';
+    if (mins === 90) return '1.5 hour';
+    if (mins % 60 === 0) return (mins / 60) + ' hour';
+    if (mins % 60 === 30) return (mins / 60) + ' hour';
+    return Math.floor(mins / 60) + ' hour ' + (mins % 60) + ' minutes';
+  }
+
+  function pickDurationProfile(task) {
+    var t = String(task || '').toLowerCase();
+    if (/shav|grate|microplane/.test(t) || /parmesan\s+shaved/.test(t)) return { base: 10, perKg: 0, name: 'shave' };
+    if (/\bwhip\b/.test(t)) return { base: 20, perKg: 0, name: 'whip' };
+    if (/\bgel\b/.test(t)) return { base: 55, perKg: 40, name: 'gel' };
+    if (/dressing|vinaigrette|aioli|mayo/.test(t)) return { base: 55, perKg: 0.5, name: 'dressing' };
+    if (/dashi/.test(t) || (/infuse/.test(t) && /sauce|cream/.test(t))) return { base: 55, perKg: 20, name: 'sauce_infuse' };
+    if (/molasses|pomegranate/.test(t) || (/jus/.test(t) && /infuse|defrost/.test(t))) return { base: 25, perKg: 12, name: 'jus_complex' };
+    if (/\bjus\b/.test(t)) return { base: 10, perKg: 0, name: 'jus_simple' };
+    if (/ragu/.test(t)) return { base: 45, perKg: 30, name: 'ragu' };
+    if (/puree|purée/.test(t)) {
+      if (/steam|pb\s*cream|cream\s*bag/.test(t) && !/cook\s*\/\s*blend/.test(t))
+        return { base: 85, perKg: 5, name: 'puree_fiddly' };
+      if (/pea\s+puree/.test(t)) return { base: 85, perKg: 5, name: 'puree_pea' };
+      return { base: 55, perKg: 2.5, name: 'puree' };
+    }
+    if (/crouton|powder|crumb|dust|dukkah|panko|furikake/.test(t)) return { base: 20, perKg: 5, name: 'dry' };
+    if (/\boil\b/.test(t.split('/')[0] || t)) return { base: 30, perKg: 5, name: 'oil' };
+    return { base: 30, perKg: 10, name: 'generic' };
+  }
+
+  function totalNeededKg(r, helpers) {
+    var n = null, unit = '';
+    if (r && r.fixedTotal != null && r.fixedTotal !== '') {
+      n = Number(String(r.fixedTotal).replace(/,/g, ''));
+      unit = String(r.unit || '').toLowerCase();
+    } else {
+      var q = r && r.qtyPerPax;
+      var p = r && r.pax;
+      var qn = (typeof q === 'number') ? q : Number(String(q == null ? '' : q).replace(/,/g, ''));
+      var pn = (typeof p === 'number') ? p : Number(String(p == null ? '' : p).replace(/,/g, ''));
+      if (Number.isFinite(qn) && Number.isFinite(pn)) n = qn * pn;
+      unit = String((r && r.unit) || '').toLowerCase();
+    }
+    /* Raw row path (before buildPaulaRows fields exist) */
+    if ((!Number.isFinite(n) || n <= 0) && r && (r.qty != null || r.task)) {
+      var qty = r.qty;
+      var q2 = (typeof qty === 'number') ? qty : Number(String(qty == null ? '' : qty).replace(/,/g, ''));
+      var paxMap = (helpers && helpers.paxByDish) || {};
+      var p2 = paxMap[r.dish];
+      if (typeof p2 !== 'number') p2 = Number(p2);
+      if (Number.isFinite(q2) && Number.isFinite(p2)) n = q2 * p2;
+      unit = String(r.unit || '').toLowerCase();
+    }
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    if (unit === 'kg' || unit === 'l' || unit === 'lt' || unit === 'litre' || unit === 'liter') return n;
+    if (unit === 'g' || unit === 'gm' || unit === 'gr' || unit === 'ml' || unit === 'millilitre') return n / 1000;
+    /* unknown unit: treat large numbers as g/ml */
+    if (n >= 50) return n / 1000;
+    return n / 1000;
+  }
+
+  function estimateStaffMinutes(r, helpers) {
+    var profile = pickDurationProfile((r && (r.task || r.item)) || '');
+    var kg = totalNeededKg(r, helpers);
+    var raw = profile.base + profile.perKg * kg;
+    return snapToLadder(raw);
+  }
+
+  /**
+   * 4.8.19: same base item + same prep day = ONE cook job (then pack out).
+   * Combined qty with strong economies of scale (fixed setup + √kg), ladder-snapped.
+   * Calibrated: ~46kg ragu → ~6h; ~15kg gel → ~5h (Gerard WE22 Sauce photo).
+   */
+  function estimateBatchStaffMinutes(profile, kg) {
+    if (!profile) profile = { base: 30, perKg: 10 };
+    var k = Number(kg) || 0;
+    if (k < 0) k = 0;
+    var raw = profile.base * 1.2 + profile.perKg * 1.5 * Math.sqrt(k);
+    /* Cap a single batch at 8h unless truly huge (>80kg) */
+    var cap = k > 80 ? 600 : 480;
+    if (raw > cap) raw = cap;
+    return snapToLadder(raw);
+  }
+
+  /** Normalise item head + method so "Yuzu Gel (VG) / Boil…" ≡ "Yuzu Gel / Boil…".
+   *  Dietary tags stripped from head; method kept (so different methods stay separate).
+   *  "Mushroom Ragu / Slice/Cook/Tray" ≠ "Mushroom Ragu Sauce (VEGAN) / Tray". */
+  function staffBatchKey(item) {
+    var s = String(item == null ? '' : item);
+    var parts = s.split(/\s*\/\s*/);
+    var head = (parts[0] || s).toLowerCase();
+    head = head.replace(/\s*\((?:vg|vegan|ve|gf|df|nf|v|pb|plant[\s-]?based)\)\s*/gi, ' ');
+    head = head.replace(/\s+/g, ' ').trim();
+    var method = parts.slice(1).join(' / ').toLowerCase();
+    method = method.replace(/\([^)]*per[^)]*\)/gi, '');
+    method = method.replace(/\s+/g, ' ').trim();
+    return head + '|' + method;
+  }
+
+  /** Chefs for one batch job: 1 if ≤4h, 2 if ≤10h, else ceil(h/7.5) capped at 4. */
+  function chefsForGroupMinutes(mins) {
+    var hrs = (Number(mins) || 0) / 60;
+    if (hrs <= 0) return 0;
+    if (hrs <= 4) return 1;
+    if (hrs <= 10) return 2;
+    return Math.min(4, Math.ceil(hrs / CHEF_SHIFT_HOURS));
+  }
+
+  function formatHoursLabel(mins) {
+    var m = Number(mins) || 0;
+    var hrs = m / 60;
+    if (m <= 0) return '';
+    if (m < 60) return m + ' minutes';
+    if (m === 60) return '1 hour';
+    if (m % 60 === 0) return (m / 60) + ' hours';
+    if (m % 60 === 30) return (m / 60) + ' hours';
+    return (Math.round(hrs * 10) / 10) + ' hours';
+  }
+
+  /** PREP DURATION cell: hours (+ N lines for batch groups). */
+  function formatPrepDurationLabel(mins, lineCount) {
+    var hrsLabel = formatHoursLabel(mins);
+    if (!hrsLabel) return '';
+    var n = lineCount || 1;
+    if (n > 1) return hrsLabel + ' (' + n + ' lines)';
+    return hrsLabel;
+  }
+
+  /** STAFF ALLOCATED cell: chef-shifts where 1 chef = 7.5h (e.g. 3.75h → 0.5). */
+  function shiftsForMinutes(mins) {
+    var hrs = (Number(mins) || 0) / 60;
+    if (hrs <= 0) return 0;
+    return Math.round((hrs / CHEF_SHIFT_HOURS) * 100) / 100;
+  }
+
+  function formatStaffShifts(mins) {
+    var s = shiftsForMinutes(mins);
+    if (s <= 0) return '';
+    return String(s);
+  }
+
+  /** Legacy combined label (kept for any UI that still reads .staff as one string). */
+  function formatGroupStaffLabel(mins, lineCount) {
+    var dur = formatPrepDurationLabel(mins, lineCount);
+    var sh = formatStaffShifts(mins);
+    if (!dur) return '';
+    if (!sh) return dur;
+    return dur + ' · ' + sh + ' shift' + (Number(sh) === 1 ? '' : 's');
+  }
+
+  /**
+   * After H→A→I sort: consecutive rows with same prep day + staffBatchKey = one job.
+   * First row shows group time; followers "↑ grouped" with staffMinutes=0 so subtotals
+   * sum groups not lines. Singles keep per-line estimate (14/14 calib).
+   */
+  function applyStaffBatchGrouping(rows, helpers) {
+    if (helpers && helpers.staffEstimates === false) return rows;
+    var list = Array.isArray(rows) ? rows : [];
+    var i = 0;
+    while (i < list.length) {
+      var prep = String(list[i].prepDay || '');
+      var key = staffBatchKey(list[i].item || list[i].task || '');
+      var j = i + 1;
+      while (j < list.length &&
+             String(list[j].prepDay || '') === prep &&
+             staffBatchKey(list[j].item || list[j].task || '') === key) {
+        j++;
+      }
+      var n = j - i;
+      if (n === 1) {
+        /* ungrouped — leave per-line estimate already set */
+        list[i].staffGrouped = false;
+        list[i].staffGroupSize = 1;
+        i = j;
+        continue;
+      }
+      var kg = 0;
+      var profile = pickDurationProfile(list[i].item || list[i].task || '');
+      for (var k = i; k < j; k++) {
+        kg += totalNeededKg(list[k], helpers);
+        /* prefer richer profile if a later line has more method detail */
+        var pk = pickDurationProfile(list[k].item || list[k].task || '');
+        if (pk && pk.perKg > profile.perKg) profile = pk;
+      }
+      var mins = estimateBatchStaffMinutes(profile, kg);
+      list[i].staffMinutes = mins;
+      list[i].prepDuration = formatPrepDurationLabel(mins, n);
+      list[i].staffShifts = formatStaffShifts(mins);
+      list[i].staff = list[i].prepDuration;
+      list[i].staffGrouped = true;
+      list[i].staffGroupSize = n;
+      list[i].staffGroupKg = kg;
+      for (var m = i + 1; m < j; m++) {
+        list[m].staffMinutes = 0;
+        list[m].prepDuration = '↑ grouped';
+        list[m].staffShifts = '';
+        list[m].staff = '↑ grouped';
+        list[m].staffGrouped = true;
+        list[m].staffGroupSize = n;
+      }
+      i = j;
+    }
+    return list;
+  }
+
+  function staffAllocated(r, helpers) {
+    /* Paula hand-writes staff — leave blank when explicitly disabled. */
+    if (helpers && helpers.staffEstimates === false) return '';
+    var mins = estimateStaffMinutes(r, helpers);
+    if (!mins) return '';
+    return formatStaffDuration(mins);
+  }
+
+  function chefsForMinutes(totalMins) {
+    if (!Number.isFinite(totalMins) || totalMins <= 0) return 0;
+    return Math.ceil((totalMins / 60) / CHEF_SHIFT_HOURS);
+  }
+
+  function formatPrepDayDurationSubtotal(totalMins) {
+    var hrs = (Number(totalMins) || 0) / 60;
+    if (hrs <= 0) return '0 hours';
+    return (Math.round(hrs * 10) / 10) + ' hour' + (hrs === 1 ? '' : 's');
+  }
+
+  /** Subtotal STAFF ALLOCATED: chefs needed (ceil of hours/7.5) + exact shifts. */
+  function formatPrepDayStaffSubtotal(totalMins) {
+    var mins = Number(totalMins) || 0;
+    if (mins <= 0) return '0';
+    var exact = (mins / 60) / CHEF_SHIFT_HOURS;
+    var needed = Math.ceil(exact - 1e-12);
+    if (needed < 0) needed = 0;
+    var exactR = Math.round(exact * 100) / 100;
+    return needed + ' chef' + (needed === 1 ? '' : 's') + ' needed (exact ' + exactR + ')';
+  }
+
+  /** Legacy combined subtotal string. */
+  function formatPrepDaySubtotal(totalMins) {
+    return formatPrepDayDurationSubtotal(totalMins) + ' · ' + formatPrepDayStaffSubtotal(totalMins);
+  }
+
+
+  function parsePerPax(r, helpers) {
+    if (helpers && typeof helpers.exportPerPax === 'function') {
+      try {
+        var pp = helpers.exportPerPax(r);
+        if (pp && pp.n != null) return { n: pp.n, unit: pp.unit || r.unit || '' };
+      } catch (e) {}
+    }
+    if (r && r.pdfFixedTotal !== undefined && r.pdfFixedTotal !== null) {
+      return { n: '', unit: r.unit || '', fixedTotal: r.pdfFixedTotal };
+    }
+    var qty = r && r.qty;
+    if (qty === undefined || qty === null || qty === '') return { n: '', unit: (r && r.unit) || '' };
+    if (typeof qty === 'number' && isFinite(qty)) return { n: qty, unit: (r && r.unit) || '' };
+    var s = String(qty).trim();
+    if (/^[\d.,]+$/.test(s)) {
+      var n = parseFloat(s.replace(',', ''));
+      if (isFinite(n)) return { n: n, unit: (r && r.unit) || '' };
+    }
+    return { n: s, unit: (r && r.unit) || '', nonNumeric: true };
+  }
+
+  function paxFor(r, helpers) {
+    var map = (helpers && helpers.paxByDish) || {};
+    var dish = r && r.dish;
+    var p = map[dish];
+    if (typeof p === 'number' && isFinite(p)) return p;
+    if (p != null && p !== '' && isFinite(Number(p))) return Number(p);
+    return '';
+  }
+
+  function prepDaySortKey(label, rawDay) {
+    var s = String(label || '').trim();
+    var m = s.match(/^(\d+)\b/);
+    if (m) return parseInt(m[1], 10);
+    var d = String(rawDay || s).trim();
+    d = d.replace(/^\d+\s+/, '');
+    var i = WEEKDAYS.indexOf(d);
+    if (i >= 0) return i + 1;
+    var lower = d.toLowerCase();
+    for (var wi = 0; wi < WEEKDAYS.length; wi++) {
+      if (WEEKDAYS[wi].toLowerCase() === lower) return wi + 1;
+    }
+    return 99;
+  }
+
+  /** Weekday number 1=Mon … 7=Sun from a prep label or source-tab prefix. */
+  function weekdayNum(text) {
+    var s = String(text || '').trim();
+    var m = s.match(/^(\d+)\b/);
+    if (m) {
+      var n = parseInt(m[1], 10);
+      if (n >= 1 && n <= 7) return n;
+    }
+    var tok = s.replace(/^\d+\s+/, '').split(/\s+/)[0] || '';
+    var map = {
+      mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2,
+      wed: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4,
+      fri: 5, friday: 5, sat: 6, saturday: 6, sun: 7, sunday: 7
+    };
+    var k = tok.toLowerCase();
+    if (map[k]) return map[k];
+    for (var key in map) {
+      if (k.indexOf(key) === 0) return map[key];
+    }
+    return 99;
+  }
+
+  function eventNumFromSource(src) {
+    return weekdayNum(src);
+  }
+
+  /** Days before the event that prep falls on (Friday before Tuesday = 4). */
+  function daysBeforeEvent(prepN, eventN) {
+    if (prepN === 99 || eventN === 99) return 0;
+    if (prepN <= eventN) return eventN - prepN;
+    return eventN + 7 - prepN;
+  }
+
+  /**
+   * Actual prep-date sort key (lower = earlier).
+   * '5 Friday' for a '2 TUE' event → previous-week Friday (before Monday).
+   * '5 Friday' for a '6 SAT' event → same-week Friday (near bottom).
+   * When a real event calendar date is known, returns YYYYMMDD of the prep day.
+   */
+  function actualPrepSortKey(prepLab, source, dish, helpers) {
+    var pn = weekdayNum(prepLab);
+    var en = eventNumFromSource(source);
+    var db = daysBeforeEvent(pn, en);
+    if (helpers && typeof helpers.getEventDateStr === 'function' && dish) {
+      try {
+        var ds = helpers.getEventDateStr(dish);
+        if (ds) {
+          var m = String(ds).trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+          if (m) {
+            var dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), yy = parseInt(m[3], 10);
+            if (yy < 100) yy += 2000;
+            var dt = new Date(yy, mm - 1, dd);
+            dt.setDate(dt.getDate() - db);
+            return dt.getFullYear() * 10000 + (dt.getMonth() + 1) * 100 + dt.getDate();
+          }
+        }
+      } catch (e) {}
+    }
+    /* Relative: event weekday as anchor; previous-week prep → negative / smaller. */
+    if (en === 99 && pn === 99) return 9999;
+    if (en === 99) return 100 + pn;
+    return en - db;
+  }
+
+  /** Stable colour-group id: same weekday label on different calendar dates → different id. */
+  function prepColourGroupId(prepLab, actualKey) {
+    return String(actualKey) + '|' + String(prepLab || '');
+  }
+
+  /* Distinct pastel fills for Prep day cells (readable when printed). */
+  var PREP_PASTELS = [
+    'FFFFF2CC', /* soft yellow */
+    'FFD9EAD3', /* soft green */
+    'FFCFE2F3', /* soft blue */
+    'FFFCE5CD', /* soft orange */
+    'FFEAD1DC', /* soft pink */
+    'FFD0E0E3', /* soft teal-grey */
+    'FFE8D5F2', /* soft purple */
+    'FFFFE6CC', /* peach */
+    'FFDDEBF7', /* powder blue */
+    'FFE2EFDA', /* mint */
+    'FFF8CBAD', /* apricot */
+    'FFD9D2E9'  /* lavender */
+  ];
+
+  function pastelForGroup(groupId, seenMap) {
+    if (!seenMap[groupId]) {
+      var idx = Object.keys(seenMap).length % PREP_PASTELS.length;
+      seenMap[groupId] = PREP_PASTELS[idx];
+    }
+    return seenMap[groupId];
+  }
+
+  function eventDayFromDish(dish, helpers) {
+    if (helpers && typeof helpers.getEventDay === 'function') {
+      try {
+        var ed = helpers.getEventDay(dish);
+        if (ed) return String(ed);
+      } catch (e) {}
+    }
+    return '';
+  }
+
+  function eventDateSortKey(dish, source, helpers) {
+    /* Prefer real calendar date dd/mm/yyyy → YYYYMMDD; else event weekday; else leading N from source tab. */
+    if (helpers && typeof helpers.getEventDateStr === 'function') {
+      try {
+        var ds = helpers.getEventDateStr(dish);
+        if (ds) {
+          var m = String(ds).trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+          if (m) {
+            var dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), yy = parseInt(m[3], 10);
+            if (yy < 100) yy += 2000;
+            return yy * 10000 + mm * 100 + dd;
+          }
+        }
+      } catch (e) {}
+    }
+    var ed = eventDayFromDish(dish, helpers);
+    if (ed) {
+      var i = WEEKDAYS.indexOf(ed);
+      if (i >= 0) return 1000 + i;
+    }
+    var src = String(source || '');
+    var nm = src.match(/^(\d+)\b/);
+    if (nm) return 2000 + parseInt(nm[1], 10);
+    return 9999;
+  }
+
+
+  /**
+   * 4.8.17: Move leading "DF " off the A–Z key so "DF Asparagus …" sorts with Asparagus.
+   * "DF Asparagus ( NO BUTTER) / Trim…" → "Asparagus DF ( NO BUTTER) / Trim…"
+   * Already-suffixed names ("Kombu Powder DF", "… GF DF") are left alone.
+   */
+  function renameDfPrefix(item) {
+    var s = String(item == null ? '' : item);
+    var m = s.match(/^DF\s+(.+)$/i);
+    if (!m) return s;
+    var rest = m[1];
+    var paren = rest.search(/\s*\(/);
+    var slash = rest.indexOf(' /');
+    if (paren >= 0 && (slash < 0 || paren < slash)) {
+      return rest.slice(0, paren).replace(/\s+$/, '') + ' DF' + rest.slice(paren);
+    }
+    if (slash >= 0) {
+      return rest.slice(0, slash).replace(/\s+$/, '') + ' DF' + rest.slice(slash);
+    }
+    return rest.replace(/\s+$/, '') + ' DF';
+  }
+
+  function buildPaulaRows(rows, helpers) {
+    helpers = helpers || {};
+    var list = Array.isArray(rows) ? rows.slice() : [];
+    /* 4.8.8 trial: smart-chef prep days from PreplineBatch (do not port to Paula). */
+    var smartMap = null;
+    if (root.Prepline488 && typeof root.Prepline488.smartPrepDayMap === 'function') {
+      try { smartMap = root.Prepline488.smartPrepDayMap(list, helpers); } catch (e) { smartMap = null; }
+    }
+    var out = [];
+    list.forEach(function (r, idx) {
+      if (!r || !r.task) return;
+      var sec = r.section || '';
+      var pp = parsePerPax(r, helpers);
+      var src = sourceTab(r, helpers);
+      var rawDay = r.day;
+      var smartInfo = null;
+      if (smartMap) {
+        var sp = root.Prepline488.smartPrepDayForRow(r, idx, smartMap);
+        if (sp && sp.prepDay) {
+          rawDay = sp.prepDay;
+          smartInfo = sp.info;
+        }
+      }
+      var prepLab = prepDayLabel(rawDay, helpers);
+      var dishName = (helpers && typeof helpers.cleanDishName === 'function')
+        ? (helpers.cleanDishName(r.dish) || r.dish || '')
+        : (r.dish || '');
+      /* Dish key for A–Z: prefer Source tab (Paula's dish label), fall back to cleaned dish. */
+      var dishKey = String(src || dishName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      var sheet = sheetForItem(r.task, sec);
+      /* 4.8.7: Section text always matches the tab (overrides colour/keyword when heuristics move the row). */
+      var sectionOut = sheet === OTHER_SHEET ? (sec || '—') : sectionForSheet(sheet);
+      /* 4.8.17: DF prefix → name DF so A–Z groups with the ingredient. */
+      var itemOut = renameDfPrefix(r.task);
+      var rowOut = {
+        item: itemOut,
+        qtyPerPax: pp.n,
+        unit: pp.unit || '',
+        pax: paxFor(r, helpers),
+        fixedTotal: pp.fixedTotal,
+        nonNumeric: !!pp.nonNumeric,
+        batPo: '', /* blank write-in for chefs — never filled from upload */
+        section: sectionOut,
+        prepDay: prepLab,
+        sourceTab: src,
+        sheet: sheet,
+        itemNorm: String(itemOut || '').toLowerCase().replace(/\s+/g, ' ').trim(),
+        dish: r.dish || '',
+        dishKey: dishKey,
+        prepSort: prepDaySortKey(prepLab, rawDay),
+        eventSort: eventDateSortKey(r.dish, src, helpers),
+        actualPrep: actualPrepSortKey(prepLab, src, r.dish, helpers),
+        colourSection: sec || '',
+        smartCovers: smartInfo && smartInfo.covers ? smartInfo.covers : '',
+        smartBatchKey: smartInfo && smartInfo.batchKey ? smartInfo.batchKey : '',
+        task: r.task,
+        qty: r.qty
+      };
+      /* Estimate from Total needed + method; Paula blank when staffEstimates === false */
+      if (helpers && helpers.staffEstimates === false) {
+        rowOut.staff = '';
+        rowOut.prepDuration = '';
+        rowOut.staffShifts = '';
+        rowOut.staffMinutes = 0;
+      } else {
+        rowOut.staffMinutes = estimateStaffMinutes(rowOut, helpers);
+        rowOut.prepDuration = formatStaffDuration(rowOut.staffMinutes);
+        rowOut.staffShifts = formatStaffShifts(rowOut.staffMinutes);
+        rowOut.staff = rowOut.prepDuration;
+      }
+      out.push(rowOut);
+    });
+    out.forEach(function (row) {
+      row.prepColourId = prepColourGroupId(row.prepDay, row.actualPrep);
+    });
+    /* Apply organised sheet FILTERS when provided; always finish with Gerard
+       Sheets sort (Col H Prep day A–Z → Col A Item → Col I Source), asc.
+       Rows 1–3 stay fixed in the workbook (WE / section / yellow header);
+       only data from row 4 is ordered. */
+    var sheetState = (helpers && helpers.organisedSheetState) || null;
+    var use488 = root.Prepline488 && typeof root.Prepline488.applySheetState === 'function';
+    if (helpers && helpers.organisedSheetState === false) {
+      use488 = false;
+    }
+    if (use488) {
+      var st = sheetState || (typeof root.Prepline488.getSheetState === 'function' ? root.Prepline488.getSheetState() : null);
+      /* Keep filters/search/colourFilter; force H→A→I A–Z (ignore menu sortMode). */
+      var stExport = Object.assign({}, st || {}, {
+        sortCol: 'prepDay',
+        sortDir: 'asc',
+        sortMode: '',
+        customOrder: null
+      });
+      out = root.Prepline488.applySheetState(out, stExport);
+    }
+    if (root.Prepline488 && typeof root.Prepline488.smartChefSort === 'function') {
+      out.sort(root.Prepline488.smartChefSort);
+    } else {
+      out.sort(function (a, b) {
+        var pa = String(a.prepDay || '').toLowerCase();
+        var pb = String(b.prepDay || '').toLowerCase();
+        if (pa < pb) return -1;
+        if (pa > pb) return 1;
+        if (a.itemNorm < b.itemNorm) return -1;
+        if (a.itemNorm > b.itemNorm) return 1;
+        var sa = String(a.sourceTab || '').toLowerCase();
+        var sb = String(b.sourceTab || '').toLowerCase();
+        if (sa < sb) return -1;
+        if (sa > sb) return 1;
+        return 0;
+      });
+    }
+    /* 4.8.19: same-item same-prep-day → one batch time (after sort so groups are consecutive) */
+    applyStaffBatchGrouping(out, helpers);
+    return out;
+  }
+
+  function thinBorder() {
+    var s = { style: 'thin', color: { argb: 'FF000000' } };
+    return { top: s, left: s, bottom: s, right: s };
+  }
+
+  function styleHeaderCell(cell) {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+    cell.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF000000' } };
+    cell.alignment = { vertical: 'middle', wrapText: true, horizontal: 'left' };
+    cell.border = thinBorder();
+  }
+
+  function styleDataCell(cell, opts) {
+    opts = opts || {};
+    cell.font = { name: 'Calibri', size: 12, bold: false };
+    cell.alignment = { vertical: 'top', wrapText: true, horizontal: opts.horizontal || 'left' };
+    cell.border = thinBorder();
+  }
+
+
+  /** Total needed cell: plain numeric qty×pax (4.8.10).
+   *  Prefer values over formulas so Excel, Protected View, LibreOffice,
+   *  Google Sheets and phone previews never show literal "=B3*D3".
+   *  Non-numeric or missing qty/pax → blank (never #VALUE). */
+  function totalNeededCell(r, excelRow) {
+    if (r.fixedTotal != null && r.fixedTotal !== '') {
+      var ft = r.fixedTotal;
+      if (typeof ft === 'number' && isFinite(ft)) return ft;
+      if (typeof ft === 'string' && ft.trim() !== '') {
+        var fn = Number(String(ft).replace(/,/g, ''));
+        if (isFinite(fn)) return fn;
+      }
+      return ft;
+    }
+    if (r.nonNumeric) return '';
+    var q = r.qtyPerPax;
+    var p = r.pax;
+    var qn = (typeof q === 'number') ? q : NaN;
+    var pn = (typeof p === 'number') ? p : NaN;
+    if (typeof q === 'string' && q.trim() !== '') {
+      qn = Number(String(q).replace(/,/g, ''));
+    }
+    if (typeof p === 'string' && p.trim() !== '') {
+      pn = Number(String(p).replace(/,/g, ''));
+    }
+    if (q === '' || p === '' || q == null || p == null) return '';
+    if (!isFinite(qn) || !isFinite(pn)) return '';
+    return qn * pn;
+  }
+
+  function fillSheetExcelJS(ws, sheetTitle, rows, weekEndingLabel) {
+    var colourMap = {};
+    var we = weekEndingLabel || 'WEEK ENDING: ____';
+    var lastCol = COL_COUNT;
+
+    /* Row 1 — WEEK ENDING (repeats on every printed page via printTitlesRow) */
+    ws.mergeCells(TITLE_WE_ROW, 1, TITLE_WE_ROW, lastCol);
+    var weCell = ws.getCell(TITLE_WE_ROW, 1);
+    weCell.value = we;
+    weCell.font = { name: 'Calibri', size: 18, bold: true, color: { argb: 'FF000000' } };
+    weCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    weCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
+    weCell.border = thinBorder();
+    ws.getRow(TITLE_WE_ROW).height = 24;
+
+    /* Row 2 — section / tab title */
+    ws.mergeCells(TITLE_SECTION_ROW, 1, TITLE_SECTION_ROW, lastCol);
+    var title = ws.getCell(TITLE_SECTION_ROW, 1);
+    title.value = sheetTitle;
+    title.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FF000000' } };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    title.border = thinBorder();
+    ws.getRow(TITLE_SECTION_ROW).height = 21;
+
+    /* Row 3 — yellow column headers */
+    var head = ws.getRow(HEADER_ROW);
+    HEADERS.forEach(function (h, i) {
+      var cell = head.getCell(i + 1);
+      cell.value = h;
+      styleHeaderCell(cell);
+    });
+    head.height = 16.5;
+
+    var excelRow = DATA_START_ROW;
+    var filterEndRow = HEADER_ROW;
+    var i = 0;
+    while (i < rows.length) {
+      var gid0 = rows[i].prepColourId || prepColourGroupId(rows[i].prepDay, rows[i].actualPrep);
+      var chunkStart = i;
+      var chunkMins = 0;
+      while (i < rows.length) {
+        var gi = rows[i].prepColourId || prepColourGroupId(rows[i].prepDay, rows[i].actualPrep);
+        if (gi !== gid0) break;
+        var r = rows[i];
+        var row = ws.getRow(excelRow);
+        row.getCell(1).value = r.item;
+        if (typeof r.qtyPerPax === 'number') row.getCell(2).value = r.qtyPerPax;
+        else row.getCell(2).value = r.qtyPerPax == null ? '' : r.qtyPerPax;
+        row.getCell(3).value = r.unit || '';
+        if (typeof r.pax === 'number') row.getCell(4).value = r.pax;
+        else row.getCell(4).value = r.pax === '' ? '' : r.pax;
+        row.getCell(5).value = totalNeededCell(r, excelRow);
+        row.getCell(6).value = r.batPo || '';
+        row.getCell(7).value = r.section || '';
+        row.getCell(8).value = r.prepDay || '';
+        row.getCell(9).value = r.sourceTab || '';
+        row.getCell(COL_PREP_DUR).value = (r.prepDuration != null && r.prepDuration !== '') ? r.prepDuration : (r.staff || '');
+        row.getCell(COL_STAFF).value = (r.prepDuration === '↑ grouped') ? '' : (r.staffShifts != null ? r.staffShifts : '');
+        for (var c = 1; c <= lastCol; c++) styleDataCell(row.getCell(c));
+        if (r.prepDuration === '↑ grouped' || r.staff === '↑ grouped') {
+          row.getCell(COL_PREP_DUR).font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FF666666' } };
+        } else if (r.staffGrouped && r.staffGroupSize > 1 && r.staffMinutes > 0) {
+          row.getCell(COL_PREP_DUR).font = { name: 'Calibri', size: 12, bold: true };
+          row.getCell(COL_STAFF).font = { name: 'Calibri', size: 12, bold: true };
+        }
+        if (!colourMap) colourMap = {};
+        var pastel = pastelForGroup(gid0, colourMap);
+        row.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: pastel } };
+        var len = String(r.item || '').length;
+        var h = 18;
+        if (len > 45) h = 36;
+        if (len > 80) h = 54;
+        if (len > 120) h = 72;
+        row.height = h;
+        chunkMins += Number(r.staffMinutes) || 0;
+        excelRow++;
+        i++;
+      }
+      filterEndRow = excelRow - 1;
+      /* Prep-day subtotal row (outside AutoFilter range after last data of group) */
+      if (chunkMins > 0 || (i - chunkStart) > 0) {
+        var sub = ws.getRow(excelRow);
+        var dayLab = rows[chunkStart].prepDay || '';
+        sub.getCell(1).value = '— ' + dayLab + ' subtotal —';
+        for (var sc = 2; sc <= 9; sc++) sub.getCell(sc).value = '';
+        sub.getCell(COL_PREP_DUR).value = formatPrepDayDurationSubtotal(chunkMins);
+        sub.getCell(COL_STAFF).value = formatPrepDayStaffSubtotal(chunkMins);
+        for (var sc2 = 1; sc2 <= lastCol; sc2++) {
+          styleDataCell(sub.getCell(sc2));
+          sub.getCell(sc2).font = { name: 'Calibri', size: 11, bold: true, italic: true };
+        }
+        sub.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: pastelForGroup(gid0, colourMap) } };
+        sub.height = 18;
+        excelRow++;
+      }
+    }
+
+    COL_WIDTHS.forEach(function (w, i) {
+      ws.getColumn(i + 1).width = w;
+    });
+
+    /* AutoFilter: header on row 3; data sortable from row 4. Include through last
+       data row of the final prep-day group (subtotals sit after each group). */
+    var lastDataRow = Math.max(HEADER_ROW, filterEndRow);
+    if (rows.length === 0) lastDataRow = HEADER_ROW;
+    ws.autoFilter = {
+      from: { row: HEADER_ROW, column: 1 },
+      to: { row: Math.max(HEADER_ROW, lastDataRow), column: lastCol }
+    };
+
+    /* Print: WE + section + yellow header on EVERY page */
+    ws.pageSetup = {
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      paperSize: 9,
+      printTitlesRow: String(TITLE_WE_ROW) + ':' + String(HEADER_ROW)
+    };
+    ws.headerFooter = {
+      oddHeader: '&C&B' + we,
+      evenHeader: '&C&B' + we,
+      oddFooter: '&C&B' + we + ' — Page &P of &N',
+      evenFooter: '&C&B' + we + ' — Page &P of &N'
+    };
+    ws.views = [{ state: 'frozen', ySplit: HEADER_ROW, activeCell: 'A' + DATA_START_ROW, showGridLines: true }];
+  }
+
+  function colLetter(n) {
+    var s = '';
+    while (n > 0) {
+      var m = (n - 1) % 26;
+      s = String.fromCharCode(65 + m) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
+  function fillSheetXLSX(XLSX, sheetTitle, rows, weekEndingLabel) {
+    var we = weekEndingLabel || 'WEEK ENDING: ____';
+    var aoa = [];
+    var blank = [];
+    for (var bi = 0; bi < COL_COUNT; bi++) blank.push('');
+    var weRow = blank.slice(); weRow[0] = we;
+    var titleRow = blank.slice(); titleRow[0] = sheetTitle;
+    aoa.push(weRow);
+    aoa.push(titleRow);
+    aoa.push(HEADERS.slice());
+    var xi = 0;
+    var xExcelRow = DATA_START_ROW;
+    while (xi < rows.length) {
+      var xgid = rows[xi].prepColourId || prepColourGroupId(rows[xi].prepDay, rows[xi].actualPrep);
+      var xChunkMins = 0;
+      var xDay = rows[xi].prepDay || '';
+      while (xi < rows.length) {
+        var xgi = rows[xi].prepColourId || prepColourGroupId(rows[xi].prepDay, rows[xi].actualPrep);
+        if (xgi !== xgid) break;
+        var xr = rows[xi];
+        var qty = xr.qtyPerPax == null ? '' : xr.qtyPerPax;
+        var pax = xr.pax === '' ? '' : xr.pax;
+        var tot = totalNeededCell(xr, xExcelRow);
+        if (tot === '' || tot == null) tot = '';
+        var xDur = (xr.prepDuration != null && xr.prepDuration !== '') ? xr.prepDuration : (xr.staff || '');
+        var xSh = (xr.prepDuration === '↑ grouped') ? '' : (xr.staffShifts != null ? xr.staffShifts : '');
+        aoa.push([
+          xr.item, qty, xr.unit || '', pax, tot,
+          xr.batPo || '', xr.section || '', xr.prepDay || '', xr.sourceTab || '', xDur, xSh
+        ]);
+        xChunkMins += Number(xr.staffMinutes) || 0;
+        xExcelRow++;
+        xi++;
+      }
+      aoa.push([
+        '— ' + xDay + ' subtotal —', '', '', '', '', '', '', xDay, '',
+        formatPrepDayDurationSubtotal(xChunkMins), formatPrepDayStaffSubtotal(xChunkMins)
+      ]);
+      xExcelRow++;
+    }
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: COL_COUNT - 1 } }
+    ];
+    var yellow = { patternType: 'solid', fgColor: { rgb: 'FFFF00' } };
+    var weFill = { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } };
+    var boldH = { bold: true, name: 'Calibri', sz: 12 };
+    var titleF = { bold: true, name: 'Calibri', sz: 16 };
+    var weF = { bold: true, name: 'Calibri', sz: 18 };
+    var dataF = { name: 'Calibri', sz: 12 };
+    var wrap = { vertical: 'center', wrapText: true };
+    var thin = { style: 'thin', color: { rgb: '000000' } };
+    var border = { top: thin, bottom: thin, left: thin, right: thin };
+    var aWe = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (!ws[aWe]) ws[aWe] = { t: 's', v: we };
+    ws[aWe].s = { font: weF, fill: weFill, alignment: { horizontal: 'center', vertical: 'center' }, border: border };
+    var a00 = XLSX.utils.encode_cell({ r: 1, c: 0 });
+    if (!ws[a00]) ws[a00] = { t: 's', v: sheetTitle };
+    ws[a00].s = { font: titleF, alignment: { horizontal: 'center', vertical: 'center' }, border: border };
+    for (var c = 0; c < COL_COUNT; c++) {
+      var ah = XLSX.utils.encode_cell({ r: 2, c: c });
+      if (!ws[ah]) ws[ah] = { t: 's', v: HEADERS[c] };
+      ws[ah].s = { fill: yellow, font: boldH, alignment: wrap, border: border };
+    }
+    for (var r = 3; r < aoa.length; r++) {
+      for (var c2 = 0; c2 < COL_COUNT; c2++) {
+        var ad = XLSX.utils.encode_cell({ r: r, c: c2 });
+        if (!ws[ad]) ws[ad] = { t: 's', v: '' };
+        ws[ad].s = Object.assign({}, ws[ad].s || {}, { font: dataF, alignment: { vertical: 'top', wrapText: true }, border: border });
+      }
+    }
+    ws['!cols'] = COL_WIDTHS.map(function (w) { return { wch: w }; });
+    var lastColL = XLSX.utils.encode_col(COL_COUNT - 1);
+    var lastR = Math.max(HEADER_ROW, aoa.length);
+    ws['!autofilter'] = { ref: 'A' + HEADER_ROW + ':' + lastColL + lastR };
+    ws['!rows'] = [{ hpt: 24 }, { hpt: 21 }, { hpt: 16.5 }];
+    ws['!freeze'] = 'A' + DATA_START_ROW;
+    /* SheetJS limited print titles — set where supported */
+    if (!ws['!printHeader']) ws['!printHeader'] = [];
+    ws['!margins'] = { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 };
+    return ws;
+  }
+
+
+  /* ---- 4.8.23 Final Roster (after Proteins) ---- */
+  var FINAL_ROSTER_NAME = 'Final Roster';
+  var ROSTER_SHORT = {
+    'Sauce, Purees and Gels': 'Sauce',
+    'Vegetables': 'Vegetables',
+    'Garnishes, Herbs, Powders, Oils': 'Garnishes',
+    'Starch': 'Starch',
+    'Proteins': 'Proteins',
+    'Other': 'Other'
+  };
+
+  function parseWeekEndingSunday(weLabel) {
+    var m = String(weLabel || '').match(/(\d{1,2})[./\-](\d{1,2})[./\-](\d{2,4})/);
+    if (!m) return null;
+    var dd = Number(m[1]), mm = Number(m[2]), yy = Number(m[3]);
+    if (yy < 100) yy += 2000;
+    var d = new Date(yy, mm - 1, dd);
+    if (d.getFullYear() !== yy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
+    /* Paula: week ending is Sunday */
+    return sundayOnOrAfter(d);
+  }
+
+  function weekdayNameFromPrepLabel(lab) {
+    var s = String(lab || '');
+    for (var i = 0; i < WEEKDAYS.length; i++) {
+      if (new RegExp('\\b' + WEEKDAYS[i] + '\\b', 'i').test(s)) return WEEKDAYS[i];
+    }
+    return null;
+  }
+
+  /** e.g. week ending Sun 15/11/26 → Mon 09/11/26 */
+  function dateForPrepWeekday(weekdayName, weSunday) {
+    if (!weSunday || !weekdayName) return null;
+    var idx = WEEKDAYS.indexOf(weekdayName);
+    if (idx < 0) return null;
+    /* Monday=0 → Sunday-6; Sunday=6 → Sunday-0 */
+    var offset = idx - 6;
+    return new Date(weSunday.getFullYear(), weSunday.getMonth(), weSunday.getDate() + offset);
+  }
+
+  function formatRosterDayLabel(weekdayName, weSunday) {
+    var d = dateForPrepWeekday(weekdayName, weSunday);
+    if (!d) return weekdayName || '';
+    var short = weekdayName.slice(0, 3);
+    return short + ' ' + pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(2);
+  }
+
+  function hoursFromMins(mins) {
+    return Math.round(((Number(mins) || 0) / 60) * 10) / 10;
+  }
+
+  /**
+   * Aggregate paula rows → { daysOrdered: [{weekday, label, bySheet: {sheet: mins}, dayMins}], weekMins }
+   * Only days that appear in data, Mon→Sun order.
+   */
+  function buildRosterModel(paulaRows, weLabel) {
+    var weSun = parseWeekEndingSunday(weLabel);
+    var byDay = {}; /* weekday → { sheet → mins } */
+    (paulaRows || []).forEach(function (r) {
+      var wd = weekdayNameFromPrepLabel(r.prepDay);
+      if (!wd) return;
+      var sheet = r.sheet || sheetForSection(r.section) || OTHER_SHEET;
+      if (!byDay[wd]) byDay[wd] = {};
+      byDay[wd][sheet] = (byDay[wd][sheet] || 0) + (Number(r.staffMinutes) || 0);
+    });
+    var daysOrdered = [];
+    WEEKDAYS.forEach(function (wd) {
+      if (!byDay[wd]) return;
+      var dayMins = 0;
+      Object.keys(byDay[wd]).forEach(function (s) { dayMins += byDay[wd][s]; });
+      daysOrdered.push({
+        weekday: wd,
+        label: formatRosterDayLabel(wd, weSun),
+        bySheet: byDay[wd],
+        dayMins: dayMins
+      });
+    });
+    var weekMins = 0;
+    daysOrdered.forEach(function (d) { weekMins += d.dayMins; });
+    var sheetNames = PAULA_TABS.map(function (t) { return t.sheet; });
+    /* Include Other only if any minutes */
+    var hasOther = daysOrdered.some(function (d) { return (d.bySheet[OTHER_SHEET] || 0) > 0; });
+    if (hasOther) sheetNames = sheetNames.concat([OTHER_SHEET]);
+    return { daysOrdered: daysOrdered, weekMins: weekMins, sheetNames: sheetNames, weSunday: weSun };
+  }
+
+  function rosterHeaders(sheetNames) {
+    var h = ['Prep day'];
+    sheetNames.forEach(function (s) {
+      var short = ROSTER_SHORT[s] || s;
+      h.push(short + ' hours');
+      h.push(short + ' chefs');
+    });
+    h.push('Day hours');
+    h.push('Day chefs');
+    return h;
+  }
+
+  function fillFinalRosterExcelJS(ws, paulaRows, weLabel) {
+    var model = buildRosterModel(paulaRows, weLabel);
+    var sheets = model.sheetNames;
+    var headers = rosterHeaders(sheets);
+    var lastCol = headers.length;
+    var we = weLabel || 'WEEK ENDING: ____';
+
+    ws.mergeCells(1, 1, 1, lastCol);
+    var weCell = ws.getCell(1, 1);
+    weCell.value = we;
+    weCell.font = { name: 'Calibri', size: 18, bold: true };
+    weCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    weCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
+    weCell.border = thinBorder();
+    ws.getRow(1).height = 24;
+
+    ws.mergeCells(2, 1, 2, lastCol);
+    var title = ws.getCell(2, 1);
+    title.value = FINAL_ROSTER_NAME;
+    title.font = { name: 'Calibri', size: 16, bold: true };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    title.border = thinBorder();
+    ws.getRow(2).height = 21;
+
+    var head = ws.getRow(3);
+    headers.forEach(function (h, i) {
+      var cell = head.getCell(i + 1);
+      cell.value = h;
+      styleHeaderCell(cell);
+    });
+    head.height = 28;
+
+    var rowNum = 4;
+    model.daysOrdered.forEach(function (day) {
+      var row = ws.getRow(rowNum);
+      row.getCell(1).value = day.label;
+      var col = 2;
+      sheets.forEach(function (s) {
+        var mins = day.bySheet[s] || 0;
+        row.getCell(col).value = mins > 0 ? hoursFromMins(mins) : '';
+        row.getCell(col + 1).value = mins > 0 ? chefsForMinutes(mins) : '';
+        col += 2;
+      });
+      row.getCell(col).value = hoursFromMins(day.dayMins);
+      row.getCell(col + 1).value = chefsForMinutes(day.dayMins);
+      for (var c = 1; c <= lastCol; c++) styleDataCell(row.getCell(c), { horizontal: c === 1 ? 'left' : 'center' });
+      row.getCell(1).font = { name: 'Calibri', size: 12, bold: true };
+      row.height = 18;
+      rowNum++;
+    });
+
+    /* Week grand total */
+    var tot = ws.getRow(rowNum);
+    tot.getCell(1).value = 'WEEK TOTAL';
+    var col2 = 2;
+    var weekBySheet = {};
+    sheets.forEach(function (s) { weekBySheet[s] = 0; });
+    model.daysOrdered.forEach(function (day) {
+      sheets.forEach(function (s) { weekBySheet[s] += day.bySheet[s] || 0; });
+    });
+    sheets.forEach(function (s) {
+      var mins = weekBySheet[s];
+      tot.getCell(col2).value = mins > 0 ? hoursFromMins(mins) : '';
+      tot.getCell(col2 + 1).value = mins > 0 ? chefsForMinutes(mins) : '';
+      col2 += 2;
+    });
+    tot.getCell(col2).value = hoursFromMins(model.weekMins);
+    tot.getCell(col2 + 1).value = chefsForMinutes(model.weekMins);
+    for (var tc = 1; tc <= lastCol; tc++) {
+      styleDataCell(tot.getCell(tc), { horizontal: tc === 1 ? 'left' : 'center' });
+      tot.getCell(tc).font = { name: 'Calibri', size: 12, bold: true, italic: true };
+      tot.getCell(tc).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
+    }
+    tot.height = 20;
+
+    /* Column widths */
+    ws.getColumn(1).width = 16;
+    for (var w = 2; w <= lastCol; w++) ws.getColumn(w).width = 11;
+
+    ws.pageSetup = {
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 1,
+      paperSize: 9,
+      printTitlesRow: '1:3'
+    };
+    ws.headerFooter = {
+      oddHeader: '&C&B' + we + ' — Final Roster',
+      evenHeader: '&C&B' + we + ' — Final Roster',
+      oddFooter: '&C&B' + we + ' — Page &P of &N',
+      evenFooter: '&C&B' + we + ' — Page &P of &N'
+    };
+    ws.views = [{ state: 'frozen', ySplit: 3, activeCell: 'A4', showGridLines: true }];
+  }
+
+  function fillFinalRosterXLSX(XLSX, paulaRows, weLabel) {
+    var model = buildRosterModel(paulaRows, weLabel);
+    var sheets = model.sheetNames;
+    var headers = rosterHeaders(sheets);
+    var we = weLabel || 'WEEK ENDING: ____';
+    var aoa = [];
+    var weRow = headers.map(function () { return ''; }); weRow[0] = we;
+    var titleRow = headers.map(function () { return ''; }); titleRow[0] = FINAL_ROSTER_NAME;
+    aoa.push(weRow);
+    aoa.push(titleRow);
+    aoa.push(headers);
+    model.daysOrdered.forEach(function (day) {
+      var row = [day.label];
+      sheets.forEach(function (s) {
+        var mins = day.bySheet[s] || 0;
+        row.push(mins > 0 ? hoursFromMins(mins) : '');
+        row.push(mins > 0 ? chefsForMinutes(mins) : '');
+      });
+      row.push(hoursFromMins(day.dayMins));
+      row.push(chefsForMinutes(day.dayMins));
+      aoa.push(row);
+    });
+    var tot = ['WEEK TOTAL'];
+    var weekBySheet = {};
+    sheets.forEach(function (s) { weekBySheet[s] = 0; });
+    model.daysOrdered.forEach(function (day) {
+      sheets.forEach(function (s) { weekBySheet[s] += day.bySheet[s] || 0; });
+    });
+    sheets.forEach(function (s) {
+      var mins = weekBySheet[s];
+      tot.push(mins > 0 ? hoursFromMins(mins) : '');
+      tot.push(mins > 0 ? chefsForMinutes(mins) : '');
+    });
+    tot.push(hoursFromMins(model.weekMins));
+    tot.push(chefsForMinutes(model.weekMins));
+    aoa.push(tot);
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } }
+    ];
+    ws['!cols'] = [{ wch: 16 }].concat(headers.slice(1).map(function () { return { wch: 11 }; }));
+    return ws;
+  }
+
+  function downloadBlob(buf, filename) {
+    if (typeof document === 'undefined') return;
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 1500);
+  }
+
+  function loadExcelJS() {
+    return new Promise(function (resolve, reject) {
+      if (root.ExcelJS) return resolve(root.ExcelJS);
+      if (typeof document === 'undefined') return reject(new Error('no DOM'));
+      var s = document.createElement('script');
+      s.src = 'vendor/exceljs/exceljs.min.js';
+      s.onload = function () { resolve(root.ExcelJS); };
+      s.onerror = function () { reject(new Error('ExcelJS failed to load')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function groupBySheet(paulaRows) {
+    var order = PAULA_TABS.map(function (t) { return t.sheet; });
+    var buckets = {};
+    order.forEach(function (s) { buckets[s] = []; });
+    var other = [];
+    paulaRows.forEach(function (r) {
+      if (buckets[r.sheet]) buckets[r.sheet].push(r);
+      else other.push(r);
+    });
+    var sheets = order.map(function (s) { return { name: s, rows: buckets[s] || [] }; })
+      .filter(function (s) { return s.rows.length > 0; });
+    if (other.length) sheets.push({ name: OTHER_SHEET, rows: other });
+    return sheets;
+  }
+
+  function exportOrganisedXlsxPaula(rows, deps, helpers) {
+    helpers = helpers || {};
+    var paulaRows = buildPaulaRows(rows, helpers);
+    if (!helpers.allRows && U.applyItemFiltersSort && U.getItemViewState) {
+      /* filters apply to organised screen; for Paula export use raw rows as given */
+    }
+    var sheets = groupBySheet(paulaRows);
+    var name = 'Prepline_Organised_' + (new Date().toISOString().slice(0, 10)) + '.xlsx';
+    var totalRows = paulaRows.length;
+
+    var weInfo = resolveWeekEndingLabel(helpers, paulaRows);
+    var weLabel = weInfo.label;
+
+    function withExcelJS(ExcelJS) {
+      var wb = new ExcelJS.Workbook();
+      wb.creator = 'Prepline by Autoprod';
+      sheets.forEach(function (sh) {
+        var ws = wb.addWorksheet(sh.name.slice(0, 31), {
+          views: [{ state: 'frozen', ySplit: HEADER_ROW, activeCell: 'A' + DATA_START_ROW, showGridLines: true }]
+        });
+        fillSheetExcelJS(ws, sh.name, sh.rows, weLabel);
+      });
+      if (!sheets.length) {
+        var empty = wb.addWorksheet('Sauce, Purees and Gels');
+        fillSheetExcelJS(empty, 'Sauce, Purees and Gels', [], weLabel);
+      }
+      /* 4.8.23: Final Roster after Proteins (last section tab) */
+      var rosterWs = wb.addWorksheet(FINAL_ROSTER_NAME);
+      fillFinalRosterExcelJS(rosterWs, paulaRows, weLabel);
+      var sheetNamesOut = sheets.map(function (s) { return s.name; }).concat([FINAL_ROSTER_NAME]);
+      return wb.xlsx.writeBuffer().then(function (buf) {
+        if (helpers.returnBuffer) return { name: name, rows: totalRows, headers: HEADERS, sheets: sheetNamesOut, buffer: buf, engine: 'exceljs', layout: 'paula-sorted-az', weekEnding: weLabel, weekEndingSource: weInfo.source };
+        downloadBlob(buf, name);
+        return { name: name, rows: totalRows, headers: HEADERS, sheets: sheetNamesOut, engine: 'exceljs', layout: 'paula-sorted-az', weekEnding: weLabel, weekEndingSource: weInfo.source };
+      });
+    }
+
+    function withXLSX() {
+      if (typeof XLSX === 'undefined' || !XLSX.utils) throw new Error('XLSX not loaded');
+      var wb = XLSX.utils.book_new();
+      wb.Props = { Title: 'Prepline Organised', Author: 'Prepline by Autoprod', Company: 'Autoprod' };
+      wb.Custprops = { Creator: 'Prepline by Autoprod' };
+      var used = {};
+      (sheets.length ? sheets : [{ name: 'Sauce, Purees and Gels', rows: [] }]).forEach(function (sh) {
+        var tab = sh.name.slice(0, 31);
+        var n = 2;
+        var base = tab;
+        while (used[tab.toLowerCase()]) { tab = (base.slice(0, 28) + '-' + n).slice(0, 31); n++; }
+        used[tab.toLowerCase()] = true;
+        var ws = fillSheetXLSX(XLSX, sh.name, sh.rows, weLabel);
+        XLSX.utils.book_append_sheet(wb, ws, tab);
+      });
+      var rosterTab = FINAL_ROSTER_NAME;
+      var rn = 2;
+      while (used[rosterTab.toLowerCase()]) { rosterTab = ('Final Roster-' + rn).slice(0, 31); rn++; }
+      used[rosterTab.toLowerCase()] = true;
+      XLSX.utils.book_append_sheet(wb, fillFinalRosterXLSX(XLSX, paulaRows, weLabel), rosterTab);
+      var sheetNamesOutX = sheets.map(function (s) { return s.name; }).concat([rosterTab]);
+      if (helpers.returnBuffer) {
+        var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        return Promise.resolve({ name: name, rows: totalRows, headers: HEADERS, sheets: sheetNamesOutX, buffer: out, engine: 'xlsx', layout: 'paula-sorted-az', weekEnding: weLabel, weekEndingSource: weInfo.source });
+      }
+      XLSX.writeFile(wb, name);
+      return { name: name, rows: totalRows, headers: HEADERS, sheets: sheetNamesOutX, engine: 'xlsx', layout: 'paula-sorted-az', weekEnding: weLabel, weekEndingSource: weInfo.source };
+    }
+
+    if (typeof document !== 'undefined') {
+      if (helpers.forceXlsx) {
+        var r = withXLSX();
+        return (r && typeof r.then === 'function') ? r : Promise.resolve(r);
+      }
+      return loadExcelJS().then(withExcelJS).catch(function () { return withXLSX(); });
+    }
+    return withXLSX();
+  }
+
+  U.exportOrganisedXlsx = exportOrganisedXlsxPaula;
+  U.buildPaulaOrganisedRows = buildPaulaRows;
+  U.PAULA_ORGANISED_HEADERS = HEADERS;
+  U.PAULA_ORGANISED_TABS = PAULA_TABS.map(function (t) { return t.sheet; });
+
+  root.Prepline477 = {
+    VERSION: '4.8.23',
+    exportOrganisedXlsx: exportOrganisedXlsxPaula,
+    buildPaulaOrganisedRows: buildPaulaRows,
+    HEADERS: HEADERS,
+    actualPrepSortKey: actualPrepSortKey,
+    renameDfPrefix: renameDfPrefix,
+    estimateStaffMinutes: estimateStaffMinutes,
+    estimateBatchStaffMinutes: estimateBatchStaffMinutes,
+    staffBatchKey: staffBatchKey,
+    applyStaffBatchGrouping: applyStaffBatchGrouping,
+    formatGroupStaffLabel: formatGroupStaffLabel,
+    formatPrepDurationLabel: formatPrepDurationLabel,
+    formatStaffShifts: formatStaffShifts,
+    shiftsForMinutes: shiftsForMinutes,
+    chefsForGroupMinutes: chefsForGroupMinutes,
+    formatStaffDuration: formatStaffDuration,
+    formatPrepDaySubtotal: formatPrepDaySubtotal,
+    formatPrepDayDurationSubtotal: formatPrepDayDurationSubtotal,
+    formatPrepDayStaffSubtotal: formatPrepDayStaffSubtotal,
+    buildRosterModel: buildRosterModel,
+    formatRosterDayLabel: formatRosterDayLabel,
+    CHEF_SHIFT_HOURS: CHEF_SHIFT_HOURS,
+    prepColourGroupId: prepColourGroupId,
+    pastelForGroup: pastelForGroup,
+    PREP_PASTELS: PREP_PASTELS,
+    weekdayNum: weekdayNum,
+    resolveWeekEndingLabel: resolveWeekEndingLabel,
+    loadExcelJS: loadExcelJS,
+    sheetForItem: sheetForItem,
+    FINAL_ROSTER_NAME: FINAL_ROSTER_NAME,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);

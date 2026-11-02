@@ -1,2 +1,410 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-import{chromium as t}from"/tmp/pw-install/node_modules/playwright/index.mjs";import e from"http";import i from"fs";import a from"path";import{fileURLToPath as o}from"url";const n=a.dirname(o(import.meta.url)),s=a.resolve(n,".."),r=process.env.PREPLINE_481_OUT||"/workspace/share/prepline-481",l=8481+Math.floor(80*Math.random()),c=process.env.PREPLINE_481_LIVE||"",u=process.env.PREPLINE_481_XLSX||"/workspace/paula-2026-10-30/WE 15.11.26 For Sorter.xlsx",p=process.env.PREPLINE_481_PDF||"/workspace/prepline-builder/tests/v3/samples/sample-recipes.pdf",g=[];function w(t,e,i,a,o){let n;n="SKIP"===o?"SKIP":i?"PASS":"FAIL",g.push({feature:t,test:e,result:n,detail:a||""}),console.log(`[${n}] ${t} :: ${e}${a?" — "+a:""}`)}async function d(t){await t.evaluate(()=>{const t=document.getElementById("outputChoice");t&&(t.hidden=!0,t.innerHTML="");const e=document.getElementById("preplistTab");e&&e.scrollIntoView()})}(async function(){i.mkdirSync(a.join(r,"screenshots"),{recursive:!0});let o=null,n=c;n||(o=await new Promise(t=>{const o=e.createServer((t,e)=>{let o=decodeURIComponent((t.url||"/").split("?")[0]);"/"===o&&(o="/index.html");const n=a.join(s,o.replace(/^\//,""));if(!n.startsWith(s)||!i.existsSync(n)||i.statSync(n).isDirectory())return e.writeHead(404),void e.end("no");var r;e.writeHead(200,{"Content-Type":(r=n,r.endsWith(".html")?"text/html; charset=utf-8":r.endsWith(".js")?"application/javascript; charset=utf-8":r.endsWith(".css")?"text/css; charset=utf-8":r.endsWith(".json")?"application/json":r.endsWith(".xlsx")?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":r.endsWith(".pdf")?"application/pdf":r.endsWith(".svg")?"image/svg+xml":r.endsWith(".png")?"image/png":r.endsWith(".webmanifest")?"application/manifest+json":"application/octet-stream"),"Cache-Control":"no-store"}),i.createReadStream(n).pipe(e)});o.listen(l,"127.0.0.1",()=>t(o))}),n=`http://127.0.0.1:${l}/`),console.log("BASE",n),console.log("XLSX",u,i.existsSync(u)),console.log("PDF",p,i.existsSync(p));const m=await t.launch({headless:!0}),h=await m.newPage({viewport:{width:1280,height:900}});await async function(t){await t.addInitScript(()=>{localStorage.setItem("prepline.account.v2",JSON.stringify({token:"test-token-481"})),localStorage.setItem("prepline.signup.v1",JSON.stringify({d:"2026-10-31",via:"test"}));try{Object.keys(localStorage).forEach(t=>{/onetime|prepline\.state|preplist/i.test(t)&&!/account|signup|gate/i.test(t)&&localStorage.removeItem(t)})}catch(t){}}),await t.route("**/*",async t=>{const e=t.request().url();e.includes("script.google.com")||e.includes("macros/s/")?await t.fulfill({status:200,contentType:"application/json",body:JSON.stringify({status:"unlimited",token:"test-token-481"})}):await t.continue()})}(h),h.on("pageerror",t=>console.log("PAGEERROR",t.message)),await h.goto(n,{waitUntil:"domcontentloaded",timeout:9e4}),await h.waitForTimeout(900);const f=await h.evaluate(()=>({meta:(document.querySelector('meta[name="prepline-version"]')||{}).content||"",footer:(document.getElementById("appVersion")||{}).textContent||"",p481:window.Prepline481&&Prepline481.VERSION}));w("version","meta_481",/4\.8\.1/.test(f.meta),JSON.stringify(f)),w("version","module_481","4.8.1"===f.p481,String(f.p481)),w("version","footer_481",/4\.8\.1/.test(f.footer),f.footer);const y=await async function(t,e){const i=t.locator("#fileInput");await i.setInputFiles(e);for(let e=0;e<60;e++){const i=await t.evaluate(()=>({rows:("undefined"!=typeof ROWS?ROWS:[]).length,sbOpen:!(!document.getElementById("sbChoice")||!document.getElementById("sbChoice").classList.contains("open")),photos:Object.keys("object"==typeof originalPageImages&&originalPageImages?originalPageImages:{}).length,status:(document.getElementById("statusMsg")?.textContent||"").slice(0,160)}));if(i.sbOpen)await t.locator("#sbSortNow").click(),await t.waitForTimeout(600);else{if(i.rows>40&&(i.photos>0||e>35))return i;await t.waitForTimeout(400)}}throw new Error("xlsx upload failed")}(h,u);w("upload","xlsx_rows",y.rows>40,JSON.stringify(y));const I=await async function(t,e=5){for(let i=0;i<25;i++){const i=await t.evaluate(()=>Object.keys(originalPageImages||{}).length);if(i>=e)return i;await t.waitForTimeout(400)}return t.evaluate(()=>Object.keys(originalPageImages||{}).length)}(h,5);w("upload","xlsx_photos",I>=5,"photos="+I),await d(h),await h.waitForTimeout(400),await h.evaluate(()=>{"function"==typeof setView&&setView("dish"),"function"==typeof render&&render()}),await h.waitForTimeout(700);const v=await h.evaluate(()=>{const t=[...document.querySelectorAll("#resultsArea .dish-block .u481-orig, #resultsArea .dish-block button[data-u481-dish], #resultsArea .dish-block button.ghost")].filter(t=>/view original|orig\.?\s*pt/i.test(t.textContent||""));return{count:t.length,sample:t.slice(0,3).map(t=>t.textContent.trim())}});w("by-dish","view_original_links",v.count>=3,JSON.stringify(v));const S=h.locator("#resultsArea .dish-block button.u481-orig, #resultsArea .dish-block button[data-u481-dish]").filter({hasText:/View original|orig/i}).first();await S.click({timeout:1e4}),await h.waitForTimeout(800);const _=await h.evaluate(()=>{const t=document.getElementById("u481AsIsOverlay"),e=document.getElementById("origViewerOverlay");return{asIs:!(!t||t.hidden),viewer:!(!e||e.classList.contains("hidden")),printBtn:!(!document.getElementById("u481AsIsPrint")&&!document.querySelector("#origViewerOverlay button.secondary")),photoInAsIs:!!document.querySelector("#u481AsIsOverlay .asis-photo img"),title:(document.getElementById("u481AsIsTitle")||document.getElementById("origViewerTitle")||{}).textContent||""}});w("open","original_opens",_.asIs||_.viewer,JSON.stringify(_)),w("open","print_control",!!_.printBtn,JSON.stringify(_)),w("open","dish_photo_in_original",!_.asIs||_.photoInAsIs,JSON.stringify(_)),await h.screenshot({path:a.join(r,"screenshots","01-bydish-original-open.png"),fullPage:!1}),_.asIs?await h.locator("#u481AsIsPrint").click():await h.locator("#origViewerOverlay button.secondary").first().click(),await h.waitForTimeout(900);const P=await h.evaluate(()=>({has:!(!window.__lastOriginalPrint&&!window.__lastAsIsPrint),len:String(window.__lastOriginalPrint||window.__lastAsIsPrint||"").length,hasPhoto:/asis-photo|Dish photo|data:image\//i.test(String(window.__lastOriginalPrint||window.__lastAsIsPrint||""))}));w("print","print_html_generated",P.has&&P.len>500,JSON.stringify(P)),w("print","print_includes_photo",P.hasPhoto,JSON.stringify(P));const O=a.join(r,"print-original-sample.html"),b=await h.evaluate(()=>window.__lastOriginalPrint||window.__lastAsIsPrint||"");if(b&&i.writeFileSync(O,b),await h.screenshot({path:a.join(r,"screenshots","02-print-original-ready.png"),fullPage:!1}),b){const t=await m.newPage();await t.setContent(b,{waitUntil:"load"}),await t.waitForTimeout(400),await t.screenshot({path:a.join(r,"screenshots","02b-print-preview-output.png"),fullPage:!0}),await t.close()}await h.evaluate(()=>{window.Prepline481&&Prepline481.closeAsIsOriginal&&Prepline481.closeAsIsOriginal(),"function"==typeof closeOriginalViewer&&closeOriginalViewer()}),await h.evaluate(()=>{setView("priority")}),await h.waitForTimeout(600);const A=await h.evaluate(()=>{const t=[...document.querySelectorAll("#resultsArea td.dish .u481-orig, #resultsArea .u481-orig-chip .u481-orig")];return{count:t.length,sample:t.slice(0,4).map(t=>t.textContent.trim())}});if(w("by-day","orig_pt_chips",A.count>=2,JSON.stringify(A)),A.count>=1){await h.locator("#resultsArea td.dish .u481-orig, #resultsArea .u481-orig-chip .u481-orig").first().click(),await h.waitForTimeout(700);const t=await h.evaluate(()=>{const t=document.getElementById("u481AsIsOverlay");return{asIs:!(!t||t.hidden),print:!!document.getElementById("u481AsIsPrint")}});w("by-day","chip_opens_original",t.asIs&&t.print,JSON.stringify(t)),await h.screenshot({path:a.join(r,"screenshots","03-byday-original-open.png"),fullPage:!1}),await h.evaluate(()=>Prepline481&&Prepline481.closeAsIsOriginal&&Prepline481.closeAsIsOriginal())}else w("by-day","chip_opens_original",!1,"no chips");await h.evaluate(()=>{setView("section")}),await h.waitForTimeout(600);const k=await h.evaluate(()=>({count:[...document.querySelectorAll("#resultsArea td.dish .u481-orig")].length}));if(w("by-section","orig_pt_chips",k.count>=2,JSON.stringify(k)),k.count>=1){await h.locator("#resultsArea td.dish .u481-orig").first().click(),await h.waitForTimeout(700);const t=await h.evaluate(()=>{const t=document.getElementById("u481AsIsOverlay"),e=!!document.querySelector("#u481AsIsOverlay .asis-photo img");return{asIs:!(!t||t.hidden),photo:e}});w("by-section","chip_opens_original",t.asIs,JSON.stringify(t)),await h.screenshot({path:a.join(r,"screenshots","04-bysection-original-open.png"),fullPage:!1}),await h.evaluate(()=>Prepline481&&Prepline481.closeAsIsOriginal&&Prepline481.closeAsIsOriginal())}if(await h.evaluate(()=>Object.keys(originalPageImages||{}).length>0)){await h.evaluate(()=>setView("orig")),await h.waitForTimeout(700);const t=await h.evaluate(()=>({pages:document.querySelectorAll("#resultsArea .orig-page").length,viewBtns:[...document.querySelectorAll("#resultsArea .orig-head button, #resultsArea .u481-orig")].filter(t=>/view original/i.test(t.textContent||"")).length}));w("orig-tab","pages_and_buttons",t.pages>=1&&t.viewBtns>=1,JSON.stringify(t)),await h.locator("#resultsArea .orig-head button, #resultsArea button.u481-orig").filter({hasText:/View original/i}).first().click(),await h.waitForTimeout(700);const e=await h.evaluate(()=>{const t=document.getElementById("u481AsIsOverlay"),e=document.getElementById("origViewerOverlay");return{asIs:!(!t||t.hidden),viewer:!(!e||e.classList.contains("hidden"))}});w("orig-tab","view_original_opens",e.asIs||e.viewer,JSON.stringify(e)),await h.screenshot({path:a.join(r,"screenshots","05-origtab-open.png"),fullPage:!1}),await h.evaluate(()=>{Prepline481&&Prepline481.closeAsIsOriginal&&Prepline481.closeAsIsOriginal(),"function"==typeof closeOriginalViewer&&closeOriginalViewer()})}else w("orig-tab","pages_and_buttons",!1,"no originalPageImages");if(i.existsSync(p)){await h.goto(n,{waitUntil:"domcontentloaded",timeout:9e4}),await h.waitForTimeout(800),await h.evaluate(()=>{try{window.__preplineBridge&&window.__preplineBridge.clearList(),originalPageImages={},"function"==typeof render&&render()}catch(t){}}),await h.locator("#fileInput").setInputFiles(p);let t=!1,e={};for(let i=0;i<90;i++){if((await h.evaluate(()=>{const t=document.getElementById("peChoice")||document.getElementById("sbChoice");return{open:!!(t&&t.classList&&t.classList.contains("open"))}})).open)for(const t of["#peSortNow","#sbSortNow",'button:has-text("Sort into")','button:has-text("Sort now")']){const e=h.locator(t).first();if(await e.count())try{await e.click({timeout:800});break}catch(t){}}if(e=await h.evaluate(()=>{const t="undefined"!=typeof ROWS?ROWS:[],e=document.getElementById("fileTag")?.textContent||"",i=t.filter(t=>t&&"pdf"===t.srcType).length;return{rows:t.length,pdfRows:i,imgs:Object.keys(originalPageImages||{}).length,tag:e,status:(document.getElementById("statusMsg")?.textContent||"").slice(0,140)}}),e.pdfRows>3&&e.imgs>0){t=!0;break}if(/\.pdf/i.test(e.tag)&&e.rows>3&&e.imgs>0){t=!0;break}if(/n\.toHex is not a function/i.test(String(e.status||"")))break;if(/Could not read that PDF/i.test(String(e.status||"")))break;await h.waitForTimeout(500)}const i=/n\.toHex is not a function/i.test(String(e.status||""));if(!t&&i?w("pdf","upload_parsed",!0,"SKIP: pdf.js env n.toHex — "+JSON.stringify(e),"SKIP"):w("pdf","upload_parsed",t,JSON.stringify(e)),t){await d(h),await h.evaluate(()=>{setView("dish"),render()}),await h.waitForTimeout(600);const t=h.locator("#resultsArea .dish-block button").filter({hasText:/View original/i}).first(),e=await h.locator("#resultsArea .dish-block button").filter({hasText:/View original/i}).count();if(w("pdf","view_original_buttons",e>=1,"count="+e),e>=1){await t.click(),await h.waitForTimeout(700);const e=await h.evaluate(()=>{const t=document.getElementById("origViewerOverlay"),e=document.querySelector("#origViewerOverlay button.secondary");return{open:!(!t||t.classList.contains("hidden")),printLabel:e?e.textContent.trim():""}});w("pdf","viewer_opens_with_print",e.open&&/print/i.test(e.printLabel),JSON.stringify(e)),await h.screenshot({path:a.join(r,"screenshots","06-pdf-original-viewer.png"),fullPage:!1}),e.open&&(await h.locator("#origViewerOverlay button.secondary").first().click(),await h.waitForTimeout(800),w("pdf","print_works",await h.evaluate(()=>!(!window.__lastOriginalPrint&&!window.__lastAsIsPrint)),""),await h.screenshot({path:a.join(r,"screenshots","07-pdf-print-ready.png"),fullPage:!1}))}}}else w("pdf","upload_parsed",!1,"PDF missing");const x={base:n,version:f,checks:g,pass:g.filter(t=>"PASS"===t.result).length,skip:g.filter(t=>"SKIP"===t.result).length,fail:g.filter(t=>"FAIL"===t.result).length,when:(new Date).toISOString()};i.writeFileSync(a.join(r,"status.json"),JSON.stringify(x,null,2));const E=g.map(t=>`${t.result}\t${t.feature}\t${t.test}\t${t.detail}`);i.writeFileSync(a.join(r,"checklist.txt"),`Prepline 4.8.1 original links\nPASS ${x.pass} / SKIP ${x.skip||0} / FAIL ${x.fail}\n\n`+E.join("\n")+"\n"),console.log("SUMMARY",x.pass,"pass",x.skip||0,"skip",x.fail,"fail"),await m.close(),o&&o.close(),x.fail>0&&process.exit(1)})().catch(t=>{console.error(t),process.exit(1)});
+/**
+ * Playwright: Prepline 4.8.1 — all original PT / View original clickable; Print includes dish photo.
+ * Prefer LIVE URL via PREPLINE_481_LIVE; else serve local ROOT.
+ */
+import { chromium } from '/tmp/pw-install/node_modules/playwright/index.mjs';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const OUT = process.env.PREPLINE_481_OUT || '/workspace/share/prepline-481';
+const PORT = 8481 + Math.floor(Math.random() * 80);
+const LIVE = process.env.PREPLINE_481_LIVE || '';
+
+const XLSX = process.env.PREPLINE_481_XLSX
+  || '/workspace/paula-2026-10-30/WE 15.11.26 For Sorter.xlsx';
+const PDF = process.env.PREPLINE_481_PDF
+  || '/workspace/prepline-builder/tests/v3/samples/sample-recipes.pdf';
+
+const CHECKS = [];
+function record(feature, testName, pass, detail, soft) {
+  let result;
+  if (soft === 'SKIP') result = 'SKIP';
+  else result = pass ? 'PASS' : 'FAIL';
+  CHECKS.push({ feature, test: testName, result, detail: detail || '' });
+  console.log(`[${result}] ${feature} :: ${testName}${detail ? ' — ' + detail : ''}`);
+}
+
+function contentType(p) {
+  if (p.endsWith('.html')) return 'text/html; charset=utf-8';
+  if (p.endsWith('.js')) return 'application/javascript; charset=utf-8';
+  if (p.endsWith('.css')) return 'text/css; charset=utf-8';
+  if (p.endsWith('.json')) return 'application/json';
+  if (p.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (p.endsWith('.pdf')) return 'application/pdf';
+  if (p.endsWith('.svg')) return 'image/svg+xml';
+  if (p.endsWith('.png')) return 'image/png';
+  if (p.endsWith('.webmanifest')) return 'application/manifest+json';
+  return 'application/octet-stream';
+}
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let url = decodeURIComponent((req.url || '/').split('?')[0]);
+      if (url === '/') url = '/index.html';
+      const fp = path.join(ROOT, url.replace(/^\//, ''));
+      if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
+        res.writeHead(404); res.end('no'); return;
+      }
+      res.writeHead(200, { 'Content-Type': contentType(fp), 'Cache-Control': 'no-store' });
+      fs.createReadStream(fp).pipe(res);
+    });
+    server.listen(PORT, '127.0.0.1', () => resolve(server));
+  });
+}
+
+async function unlockGate(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('prepline.account.v2', JSON.stringify({ token: 'test-token-481' }));
+    localStorage.setItem('prepline.signup.v1', JSON.stringify({ d: '2026-10-31', via: 'test' }));
+    /* Do not restore a previous onetime sort — each test upload must stand alone */
+    try {
+      Object.keys(localStorage).forEach((k) => {
+        if (/onetime|prepline\.state|preplist/i.test(k) && !/account|signup|gate/i.test(k)) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch (e) {}
+  });
+  await page.route('**/*', async (route) => {
+    const u = route.request().url();
+    if (u.includes('script.google.com') || u.includes('macros/s/')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'unlimited', token: 'test-token-481' })
+      });
+      return;
+    }
+    await route.continue();
+  });
+}
+
+async function uploadXlsx(page, filePath) {
+  const input = page.locator('#fileInput');
+  await input.setInputFiles(filePath);
+  for (let i = 0; i < 60; i++) {
+    const st = await page.evaluate(() => ({
+      rows: (typeof ROWS !== 'undefined' ? ROWS : []).length,
+      sbOpen: !!(document.getElementById('sbChoice') && document.getElementById('sbChoice').classList.contains('open')),
+      photos: Object.keys(typeof originalPageImages === 'object' && originalPageImages ? originalPageImages : {}).length,
+      status: (document.getElementById('statusMsg')?.textContent || '').slice(0, 160)
+    }));
+    if (st.sbOpen) {
+      await page.locator('#sbSortNow').click();
+      await page.waitForTimeout(600);
+      continue;
+    }
+    if (st.rows > 40) {
+      if (st.photos > 0 || i > 35) return st;
+    }
+    await page.waitForTimeout(400);
+  }
+  throw new Error('xlsx upload failed');
+}
+
+async function waitPhotos(page, min = 5) {
+  for (let i = 0; i < 25; i++) {
+    const n = await page.evaluate(() => Object.keys(originalPageImages || {}).length);
+    if (n >= min) return n;
+    await page.waitForTimeout(400);
+  }
+  return page.evaluate(() => Object.keys(originalPageImages || {}).length);
+}
+
+async function dismissOutputChoice(page) {
+  await page.evaluate(() => {
+    const oc = document.getElementById('outputChoice');
+    if (oc) { oc.hidden = true; oc.innerHTML = ''; }
+    const v = document.getElementById('preplistTab');
+    if (v) v.scrollIntoView();
+  });
+}
+
+async function main() {
+  fs.mkdirSync(path.join(OUT, 'screenshots'), { recursive: true });
+  let server = null;
+  let base = LIVE;
+  if (!base) {
+    server = await startServer();
+    base = `http://127.0.0.1:${PORT}/`;
+  }
+  console.log('BASE', base);
+  console.log('XLSX', XLSX, fs.existsSync(XLSX));
+  console.log('PDF', PDF, fs.existsSync(PDF));
+
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await unlockGate(page);
+  page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+
+  await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 90000 });
+  await page.waitForTimeout(900);
+
+  const ver = await page.evaluate(() => ({
+    meta: (document.querySelector('meta[name="prepline-version"]') || {}).content || '',
+    footer: (document.getElementById('appVersion') || {}).textContent || '',
+    p481: window.Prepline481 && Prepline481.VERSION
+  }));
+  record('version', 'meta_481', /4\.8\.1/.test(ver.meta), JSON.stringify(ver));
+  record('version', 'module_481', ver.p481 === '4.8.1', String(ver.p481));
+  record('version', 'footer_481', /4\.8\.1/.test(ver.footer), ver.footer);
+
+  // ---- XLSX: Paula file ----
+  const up = await uploadXlsx(page, XLSX);
+  record('upload', 'xlsx_rows', up.rows > 40, JSON.stringify(up));
+  const photoN = await waitPhotos(page, 5);
+  record('upload', 'xlsx_photos', photoN >= 5, 'photos=' + photoN);
+  await dismissOutputChoice(page);
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { if (typeof setView === 'function') setView('dish'); if (typeof render === 'function') render(); });
+  await page.waitForTimeout(700);
+
+  // By dish: View original buttons
+  const dishLinks = await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('#resultsArea .dish-block .u481-orig, #resultsArea .dish-block button[data-u481-dish], #resultsArea .dish-block button.ghost')]
+      .filter(b => /view original|orig\.?\s*pt/i.test(b.textContent || ''));
+    return { count: btns.length, sample: btns.slice(0, 3).map(b => b.textContent.trim()) };
+  });
+  record('by-dish', 'view_original_links', dishLinks.count >= 3, JSON.stringify(dishLinks));
+
+  // Click first View original
+  const firstDishBtn = page.locator('#resultsArea .dish-block button.u481-orig, #resultsArea .dish-block button[data-u481-dish]').filter({ hasText: /View original|orig/i }).first();
+  await firstDishBtn.click({ timeout: 10000 });
+  await page.waitForTimeout(800);
+
+  const asIsOpen = await page.evaluate(() => {
+    const ov = document.getElementById('u481AsIsOverlay');
+    const viewer = document.getElementById('origViewerOverlay');
+    return {
+      asIs: !!(ov && !ov.hidden),
+      viewer: !!(viewer && !viewer.classList.contains('hidden')),
+      printBtn: !!(document.getElementById('u481AsIsPrint') || document.querySelector('#origViewerOverlay button.secondary')),
+      photoInAsIs: !!document.querySelector('#u481AsIsOverlay .asis-photo img'),
+      title: (document.getElementById('u481AsIsTitle') || document.getElementById('origViewerTitle') || {}).textContent || ''
+    };
+  });
+  record('open', 'original_opens', asIsOpen.asIs || asIsOpen.viewer, JSON.stringify(asIsOpen));
+  record('open', 'print_control', !!asIsOpen.printBtn, JSON.stringify(asIsOpen));
+  record('open', 'dish_photo_in_original', asIsOpen.asIs ? asIsOpen.photoInAsIs : true, JSON.stringify(asIsOpen));
+  await page.screenshot({ path: path.join(OUT, 'screenshots', '01-bydish-original-open.png'), fullPage: false });
+
+  // Print original → capture __lastOriginalPrint / __lastAsIsPrint
+  if (asIsOpen.asIs) {
+    await page.locator('#u481AsIsPrint').click();
+  } else {
+    await page.locator('#origViewerOverlay button.secondary').first().click();
+  }
+  await page.waitForTimeout(900);
+  const printHtml = await page.evaluate(() => ({
+    has: !!(window.__lastOriginalPrint || window.__lastAsIsPrint),
+    len: String(window.__lastOriginalPrint || window.__lastAsIsPrint || '').length,
+    hasPhoto: /asis-photo|Dish photo|data:image\//i.test(String(window.__lastOriginalPrint || window.__lastAsIsPrint || ''))
+  }));
+  record('print', 'print_html_generated', printHtml.has && printHtml.len > 500, JSON.stringify(printHtml));
+  record('print', 'print_includes_photo', printHtml.hasPhoto, JSON.stringify(printHtml));
+
+  // Write print HTML snapshot and screenshot overlay
+  const htmlOut = path.join(OUT, 'print-original-sample.html');
+  const body = await page.evaluate(() => window.__lastOriginalPrint || window.__lastAsIsPrint || '');
+  if (body) fs.writeFileSync(htmlOut, body);
+  await page.screenshot({ path: path.join(OUT, 'screenshots', '02-print-original-ready.png'), fullPage: false });
+
+  // Dedicated print-preview page (what Print produces, including dish photo)
+  if (body) {
+    const preview = await browser.newPage();
+    await preview.setContent(body, { waitUntil: 'load' });
+    await preview.waitForTimeout(400);
+    await preview.screenshot({ path: path.join(OUT, 'screenshots', '02b-print-preview-output.png'), fullPage: true });
+    await preview.close();
+  }
+
+  // Close overlay
+  await page.evaluate(() => {
+    if (window.Prepline481 && Prepline481.closeAsIsOriginal) Prepline481.closeAsIsOriginal();
+    if (typeof closeOriginalViewer === 'function') closeOriginalViewer();
+  });
+
+  // By day
+  await page.evaluate(() => { setView('priority'); });
+  await page.waitForTimeout(600);
+  const dayChips = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('#resultsArea td.dish .u481-orig, #resultsArea .u481-orig-chip .u481-orig')];
+    return { count: chips.length, sample: chips.slice(0, 4).map(c => c.textContent.trim()) };
+  });
+  record('by-day', 'orig_pt_chips', dayChips.count >= 2, JSON.stringify(dayChips));
+  if (dayChips.count >= 1) {
+    await page.locator('#resultsArea td.dish .u481-orig, #resultsArea .u481-orig-chip .u481-orig').first().click();
+    await page.waitForTimeout(700);
+    const open2 = await page.evaluate(() => {
+      const ov = document.getElementById('u481AsIsOverlay');
+      return { asIs: !!(ov && !ov.hidden), print: !!document.getElementById('u481AsIsPrint') };
+    });
+    record('by-day', 'chip_opens_original', open2.asIs && open2.print, JSON.stringify(open2));
+    await page.screenshot({ path: path.join(OUT, 'screenshots', '03-byday-original-open.png'), fullPage: false });
+    await page.evaluate(() => Prepline481 && Prepline481.closeAsIsOriginal && Prepline481.closeAsIsOriginal());
+  } else {
+    record('by-day', 'chip_opens_original', false, 'no chips');
+  }
+
+  // By section
+  await page.evaluate(() => { setView('section'); });
+  await page.waitForTimeout(600);
+  const secChips = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('#resultsArea td.dish .u481-orig')];
+    return { count: chips.length };
+  });
+  record('by-section', 'orig_pt_chips', secChips.count >= 2, JSON.stringify(secChips));
+  if (secChips.count >= 1) {
+    await page.locator('#resultsArea td.dish .u481-orig').first().click();
+    await page.waitForTimeout(700);
+    const open3 = await page.evaluate(() => {
+      const ov = document.getElementById('u481AsIsOverlay');
+      const photo = !!document.querySelector('#u481AsIsOverlay .asis-photo img');
+      return { asIs: !!(ov && !ov.hidden), photo };
+    });
+    record('by-section', 'chip_opens_original', open3.asIs, JSON.stringify(open3));
+    await page.screenshot({ path: path.join(OUT, 'screenshots', '04-bysection-original-open.png'), fullPage: false });
+    await page.evaluate(() => Prepline481 && Prepline481.closeAsIsOriginal && Prepline481.closeAsIsOriginal());
+  }
+
+  // Original PTs tab
+  const hasOrigTab = await page.evaluate(() => Object.keys(originalPageImages || {}).length > 0);
+  if (hasOrigTab) {
+    await page.evaluate(() => setView('orig'));
+    await page.waitForTimeout(700);
+    const origTab = await page.evaluate(() => ({
+      pages: document.querySelectorAll('#resultsArea .orig-page').length,
+      viewBtns: [...document.querySelectorAll('#resultsArea .orig-head button, #resultsArea .u481-orig')].filter(b => /view original/i.test(b.textContent || '')).length
+    }));
+    record('orig-tab', 'pages_and_buttons', origTab.pages >= 1 && origTab.viewBtns >= 1, JSON.stringify(origTab));
+    await page.locator('#resultsArea .orig-head button, #resultsArea button.u481-orig').filter({ hasText: /View original/i }).first().click();
+    await page.waitForTimeout(700);
+    const open4 = await page.evaluate(() => {
+      const ov = document.getElementById('u481AsIsOverlay');
+      const viewer = document.getElementById('origViewerOverlay');
+      return {
+        asIs: !!(ov && !ov.hidden),
+        viewer: !!(viewer && !viewer.classList.contains('hidden'))
+      };
+    });
+    record('orig-tab', 'view_original_opens', open4.asIs || open4.viewer, JSON.stringify(open4));
+    await page.screenshot({ path: path.join(OUT, 'screenshots', '05-origtab-open.png'), fullPage: false });
+    await page.evaluate(() => {
+      if (Prepline481 && Prepline481.closeAsIsOriginal) Prepline481.closeAsIsOriginal();
+      if (typeof closeOriginalViewer === 'function') closeOriginalViewer();
+    });
+  } else {
+    record('orig-tab', 'pages_and_buttons', false, 'no originalPageImages');
+  }
+
+  // ---- PDF path (fresh page + cleared list; require PDF file tag / srcType) ----
+  if (fs.existsSync(PDF)) {
+    await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 90000 });
+    await page.waitForTimeout(800);
+    await page.evaluate(() => {
+      try {
+        if (window.__preplineBridge) window.__preplineBridge.clearList();
+        originalPageImages = {};
+        if (typeof render === 'function') render();
+      } catch (e) {}
+    });
+    await page.locator('#fileInput').setInputFiles(PDF);
+    let pdfOk = false;
+    let lastSt = {};
+    for (let i = 0; i < 90; i++) {
+      const pe = await page.evaluate(() => {
+        const choice = document.getElementById('peChoice') || document.getElementById('sbChoice');
+        const open = choice && choice.classList && choice.classList.contains('open');
+        return { open: !!open };
+      });
+      if (pe.open) {
+        for (const sel of ['#peSortNow', '#sbSortNow', 'button:has-text("Sort into")', 'button:has-text("Sort now")']) {
+          const loc = page.locator(sel).first();
+          if (await loc.count()) { try { await loc.click({ timeout: 800 }); break; } catch (e) {} }
+        }
+      }
+      lastSt = await page.evaluate(() => {
+        const rows = (typeof ROWS !== 'undefined' ? ROWS : []);
+        const tag = (document.getElementById('fileTag')?.textContent || '');
+        const pdfRows = rows.filter(r => r && r.srcType === 'pdf').length;
+        return {
+          rows: rows.length,
+          pdfRows,
+          imgs: Object.keys(originalPageImages || {}).length,
+          tag,
+          status: (document.getElementById('statusMsg')?.textContent || '').slice(0, 140)
+        };
+      });
+      if (lastSt.pdfRows > 3 && lastSt.imgs > 0) { pdfOk = true; break; }
+      if (/\.pdf/i.test(lastSt.tag) && lastSt.rows > 3 && lastSt.imgs > 0) { pdfOk = true; break; }
+      if (/n\.toHex is not a function/i.test(String(lastSt.status || ''))) break;
+      if (/Could not read that PDF/i.test(String(lastSt.status || ''))) break;
+      await page.waitForTimeout(500);
+    }
+    const pdfEnvBroken = /n\.toHex is not a function/i.test(String(lastSt.status || ''));
+    if (!pdfOk && pdfEnvBroken) {
+      record('pdf', 'upload_parsed', true, 'SKIP: pdf.js env n.toHex — ' + JSON.stringify(lastSt), 'SKIP');
+    } else {
+      record('pdf', 'upload_parsed', pdfOk, JSON.stringify(lastSt));
+    }
+    if (pdfOk) {
+      await dismissOutputChoice(page);
+      await page.evaluate(() => { setView('dish'); render(); });
+      await page.waitForTimeout(600);
+      const pdfBtn = page.locator('#resultsArea .dish-block button').filter({ hasText: /View original/i }).first();
+      const pdfBtnCount = await page.locator('#resultsArea .dish-block button').filter({ hasText: /View original/i }).count();
+      record('pdf', 'view_original_buttons', pdfBtnCount >= 1, 'count=' + pdfBtnCount);
+      if (pdfBtnCount >= 1) {
+        await pdfBtn.click();
+        await page.waitForTimeout(700);
+        const v = await page.evaluate(() => {
+          const viewer = document.getElementById('origViewerOverlay');
+          const print = document.querySelector('#origViewerOverlay button.secondary');
+          return {
+            open: !!(viewer && !viewer.classList.contains('hidden')),
+            printLabel: print ? print.textContent.trim() : ''
+          };
+        });
+        record('pdf', 'viewer_opens_with_print', v.open && /print/i.test(v.printLabel), JSON.stringify(v));
+        await page.screenshot({ path: path.join(OUT, 'screenshots', '06-pdf-original-viewer.png'), fullPage: false });
+        if (v.open) {
+          await page.locator('#origViewerOverlay button.secondary').first().click();
+          await page.waitForTimeout(800);
+          const ph = await page.evaluate(() => !!(window.__lastOriginalPrint || window.__lastAsIsPrint));
+          record('pdf', 'print_works', ph, '');
+          await page.screenshot({ path: path.join(OUT, 'screenshots', '07-pdf-print-ready.png'), fullPage: false });
+        }
+      }
+    }
+  } else {
+    record('pdf', 'upload_parsed', false, 'PDF missing');
+  }
+
+  const summary = {
+    base,
+    version: ver,
+    checks: CHECKS,
+    pass: CHECKS.filter(c => c.result === 'PASS').length,
+    skip: CHECKS.filter(c => c.result === 'SKIP').length,
+    fail: CHECKS.filter(c => c.result === 'FAIL').length,
+    when: new Date().toISOString()
+  };
+  fs.writeFileSync(path.join(OUT, 'status.json'), JSON.stringify(summary, null, 2));
+  const lines = CHECKS.map(c => `${c.result}\t${c.feature}\t${c.test}\t${c.detail}`);
+  fs.writeFileSync(path.join(OUT, 'checklist.txt'), `Prepline 4.8.1 original links\nPASS ${summary.pass} / SKIP ${summary.skip || 0} / FAIL ${summary.fail}\n\n` + lines.join('\n') + '\n');
+  console.log('SUMMARY', summary.pass, 'pass', summary.skip || 0, 'skip', summary.fail, 'fail');
+
+  await browser.close();
+  if (server) server.close();
+  if (summary.fail > 0) process.exit(1);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

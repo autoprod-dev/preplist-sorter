@@ -1,2 +1,196 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-import{chromium as e}from"/tmp/pw-install/node_modules/playwright/index.mjs";import t from"http";import o from"fs";import s from"path";import{fileURLToPath as i}from"url";import{spawnSync as a}from"child_process";const n=s.dirname(i(import.meta.url)),r=s.resolve(n,".."),l=process.env.PREPLINE_479_OUT||"/workspace/share/prepline-479",c=8879+Math.floor(40*Math.random()),h="/workspace/paula-2026-10-30/WE 15.11.26 For Sorter.xlsx";o.mkdirSync(l,{recursive:!0}),o.mkdirSync(s.join(l,"screenshots"),{recursive:!0}),async function(){if(!o.existsSync(h))throw new Error("missing "+h);const i=await new Promise(e=>{const i=t.createServer((e,t)=>{let i=decodeURIComponent((e.url||"/").split("?")[0]);"/"===i&&(i="/index.html");const a=s.join(r,i.replace(/^\//,""));if(!a.startsWith(r)||!o.existsSync(a)||o.statSync(a).isDirectory())return t.writeHead(404),void t.end("no");var n;t.writeHead(200,{"Content-Type":(n=a,n.endsWith(".html")?"text/html; charset=utf-8":n.endsWith(".js")||n.endsWith(".mjs")?"application/javascript; charset=utf-8":n.endsWith(".css")?"text/css; charset=utf-8":n.endsWith(".json")?"application/json":n.endsWith(".xlsx")?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":n.endsWith(".png")?"image/png":n.endsWith(".webmanifest")?"application/manifest+json":"application/octet-stream"),"Cache-Control":"no-store"}),o.createReadStream(a).pipe(t)});i.listen(c,"127.0.0.1",()=>e(i))}),n=await e.launch({headless:!0}),p=await n.newPage();p.on("pageerror",e=>console.log("PAGEERROR",e.message)),await p.goto("http://127.0.0.1:"+c+"/",{waitUntil:"domcontentloaded",timeout:6e4}),await p.waitForFunction(()=>window.Prepline476&&window.Prepline479&&"function"==typeof attachXlsxDishPhotos,null,{timeout:6e4});const w=await p.evaluate(()=>document.querySelector('meta[name="prepline-version"]')?.content||"");if(console.log("version",w),!String(w).startsWith("4.7.9"))throw new Error("bad version "+w);await p.waitForFunction(()=>!(!window.handleFile||!window.handleFile.__sb),null,{timeout:2e4}).catch(()=>{}),await p.locator("#fileInput").setInputFiles(h);let m=!1;for(let e=0;e<100;e++){await p.waitForTimeout(500);const t=await p.evaluate(()=>({rows:("undefined"!=typeof ROWS?ROWS:[]).length,sbOpen:!(!document.getElementById("sbChoice")||!document.getElementById("sbChoice").classList.contains("open")),photos:Object.keys("object"==typeof originalPageImages&&originalPageImages?originalPageImages:{}).length,status:(document.getElementById("statusMsg")?.textContent||"").slice(0,140)}));if(t.sbOpen)console.log("Sort now"),await p.locator("#sbSortNow").click(),await p.waitForTimeout(800);else{if(t.rows>50&&(t.photos>0||e>40)){m=!0,console.log("parsed",t);break}e%10==9&&console.log("waiting…",t)}}if(!m)throw new Error("upload failed");for(let e=0;e<20;e++){const e=await p.evaluate(()=>Object.keys(originalPageImages||{}).length);if(e>=10){console.log("photos attached",e);break}await p.waitForTimeout(400)}const d=await p.evaluate(()=>{const e=Object.keys(originalPageImages||{}),t=e.filter(e=>(originalPageImages[e]||[]).some(e=>e&&e.dataUrl));return{keys:e.length,withUrl:t.length,sample:t.slice(0,5)}});if(console.log("photoInfo",d),d.withUrl<5)throw new Error("expected dish photos from For Sorter, got "+d.withUrl);await p.evaluate(()=>{const e=document.getElementById("outputChoice");e&&(e.hidden=!1)}),await p.evaluate(()=>{"function"==typeof printAsIs&&printAsIs("upload")}),await p.waitForTimeout(800),await p.waitForSelector("#asisView:not([hidden])",{timeout:1e4});const u=await p.evaluate(()=>{const e=[...document.querySelectorAll("#asisView .asis-photo img")],t=document.querySelectorAll("#asisView .asis-page").length,o=!!document.getElementById("asisXlsxBtn");return{pages:t,photoBlocks:e.length,xlsxBtn:o,firstAlt:e[0]&&e[0].getAttribute("alt")||"",firstSrcLen:e[0]?(e[0].src||"").length:0}});if(console.log("asisStats",u),!u.xlsxBtn)throw new Error("Download xlsx button missing on as-is bar");if(u.photoBlocks<5)throw new Error("expected photo blocks in print view");await p.locator("#asisView .asis-photo img").first().scrollIntoViewIfNeeded(),await p.screenshot({path:s.join(l,"screenshots","asis-with-photo.png"),fullPage:!1});const f=await p.evaluate(async()=>{const e=asIsModelFromRows(),t={};ROWS.forEach(e=>{e&&e.dish&&e.srcSheet&&!t[e.dish]&&(t[e.dish]=e.srcSheet)}),e.forEach(e=>{!e.srcSheet&&t[e.name]&&(e.srcSheet=t[e.name])});const o=await buildAsIsXlsxWithPhotos(e),s=o.buffer instanceof ArrayBuffer?new Uint8Array(o.buffer):o.buffer instanceof Uint8Array?o.buffer:new Uint8Array(o.buffer);let i="";for(let e=0;e<s.length;e+=32768)i+=String.fromCharCode.apply(null,s.subarray(e,e+32768));return{sheets:o.sheets,photos:o.photos,b64:btoa(i),nDishes:e.length}});if(console.log("export",{sheets:f.sheets,photos:f.photos,nDishes:f.nDishes,b64len:f.b64.length}),f.photos<5)throw new Error("xlsx embedded too few photos: "+f.photos);const g=s.join(l,"original-with-photos-479.xlsx");o.writeFileSync(g,Buffer.from(f.b64,"base64")),console.log("wrote",g,o.statSync(g).size);const y=a("python3",["-c",`\nimport zipfile\nz=zipfile.ZipFile(${JSON.stringify(g)})\nmedia=[n for n in z.namelist() if n.startswith('xl/media/')]\nprint('media', len(media))\nprint('\\n'.join(media[:20]))\nassert len(media) >= 5, media\n`],{encoding:"utf8"});if(console.log(y.stdout),0!==y.status)throw console.error(y.stderr),new Error("media check failed");await p.evaluate(()=>{const e=document.getElementById("asisCloseBtn");e&&e.click()}),await p.waitForTimeout(300),await p.evaluate(()=>Object.keys(originalPageImages||{}).length>0)&&(await p.evaluate(()=>{"function"==typeof setView&&setView("orig")}),await p.waitForTimeout(600),await p.screenshot({path:s.join(l,"screenshots","original-pts-tab.png"),fullPage:!1})),o.writeFileSync(s.join(l,"status.json"),JSON.stringify({version:w,photoInfo:d,asisStats:u,export:{sheets:f.sheets,photos:f.photos,path:g}},null,2)),await n.close(),i.close(),console.log("DONE")}().catch(e=>{console.error(e),process.exit(1)});
+/**
+ * Prepline 4.7.9 — Print/export original (as-is) includes dish photos in print + xlsx.
+ */
+import { chromium } from '/tmp/pw-install/node_modules/playwright/index.mjs';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { spawnSync } from 'child_process';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
+const OUT = process.env.PREPLINE_479_OUT || '/workspace/share/prepline-479';
+const PORT = 8879 + Math.floor(Math.random() * 40);
+const SOURCE = '/workspace/paula-2026-10-30/WE 15.11.26 For Sorter.xlsx';
+
+fs.mkdirSync(OUT, { recursive: true });
+fs.mkdirSync(path.join(OUT, 'screenshots'), { recursive: true });
+
+function contentType(p) {
+  if (p.endsWith('.html')) return 'text/html; charset=utf-8';
+  if (p.endsWith('.js') || p.endsWith('.mjs')) return 'application/javascript; charset=utf-8';
+  if (p.endsWith('.css')) return 'text/css; charset=utf-8';
+  if (p.endsWith('.json')) return 'application/json';
+  if (p.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (p.endsWith('.png')) return 'image/png';
+  if (p.endsWith('.webmanifest')) return 'application/manifest+json';
+  return 'application/octet-stream';
+}
+
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let url = decodeURIComponent((req.url || '/').split('?')[0]);
+      if (url === '/') url = '/index.html';
+      const fp = path.join(ROOT, url.replace(/^\//, ''));
+      if (!fp.startsWith(ROOT) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) {
+        res.writeHead(404); res.end('no'); return;
+      }
+      res.writeHead(200, { 'Content-Type': contentType(fp), 'Cache-Control': 'no-store' });
+      fs.createReadStream(fp).pipe(res);
+    });
+    server.listen(PORT, '127.0.0.1', () => resolve(server));
+  });
+}
+
+async function main() {
+  if (!fs.existsSync(SOURCE)) throw new Error('missing ' + SOURCE);
+  const server = await startServer();
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+
+  await page.goto('http://127.0.0.1:' + PORT + '/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForFunction(
+    () => window.Prepline476 && window.Prepline479 && typeof attachXlsxDishPhotos === 'function',
+    null, { timeout: 60000 }
+  );
+  const ver = await page.evaluate(() => document.querySelector('meta[name="prepline-version"]')?.content || '');
+  console.log('version', ver);
+  if (!String(ver).startsWith('4.7.9')) throw new Error('bad version ' + ver);
+
+  await page.waitForFunction(() => !!(window.handleFile && window.handleFile.__sb), null, { timeout: 20000 }).catch(() => {});
+  await page.locator('#fileInput').setInputFiles(SOURCE);
+
+  let sorted = false;
+  for (let i = 0; i < 100; i++) {
+    await page.waitForTimeout(500);
+    const st = await page.evaluate(() => ({
+      rows: (typeof ROWS !== 'undefined' ? ROWS : []).length,
+      sbOpen: !!(document.getElementById('sbChoice') && document.getElementById('sbChoice').classList.contains('open')),
+      photos: Object.keys(typeof originalPageImages === 'object' && originalPageImages ? originalPageImages : {}).length,
+      status: (document.getElementById('statusMsg')?.textContent || '').slice(0, 140)
+    }));
+    if (st.sbOpen) {
+      console.log('Sort now');
+      await page.locator('#sbSortNow').click();
+      await page.waitForTimeout(800);
+      continue;
+    }
+    if (st.rows > 50) {
+      // wait a bit more for photo attach (async after processWorkbook)
+      if (st.photos > 0 || i > 40) {
+        sorted = true;
+        console.log('parsed', st);
+        break;
+      }
+    }
+    if (i % 10 === 9) console.log('waiting…', st);
+  }
+  if (!sorted) throw new Error('upload failed');
+
+  // Give attachXlsxDishPhotos time
+  for (let i = 0; i < 20; i++) {
+    const n = await page.evaluate(() => Object.keys(originalPageImages || {}).length);
+    if (n >= 10) { console.log('photos attached', n); break; }
+    await page.waitForTimeout(400);
+  }
+
+  const photoInfo = await page.evaluate(() => {
+    const keys = Object.keys(originalPageImages || {});
+    const withUrl = keys.filter(k => (originalPageImages[k] || []).some(e => e && e.dataUrl));
+    return { keys: keys.length, withUrl: withUrl.length, sample: withUrl.slice(0, 5) };
+  });
+  console.log('photoInfo', photoInfo);
+  if (photoInfo.withUrl < 5) throw new Error('expected dish photos from For Sorter, got ' + photoInfo.withUrl);
+
+  // Open print as-is preview
+  await page.evaluate(() => {
+    const oc = document.getElementById('outputChoice');
+    if (oc) { oc.hidden = false; }
+  });
+  // Call printAsIs directly
+  await page.evaluate(() => { if (typeof printAsIs === 'function') printAsIs('upload'); });
+  await page.waitForTimeout(800);
+  await page.waitForSelector('#asisView:not([hidden])', { timeout: 10000 });
+
+  const asisStats = await page.evaluate(() => {
+    const imgs = [...document.querySelectorAll('#asisView .asis-photo img')];
+    const pages = document.querySelectorAll('#asisView .asis-page').length;
+    const xlsxBtn = !!document.getElementById('asisXlsxBtn');
+    return {
+      pages,
+      photoBlocks: imgs.length,
+      xlsxBtn,
+      firstAlt: imgs[0] ? (imgs[0].getAttribute('alt') || '') : '',
+      firstSrcLen: imgs[0] ? (imgs[0].src || '').length : 0
+    };
+  });
+  console.log('asisStats', asisStats);
+  if (!asisStats.xlsxBtn) throw new Error('Download xlsx button missing on as-is bar');
+  if (asisStats.photoBlocks < 5) throw new Error('expected photo blocks in print view');
+
+  // Screenshot a dish with photo
+  await page.locator('#asisView .asis-photo img').first().scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'screenshots', 'asis-with-photo.png'), fullPage: false });
+
+  // Export xlsx with photos via evaluate (returnBuffer path — call build directly)
+  const exportResult = await page.evaluate(async () => {
+    const dishes = asIsModelFromRows();
+    const sheetByDish = {};
+    ROWS.forEach(r => { if (r && r.dish && r.srcSheet && !sheetByDish[r.dish]) sheetByDish[r.dish] = r.srcSheet; });
+    dishes.forEach(d => { if (!d.srcSheet && sheetByDish[d.name]) d.srcSheet = sheetByDish[d.name]; });
+    const result = await buildAsIsXlsxWithPhotos(dishes);
+    const u8 = result.buffer instanceof ArrayBuffer ? new Uint8Array(result.buffer)
+      : (result.buffer instanceof Uint8Array ? result.buffer : new Uint8Array(result.buffer));
+    let s = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < u8.length; i += chunk) s += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+    return { sheets: result.sheets, photos: result.photos, b64: btoa(s), nDishes: dishes.length };
+  });
+  console.log('export', { sheets: exportResult.sheets, photos: exportResult.photos, nDishes: exportResult.nDishes, b64len: exportResult.b64.length });
+  if (exportResult.photos < 5) throw new Error('xlsx embedded too few photos: ' + exportResult.photos);
+
+  const outXlsx = path.join(OUT, 'original-with-photos-479.xlsx');
+  fs.writeFileSync(outXlsx, Buffer.from(exportResult.b64, 'base64'));
+  console.log('wrote', outXlsx, fs.statSync(outXlsx).size);
+
+  // Verify media in zip
+  const chk = spawnSync('python3', ['-c', `
+import zipfile
+z=zipfile.ZipFile(${JSON.stringify(outXlsx)})
+media=[n for n in z.namelist() if n.startswith('xl/media/')]
+print('media', len(media))
+print('\\n'.join(media[:20]))
+assert len(media) >= 5, media
+`], { encoding: 'utf8' });
+  console.log(chk.stdout);
+  if (chk.status !== 0) { console.error(chk.stderr); throw new Error('media check failed'); }
+
+  // Close as-is, open Original PTs if available
+  await page.evaluate(() => {
+    const b = document.getElementById('asisCloseBtn');
+    if (b) b.click();
+  });
+  await page.waitForTimeout(300);
+  const hasOrig = await page.evaluate(() => Object.keys(originalPageImages || {}).length > 0);
+  if (hasOrig) {
+    await page.evaluate(() => { if (typeof setView === 'function') setView('orig'); });
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: path.join(OUT, 'screenshots', 'original-pts-tab.png'), fullPage: false });
+  }
+
+  fs.writeFileSync(path.join(OUT, 'status.json'), JSON.stringify({
+    version: ver,
+    photoInfo,
+    asisStats,
+    export: { sheets: exportResult.sheets, photos: exportResult.photos, path: outXlsx }
+  }, null, 2));
+
+  await browser.close();
+  server.close();
+  console.log('DONE');
+}
+
+main().catch((e) => { console.error(e); process.exit(1); });

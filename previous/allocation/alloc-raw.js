@@ -1,2 +1,130 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(e){const t=e=>null==e?"":String(e).replace(/\u00a0/g," ").trim(),s="C9DAF8",a="B6D7A8",n="D9EAD3",r=/^(larder|combo|other)$/i,i=/botanical water|^(hot dish|plant based|sweet|dessert)\s*-|^additional big bite|after dark canap|^breakfast on the go|^juicer$|^dietary option|^chef$|^hot items|ice cream|gelato|sharing bowls|^plated menu|main course|alternate serve|^no signature|service fee|fridge|karanda bar|chef's selection$|spoons|^table allocation|coffee|espresso|barista|nespresso|\bteas?\b|filtered (ice )?water|additional hours|hire\b|^monday\s*-\s*friday|service staff|staff\b|mugs|pods\b/i,o=/(?!)/,f=[[/retail kiosk/i,"D5A6BD"],[/^grab and go breakfast|kale, and quinoa salad/i,n],[/^cookie, whole fruit/i,s],[/^(sandwich|wrap)\s*-|^piece of whole seasonal fruit/i,s],[/^salad( bowl)?\s*-/i,a],[/canap|^cold items|sushi|rice paper|oyster|tartlet|vol.?au.?vent|\btacos?\b|pancake|miang|bresaola|lettuce cups|coyo|crew meal/i,"F4CCCC"],[/fruit platter|sliced fruit|juice|juicer|agave|turmeric|coconut water|granny smith|fruit skewer|medjool/i,"FFC000"],[/cheese (and charcuterie )?platter|chef's selection cheese|charcuterie|antipasto|\brider\b|promoter/i,"70AD47"],[/green room/i,n],[/sandwich|\bwraps?\b|lunch bag|lunch box|grab and go|on the go|luncheon|croissant|toast|generic menu item|asn menu|custom sydney eats|deconstructed|bagel/i,s],[/salad|poke|handbowl|custo?n? lunch menu|^dietary/i,a]];function c(e,t){if(i.test(e))return null;for(const[t,s]of f)if(t.test(e))return s;return null}const l=/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+(\d{1,2})\s+([a-z]+),?\s+(\d{4})/i,u=e=>e.getFullYear()+"-"+String(e.getMonth()+1).padStart(2,"0")+"-"+String(e.getDate()).padStart(2,"0");function d(e){const s=t(e).match(l);if(!s)return null;const a=new Date(s[2]+" "+s[3]+" "+s[4]);return isNaN(a)?null:u(a)}const p=(e,t)=>{const s=new Date(e+"T00:00");return s.setDate(s.getDate()+t),u(s)};function h(e){const t=e.map(e=>d(e.A)).filter(Boolean).sort();if(!t.length)return null;const s=t[0],a=new Date(s+"T00:00").getDay();return 1===a?s:p(s,(8-a)%7||7)}const m=e.ALLOC_RATIOS||{service:{Sandwich:{sydEats:[[599,4],[1e3,5],[1/0,6]],other:[[150,1],[400,2],[599,3],[1e3,4],[1/0,5]],max:6},Salad:{sydEats:[[599,2],[1e3,3],[1/0,4]],other:[[300,1],[599,2],[1e3,3],[1/0,4]]}},prep:{Sandwich:{sydEats:[[500,5],[800,6],[1/0,8]],other:[[150,1],[300,2],[500,3],[800,4],[1/0,5]]},Salad:{sydEats:[[599,2],[1e3,3],[1/0,4]]}},saladNoSyd:{typesPerPerson:2,pax:300},platters:{perBatch:10,day1:{upTo3:1,from4to6:2,over6:2},day2AfterService:4,day2FullShift:2},deliveriesPerson:1,retail:1,retailAmex:2,fruitPlatters:[[10,1],[1/0,2]],juiceStation:1,canapePrep:{pax:300,itemsPerPerson:2},canapeService:{pax:500,itemsPerPerson:3},canapeNoPrep:/peking duck|sushi|nigiri|rice paper|oyster/i,boughtIn:/sushi platter|rice paper|peking duck/i,teamCafe:1,coffeeShopDays:["tuesday","thursday","saturday"],sundayBreakfastBefore:450,stickers:{pax:1e3,staff:1},lunchboxNote:"Line guide per 100: bento 25+20 min, 12 + 1-2 leaders; LB1 10+10 min, 7+1; LB2 20+10 min, 7+1; LB3 20+10 min, 8+1"},y="00FFFF";function g(e){if("number"==typeof e)return e;const t=String(e??"").replace(/^=/,"");return/^[\d+\s.]+$/.test(t)?t.split("+").reduce((e,t)=>e+(Number(t)||0),0):0}const b=(e,t)=>{for(const[s,a]of e)if(t<=s)return a;return e[e.length-1][1]};function w(t,s,a,n){a=a||m,n=n||{};try{const r=e.PreplineRules||("undefined"!=typeof window?window.PreplineRules:null);if(r&&"function"==typeof r.evaluate){const e=r.evaluate({section:t,pax:s,task:""},{matchMode:"first"});if(e&&null!=e.staff&&Number.isFinite(Number(e.staff))){let s=Number(e.staff);const r=(a[n.prep?"prep":"service"]||{})[t];return r&&r.max&&(s=Math.min(s,r.max)),s}}}catch(e){}const r=(a[n.prep?"prep":"service"]||{})[t];if(!r)return null;const i=n.syd?r.sydEats:r.other||r.sydEats;let o=b(i,s);return r.max&&(o=Math.min(o,r.max)),o}const S=e=>/lunch ?box|lunchbag|grab and go|bento/i.test(e.dish||""),x=e=>/\bentr[eé]e\b/i.test(e.dish||""),v=(e,t,s)=>String(e.dish||"").split(" / ").filter(e=>e&&!(s&&t.canapeNoPrep.test(e))).length,k=(e,t)=>{const s=new Date(e+"T00:00");return s.setDate(s.getDate()+t),(e=>e.getFullYear()+"-"+String(e.getMonth()+1).padStart(2,"0")+"-"+String(e.getDate()).padStart(2,"0"))(s)};function D(e){const t=(e=>new Date(e+"T00:00").getDay())(e);return 1===t?[k(e,-3),k(e,-2)]:2===t?[k(e,-3),k(e,-1)]:[k(e,-2),k(e,-1)]}function A(e,t){if("sunday"!==t.dayName)return!0;if(t.service.some(e=>e.lines.some(e=>e&&e.dish)))return!0;const s=k(t.date,1);return(e.lines||[]).some(e=>e.date===s&&/bfast|breakfast/i.test(e.dish||"")&&null!=e.startMin&&e.startMin<m.sundayBreakfastBefore)}try{e.ALLOC_RATIOS=m}catch(e){}const P={ALLOC_RATIOS:m,applyStaff:function(e,t){t=t||m;for(const s of e.sheets){const a=s.dayName,n=A(e,s),r={};for(const[e,n]of[["service",s.service],["prep",s.prep]])for(const i of n){const n=i.key,o="prep"===e;i.lines=i.lines.filter(e=>!e||!x(e));for(const e of i.lines)e&&"after service"===e.staff&&(e.staff="");if(o)for(const e of i.lines)e&&e.dish&&String(e.dish).split(" / ").every(e=>t.boughtIn.test(e)||t.canapeNoPrep.test(e))&&String(e.dish).split(" / ").some(e=>t.boughtIn.test(e))&&(e.fill=y,e.noPrep=!0);if(!o)for(const e of i.lines)e&&/\bbfast\b|breakfast|green room/i.test(e.dish||"")&&(e.fill=y);const f=e=>{if(!o||!e)return e;const t=r[n]||0;return t?e-t>0?"after service + "+(e-t):"after service":e};if("Retail"===n){const e=i.lines.some(e=>e&&(e.dates||[e.date]).some(e=>e&&e>s.date)),n="saturday"===a||"sunday"===a,r=new Set;for(const s of i.lines)s&&s.dish&&!r.has(s.dish)&&(r.add(s.dish),n&&!e||(s.staff=/amex/i.test(s.dish)?t.retailAmex:t.retail));continue}if("Fruits"===n){let e=0,a=0;const n=i.lines.filter(e=>e&&e.dish&&e.date&&D(e.date)[0]===s.date);for(const t of n)/juice/i.test(t.dish)?a=1:e+=g(t.paxValue);if(n.length){const s=(e?b(t.fruitPlatters,e):0)+(a?t.juiceStation:0);s&&(n[0].staff=s)}continue}if("Coffee"===n){t.coffeeShopDays.includes(a)&&i.lines.push({dish:"coffee shop",paxValue:null,dayWord:a,staff:1});continue}const c=new Map;for(const e of i.lines){if(!e||!e.dish||e.noPrep)continue;const t=e.date||e.dayWord||"";c.has(t)||c.set(t,[]),c.get(t).push(e)}let l=0,u=null,d=0;for(const[e,a]of c){let r="service";if(o){const t=D(e);r=t[0]===s.date?"first":t[1]===s.date?"finish":"none"}let i=a;if("Sandwich"===n){const a=i.filter(S);i=i.filter(e=>!S(e));for(const n of a)n.staff="",o&&e===k(s.date,1)&&g(n.paxValue)>=t.stickers.pax&&(n.staff=t.stickers.staff+" (stickers)"),!n.notes&&/lunch ?box|bento/i.test(n.dish)&&(n.notes=t.lunchboxNote)}if(!i.length||"none"===r)continue;const c=i[0];if("Canape"===n){let e=0;for(const s of i){const a=v(s,t,o),n=g(s.paxValue)||0,r=o?t.canapePrep:t.canapeService;a&&n&&(e+=a/r.itemsPerPerson*n/r.pax)}if(!o){l+=e,u=u||c;continue}if("finish"===r){c.staff="after service";continue}e&&(c.staff=f(Math.max(1,Math.ceil(e))));continue}const p=i.some(e=>e.syd),h=Math.max(0,...i.map(e=>g(e.paxValue)));if(o&&"Salad"===n&&!p){const e=i.filter(e=>!/salad bar/i.test(e.dish)&&"count"!==e.kind).length,s=Math.max(0,...i.map(e=>g(e.paxValue))),a=Math.max(1,Math.ceil(e/t.saladNoSyd.typesPerPerson*s/t.saladNoSyd.pax));c.staff=f(a);continue}const m=i.filter(e=>/sandwich platters/i.test(e.dish));if(o&&"Sandwich"===n&&!p&&m.length){const e=m.reduce((e,t)=>e+g(t.paxValue),0),s=Math.ceil(e/t.platters.perBatch),a=m[0],n=a.flavours||0,o=n>6?t.platters.day1.over6:n>=4?t.platters.day1.from4to6:t.platters.day1.upTo3;if(a.staff="first"===r?f(s*o):"after service + "+s*t.platters.day2AfterService,"finish"===r&&(a.notes=(a.notes?a.notes+" · ":"")+"or "+s*t.platters.day2FullShift+" full-shift"),i=i.filter(e=>!m.includes(e)),!i.length)continue}const y=i[0];let b=w(n,h,t,{prep:o,syd:p});null!=b&&(o?"finish"!==r?("Sandwich"===n&&p&&(b+=t.deliveriesPerson),y.staff=f(b)):y.staff="after service":(d+=b,y.staff=b))}if(u&&l){const e=Math.max(1,Math.ceil(l));u.staff=e,d+=e}o||("Salad"===n&&i.lines.some(e=>e&&e.dish)&&i.lines.push({dish:"team cafe (leftover salad)",paxValue:null,dayWord:a,staff:t.teamCafe}),r[n]=d)}if(!n)for(const e of[...s.service,...s.prep])for(const t of e.lines)t&&t.staff&&(t.notes=(t.notes?t.notes+" · ":"")+"suggested "+t.staff+" (usually closed Sunday; no service or Monday breakfast before 7:30)",t.staff="")}return e},staffFor:w,isRaw:function(e){return e.slice(0,6).some(e=>/^prep\s*area$/i.test(t(e.H))&&/description/i.test(t(e.I)))},normalise:function(e,s){const a=s||h(e),n=p(a,8),f=[];let l=null,u=!1,m={},y={rows:0,kept:0,coloured:0,dropped:0};for(const s of e){const e=d(s.A);if(e){l=e,u=e>=a&&e<=n,u&&f.push({r:s.r,A:s.A});continue}if(!u)continue;const p=t(s.H);if(!t(s.F)){f.push({r:s.r,A:s.A,B:s.B,C:s.C,D:s.D,E:s.E});continue}if(/^prep\s*area$/i.test(p))continue;if(y.rows++,p&&!r.test(p)){y.dropped++;continue}const h=t(s.I),g=l+"|"+t(s.F);let b=h?c(h):null;(Number(s.G)||0)>1&&o.test(h)&&(m[g]=b,b=null),!p&&(Number(s.G)||0)<=1&&m[g]&&!i.test(t(s.I))&&(b=m[g]),b&&(p||(Number(s.G)||0)>1)&&(m[g]=b),b&&y.coloured++,y.kept++,f.push({r:s.r,A:s.A,B:s.B,C:s.C,D:s.D,E:s.E,F:s.F,G:s.G,H:s.I,I:s.J,J:s.L,K:s.M,L:s.N,M:s.O,O:s.Q,fill:b,fillA:null,prepArea:p||null,inferred:!0})}return{rows:f,weekStart:a,stats:y}},mondays:function(e){const t=new Set;for(const s of e){const e=d(s.A);if(e){const s=new Date(e+"T00:00").getDay();t.add(p(e,-(s+6)%7))}}return[...t].sort()},defaultWeek:h,classify:c};e.AllocRaw=P,"undefined"!=typeof module&&(module.exports=P)}("undefined"!=typeof window?window:globalThis);
+/* Prepline: accept the raw "Kitchen - Work Orders" export (with a PrepArea column and no colour coding).
+   Re-maps its columns to the colour-coded layout, keeps one week, and fills in the category colours
+   that are otherwise added by hand. Best guesses only; everything stays editable. No real data in here. */
+(function(root){
+const clean=v=>v==null?'':String(v).replace(/\u00a0/g,' ').trim();
+const SAND='C9DAF8',SALAD='B6D7A8',GREEN='D9EAD3',FRUIT='FFC000',PLAT='70AD47',KIOSK='D5A6BD',CAN='F4CCCC';
+const KEEP_AREAS=/^(larder|combo|other)$/i;
+const NOT_LARDER=/botanical water|^(hot dish|plant based|sweet|dessert)\s*-|^additional big bite|after dark canap|^breakfast on the go|^juicer$|^dietary option|^chef$|^hot items|ice cream|gelato|sharing bowls|^plated menu|main course|alternate serve|^no signature|service fee|fridge|karanda bar|chef's selection$|spoons|^table allocation|coffee|espresso|barista|nespresso|\bteas?\b|filtered (ice )?water|additional hours|hire\b|^monday\s*-\s*friday|service staff|staff\b|mugs|pods\b/i;
+const MENU_HEAD=/(?!)/; // reserved: menu headers Paula leaves white (no gain on this week's data)
+const RULES=[
+ [/retail kiosk/i,KIOSK],
+ [/^grab and go breakfast|kale, and quinoa salad/i,GREEN],
+ [/^cookie, whole fruit/i,SAND],
+ [/^(sandwich|wrap)\s*-|^piece of whole seasonal fruit/i,SAND],
+ [/^salad( bowl)?\s*-/i,SALAD],
+ [/canap|^cold items|sushi|rice paper|oyster|tartlet|vol.?au.?vent|\btacos?\b|pancake|miang|bresaola|lettuce cups|coyo|crew meal/i,CAN],
+ [/fruit platter|sliced fruit|juice|juicer|agave|turmeric|coconut water|granny smith|fruit skewer|medjool/i,FRUIT],
+ [/cheese (and charcuterie )?platter|chef's selection cheese|charcuterie|antipasto|\brider\b|promoter/i,PLAT],
+ [/green room/i,GREEN],
+ [/sandwich|\bwraps?\b|lunch bag|lunch box|grab and go|on the go|luncheon|croissant|toast|generic menu item|asn menu|custom sydney eats|deconstructed|bagel/i,SAND],
+ [/salad|poke|handbowl|custo?n? lunch menu|^dietary/i,SALAD]];
+function classify(item,area){if(NOT_LARDER.test(item))return null;for(const [re,c] of RULES)if(re.test(item))return c;return null;}
+function isRaw(rows){return rows.slice(0,6).some(x=>/^prep\s*area$/i.test(clean(x.H))&&/description/i.test(clean(x.I)));}
+const DAYRE=/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+(\d{1,2})\s+([a-z]+),?\s+(\d{4})/i;
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function dayOf(t){const m=clean(t).match(DAYRE);if(!m)return null;const d=new Date(m[2]+' '+m[3]+' '+m[4]);return isNaN(d)?null:iso(d);}
+const addDays=(s,n)=>{const d=new Date(s+'T00:00');d.setDate(d.getDate()+n);return iso(d);};
+function mondays(rows){const s=new Set();for(const x of rows){const d=dayOf(x.A);if(d){const w=new Date(d+'T00:00').getDay();s.add(addDays(d,-((w+6)%7)));}}return [...s].sort();}
+function defaultWeek(rows){const ds=rows.map(x=>dayOf(x.A)).filter(Boolean).sort();if(!ds.length)return null;const f=ds[0],w=new Date(f+'T00:00').getDay();return w===1?f:addDays(f,(8-w)%7||7);}
+/* raw: F room G qty H PrepArea I item J notes K status L order form M cost N by O on P booth Q end time
+   coded layout: F room G qty H item I notes J order form K cost L by M on O end time */
+function normalise(rows,weekStart){const start=weekStart||defaultWeek(rows);const end=addDays(start,8);const out=[];let day=null,keepDay=false,last={};let stats={rows:0,kept:0,coloured:0,dropped:0};
+ for(const x of rows){const d=dayOf(x.A);if(d){day=d;keepDay=d>=start&&d<=end;if(keepDay)out.push({r:x.r,A:x.A});continue;}
+  if(!keepDay)continue;const area=clean(x.H);
+  if(!clean(x.F)){out.push({r:x.r,A:x.A,B:x.B,C:x.C,D:x.D,E:x.E});continue;}
+  if(/^prep\s*area$/i.test(area))continue;
+  stats.rows++;if(area&&!KEEP_AREAS.test(area)){stats.dropped++;continue;}
+  const item=clean(x.I);const key=day+'|'+clean(x.F);let fill=item?classify(item,area):null;
+  if((Number(x.G)||0)>1&&MENU_HEAD.test(item)){last[key]=fill;fill=null;}   // menu header: Paula leaves it white so its pax pass to the dishes under it
+  if(!area&&(Number(x.G)||0)<=1&&last[key]&&!NOT_LARDER.test(clean(x.I)))fill=last[key];   // package filling: same colour as its package
+  if(fill&&(area||(Number(x.G)||0)>1))last[key]=fill;
+  if(fill)stats.coloured++;stats.kept++;
+  out.push({r:x.r,A:x.A,B:x.B,C:x.C,D:x.D,E:x.E,F:x.F,G:x.G,H:x.I,I:x.J,J:x.L,K:x.M,L:x.N,M:x.O,O:x.Q,fill,fillA:null,prepArea:area||null,inferred:true});}
+ return {rows:out,weekStart:start,stats};}
+/* Staffing rules from the planner (27 Oct 2026 + follow-ups). Tables are [upTo, staff]; first row whose upTo >= pax wins.
+   Prep numbers INCLUDE the chefs coming off service (service ends 11, prep after the break), written "after service + N". */
+const ALLOC_RATIOS=root.ALLOC_RATIOS||{
+ service:{Sandwich:{sydEats:[[599,4],[1000,5],[Infinity,6]],other:[[150,1],[400,2],[599,3],[1000,4],[Infinity,5]],max:6},
+          Salad:{sydEats:[[599,2],[1000,3],[Infinity,4]],other:[[300,1],[599,2],[1000,3],[Infinity,4]]}},
+ prep:{Sandwich:{sydEats:[[500,5],[800,6],[Infinity,8]],other:[[150,1],[300,2],[500,3],[800,4],[Infinity,5]]},
+       Salad:{sydEats:[[599,2],[1000,3],[Infinity,4]]}},
+ saladNoSyd:{typesPerPerson:2,pax:300},              // no Sydney Eats: 2 salad types per 300 pax = 1 person, same both prep days
+ platters:{perBatch:10,day1:{upTo3:1,from4to6:2,over6:2},day2AfterService:4,day2FullShift:2}, // 4-6 flavours = 2 (open question)
+ deliveriesPerson:1,retail:1,retailAmex:2,
+ fruitPlatters:[[10,1],[Infinity,2]],juiceStation:1,
+ canapePrep:{pax:300,itemsPerPerson:2},canapeService:{pax:500,itemsPerPerson:3},
+ canapeNoPrep:/peking duck|sushi|nigiri|rice paper|oyster/i,
+ boughtIn:/sushi platter|rice paper|peking duck/i,
+ teamCafe:1,coffeeShopDays:['tuesday','thursday','saturday'],
+ sundayBreakfastBefore:7*60+30,
+ stickers:{pax:1000,staff:1},
+ lunchboxNote:'Line guide per 100: bento 25+20 min, 12 + 1-2 leaders; LB1 10+10 min, 7+1; LB2 20+10 min, 7+1; LB3 20+10 min, 8+1'};
+const CYANF='00FFFF';
+function paxNum(v){if(typeof v==='number')return v;const s=String(v==null?'':v).replace(/^=/,'');return /^[\d+\s.]+$/.test(s)?s.split('+').reduce((a,b)=>a+(Number(b)||0),0):0;}
+const pick=(t,p)=>{for(const [u,n] of t)if(p<=u)return n;return t[t.length-1][1];};
+function staffFor(sec,pax,R,o){R=R||ALLOC_RATIOS;o=o||{};
+  try{const PR=root.PreplineRules||(typeof window!=='undefined'?window.PreplineRules:null);
+    if(PR&&typeof PR.evaluate==='function'){
+      const out=PR.evaluate({section:sec,pax:pax,task:''},{matchMode:'first'});
+      if(out&&out.staff!=null&&Number.isFinite(Number(out.staff))){
+        let n=Number(out.staff);const T=(R[o.prep?'prep':'service']||{})[sec];if(T&&T.max)n=Math.min(n,T.max);return n;
+      }
+    }
+  }catch(e){}
+  const T=(R[o.prep?'prep':'service']||{})[sec];if(!T)return null;const t=o.syd?T.sydEats:(T.other||T.sydEats);let n=pick(t,pax);if(T.max)n=Math.min(n,T.max);return n;}
+const isLunchbox=l=>/lunch ?box|lunchbag|grab and go|bento/i.test(l.dish||'');
+const isEntree=l=>/\bentr[eé]e\b/i.test(l.dish||'');
+const canItems=(l,R,prep)=>String(l.dish||'').split(' / ').filter(x=>x&&!(prep&&R.canapeNoPrep.test(x))).length;
+const ymd=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+const addD=(d,n)=>{const x=new Date(d+'T00:00');x.setDate(x.getDate()+n);return ymd(x);};
+const dowOf=d=>new Date(d+'T00:00').getDay();
+/* Prep calendar: [first prep day, finishing day]. Normally D-2, D-1. Monday functions: Fri, Sat. Tuesday: Sat, Mon (closed Sunday). */
+function prepDays(d){const w=dowOf(d);if(w===1)return [addD(d,-3),addD(d,-2)];if(w===2)return [addD(d,-3),addD(d,-1)];return [addD(d,-2),addD(d,-1)];}
+function sundayRostered(res,sh){if(sh.dayName!=='sunday')return true;if(sh.service.some(b=>b.lines.some(l=>l&&l.dish)))return true;
+ const mon=addD(sh.date,1);return (res.lines||[]).some(l=>l.date===mon&&/bfast|breakfast/i.test(l.dish||'')&&l.startMin!=null&&l.startMin<ALLOC_RATIOS.sundayBreakfastBefore);}
+function applyStaff(res,R){R=R||ALLOC_RATIOS;
+ for(const sh of res.sheets){const dn=sh.dayName;const rostered=sundayRostered(res,sh);const svc={};
+  for(const [bk,blocks] of [['service',sh.service],['prep',sh.prep]])for(const blk of blocks){const sec=blk.key;const prep=bk==='prep';
+   blk.lines=blk.lines.filter(l=>!l||!isEntree(l));
+   for(const l of blk.lines)if(l&&l.staff==='after service')l.staff='';
+   if(prep)for(const l of blk.lines)if(l&&l.dish&&String(l.dish).split(' / ').every(x=>R.boughtIn.test(x)||R.canapeNoPrep.test(x))&&String(l.dish).split(' / ').some(x=>R.boughtIn.test(x))){l.fill=CYANF;l.noPrep=true;}
+   if(!prep)for(const l of blk.lines)if(l&&/\bbfast\b|breakfast|green room/i.test(l.dish||''))l.fill=CYANF;
+   const fmt=n=>{if(!prep||!n)return n;const s=svc[sec]||0;return s?(n-s>0?'after service + '+(n-s):'after service'):n;};
+   if(sec==='Retail'){const later=blk.lines.some(l=>l&&(l.dates||[l.date]).some(d=>d&&d>sh.date));const wk=dn==='saturday'||dn==='sunday';const seen=new Set();
+    for(const l of blk.lines){if(!l||!l.dish||seen.has(l.dish))continue;seen.add(l.dish);if(wk&&!later)continue;l.staff=/amex/i.test(l.dish)?R.retailAmex:R.retail;}continue;}
+   if(sec==='Fruits'){let plat=0,juice=0;const ls=blk.lines.filter(l=>l&&l.dish&&l.date&&prepDays(l.date)[0]===sh.date);for(const l of ls){if(/juice/i.test(l.dish))juice=1;else plat+=paxNum(l.paxValue);}
+    if(ls.length){const n=(plat?pick(R.fruitPlatters,plat):0)+(juice?R.juiceStation:0);if(n)ls[0].staff=n;}continue;}
+   if(sec==='Coffee'){if(R.coffeeShopDays.includes(dn))blk.lines.push({dish:'coffee shop',paxValue:null,dayWord:dn,staff:1});continue;}
+   const groups=new Map();
+   for(const l of blk.lines){if(!l||!l.dish||l.noPrep)continue;const g=l.date||l.dayWord||'';if(!groups.has(g))groups.set(g,[]);groups.get(g).push(l);}
+   let dayCanape=0,canFirst=null,svcTotal=0;
+   for(const [d,ls0] of groups){let stage='service';if(prep){const pd=prepDays(d);stage=pd[0]===sh.date?'first':pd[1]===sh.date?'finish':'none';}
+    let ls=ls0;
+    if(sec==='Sandwich'){const lb=ls.filter(isLunchbox);ls=ls.filter(l=>!isLunchbox(l));
+     for(const l of lb){l.staff='';if(prep&&d===addD(sh.date,1)&&paxNum(l.paxValue)>=R.stickers.pax)l.staff=R.stickers.staff+' (stickers)';if(!l.notes&&/lunch ?box|bento/i.test(l.dish))l.notes=R.lunchboxNote;}}
+    if(!ls.length||stage==='none')continue;const f=ls[0];
+    if(sec==='Canape'){let n=0;for(const l of ls){const k=canItems(l,R,prep),p=paxNum(l.paxValue)||0;const c=prep?R.canapePrep:R.canapeService;if(k&&p)n+=k/c.itemsPerPerson*p/c.pax;}
+     if(!prep){dayCanape+=n;canFirst=canFirst||f;continue;}
+     if(stage==='finish'){f.staff='after service';continue;}if(n)f.staff=fmt(Math.max(1,Math.ceil(n)));continue;}
+    const syd=ls.some(l=>l.syd);const pax=Math.max(0,...ls.map(l=>paxNum(l.paxValue)));
+    if(prep&&sec==='Salad'&&!syd){const k=ls.filter(l=>!/salad bar/i.test(l.dish)&&(l.kind!=='count')).length;const pp=Math.max(0,...ls.map(l=>paxNum(l.paxValue)));
+     const n=Math.max(1,Math.ceil(k/R.saladNoSyd.typesPerPerson*pp/R.saladNoSyd.pax));f.staff=fmt(n);continue;}
+    const plats=ls.filter(l=>/sandwich platters/i.test(l.dish));
+    if(prep&&sec==='Sandwich'&&!syd&&plats.length){const np=plats.reduce((a,l)=>a+paxNum(l.paxValue),0);const b=Math.ceil(np/R.platters.perBatch);const pf=plats[0];
+     const fl=pf.flavours||0;const rate=fl>6?R.platters.day1.over6:fl>=4?R.platters.day1.from4to6:R.platters.day1.upTo3;
+     pf.staff=stage==='first'?fmt(b*rate):'after service + '+b*R.platters.day2AfterService;if(stage==='finish')pf.notes=(pf.notes?pf.notes+' · ':'')+'or '+b*R.platters.day2FullShift+' full-shift';
+     ls=ls.filter(l=>!plats.includes(l));if(!ls.length)continue;}
+    const f2=ls[0];let n=staffFor(sec,pax,R,{prep,syd});if(n==null)continue;
+    if(!prep){svcTotal+=n;f2.staff=n;continue;}
+    if(stage==='finish'){f2.staff='after service';continue;}
+    if(sec==='Sandwich'&&syd)n+=R.deliveriesPerson;
+    f2.staff=fmt(n);}
+   if(canFirst&&dayCanape){const n=Math.max(1,Math.ceil(dayCanape));canFirst.staff=n;svcTotal+=n;}
+   if(!prep){if(sec==='Salad'&&blk.lines.some(l=>l&&l.dish))blk.lines.push({dish:'team cafe (leftover salad)',paxValue:null,dayWord:dn,staff:R.teamCafe});
+    svc[sec]=svcTotal;}}
+  if(!rostered){for(const blk of [...sh.service,...sh.prep])for(const l of blk.lines)if(l&&l.staff){l.notes=(l.notes?l.notes+' · ':'')+'suggested '+l.staff+' (usually closed Sunday; no service or Monday breakfast before 7:30)';l.staff='';}}}
+ return res;}
+try{root.ALLOC_RATIOS=ALLOC_RATIOS;}catch(e){}
+const API={ALLOC_RATIOS,applyStaff,staffFor,isRaw,normalise,mondays,defaultWeek,classify};root.AllocRaw=API;if(typeof module!=='undefined')module.exports=API;
+})(typeof window!=='undefined'?window:globalThis);

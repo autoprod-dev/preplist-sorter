@@ -1,2 +1,11 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(){"use strict";("undefined"!=typeof window?window:globalThis).Prepline487={VERSION:"4.8.23",FIX:"organised-export-section-equals-tab+total-needed-cached"}}();
+/* Prepline 4.8.7 — Organised export fixes (trial). Autoprod.
+ * 1) Section column always equals its tab (sectionForSheet after sheetForItem).
+ * 2) Total needed (col E) was formula+cache in 4.8.7; 4.8.10 writes plain qty×pax numbers.
+ */
+(function (root) {
+  'use strict';
+  root.Prepline487 = {
+    VERSION: '4.8.23',
+    FIX: 'organised-export-section-equals-tab+total-needed-cached'
+  };
+})(typeof window !== 'undefined' ? window : globalThis);

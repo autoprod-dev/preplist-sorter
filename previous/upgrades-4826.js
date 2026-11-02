@@ -1,2 +1,36 @@
-/*! Copyright (c) 2026 Autoprod. All rights reserved. No permission is granted to copy, modify, distribute or reuse this software or its code without written permission from Autoprod. Contact: autoprod.help@gmail.com */
-!function(e){"use strict";var n="4.8.26";function t(){try{e.Prepline477&&(e.Prepline477.VERSION=n),e.Prepline488&&(e.Prepline488.VERSION=n),e.Prepline489&&(e.Prepline489.VERSION=n),e.Prepline4820&&(e.Prepline4820.VERSION=n),e.Prepline4821&&(e.Prepline4821.VERSION=n),e.Prepline4822&&(e.Prepline4822.VERSION=n),e.Prepline4823&&(e.Prepline4823.VERSION=n),e.Prepline4824&&(e.Prepline4824.VERSION=n),e.Prepline4825&&(e.Prepline4825.VERSION=n);var t=document.querySelector('meta[name="prepline-version"]');if(t&&!e.Prepline4827){var i=/trial/i.test("undefined"!=typeof location&&location.pathname||"");t.setAttribute("content",i?n+"-trial":n)}var r=document.getElementById("appVersion");r&&/Prepline v/.test(r.textContent||"")&&(r.textContent="Prepline v"+n)}catch(e){}}e.Prepline4826={VERSION:n,syncVersion:t},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",t):t(),setTimeout(t,0),setTimeout(t,200)}("undefined"!=typeof window?window:this);
+/* Prepline 4.8.26 — trial only.
+ * Long-life mise expands to soils + gels (dressings, any croutons, powders, crumbs, oils).
+ * ANY puree = 2 days before event only (no long-life / earlier week pack).
+ * Poultry lead=3 (overrides 4-day protein). Cheese=3. Dressings & butters stay 4.
+ */
+(function (root) {
+  'use strict';
+  var VERSION = '4.8.26';
+  function syncVersion() {
+    try {
+      if (root.Prepline477) root.Prepline477.VERSION = VERSION;
+      if (root.Prepline488) root.Prepline488.VERSION = VERSION;
+      if (root.Prepline489) root.Prepline489.VERSION = VERSION;
+      if (root.Prepline4820) root.Prepline4820.VERSION = VERSION;
+      if (root.Prepline4821) root.Prepline4821.VERSION = VERSION;
+      if (root.Prepline4822) root.Prepline4822.VERSION = VERSION;
+      if (root.Prepline4823) root.Prepline4823.VERSION = VERSION;
+      if (root.Prepline4824) root.Prepline4824.VERSION = VERSION;
+      if (root.Prepline4825) root.Prepline4825.VERSION = VERSION;
+      var meta = document.querySelector('meta[name="prepline-version"]');
+      if (meta && !root.Prepline4827) {
+        var trialPath = /trial/i.test((typeof location !== 'undefined' && location.pathname) || '');
+        meta.setAttribute('content', trialPath ? (VERSION + '-trial') : VERSION);
+      }
+      var badge = document.getElementById('appVersion');
+      if (badge && /Prepline v/.test(badge.textContent || '')) {
+        badge.textContent = 'Prepline v' + VERSION;
+      }
+    } catch (e) {}
+  }
+  root.Prepline4826 = { VERSION: VERSION, syncVersion: syncVersion };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncVersion);
+  else syncVersion();
+  setTimeout(syncVersion, 0);
+  setTimeout(syncVersion, 200);
+})(typeof window !== 'undefined' ? window : this);
