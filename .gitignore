@@ -1,9 +1,0 @@
-paula-files/
-backups/
-
-# never commit private WO / masters
-_private/
-../_private/
-
-__pycache__/
-*.pyc
