@@ -5,12 +5,12 @@
 <title>Prepline · Work orders + allocation</title>
 <link rel="stylesheet" href="alloc.css">
 </head><body>
-<header class="noprint"><a href="../" class="back">← Prepline</a><h1>Work orders + allocation</h1><span class="ver">Section 1 · 4.7.0</span></header>
+<header class="noprint"><a href="../" class="back">← Prepline</a><h1>Work orders + allocation</h1><span class="ver">Section 1 · 4.8.34</span></header>
 <main class="noprint">
  <section class="card">
   <h2>1 · Upload work order</h2>
   <div id="drop" class="drop" tabindex="0" role="button" aria-label="Upload work order">
-   <strong>Drop the colour-coded work order (.xlsx) here</strong><br>or click to choose a file
+   <strong>Drop a Larder or Plated work order (.xlsx) here</strong><br>or click to choose a file — section is detected automatically
    <input type="file" id="woFile" accept=".xlsx,.xlsm,.xls" hidden>
   </div>
   <p id="woStatus" class="status"></p>
@@ -26,8 +26,39 @@
    <button id="applySettings">Apply settings</button> <button id="resetSettings">Reset to defaults</button>
   </details></div>
  </section>
+ <section class="card" id="prepFlowCard" hidden>
+  <h2>2 · Day-by-day summary + prep list (Plated)</h2>
+  <p class="hint">Upload a Plated WO → download the day summary → load Entrees/Mains masters → download the sorter prep list (colour legend + fills preserved, dish photos from masters embedded, distinct function labels like <code>CBA Christmas</code> vs <code>CBA Excellence</code>). Load the file via Prepline “Load a preplist”. Show/Hide toggles stay; no login required on this trial.</p>
+  <div class="row" style="flex-wrap:wrap;gap:8px;align-items:end">
+   <label>From <input id="prepDateFrom" type="date" value="2026-11-23"></label>
+   <label>To <input id="prepDateTo" type="date" value="2026-11-29"></label>
+   <label>Week ending <input id="prepWeekEnding" type="date" value="2026-11-29"></label>
+   <button id="dlDaySummary" class="primary" disabled>Download day summary</button>
+   <span id="daySummaryName" class="hint"></span>
+  </div>
+  <p style="margin-top:12px"><label>Master recipe copies (.xlsx) <input type="file" id="masterFiles" accept=".xlsx,.xlsm,.xls" multiple></label>
+   <span id="masterStatus" class="status"></span></p>
+  <div class="row">
+   <button id="dlPrepList" class="primary" disabled>Download prep list (sorter)</button>
+   <span id="prepListName" class="hint"></span>
+  </div>
+  <p id="prepMatchStatus" class="status"></p>
+  <hr style="margin:16px 0;border:none;border-top:1px solid #ddd">
+  <h3 style="margin:0 0 8px;font-size:16px">New spreadsheet (bespoke / no master)</h3>
+  <p class="hint">For dishes with no master tab (e.g. Textures of beetroot, Moreton Bay lobster). Opens the full Excel-like editor (Univer): formulas, Paula legend colour picks, fonts, borders, merge, insert/delete rows &amp; columns, copy/paste, undo/redo, keyboard nav, insert photo, A4 landscape print. Add to prep list keeps real header date/function/pax.</p>
+  <div class="row" style="flex-wrap:wrap;gap:8px">
+   <label>Dish <input id="bespokeDish" type="text" placeholder="Textures of beetroot" style="min-width:180px"></label>
+   <label>Date <input id="bespokeDate" type="date"></label>
+   <label>Function / event <input id="bespokeEvent" type="text" placeholder="Client / function name" style="min-width:180px"></label>
+   <label>Meal <select id="bespokeMeal"><option>Dinner</option><option>Lunch</option><option>Breakfast</option></select></label>
+   <label>Pax <input id="bespokePax" type="number" min="1" value="100" style="width:80px"></label>
+   <button type="button" id="bespokeAdd" class="primary">Open Excel editor</button>
+   <button type="button" id="bespokeQuickAdd">Quick-add blank legend sheet</button>
+  </div>
+  <div id="bespokeList" class="hint" style="margin-top:8px"></div>
+ </section>
  <section class="card" id="allocCard" hidden>
-  <h2>2 · Allocation <small id="saveState"></small></h2>
+  <h2>3 · Allocation <small id="saveState"></small></h2>
   <p class="hint">Tap any dish, pax, date, staff or notes cell to change it. Edits save on this device and go into print and the download.</p>
   <div class="row"><button id="dlXlsx" class="primary">Download <span id="fname"></span></button>
    <button id="printDay">Print this day</button><button id="printWeek">Print all 7 days</button><button id="printStations">Print station sheets (A4)</button>
@@ -44,6 +75,7 @@
  </section>
 </main>
 <div id="printArea"></div>
+<script>window.__PREPLINE_VENDOR_BASE__=(function(){var p=location.pathname||'/';var i=p.indexOf('/allocation');return i>=0?p.slice(0,i+1):p.replace(/[^/]+$/,'');})();</script>
 <script src="../gate-config.js"></script><script src="../gate.js"></script>
 <script src="vendor/xlsx-js-style.min.js"></script>
 <script src="../prep-days-vocab.js"></script>
@@ -51,7 +83,16 @@
 <script src="alloc-raw.js"></script>
 <script src="alloc-rules-v2.js"></script>
 <script src="alloc-engine.js"></script>
+<script src="alloc-plated.js"></script>
+<script src="alloc-formula.js"></script>
+<script src="alloc-prep-list.js"></script>
+<script src="../vendor/jszip/jszip.min.js"></script>
+<script src="alloc-prep-photos.js"></script>
+<script src="alloc-prep-ooxml.js"></script>
 <script src="../upgrades-47.js"></script>
+<script src="../sheet-builder.js"></script>
+<script src="../upgrades-485.js"></script>
+<script src="alloc-sheet-editor.js"></script>
 <script src="alloc-ui.js"></script>
 <script src="../brand.js"></script>
 </body></html>

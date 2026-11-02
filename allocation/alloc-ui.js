@@ -14,21 +14,34 @@ function save(now){clearTimeout(saveTimer);const go=()=>{if(!state)return;state.
 /* ---------- work order reading ---------- */
 const COLS='ABCDEFGHIJKLMNOPQ'.split('');let rawRows=null,rawMeta=null;
 function fillOf(c){const f=c&&c.s&&(c.s.fgColor||c.s.fill&&c.s.fill.fgColor);if(!f||!f.rgb)return null;const p=c.s.patternType||(c.s.fill&&c.s.fill.patternType);if(p&&p!=='solid')return null;return f.rgb;}
+function legendNamesFromWb(wb){const names=[];
+ for(const sn of wb.SheetNames||[]){if(!/colour\s*codes|color\s*codes|^legend$/i.test(sn))continue;
+  const ws=wb.Sheets[sn];if(!ws||!ws['!ref'])continue;const aoa=X.utils.sheet_to_json(ws,{header:1,defval:''});
+  for(const row of aoa)for(const v of row){const s=String(v||'').trim();if(s&&s.length<40)names.push(s);}
+ }
+ return names;}
 function readWO(buf){const wb=X.read(buf,{cellStyles:true,cellDates:false});
  const name=wb.SheetNames.find(n=>/work\s*order/i.test(n))||wb.SheetNames[0];const ws=wb.Sheets[name];const rg=X.utils.decode_range(ws['!ref']);const rows=[];
  for(let r=rg.s.r;r<=rg.e.r;r++){const o={r:r+1};let any=false;COLS.forEach((C,i)=>{const c=ws[C+(r+1)];if(c&&c.v!=null&&c.v!==''){o[C]=c.t==='n'&&C==='A'&&c.w?c.w:c.v;any=true;}});
   if(!any)continue;o.fill=fillOf(ws['H'+(r+1)])||fillOf(ws['F'+(r+1)]);o.fillA=fillOf(ws['A'+(r+1)]);rows.push(o);}
- return rows;}
+ const legend=legendNamesFromWb(wb);
+ const kitchenSection=(E.detectSection?E.detectSection(legend.map(n=>({name:n})),wb.SheetNames):'Larder');
+ return {rows, sheetNames:wb.SheetNames, legend, kitchenSection};}
 
+let lastWo=null, masterBuffers=[];
 function generate(rows,meta){const wo=E.parseWorkOrder(rows);if(!wo.days.length)throw new Error('No day headings (e.g. "Monday, 26 October, 2026") found in column A.');
- const res=E.buildAllocation(wo,settings);if(window.AllocRaw)AllocRaw.applyStaff(res);
- state={v:1,woName:meta.name,woSig:meta.sig,woRows:rows,createdAt:new Date().toISOString(),day:0,res:{week:res.week,fileDate:res.fileDate,lastWO:res.lastWO,sheets:res.sheets,skipped:res.skipped,placed:res.trace.length}};
- save(true);render();}
+ if(meta.kitchenSection)wo.kitchenSection=meta.kitchenSection;
+ const S=Object.assign({},settings,{kitchenSection:meta.kitchenSection||settings.kitchenSection||wo.kitchenSection||'Larder'});
+ const res=E.buildAllocation(wo,S);if(window.AllocRaw)AllocRaw.applyStaff(res);
+ lastWo=wo;
+ state={v:1,woName:meta.name,woSig:meta.sig,woRows:rows,kitchenSection:S.kitchenSection,createdAt:new Date().toISOString(),day:0,res:{week:res.week,fileDate:res.fileDate,lastWO:res.lastWO,sheets:res.sheets,skipped:res.skipped,placed:res.trace.length,kitchenSection:res.kitchenSection}};
+ save(true);render();updPrepFlow();}
 
 async function onFile(f){if(!f)return;if(!/\.xls[xm]?$/i.test(f.name)){status('That is not an Excel file. Please choose the work order .xlsx.',true);return;}
  if(state&&state.edited&&!confirm('Loading a new work order replaces the current allocation and clears your edits. Continue?'))return;
- status('Reading '+f.name+' …');try{const rows=readWO(await f.arrayBuffer());localStorage.removeItem(KEY);const meta={name:f.name,sig:f.name+'|'+f.size+'|'+f.lastModified};rawRows=null;
-  if(window.AllocRaw&&AllocRaw.isRaw(rows)){rawRows=rows;rawMeta=meta;useRawWeek(null);}else{$('weekRow').hidden=true;generate(rows,meta);}}catch(e){console.error(e);status('Could not read this work order: '+e.message,true);}}
+ status('Reading '+f.name+' …');try{const pack=readWO(await f.arrayBuffer());const rows=pack.rows;localStorage.removeItem(KEY);const meta={name:f.name,sig:f.name+'|'+f.size+'|'+f.lastModified,kitchenSection:pack.kitchenSection,sheetNames:pack.sheetNames};
+  rawRows=null;
+  if(window.AllocRaw&&AllocRaw.isRaw(rows)&&pack.kitchenSection!=='Plated'){rawRows=rows;rawMeta=meta;useRawWeek(null);}else{$('weekRow').hidden=true;generate(rows,meta);status('Loaded '+f.name+' as '+pack.kitchenSection+(pack.kitchenSection==='Plated'?' — day summary + prep list ready below.':'.'));}}catch(e){console.error(e);status('Could not read this work order: '+e.message,true);}}
 function useRawWeek(ws){const n=AllocRaw.normalise(rawRows,ws);const all=AllocRaw.mondays(rawRows);const sel=$('weekSel');
  sel.innerHTML=all.map(m=>`<option value="${m}"${m===n.weekStart?' selected':''}>Week of ${new Date(m+"T00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}</option>`).join('');if(!all.includes(n.weekStart))sel.insertAdjacentHTML('afterbegin',`<option value="${n.weekStart}" selected>Week of ${fmtDate(n.weekStart)}</option>`);$('weekRow').hidden=false;
  generate(n.rows,{...rawMeta,raw:true,weekStart:n.weekStart});state.rawNote=`Raw work order export: kept ${n.stats.kept} Larder / combo rows for this week and coloured ${n.stats.coloured} by best guess (${n.stats.dropped} pastry, sauce and other rows left out).`;save(true);render();}
@@ -113,6 +126,158 @@ function applySettings(reset){let s;try{s=reset?Object.assign({},E.DEFAULT_ALLOC
  if(state&&state.edited&&!confirm('Rebuilding with new settings clears your edits. Continue?'))return;
  settings=s;localStorage.setItem(SKEY,JSON.stringify(s));fillSettings();if(state&&state.woRows){const day=state.day;generate(state.woRows,{name:state.woName,sig:state.woSig});state.day=day;save(true);render();}}
 
+
+/* ---------- Plated STEP 2 / STEP 3 (day summary + prep-list sorter) ---------- */
+function updPrepFlow(){
+  const card=$('prepFlowCard'); if(!card) return;
+  const plated = !!(state && (state.kitchenSection==='Plated' || (state.res&&state.res.kitchenSection==='Plated')));
+  card.hidden = !plated;
+  const ds=$('dlDaySummary'), pl=$('dlPrepList');
+  if(ds) ds.disabled = !(plated && lastWo && window.AllocPrepList);
+  if(pl) pl.disabled = !(plated && lastWo && window.AllocPrepList && masterBuffers.length);
+  if($('daySummaryName') && lastWo && window.AllocPrepList) $('daySummaryName').textContent = AllocPrepList.summaryFileName ? AllocPrepList.summaryFileName(lastWo) : '';
+  if($('prepListName') && lastWo && window.AllocPrepList) $('prepListName').textContent = AllocPrepList.prepFileName ? AllocPrepList.prepFileName(lastWo) : '';
+}
+function downloadBlob(name, buf){
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 1500);
+}
+function prepDateOpts(){
+  const dateFrom=($('prepDateFrom')&&$('prepDateFrom').value)||null;
+  const dateTo=($('prepDateTo')&&$('prepDateTo').value)||null;
+  const weekEnding=($('prepWeekEnding')&&$('prepWeekEnding').value)||null;
+  return {dateFrom, dateTo, weekEnding};
+}
+function onDlDaySummary(){
+  if(!lastWo||!window.AllocPrepList){status('Upload a Plated work order first.',true);return;}
+  try{
+    const out=AllocPrepList.buildDaySummary({wo:lastWo, XLSX:X, ...prepDateOpts()});
+    const buf=X.write(out.workbook,{type:'array', bookType:'xlsx'});
+    downloadBlob(out.fileName, buf);
+    status('Downloaded '+out.fileName+' ('+out.rows.length+' functions).');
+  }catch(e){console.error(e);status('Day summary failed: '+e.message,true);}
+}
+async function onMasterFiles(fileList){
+  const files=Array.from(fileList||[]);
+  masterBuffers=[];
+  if(!files.length){if($('masterStatus'))$('masterStatus').textContent='';updPrepFlow();return;}
+  try{
+    for(const f of files){
+      const buf=await f.arrayBuffer();
+      const wb=X.read(buf,{cellStyles:true, cellFormula:true});
+      // Keep raw bytes so dish photos (xl/media + drawings) can be injected on prep download
+      masterBuffers.push({name:f.name, wb, buf:new Uint8Array(buf)});
+    }
+    if($('masterStatus'))$('masterStatus').textContent=masterBuffers.length+' master file(s) loaded ('+masterBuffers.reduce((n,m)=>n+m.wb.SheetNames.length,0)+' sheets).';
+    updPrepFlow();
+  }catch(e){console.error(e);if($('masterStatus'))$('masterStatus').textContent='Could not read masters: '+e.message; masterBuffers=[]; updPrepFlow();}
+}
+let bespokeSheets=[]; // {tab, dish, date, event, meal, pax, acronym, ws}
+function loadBespoke(){try{bespokeSheets=JSON.parse(localStorage.getItem('prepline.alloc.bespoke.v1')||'[]');}catch(e){bespokeSheets=[];} renderBespoke();}
+function saveBespoke(){localStorage.setItem('prepline.alloc.bespoke.v1', JSON.stringify(bespokeSheets.map(b=>{const {ws,...rest}=b; return {...rest, wsAoA: b.wsAoA||null}; }))); /* ws kept in memory */ }
+function renderBespoke(){
+  const el=$('bespokeList'); if(!el) return;
+  if(!bespokeSheets.length){el.textContent='No bespoke sheets yet.';return;}
+  el.innerHTML=bespokeSheets.map((b,i)=>'<div class="row" style="gap:8px;align-items:center"><code>'+esc(b.tab||b.dish)+'</code> · '+esc(b.acronym||'')+' · pax '+(b.pax!=null?b.pax:'?')+' <button type="button" data-bespoke-del="'+i+'">Remove</button></div>').join('');
+}
+async function onDlPrepList(){
+  if(!lastWo||!window.AllocPrepList){status('Upload a Plated work order first.',true);return;}
+  if(!masterBuffers.length){status('Load the Entrees and/or Mains master .xlsx first.',true);return;}
+  const btn=$('dlPrepList');
+  if(btn) btn.disabled=true;
+  try{
+    status('Building prep list (full master formatting + photos)…');
+    const out=AllocPrepList.buildPrepList({wo:lastWo, masters:masterBuffers, XLSX:X, extraSheets:bespokeSheets, ...prepDateOpts()});
+    let buf;
+    let photoMsg='';
+    let usedOoxml=false;
+    if(window.AllocPrepOoxml && AllocPrepOoxml.buildFromMatched && masterBuffers.every(m=>m&&m.buf)){
+      try{
+        const oox=await AllocPrepOoxml.buildFromMatched({
+          matched: out.matched,
+          workbook: out.workbook,
+          masters: masterBuffers,
+          bespoke: bespokeSheets
+        });
+        buf=oox.buffer;
+        out.ooxmlReport=oox.report;
+        usedOoxml=true;
+        photoMsg=' OOXML clone · Photos: '+(oox.report.photos||0)+'/'+(oox.report.tabs||[]).length+' tabs.';
+        if((oox.report.errors||[]).length){
+          photoMsg+=' Notes: '+oox.report.errors.map(e=>e.tab+': '+e.error).slice(0,3).join('; ')+'.';
+        }
+      }catch(e){
+        console.warn('OOXML clone failed, falling back to SheetJS+photos', e);
+        usedOoxml=false;
+      }
+    }
+    if(!usedOoxml){
+      buf = AllocPrepList.writePrepXlsx ? AllocPrepList.writePrepXlsx(out.workbook, X) : X.write(out.workbook,{type:'array', bookType:'xlsx', cellStyles:true});
+      if(window.AllocPrepPhotos && AllocPrepPhotos.injectPrepPhotos){
+        const aliasBySheet={};
+        (AllocPrepList.ALIASES||[]).forEach(a=>{
+          const sheets=[a.sheet].concat(a.altSheets||[]).filter(Boolean);
+          sheets.forEach(s=>{ aliasBySheet[s]=sheets; });
+        });
+        const matched=(out.matched||[]).map(m=>{
+          const al=(aliasBySheet[m.master]||[]).filter(s=>s!==m.master);
+          return Object.assign({}, m, {altSheets:al, photoFallbacks:al});
+        });
+        const byTab={};
+        (bespokeSheets||[]).forEach(b=>{ if(b&&b.tab) byTab[b.tab]=b; });
+        matched.forEach(m=>{
+          const b=byTab[m.tab];
+          if(!b) return;
+          if(b.xlsxBytes && !m.xlsxBytes) m.xlsxBytes=b.xlsxBytes;
+          if(b.photoBytes && !m.photoBytes){ m.photoBytes=b.photoBytes; m.photoExt=b.photoExt; }
+        });
+        const inj=await AllocPrepPhotos.injectPrepPhotos(buf, {
+          masters: masterBuffers,
+          matched: matched,
+          bespoke: bespokeSheets
+        });
+        buf=inj.buffer;
+        out.photoReport=inj.report;
+        photoMsg=' Photos: '+(inj.report.photos||0)+'/'+(inj.report.tabs||[]).length+' tabs.';
+        if((inj.report.missingPhoto||[]).length){
+          photoMsg+=' Missing: '+inj.report.missingPhoto.map(x=>x.tab).join(', ')+'.';
+        }
+      } else {
+        photoMsg=' (photo injector unavailable)';
+      }
+    }
+    downloadBlob(out.fileName, buf);
+    lastPrepResult = out;
+    const msg='Prep list: '+out.matched.length+' matched (incl. '+(bespokeSheets.length)+' bespoke), '+out.unmatched.length+' unmatched'+(out.formulaErrors.length?', '+out.formulaErrors.length+' formula notes':'')+'. Colours/legend preserved.'+photoMsg;
+    if($('prepMatchStatus'))$('prepMatchStatus').textContent=msg;
+    status('Downloaded '+out.fileName+' — '+msg);
+  }catch(e){console.error(e);status('Prep list failed: '+e.message,true);}
+  finally{ updPrepFlow(); }
+}
+let lastPrepResult=null;
+function onAddBespoke(){
+  if(!window.AllocPrepList||!AllocPrepList.blankPaulaLegendSheet){alert('Prep list module missing blank sheet helper');return;}
+  const dish=($('bespokeDish')&&$('bespokeDish').value||'').trim()||'Bespoke dish';
+  const date=($('bespokeDate')&&$('bespokeDate').value)||'';
+  const event=($('bespokeEvent')&&$('bespokeEvent').value||'').trim()||dish;
+  const meal=($('bespokeMeal')&&$('bespokeMeal').value)||'Dinner';
+  const pax=Math.max(1, +(($('bespokePax')&&$('bespokePax').value)||100));
+  const acronym=AllocPrepList.eventAcronym(event, meal);
+  const eventLabel = date ? AllocPrepList.fmtEventLabel(date, meal, acronym) : (meal+' ('+acronym+')');
+  const ws=AllocPrepList.blankPaulaLegendSheet({dish, eventLabel, pax});
+  let tab = date ? AllocPrepList.tabName(date, 'M', dish.split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ').slice(0,12) || 'Bespoke', acronym) : (dish.slice(0,18)+' - '+acronym).slice(0,31);
+  // simpler keyword from dish
+  const key = dish.replace(/textures of\s+/i,'').split(/\s+/).slice(0,2).join(' ').slice(0,14) || 'Bespoke';
+  if(date) tab = AllocPrepList.tabName(date, 'M', key, acronym);
+  else tab = (key+' - '+acronym).slice(0,31);
+  bespokeSheets.push({tab, dish, date, event, meal, pax, acronym, ws, master:'(bespoke)'});
+  renderBespoke();
+  status('Added bespoke sheet "'+tab+'" with Paula colour legend. Download prep list to include it.');
+  if($('bespokeDish'))$('bespokeDish').value='';
+}
+
+
 /* ---------- wiring ---------- */
 const drop=$('drop'),inp=$('woFile');
 drop.addEventListener('click',()=>inp.click());drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inp.click();}});
@@ -136,7 +301,7 @@ $('clearAlloc').onclick=()=>{if(!confirm('Clear the allocation and all edits fro
 $('applySettings').onclick=()=>applySettings(false);$('resetSettings').onclick=()=>applySettings(true);
 window.addEventListener('beforeprint',()=>{if(state&&!$('printArea').innerHTML)$('printArea').innerHTML=printSheetHTML(state.res.sheets[state.day]);});
 window.addEventListener('afterprint',()=>{$('printArea').innerHTML='';});
-fillSettings();try{state=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){state=null;}if(state&&state.v!==1)state=null;render();if(!state)status('No work order loaded yet.');
+fillSettings();try{state=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){state=null;}if(state&&state.v!==1)state=null;render();updPrepFlow();if(!state)status('No work order loaded yet.');
 /* ---------- edit mode: drag & drop (pointer events: mouse, touch, pen), undo, reset ---------- */
 let undoStack=[];const UNDO_MAX=50;
 function snap(){if(!state)return;undoStack.push(JSON.stringify(state.res.sheets));if(undoStack.length>UNDO_MAX)undoStack.shift();updUndo();}
@@ -187,5 +352,14 @@ function printStationSheets(){
   document.title=(E.fileName(state.res)||'Prepline').replace(/\.xlsx$/,'')+' · station sheets';
   window.print();
 }
-window.__alloc={get state(){return state;},buildWorkbook,printSheetHTML,printStationSheets};
+
+const _ds=$('dlDaySummary'); if(_ds)_ds.onclick=onDlDaySummary;
+const _pl=$('dlPrepList'); if(_pl)_pl.onclick=onDlPrepList;
+const _mf=$('masterFiles'); if(_mf)_mf.addEventListener('change',()=>{onMasterFiles(_mf.files);});
+const _ba=$('bespokeAdd'); /* full editor wired by alloc-sheet-editor.js */
+const _bq=$('bespokeQuickAdd'); if(_bq)_bq.onclick=onAddBespoke;
+document.addEventListener('click',e=>{const b=e.target.closest('[data-bespoke-del]'); if(!b)return; bespokeSheets.splice(+b.dataset.bespokeDel,1); renderBespoke(); status('Removed bespoke sheet.');});
+loadBespoke();
+
+window.__alloc={get state(){return state;},get lastWo(){return lastWo;},get masters(){return masterBuffers;},get bespoke(){return bespokeSheets;},buildWorkbook,printSheetHTML,printStationSheets,onDlDaySummary,onDlPrepList,onMasterFiles,onAddBespoke,updPrepFlow,setMastersFromBuffers:(arr)=>{masterBuffers=arr||[];updPrepFlow();},setBespoke:(arr)=>{bespokeSheets=arr||[];renderBespoke();status((bespokeSheets.length||0)+' bespoke sheet(s) ready for prep download.');}};
 })();

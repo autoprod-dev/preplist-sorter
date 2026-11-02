@@ -8,7 +8,7 @@ on:
       tag:
         description: 'Backup tag to restore (tree only; new commit on master)'
         required: true
-        default: backup-pre-cleanup-20261101
+        default: backup-pre-4.8.34-promote-20261102
       mode:
         description: 'restore = tag tree on master; restore-latest = live-backup-4.4.4 tip'
         required: true

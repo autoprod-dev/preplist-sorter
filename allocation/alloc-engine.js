@@ -1,4 +1,4 @@
-/* Prepline Section 1: Work orders -> Larder allocation. Pure engine (browser + Node). No real data in here. */
+/* Prepline Section 1: Work orders -> Larder or Plated allocation. Pure engine (browser + Node). No real data in here. */
 (function(root){
 const DAYS=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 const DEFAULT_ALLOC_SETTINGS={
@@ -36,13 +36,19 @@ function notesDishes(n,S){const out=[];for(let t of String(n||'').split('\n')){t
   if(/^(salad|sandwich|wraps?|cold|hot|dessert|dietar(y|ies)|menu)\b[\s:\-]*(\d+\s*\w+)?$/i.test(t))continue;if(/intoleran|allerg|pescatarian|^\d*\s*x?\s*(vegan|vegetarian|gluten free|halal|coeliac)\b|^\d+\s*x\s*\w+$/i.test(t))continue;if(/^\d+\s*(zuma|handbowls?|big bowls?|hanbowls?)\b/i.test(t)||/^\d+\s*x\s/i.test(t)&&t.length<20)continue;
   t=t.replace(/^\d+\s*(-|x|boxes?|pcs)?\s*'?/i,'').replace(/\s+x\s*\d+\s*$/i,'');const nm=shortName(t,S);if(nm&&nm.length>2&&!out.includes(nm))out.push(nm);}return out;}
 /* rows: [{r, A..O (values), fillA, fill (of H/F)}] */
-function parseWorkOrder(rows){let day=null,ev='',evNo='',out=[];const days=[];
- for(const x of rows){const a=clean(x.A);const pd=parseDay(a);if(pd){day=pd;days.push(pd);continue;}
+function parseWorkOrder(rows){let day=null,ev='',evNo='',out=[],lastTime='';const days=[];
+ for(const x of rows){const a=clean(x.A);const pd=parseDay(a);if(pd){day=pd;days.push(pd);lastTime='';continue;}
   if(clean(x.B)&&!clean(x.C)&&!clean(x.F)){evNo=clean(x.B);continue;}
   if(clean(x.C)&&!clean(x.F)){ev=clean(x.C);continue;}
-  if(day&&clean(x.F)&&clean(x.H))out.push({r:x.r,date:day,event:ev,eventNo:evNo,room:clean(x.F),qty:Number(x.G)||0,qtyRaw:clean(x.G),item:clean(x.H),notes:x.I==null?'':String(x.I),colour:hex(x.fill),colA:hex(x.fillA),time:clean(x.O),cost:clean(x.K)});}
+  const tD=clean(x.D),tO=clean(x.O);
+  if(tD&&/^\d{1,2}:\d{2}/.test(tD)&&!clean(x.F)&&!clean(x.H)){lastTime=tD;continue;}
+  if(tO&&/^\d{1,2}:\d{2}/.test(tO))lastTime=tO;
+  if(day&&clean(x.F)&&clean(x.H))out.push({r:x.r,date:day,event:ev,eventNo:evNo,room:clean(x.F),qty:Number(x.G)||0,qtyRaw:clean(x.G),item:clean(x.H),notes:x.I==null?'':String(x.I),colour:hex(x.fill),colA:hex(x.fillA),time:tO||lastTime||tD,cost:clean(x.K)});}
  return {lines:out,days:[...new Set(days)].sort()};}
-function buildAllocation(wo,S0){const S=Object.assign({},DEFAULT_ALLOC_SETTINGS,S0||{});const roomRe=new RegExp(S.entCentre.roomPattern,'i'),evRe=new RegExp(S.entCentre.eventPattern,'i');
+function buildAllocation(wo,S0){const S=Object.assign({},DEFAULT_ALLOC_SETTINGS,S0||{});
+ const kitchenSection=S.kitchenSection||wo.kitchenSection||'Larder';
+ if(kitchenSection==='Plated')return buildPlatedAllocation(wo,S);
+ const roomRe=new RegExp(S.entCentre.roomPattern,'i'),evRe=new RegExp(S.entCentre.eventPattern,'i');
  const L=wo.lines;const items=[];const trace=[];const skipped=[];
  // parents (uncoloured rows give pax)
  const parent={};const lastCol={};
@@ -89,8 +95,22 @@ function buildAllocation(wo,S0){const S=Object.assign({},DEFAULT_ALLOC_SETTINGS,
   const sel=(sec,dates)=>lines.filter(x=>x.section===sec&&(x.dates&&x.dates.length>1?x.dates.some(d=>dates.includes(d)):x.date?dates.includes(x.date):sec==='Coffee')).sort((a,b)=>V2?((a.date||'').localeCompare(b.date||'')||(a.first||0)-(b.first||0)):(a.date||'').localeCompare(b.date||''));
   const selR=(dates)=>V2?lines.filter(x=>x.section==='Retail'&&x.dates.some(d=>dates.includes(d))):null;
   return {date:D,dayName:dn,aheadDates:ahead,service:SERVICE_SECTIONS.map(s=>({key:s,fill:SERVICE_FILL[s],lines:(s==='Retail'&&V2?selR([D]):sel(s,[D])).map(x=>({...x}))})),prep:PREP_SECTIONS.map(p=>({...p,counts:p.matrix.map(()=>''),lines:(p.key==='Fruits'&&S.fruitsFirstLine?[{dish:S.fruitsFirstLine,paxValue:null,date:null}]:[]).concat((p.key==='Retail'&&V2?selR([D].concat(ahead)):sel(p.key,ahead)).map(x=>({...x}))).map((x,i)=>V2&&i===0&&!x.staff&&x.dish?{...x,staff:'after service'}:x)}))};});
- return {settings:S,week,fileDate,lastWO,sheets,lines,trace,skipped,unplaced:V2?skipped.slice():[],v2:!!V2};}
-function fileName(res){const [y,m,d]=res.fileDate.split('-');return `Larder W.E ${d}.${m}.${y.slice(2)}.xlsx`;}
+ return {settings:S,week,fileDate,lastWO,sheets,lines,trace,skipped,unplaced:V2?skipped.slice():[],v2:!!V2,kitchenSection:'Larder',functions:null};}
+function fileName(res){const [y,m,d]=res.fileDate.split('-');const sec=(res.kitchenSection==='Plated')?'Plated':'Larder';return `${sec} W.E ${d}.${m}.${y.slice(2)}.xlsx`;}
+
+function platedApi(){return (typeof AllocPlated!=='undefined')?AllocPlated:(typeof require==='function'?(()=>{try{return require('./alloc-plated.js')}catch(e){return null}})():null);}
+function buildPlatedAllocation(wo,S){const P=platedApi();if(!P)throw new Error('Plated allocator missing (alloc-plated.js).');
+ const V=P.build(wo,S);const first=wo.days[0],monday=addDays(first,-((dow(first)+6)%7));const week=[0,1,2,3,4,5,6].map(i=>addDays(monday,i));
+ const lastWO=wo.days[wo.days.length-1];const fileDate=S.fileDateRule==='weekSunday'?week[6]:lastWO;
+ const SERVICE=P.SERVICE_SECTIONS;const PREP=P.PREP_SECTIONS;const SF=P.SERVICE_FILL;
+ const lines=V.lines||[];
+ const sheets=week.map(D=>{const dn=DAYS[dow(D)];const ahead=[];for(let i=1;i<=S.prepDaysAhead;i++)ahead.push(addDays(D,i));const ex=S.extraAhead[dn];if(ex)for(let i=S.prepDaysAhead+1;i<=ex;i++)ahead.push(addDays(D,i));
+  const sel=(sec,dates)=>lines.filter(x=>x.section===sec&&dates.includes(x.date)).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.first||0)-(b.first||0));
+  return {date:D,dayName:dn,aheadDates:ahead,
+   service:SERVICE.map(s=>({key:s,fill:SF[s]||'FFFF00',lines:sel(s,[D]).map(x=>({...x}))})),
+   prep:PREP.map(p=>({...p,counts:p.matrix.map(()=>''),lines:sel(p.key,ahead).map(x=>({...x}))}))};});
+ return {settings:S,week,fileDate,lastWO,sheets,lines,trace:V.trace||[],skipped:V.skipped||[],unplaced:V.skipped||[],v2:false,kitchenSection:'Plated',functions:V.functions||[]};}
+
 /* Build an AOA + style map for one day sheet in Paula's template layout. Returns {cells:[[r,c,v,style]], merges, rows} */
 /* Chef totals: sum Staff Required over every service+prep line (all numbers in the cell added, e.g. 'after service + 3' = 3; blanks/text = 0), plus prep matrix counts separately. */
 function staffNum(v){if(typeof v==='number')return isFinite(v)?v:0;const m=String(v==null?'':v).match(/\d+(?:\.\d+)?/g);return m?m.reduce((a,x)=>a+Number(x),0):0;}
@@ -115,6 +135,6 @@ function sheetLayout(sh){const C=[];let r=0;const put=(row,col,v,st)=>C.push([ro
  const tr=r;['TOTAL AM','TOTAL PM','TOTAL LUNCHBOX'].forEach(t=>{put(r,4,t,'body');put(r,5,'','body');r++;});r++;
  [['MISSING AM',fr+1,tr+1],['MISSING PM',fr+3,tr+2],['MISSING LUNCHBOX',fr+2,tr+3]].forEach(x=>{put(r,4,x[0],'body');put(r,5,`=F${x[1]}-F${x[2]}`,'formula');r++;});
  return {cells:C,merges,rows:r};}
-const API={chefTotals,staffNum,DEFAULT_ALLOC_SETTINGS,PREP_SECTIONS,SERVICE_SECTIONS,parseWorkOrder,buildAllocation,sheetLayout,fileName,shortName,iso,addDays,DAYS};
+const API={chefTotals,staffNum,DEFAULT_ALLOC_SETTINGS,PREP_SECTIONS,SERVICE_SECTIONS,parseWorkOrder,buildAllocation,buildPlatedAllocation,sheetLayout,fileName,shortName,iso,addDays,DAYS,detectSection:(legend,sheets)=>{const P=platedApi();return P?P.detectSection(legend,sheets):'Larder'}};
 root.AllocEngine=API;if(typeof module!=='undefined')module.exports=API;
 })(typeof window!=='undefined'?window:globalThis);

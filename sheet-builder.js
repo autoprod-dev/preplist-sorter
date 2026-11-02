@@ -88,10 +88,17 @@
   }
 
   function scriptBase() {
-    // Resolve relative to this page (works on /prepline-trial-preview/ and local file serves)
+    // Explicit override (allocation page sets this to trial root)
+    if (root.__PREPLINE_VENDOR_BASE__) {
+      return String(root.__PREPLINE_VENDOR_BASE__).replace(/\/?$/, '/');
+    }
     var base = document.querySelector('base');
     if (base && base.href) return base.href.replace(/\/?$/, '/');
     var path = location.pathname || '/';
+    // Work orders & allocation lives under /allocation/ but vendor/ is at trial root
+    if (/\/allocation\/?$/i.test(path) || /\/allocation\//i.test(path)) {
+      return path.replace(/\/allocation\/?$/i, '/').replace(/\/allocation\/.*$/i, '/');
+    }
     if (path.endsWith('/')) return path;
     return path.replace(/[^/]+$/, '');
   }
@@ -366,6 +373,8 @@
     document.body.classList.remove('sb-open');
     destroyEditor();
     pending = null;
+    allocSaveHandler = null;
+    setAllocChrome(false);
   }
 
   function downloadXlsx() {
@@ -483,6 +492,10 @@
   }
 
   function feedToParser() {
+    if (mode === 'alloc-bespoke' || (pending && pending.alloc)) {
+      feedAllocToPrep();
+      return;
+    }
     setBusy(true, 'Preparing workbook for sorter…');
     Promise.resolve()
       .then(function () { return getSnapshot(); })
@@ -652,20 +665,127 @@
     gridBtn.parentNode.insertBefore(pdfBtn, gridBtn.nextSibling);
   }
 
+
+  var allocSaveHandler = null;
+  var allocMode = false;
+
+  function setAllocChrome(on) {
+    allocMode = !!on;
+    var sortBtn = document.getElementById('sbSort');
+    if (sortBtn) {
+      if (on) {
+        sortBtn.textContent = 'Add to prep list →';
+        sortBtn.title = 'Save this sheet as a tab in the Plated prep list (header date/function/pax kept)';
+      } else {
+        sortBtn.textContent = 'Sort into preplist →';
+        sortBtn.title = '';
+      }
+    }
+  }
+
+  /**
+   * Allocation bespoke editor: open Univer on a Paula-legend starter xlsx buffer.
+   * onAddToPrep(buffer, meta) is called when user clicks Add to prep list.
+   */
+  function openAllocBespoke(xlsxBuffer, meta, onAddToPrep) {
+    meta = meta || {};
+    allocSaveHandler = typeof onAddToPrep === 'function' ? onAddToPrep : null;
+    var fileName = (meta.fileName || meta.tab || meta.dish || 'bespoke') + '.xlsx';
+    pending = {
+      type: 'xlsx',
+      fileName: fileName,
+      bytes: xlsxBuffer instanceof Uint8Array ? xlsxBuffer : new Uint8Array(xlsxBuffer),
+      meta: meta,
+      alloc: true
+    };
+    ensureDom();
+    setAllocChrome(true);
+    var panel = document.getElementById('sbPanel');
+    panel.classList.add('open');
+    panel.removeAttribute('inert');
+    delete panel.dataset.wmInert;
+    document.body.classList.add('sb-open');
+    document.getElementById('sbTitle').textContent = 'Bespoke — ' + (meta.dish || fileName);
+    document.getElementById('sbHint').textContent =
+      'Excel-like editor (Univer): formulas, fills, fonts, borders, merge, insert/delete, copy/paste, undo/redo, keyboard nav. Legend colours on the right. Insert photo, Print A4 landscape, then Add to prep list.';
+    document.getElementById('sbGrid').innerHTML = '<div class="univer-loading">Importing Paula-legend starter…</div>';
+    mode = 'alloc-bespoke';
+    var file = new File([pending.bytes], fileName, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    return ensureLibs()
+      .then(function () { return fileToUniverData(file, fileName); })
+      .then(function (data) {
+        // Rename first sheet to tab name when possible
+        try {
+          var order = data.sheetOrder || Object.keys(data.sheets || {});
+          var sid = order[0];
+          if (sid && data.sheets[sid] && meta.tab) data.sheets[sid].name = String(meta.tab).slice(0, 31);
+        } catch (e0) {}
+        return openWithData(data, {
+          mode: 'alloc-bespoke',
+          title: 'Bespoke — ' + (meta.dish || 'New sheet'),
+          hint: document.getElementById('sbHint').textContent
+        });
+      })
+      .then(function (ed) {
+        setAllocChrome(true);
+        root.__prepline485PendingBytes = pending.bytes;
+        if (root.Prepline485 && typeof root.PreplineAllocEditor === 'object' && root.PreplineAllocEditor.afterOpen) {
+          try { root.PreplineAllocEditor.afterOpen(pending.bytes, meta); } catch (e1) {}
+        }
+        return ed;
+      });
+  }
+
+  function feedAllocToPrep() {
+    if (!allocSaveHandler) {
+      alert('Allocation save handler missing');
+      return;
+    }
+    setBusy(true, 'Exporting sheet into prep list…');
+    Promise.resolve()
+      .then(function () { return getSnapshot(); })
+      .then(function (snap) {
+        var name = (pending && pending.fileName) || 'bespoke.xlsx';
+        return snapshotToXlsxBuffer(snap, name).then(function (buf) {
+          // Re-embed photos if 485 available
+          var run = (root.Prepline485 && root.Prepline485.reembedPhotosIntoBuffer)
+            ? root.Prepline485.reembedPhotosIntoBuffer(buf).then(function (r) { return r.buffer || buf; })
+            : Promise.resolve(buf);
+          return run.then(function (finalBuf) {
+            var meta = (pending && pending.meta) || {};
+            return Promise.resolve(allocSaveHandler(finalBuf, meta)).then(function () {
+              setAllocChrome(false);
+              close();
+            });
+          });
+        });
+      })
+      .catch(function (e) {
+        alert('Could not add sheet to prep list: ' + (e && e.message ? e.message : e));
+        setBusy(false);
+      });
+  }
+
   root.PreplineSheet = {
     openBlankTemplate: openBlankTemplate,
+    openAllocBespoke: openAllocBespoke,
     offerEditBeforeSort: offerEditBeforeSort,
     offerPdfRowEdit: offerPdfRowEdit,
     openPendingEdit: openPendingEdit,
     openWithData: openWithData,
     pdfRowsToWorkbookData: pdfRowsToWorkbookData,
+    fileToUniverData: fileToUniverData,
+    snapshotToXlsxBuffer: snapshotToXlsxBuffer,
     close: close,
     ensureLibs: ensureLibs,
     ingestBuffer: ingestBuffer,
     getSnapshot: function () { return editor ? getSnapshot() : null; },
     getPendingBytes: function () { return pending && pending.bytes ? pending.bytes : null; },
     getPending: function () { return pending; },
-    _getEditor: function () { return editor; }
+    _getEditor: function () { return editor; },
+    isAllocMode: function () { return !!allocMode; }
   };
 
   document.addEventListener('DOMContentLoaded', function () {
