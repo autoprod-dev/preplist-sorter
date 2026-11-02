@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35">
+<meta name="prepline-version" content="4.8.35-r2">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -949,7 +949,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r2</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -8234,6 +8234,40 @@ function pwaShowUpdate(reg){
     if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
   };
 }
+// 4.8.35-r2: one-shot self-heal if a broken SW/cache build is still controlling this tab.
+const PREPLINE_SW_EXPECT = '4.8.35-r2';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r2';
+function preplineSwHealOnce(reason){
+  try {
+    if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;
+    sessionStorage.setItem(PREPLINE_SW_HEAL_KEY, reason || '1');
+  } catch (e) {}
+  if (!('serviceWorker' in navigator)) { location.reload(); return; }
+  Promise.resolve()
+    .then(async () => {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter(k => String(k).indexOf('prepline:') === 0).map(k => caches.delete(k)));
+      }
+    })
+    .catch(() => {})
+    .then(() => { location.reload(); });
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (ev) => {
+    const d = ev && ev.data;
+    if (!d || d.type !== 'PREPLINE_SW_ACTIVATED') return;
+    if (d.version && d.version !== PREPLINE_SW_EXPECT) return;
+    // New SW claimed — reload once so this tab drops any frozen r1/p1 JS still in memory.
+    try {
+      if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY + ':claimed')) return;
+      sessionStorage.setItem(PREPLINE_SW_HEAL_KEY + ':claimed', '1');
+    } catch (e) {}
+    location.reload();
+  });
+}
 function pwaInit(){
   if (!pwaEnabled()) return;
   pwaInjectHead();
@@ -8245,6 +8279,22 @@ function pwaInit(){
     reloading = true; location.reload();
   });
   navigator.serviceWorker.register(PWA_CONFIG.basePath + 'sw.js', {scope: PWA_CONFIG.basePath}).then(reg => {
+    try {
+      const send = (r) => {
+        if (!r || !r.active) return;
+        const ch = new MessageChannel();
+        ch.port1.onmessage = (ev) => {
+          const v = ev && ev.data && ev.data.version;
+          if (v && v !== PREPLINE_SW_EXPECT && !String(v).startsWith('4.8.35-r2')) {
+            preplineSwHealOnce('version-mismatch:' + v);
+          }
+        };
+        try { r.active.postMessage({type:'GET_VERSION'}, [ch.port2]); } catch (e) {}
+      };
+      send(reg);
+      if (navigator.serviceWorker.controller) send({active: navigator.serviceWorker.controller});
+    } catch (e) {}
+
     window.__pwaReg = reg;
     if (reg.waiting && navigator.serviceWorker.controller) pwaShowUpdate(reg);
     reg.addEventListener('updatefound', () => {

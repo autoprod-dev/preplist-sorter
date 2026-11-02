@@ -12,7 +12,7 @@
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '4.8.35-r1';
+const VERSION = '4.8.35-r2';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
 // The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
 const NO_CDN = SCOPE_PATH === '/prepline-team/';
@@ -21,7 +21,7 @@ const CACHE = CACHE_PREFIX + VERSION;
 // 3.3.0 (test site only) used 'prepline-test-<version>'
 const LEGACY_PREFIX = SCOPE_PATH === '/prepline-test/' ? 'prepline-test-' : null;
 // gate.js + gate-config.js stay in APP_SHELL. From 4.7.4 gate.js is open-access (no Apps Script); kept so cached loads stay consistent.
-const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './gate.js', './gate-config.js', './brand.js', './prep-days-vocab.js', './sheet-builder.js', './pdf-editor.js', './rules-engine.js', './rules-ui.js', './batching.js', './upgrades-47.js', './upgrades-472.js', './upgrades-473.js', './upgrades-476.js', './upgrades-477.js', './upgrades-478.js', './upgrades-479.js', './upgrades-480.js', './upgrades-481.js', './upgrades-482.js', './upgrades-485.js', './upgrades-486.js',
+const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './gate.js', './gate-config.js', './brand.js', './prep-days-vocab.js', './sheet-builder.js', './pdf-editor.js', './rules-engine.js', './rules-ui.js', './batching.js', './upgrades-47.js', './upgrades-472.js', './upgrades-473.js', './upgrades-476.js', './upgrades-477.js', './upgrades-478.js', './upgrades-479.js', './upgrades-480.js', './upgrades-481.js', './upgrades-482.js', './upgrades-485.js', './upgrades-486.js', './upgrades-4835.js', './upgrades-4838.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 // Same-site library copies (team site). Precached when present, skipped where absent (404).
 const LOCAL_LIBS = ['./lib/xlsx.full.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js',
@@ -38,7 +38,7 @@ const CDN_LIBS = [
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
-  // 4.8.35-r1 emergency: skip waiting so protect-build caches (4.8.35-p1) are replaced immediately.
+  // 4.8.35-r2: skip waiting + wipe old caches so frozen 4838 MO-loop and protect leftovers clear ASAP.
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
@@ -60,9 +60,15 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    // only this site's own old caches: never the other site's
+    // Self-heal: drop every older cache for THIS scope (incl. protect 4.8.35-p1 / r1).
+    // Never touch another site's caches on the same origin.
     await Promise.all(keys.filter(k => k !== CACHE && (k.startsWith(CACHE_PREFIX) || (LEGACY_PREFIX && k.startsWith(LEGACY_PREFIX)))).map(k => caches.delete(k)));
     await self.clients.claim();
+    // Tell open pages the new version so they can one-shot reload if still on a broken build.
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of clients) {
+      try { c.postMessage({ type: 'PREPLINE_SW_ACTIVATED', version: VERSION, cache: CACHE }); } catch (e) {}
+    }
   })());
 });
 

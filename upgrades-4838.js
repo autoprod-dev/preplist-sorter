@@ -2,10 +2,14 @@
  * - Calendar grid removed from Preplist page (lives under Work order, allocation & calendar grid).
  * - Step numbers unique; Load a preplist = Step 1; Show/Hide default hidden.
  * - Empty #proPanel spacer stays hidden; single title + single toggle per step.
+ *
+ * 4.8.35-r2: MutationObserver must NOT re-enter. Earlier builds observed the whole
+ * document and always rewrote titles/version, which queued another mutation forever
+ * and froze taps on mobile (and sometimes desktop).
  */
 (function (root) {
   'use strict';
-  var VERSION = '4.8.35';
+  var VERSION = '4.8.35-r2';
   var CSS_ID = 'u4838-css';
 
   /* Renumber without calendar on Prepline page */
@@ -63,7 +67,7 @@
   function setBarTitle(wrap, title) {
     if (!wrap) return;
     var h = wrap.querySelector('.u480-settings-bar h2') || wrap.querySelector('h2');
-    if (h) h.textContent = title;
+    if (h && h.textContent !== title) h.textContent = title;
   }
 
   function renumberSteps() {
@@ -85,36 +89,71 @@
     });
     /* Native bars from 4835 */
     var loadBar = document.querySelector('#u4835LoadBar h2');
-    if (loadBar) loadBar.textContent = stepTitle(STEP.load, 'Load a preplist');
+    if (loadBar && loadBar.textContent !== stepTitle(STEP.load, 'Load a preplist')) {
+      loadBar.textContent = stepTitle(STEP.load, 'Load a preplist');
+    }
     var pax = document.querySelector('#paxPanelWrap .u480-settings-bar h2');
-    if (pax) pax.textContent = stepTitle(STEP.pax, 'Pax per dish');
+    if (pax && pax.textContent !== stepTitle(STEP.pax, 'Pax per dish')) {
+      pax.textContent = stepTitle(STEP.pax, 'Pax per dish');
+    }
     var chef = document.querySelector('#staffingPanelWrap .u480-settings-bar h2');
-    if (chef) chef.textContent = stepTitle(STEP.chef, 'Chef-hours settings');
+    if (chef && chef.textContent !== stepTitle(STEP.chef, 'Chef-hours settings')) {
+      chef.textContent = stepTitle(STEP.chef, 'Chef-hours settings');
+    }
     var ing = document.querySelector('#ingPanelWrap .u480-settings-bar h2');
-    if (ing) ing.textContent = stepTitle(STEP.ingredients, 'Ingredients: allergens, suppliers and prices');
+    if (ing && ing.textContent !== stepTitle(STEP.ingredients, 'Ingredients: allergens, suppliers and prices')) {
+      ing.textContent = stepTitle(STEP.ingredients, 'Ingredients: allergens, suppliers and prices');
+    }
   }
-
 
   function stampVersion() {
     try {
       var meta = document.querySelector('meta[name="prepline-version"]');
-      if (meta) meta.setAttribute('content', VERSION);
+      if (meta && meta.getAttribute('content') !== VERSION) meta.setAttribute('content', VERSION);
       var badge = document.getElementById('appVersion');
-      if (badge) badge.textContent = 'Prepline v' + VERSION;
+      var label = 'Prepline v' + VERSION;
+      if (badge && badge.textContent !== label) badge.textContent = label;
     } catch (e) {}
   }
+
+  var _tickBusy = false;
+  var _tickQueued = false;
   function tick() {
-    ensureCss();
-    removePreplineCalendars();
-    renumberSteps();
-    stampVersion();
+    if (_tickBusy) { _tickQueued = true; return; }
+    _tickBusy = true;
+    _tickQueued = false;
+    try {
+      ensureCss();
+      removePreplineCalendars();
+      renumberSteps();
+      stampVersion();
+    } catch (e) {
+      try { console.warn('[u4838]', e); } catch (_) {}
+    } finally {
+      _tickBusy = false;
+      if (_tickQueued) {
+        _tickQueued = false;
+        setTimeout(tick, 0);
+      }
+    }
   }
 
   function boot() {
     tick();
-    var obs = new MutationObserver(function () { tick(); });
-    try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
-    setInterval(tick, 1500);
+    /* Observe only coarse signals — never rewrite in a tight MO loop. */
+    var obs = new MutationObserver(function () {
+      if (_tickBusy) { _tickQueued = true; return; }
+      setTimeout(tick, 50);
+    });
+    try {
+      obs.observe(document.body || document.documentElement, {
+        childList: true,
+        subtree: false,
+        attributes: true,
+        attributeFilter: ['class']
+      });
+    } catch (e) {}
+    setInterval(tick, 2000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
