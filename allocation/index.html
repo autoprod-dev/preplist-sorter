@@ -2,10 +2,10 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prepline · Work orders + allocation</title>
+<title>Prepline · Work order, allocation &amp; calendar grid</title>
 <link rel="stylesheet" href="alloc.css">
 </head><body>
-<header class="noprint"><a href="../" class="back">← Prepline</a><h1>Work orders + allocation</h1><span class="ver">Section 1 · 4.8.34</span></header>
+<header class="noprint"><a href="../" class="back">← Prepline</a><h1>Work order, allocation &amp; calendar grid</h1><span class="ver">Section 1 · 4.8.35</span></header>
 <main class="noprint">
  <section class="card">
   <h2>1 · Upload work order</h2>
@@ -44,7 +44,7 @@
   </div>
   <p id="prepMatchStatus" class="status"></p>
   <hr style="margin:16px 0;border:none;border-top:1px solid #ddd">
-  <h3 style="margin:0 0 8px;font-size:16px">New spreadsheet (bespoke / no master)</h3>
+  <h3 style="margin:0 0 8px;font-size:16px">Bespoke dish spreadsheet (master-format blank)</h3>
   <p class="hint">For dishes with no master tab (e.g. Textures of beetroot, Moreton Bay lobster). Opens the full Excel-like editor (Univer): formulas, Paula legend colour picks, fonts, borders, merge, insert/delete rows &amp; columns, copy/paste, undo/redo, keyboard nav, insert photo, A4 landscape print. Add to prep list keeps real header date/function/pax.</p>
   <div class="row" style="flex-wrap:wrap;gap:8px">
    <label>Dish <input id="bespokeDish" type="text" placeholder="Textures of beetroot" style="min-width:180px"></label>
@@ -67,6 +67,14 @@
   <p class="hint noprint">Edit mode: tap a cell to change dish, pax, date or staff. Drag ⠿ to move a line within or between sections; hold it over a day tab to move it to that day. × deletes, Undo steps back.</p>
   <nav id="tabs" class="tabs"></nav>
   <div id="editor"></div>
+ </section>
+ <section class="card" id="allocCalCard">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+   <h2 style="margin:0">Calendar grid <small style="font-weight:500;color:#666">Week · Month · Year · from work orders</small></h2>
+   <button type="button" id="allocCalToggle" class="secondary">Show</button>
+  </div>
+  <p class="hint" style="margin:8px 0 0">Hidden by default. Uploading a Larder or Plated work order fills functions on the correct day. Accumulates across uploads on this device — Clear removes them.</p>
+  <div id="allocCalBody" hidden></div>
  </section>
  <section class="card" id="reviewCard" hidden>
   <h2>Work order review</h2>
@@ -93,6 +101,7 @@
 <script src="../sheet-builder.js"></script>
 <script src="../upgrades-485.js"></script>
 <script src="alloc-sheet-editor.js"></script>
+<script src="alloc-calendar.js"></script>
 <script src="alloc-ui.js"></script>
 <script src="../brand.js"></script>
 </body></html>

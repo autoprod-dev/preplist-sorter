@@ -34,14 +34,15 @@ function generate(rows,meta){const wo=E.parseWorkOrder(rows);if(!wo.days.length)
  const S=Object.assign({},settings,{kitchenSection:meta.kitchenSection||settings.kitchenSection||wo.kitchenSection||'Larder'});
  const res=E.buildAllocation(wo,S);if(window.AllocRaw)AllocRaw.applyStaff(res);
  lastWo=wo;
- state={v:1,woName:meta.name,woSig:meta.sig,woRows:rows,kitchenSection:S.kitchenSection,createdAt:new Date().toISOString(),day:0,res:{week:res.week,fileDate:res.fileDate,lastWO:res.lastWO,sheets:res.sheets,skipped:res.skipped,placed:res.trace.length,kitchenSection:res.kitchenSection}};
+ state={v:1,woName:meta.name,woSig:meta.sig,woRows:rows,kitchenSection:S.kitchenSection,createdAt:new Date().toISOString(),day:0,res:{week:res.week,fileDate:res.fileDate,lastWO:res.lastWO,sheets:res.sheets,skipped:res.skipped,placed:res.trace.length,kitchenSection:res.kitchenSection,functions:res.functions}};
+ try{if(window.AllocCalendar)AllocCalendar.ingestFromAllocation(wo,res,{name:meta.name,kitchenSection:S.kitchenSection,functions:res.functions});}catch(e){console.warn('[alloc-cal]',e);}
  save(true);render();updPrepFlow();}
 
 async function onFile(f){if(!f)return;if(!/\.xls[xm]?$/i.test(f.name)){status('That is not an Excel file. Please choose the work order .xlsx.',true);return;}
  if(state&&state.edited&&!confirm('Loading a new work order replaces the current allocation and clears your edits. Continue?'))return;
  status('Reading '+f.name+' …');try{const pack=readWO(await f.arrayBuffer());const rows=pack.rows;localStorage.removeItem(KEY);const meta={name:f.name,sig:f.name+'|'+f.size+'|'+f.lastModified,kitchenSection:pack.kitchenSection,sheetNames:pack.sheetNames};
   rawRows=null;
-  if(window.AllocRaw&&AllocRaw.isRaw(rows)&&pack.kitchenSection!=='Plated'){rawRows=rows;rawMeta=meta;useRawWeek(null);}else{$('weekRow').hidden=true;generate(rows,meta);status('Loaded '+f.name+' as '+pack.kitchenSection+(pack.kitchenSection==='Plated'?' — day summary + prep list ready below.':'.'));}}catch(e){console.error(e);status('Could not read this work order: '+e.message,true);}}
+  if(window.AllocRaw&&AllocRaw.isRaw(rows)&&pack.kitchenSection!=='Plated'){rawRows=rows;rawMeta=meta;useRawWeek(null);}else{$('weekRow').hidden=true;generate(rows,meta);status('Loaded '+f.name+' as '+pack.kitchenSection+(pack.kitchenSection==='Plated'?' — day summary + prep list + calendar.':' — allocation + calendar.'));}}catch(e){console.error(e);status('Could not read this work order: '+e.message,true);}}
 function useRawWeek(ws){const n=AllocRaw.normalise(rawRows,ws);const all=AllocRaw.mondays(rawRows);const sel=$('weekSel');
  sel.innerHTML=all.map(m=>`<option value="${m}"${m===n.weekStart?' selected':''}>Week of ${new Date(m+"T00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}</option>`).join('');if(!all.includes(n.weekStart))sel.insertAdjacentHTML('afterbegin',`<option value="${n.weekStart}" selected>Week of ${fmtDate(n.weekStart)}</option>`);$('weekRow').hidden=false;
  generate(n.rows,{...rawMeta,raw:true,weekStart:n.weekStart});state.rawNote=`Raw work order export: kept ${n.stats.kept} Larder / combo rows for this week and coloured ${n.stats.coloured} by best guess (${n.stats.dropped} pastry, sauce and other rows left out).`;save(true);render();}

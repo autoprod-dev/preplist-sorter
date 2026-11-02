@@ -21,10 +21,69 @@
     }
   }
 
-  function buildStarterBuffer(meta) {
-    if (!root.AllocPrepList || !root.AllocPrepList.blankPaulaLegendSheet) {
-      throw new Error('AllocPrepList.blankPaulaLegendSheet missing');
+  var _blankTemplatePromise = null;
+  function blankTemplateUrl() {
+    var base = (root.__PREPLINE_VENDOR_BASE__ || '../').replace(/\/?$/, '/');
+    return base + 'allocation/templates/bespoke-blank-plated.xlsx';
+  }
+  function loadBlankTemplateBytes() {
+    if (_blankTemplatePromise) return _blankTemplatePromise;
+    _blankTemplatePromise = fetch(blankTemplateUrl(), { cache: 'force-cache' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('Blank master template HTTP ' + r.status);
+        return r.arrayBuffer();
+      })
+      .then(function (ab) { return new Uint8Array(ab); })
+      .catch(function (err) {
+        _blankTemplatePromise = null;
+        throw err;
+      });
+    return _blankTemplatePromise;
+  }
+
+  function patchBlankTemplateWs(ws, meta) {
+    var dish = meta.dish || 'Bespoke dish';
+    var eventLabel = meta.eventLabel || 'Event';
+    var pax = meta.pax != null ? meta.pax : 100;
+    function keepStyle(addr, cell) {
+      var prev = ws[addr] || {};
+      cell.s = prev.s || cell.s;
+      ws[addr] = cell;
     }
+    keepStyle('B1', { t: 's', v: dish });
+    keepStyle('B2', { t: 's', v: eventLabel });
+    keepStyle('C2', { t: 'n', v: Number(pax) || 0 });
+    if (!ws['D2']) keepStyle('D2', { t: 's', v: 'pax' });
+    // Ensure blank data rows keep total formulas (=pax * per person)
+    var ref = ws['!ref'] || 'A1:L18';
+    var maxR = 18;
+    try {
+      var m = /:([A-Z]+)(\d+)/.exec(ref);
+      if (m) maxR = Math.max(4, parseInt(m[2], 10));
+    } catch (e0) {}
+    for (var r = 4; r <= maxR; r++) {
+      var e = ws['E' + r];
+      if (!e) {
+        ws['E' + r] = { t: 'n', f: '=$C$2*C' + r, v: 0 };
+      } else if (!e.f) {
+        e.f = '=$C$2*C' + r;
+        e.t = 'n';
+        if (e.v == null) e.v = 0;
+      }
+      // Clear any leftover values in item/pp/unit if template had placeholders
+      ['B', 'C', 'D', 'F', 'G'].forEach(function (col) {
+        if (!ws[col + r]) return;
+        // leave formulas alone; only clear display leftovers on C when empty string wanted
+      });
+    }
+    if (root.AllocPrepList && root.AllocPrepList.applySamplePrintSetup) {
+      root.AllocPrepList.applySamplePrintSetup(ws);
+    }
+    return ws;
+  }
+
+  function buildStarterBuffer(meta) {
+    if (!root.AllocPrepList) throw new Error('AllocPrepList missing');
     var X = root.XLSX;
     if (!X) throw new Error('XLSX missing');
     var dish = meta.dish || 'Bespoke dish';
@@ -37,53 +96,68 @@
       ? root.AllocPrepList.fmtEventLabel(date, meal, acronym)
       : (meal + ' (' + acronym + ')');
     var pax = meta.pax != null ? meta.pax : 100;
-    var rows = meta.rows || null;
-    // Sensible starters for known trial dishes
-    var low = String(dish).toLowerCase();
-    if (!rows && /beetroot/i.test(low)) {
-      rows = [
-        { item: 'Roasted beetroot textures', per: 80, unit: 'g', cat: 'vege' },
-        { item: 'Beetroot gel', per: 15, unit: 'g', cat: 'sauce' },
-        { item: 'Goat cheese crumb', per: 12, unit: 'g', cat: 'protein' },
-        { item: 'Walnut soil', per: 8, unit: 'g', cat: 'starch' },
-        { item: 'Micro herbs / edible flowers', per: 2, unit: 'g', cat: 'garnish' }
-      ];
-    }
-    if (!rows && /lobster|moreton/i.test(low)) {
-      rows = [
-        { item: 'Moreton Bay lobster tail', per: 1, unit: 'ea', cat: 'protein' },
-        { item: 'Shellfish bisque / butter sauce', per: 30, unit: 'ml', cat: 'sauce' },
-        { item: 'Fennel / cucumber salad', per: 40, unit: 'g', cat: 'vege' },
-        { item: 'Brioche crumb', per: 10, unit: 'g', cat: 'starch' },
-        { item: 'Lemon myrtle / herbs', per: 1, unit: 'g', cat: 'garnish' }
-      ];
-    }
-    var ws = root.AllocPrepList.blankPaulaLegendSheet({
-      dish: dish,
-      eventLabel: eventLabel,
-      pax: pax,
-      rows: rows
-    });
     var key = dish.replace(/textures of\s+/i, '').split(/\s+/).slice(0, 2).join(' ').slice(0, 14) || 'Bespoke';
     var tab = date && root.AllocPrepList.tabName
       ? root.AllocPrepList.tabName(date, 'M', key, acronym)
       : (key + ' - ' + acronym).slice(0, 31);
-    var wb = X.utils.book_new();
-    X.utils.book_append_sheet(wb, ws, tab.slice(0, 31));
-    var buf = root.AllocPrepList.writePrepXlsx
-      ? root.AllocPrepList.writePrepXlsx(wb, X)
-      : X.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true });
-    return {
-      buffer: buf instanceof Uint8Array ? buf : new Uint8Array(buf),
-      tab: tab,
-      dish: dish,
-      date: date,
-      event: meta.event || dish,
-      meal: meal,
-      pax: pax,
-      acronym: acronym,
-      eventLabel: eventLabel
-    };
+
+    function fromBlankPaula() {
+      // Structural SheetJS blank (no private ingredient content)
+      var ws = root.AllocPrepList.blankPaulaLegendSheet({
+        dish: dish,
+        eventLabel: eventLabel,
+        pax: pax,
+        rows: meta.rows || [], // blank unless caller supplies
+        blankRows: 15
+      });
+      var wb = X.utils.book_new();
+      X.utils.book_append_sheet(wb, ws, tab.slice(0, 31));
+      var buf = root.AllocPrepList.writePrepXlsx
+        ? root.AllocPrepList.writePrepXlsx(wb, X)
+        : X.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true });
+      return {
+        buffer: buf instanceof Uint8Array ? buf : new Uint8Array(buf),
+        tab: tab,
+        dish: dish,
+        date: date,
+        event: meta.event || dish,
+        meal: meal,
+        pax: pax,
+        acronym: acronym,
+        eventLabel: eventLabel
+      };
+    }
+
+    // Prefer exact OOXML blank cloned from master structure (public sanitised template)
+    return loadBlankTemplateBytes()
+      .then(function (tpl) {
+        var wb = X.read(tpl, { type: 'array', cellStyles: true, cellFormula: true });
+        var name0 = wb.SheetNames[0];
+        var ws = wb.Sheets[name0];
+        patchBlankTemplateWs(ws, { dish: dish, eventLabel: eventLabel, pax: pax });
+        // Rename sheet
+        wb.SheetNames[0] = tab.slice(0, 31);
+        wb.Sheets[tab.slice(0, 31)] = ws;
+        if (name0 !== tab.slice(0, 31)) delete wb.Sheets[name0];
+        var buf = root.AllocPrepList.writePrepXlsx
+          ? root.AllocPrepList.writePrepXlsx(wb, X)
+          : X.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true });
+        return {
+          buffer: buf instanceof Uint8Array ? buf : new Uint8Array(buf),
+          tab: tab,
+          dish: dish,
+          date: date,
+          event: meta.event || dish,
+          meal: meal,
+          pax: pax,
+          acronym: acronym,
+          eventLabel: eventLabel
+        };
+      })
+      .catch(function (err) {
+        console.warn('Blank master template load failed, using SheetJS structural blank', err);
+        return fromBlankPaula();
+      });
   }
 
   function sheetFromBuffer(buf, preferName) {
@@ -373,41 +447,39 @@
       status('Sheet editor not loaded — refresh the page.', true);
       return;
     }
-    var pack;
-    try {
-      pack = buildStarterBuffer(meta);
-    } catch (e) {
-      status('Could not build starter: ' + e.message, true);
-      return;
-    }
-    var fullMeta = {
-      dish: pack.dish,
-      date: pack.date,
-      event: pack.event,
-      meal: pack.meal,
-      pax: pack.pax,
-      acronym: pack.acronym,
-      tab: pack.tab,
-      eventLabel: pack.eventLabel,
-      fileName: pack.tab
-    };
-    ensureLegendToolbar();
-    patchPrintA4Landscape();
-    root.PreplineSheet.openAllocBespoke(pack.buffer, fullMeta, function (buf, m) {
-      return onAddToPrep(buf, m || fullMeta);
-    }).then(function () {
-      ensureLegendToolbar();
-      patchPrintA4Landscape();
-      // Ensure ExcelJS available for photo embed
-      if (!root.ExcelJS) {
-        var s = document.createElement('script');
-        s.src = (root.__PREPLINE_VENDOR_BASE__ || '../') + 'vendor/exceljs/exceljs.min.js';
-        document.head.appendChild(s);
-      }
-      status('Editor open — edit the sheet, then Add to prep list.');
-    }).catch(function (err) {
-      status('Editor failed: ' + (err && err.message ? err.message : err), true);
-    });
+    status('Building blank master-layout sheet…');
+    Promise.resolve()
+      .then(function () { return buildStarterBuffer(meta); })
+      .then(function (pack) {
+        var fullMeta = {
+          dish: pack.dish,
+          date: pack.date,
+          event: pack.event,
+          meal: pack.meal,
+          pax: pack.pax,
+          acronym: pack.acronym,
+          tab: pack.tab,
+          eventLabel: pack.eventLabel,
+          fileName: pack.tab
+        };
+        ensureLegendToolbar();
+        patchPrintA4Landscape();
+        return root.PreplineSheet.openAllocBespoke(pack.buffer, fullMeta, function (buf, m) {
+          return onAddToPrep(buf, m || fullMeta);
+        }).then(function () {
+          ensureLegendToolbar();
+          patchPrintA4Landscape();
+          if (!root.ExcelJS) {
+            var s = document.createElement('script');
+            s.src = (root.__PREPLINE_VENDOR_BASE__ || '../') + 'vendor/exceljs/exceljs.min.js';
+            document.head.appendChild(s);
+          }
+          status('Editor open — blank master layout ready. Type items; totals compute from pax.');
+        });
+      })
+      .catch(function (err) {
+        status('Editor failed: ' + (err && err.message ? err.message : err), true);
+      });
   }
 
   function onAddToPrep(buf, meta) {

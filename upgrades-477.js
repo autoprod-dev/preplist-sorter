@@ -39,6 +39,7 @@
   var COL_COUNT = HEADERS.length;
   var COL_PREP_DUR = 10; /* 1-based */
   var COL_STAFF = 11;
+  var PREP_DURATION_ASSUMPTION_NOTE = 'Duration results are assessed assuming bulk preps are already made 1 week prior and are just to be collected or trayed up for the event';
   /* Rows: 1=WEEK ENDING, 2=section title, 3=yellow headers, 4+=data */
   var TITLE_WE_ROW = 1;
   var TITLE_SECTION_ROW = 2;
@@ -864,14 +865,22 @@
     weCell.border = thinBorder();
     ws.getRow(TITLE_WE_ROW).height = 24;
 
-    /* Row 2 — section / tab title */
-    ws.mergeCells(TITLE_SECTION_ROW, 1, TITLE_SECTION_ROW, lastCol);
+    /* Row 2 — section title (cols 1..PREP_DUR-1) + red PREP DURATION assumption note (duration+staff cols).
+       Keeps yellow header on row 3 and data from row 4 so sorter/AutoFilter unchanged. */
+    ws.mergeCells(TITLE_SECTION_ROW, 1, TITLE_SECTION_ROW, COL_PREP_DUR - 1);
     var title = ws.getCell(TITLE_SECTION_ROW, 1);
     title.value = sheetTitle;
     title.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FF000000' } };
-    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    title.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     title.border = thinBorder();
-    ws.getRow(TITLE_SECTION_ROW).height = 21;
+    ws.mergeCells(TITLE_SECTION_ROW, COL_PREP_DUR, TITLE_SECTION_ROW, COL_STAFF);
+    var note = ws.getCell(TITLE_SECTION_ROW, COL_PREP_DUR);
+    note.value = PREP_DURATION_ASSUMPTION_NOTE;
+    note.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFF0000' } };
+    note.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+    note.border = thinBorder();
+    ws.getCell(TITLE_SECTION_ROW, COL_STAFF).border = thinBorder();
+    ws.getRow(TITLE_SECTION_ROW).height = 48;
 
     /* Row 3 — yellow column headers */
     var head = ws.getRow(HEADER_ROW);
@@ -994,6 +1003,7 @@
     for (var bi = 0; bi < COL_COUNT; bi++) blank.push('');
     var weRow = blank.slice(); weRow[0] = we;
     var titleRow = blank.slice(); titleRow[0] = sheetTitle;
+    titleRow[COL_PREP_DUR - 1] = PREP_DURATION_ASSUMPTION_NOTE;
     aoa.push(weRow);
     aoa.push(titleRow);
     aoa.push(HEADERS.slice());
@@ -1030,7 +1040,8 @@
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: COL_COUNT - 1 } }
+      { s: { r: 1, c: 0 }, e: { r: 1, c: COL_PREP_DUR - 2 } },
+      { s: { r: 1, c: COL_PREP_DUR - 1 }, e: { r: 1, c: COL_STAFF - 1 } }
     ];
     var yellow = { patternType: 'solid', fgColor: { rgb: 'FFFF00' } };
     var weFill = { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } };
@@ -1046,7 +1057,16 @@
     ws[aWe].s = { font: weF, fill: weFill, alignment: { horizontal: 'center', vertical: 'center' }, border: border };
     var a00 = XLSX.utils.encode_cell({ r: 1, c: 0 });
     if (!ws[a00]) ws[a00] = { t: 's', v: sheetTitle };
-    ws[a00].s = { font: titleF, alignment: { horizontal: 'center', vertical: 'center' }, border: border };
+    ws[a00].s = { font: titleF, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: border };
+    var aNote = XLSX.utils.encode_cell({ r: 1, c: COL_PREP_DUR - 1 });
+    if (!ws[aNote]) ws[aNote] = { t: 's', v: PREP_DURATION_ASSUMPTION_NOTE };
+    ws[aNote].v = PREP_DURATION_ASSUMPTION_NOTE;
+    ws[aNote].t = 's';
+    ws[aNote].s = {
+      font: { bold: true, name: 'Calibri', sz: 10, color: { rgb: 'FF0000' } },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+      border: border
+    };
     for (var c = 0; c < COL_COUNT; c++) {
       var ah = XLSX.utils.encode_cell({ r: 2, c: c });
       if (!ws[ah]) ws[ah] = { t: 's', v: HEADERS[c] };
@@ -1426,6 +1446,7 @@
   U.exportOrganisedXlsx = exportOrganisedXlsxPaula;
   U.buildPaulaOrganisedRows = buildPaulaRows;
   U.PAULA_ORGANISED_HEADERS = HEADERS;
+  U.PREP_DURATION_ASSUMPTION_NOTE = PREP_DURATION_ASSUMPTION_NOTE;
   U.PAULA_ORGANISED_TABS = PAULA_TABS.map(function (t) { return t.sheet; });
 
   root.Prepline477 = {
