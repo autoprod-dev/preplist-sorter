@@ -5,7 +5,18 @@
 (function (root) {
   'use strict';
 
-  var EXCELJS_SRC = 'vendor/exceljs/exceljs.min.js';
+  function vendorBase() {
+    if (typeof root !== 'undefined' && root.__PREPLINE_VENDOR_BASE__) {
+      return String(root.__PREPLINE_VENDOR_BASE__).replace(/\/?$/, '/');
+    }
+    var path = (typeof location !== 'undefined' && location.pathname) || '/';
+    if (/\/allocation\/?/i.test(path)) {
+      return path.replace(/\/allocation\/?$/i, '/').replace(/\/allocation\/.*$/i, '/');
+    }
+    if (path.endsWith('/')) return path;
+    return path.replace(/[^/]+$/, '');
+  }
+  var EXCELJS_SRC = vendorBase() + 'vendor/exceljs/exceljs.min.js';
   var excelJsPromise = null;
   var editorPhotos = null; // { bySheet: { name: [photo,...] }, pollTimer, activeSheet }
   var _patched = false;
@@ -434,7 +445,7 @@
         'table{border-collapse:collapse;flex:1;min-width:0}td{border:1px solid #ccc;padding:3px 6px;vertical-align:top}' +
         '.ph{flex:0 0 auto;text-align:center}.ph img{border:1px solid #bbb;background:#fafafa}' +
         '.lbl{font-size:10px;color:#666;margin-top:4px}.muted{color:#888;font-size:12px}' +
-        '@media print{body{margin:8px}}</style></head><body>' +
+        '@page{size:A4 landscape;margin:10mm}@media print{body{margin:8px}table{font-size:11px}}</style></head><body>' +
         '<h1>' + esc(pack.name) + '</h1>' +
         '<div class="wrap"><table>' + rowsHtml + '</table>' + photoHtml + '</div>' +
         '<script>onload=function(){setTimeout(function(){print()},200)}<\/script></body></html>';

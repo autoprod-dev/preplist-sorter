@@ -3,7 +3,7 @@
 # .github/workflows/revert-to-backup.yml). Creates a NEW commit on master;
 # never force-pushes.
 set -euo pipefail
-TAG="${1:-backup-pre-cleanup-20261101}"
+TAG="${1:-backup-pre-4.8.34-promote-20261102}"
 MODE="${2:-restore}"   # restore | restore-latest
 REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-master}"
