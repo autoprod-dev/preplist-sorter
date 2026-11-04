@@ -3,13 +3,13 @@
  * - Step numbers unique; Load a preplist = Step 1; Show/Hide default hidden.
  * - Empty #proPanel spacer stays hidden; single title + single toggle per step.
  *
- * 4.8.35-r2: MutationObserver must NOT re-enter. Earlier builds observed the whole
- * document and always rewrote titles/version, which queued another mutation forever
- * and froze taps on mobile (and sometimes desktop).
+ * 4.8.35-r2: MutationObserver must NOT re-enter (mobile freeze).
+ * 4.8.35-r3: Show/Hide for More views / Export / Print — stop re-forcing collapsed
+ * from stale openState after u4822 reclones the toggle button.
  */
 (function (root) {
   'use strict';
-  var VERSION = '4.8.35-r2';
+  var VERSION = '4.8.35-r3';
   var CSS_ID = 'u4838-css';
 
   /* Renumber without calendar on Prepline page */

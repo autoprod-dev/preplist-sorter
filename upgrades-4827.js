@@ -82,9 +82,9 @@
     var parent = el.parentNode;
     if (parent.classList && parent.classList.contains('u4827-wrap') &&
         parent.getAttribute('data-u4827') === key) {
-      parent.classList.toggle('u480-settings-collapsed', !openState[key]);
-      var b = parent.querySelector('.u4827-toggle');
-      if (b) b.textContent = openState[key] ? 'Hide' : 'Show';
+      /* Do NOT re-apply openState every pass — fights live Show/Hide. */
+      var b = parent.querySelector('.u4827-toggle, .u480-settings-bar button');
+      if (b) b.textContent = parent.classList.contains('u480-settings-collapsed') ? 'Show' : 'Hide';
       wireToggle(parent, key);
       return parent;
     }
@@ -108,9 +108,8 @@
     if (!d || !d.parentNode) return null;
     var existing = document.querySelector('.u4827-wrap[data-u4827="' + key + '"]');
     if (existing) {
-      existing.classList.toggle('u480-settings-collapsed', !openState[key]);
-      var b = existing.querySelector('.u4827-toggle');
-      if (b) b.textContent = openState[key] ? 'Hide' : 'Show';
+      var b = existing.querySelector('.u4827-toggle, .u480-settings-bar button');
+      if (b) b.textContent = existing.classList.contains('u480-settings-collapsed') ? 'Show' : 'Hide';
       wireToggle(existing, key);
       d.classList.add('u4827-converted');
       return existing;

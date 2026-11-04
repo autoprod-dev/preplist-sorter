@@ -77,9 +77,10 @@
     var parent = el.parentNode;
     if (parent.classList && parent.classList.contains('u4821-wrap') &&
         parent.getAttribute('data-u4821') === key) {
-      parent.classList.toggle('u480-settings-collapsed', !openState[key]);
-      var b = parent.querySelector('.u4821-toggle');
-      if (b) b.textContent = openState[key] ? 'Hide' : 'Show';
+      /* Do NOT re-apply openState — u4822 reclones the button and drops our
+       * toggle listener, so openState goes stale and would slam the section shut. */
+      var b = parent.querySelector('.u4821-toggle, .u480-settings-bar button');
+      if (b) b.textContent = parent.classList.contains('u480-settings-collapsed') ? 'Show' : 'Hide';
       wireToggle(parent, key);
       return parent;
     }
@@ -101,9 +102,9 @@
     // Already have a wrap for this key next to it?
     var existing = document.querySelector('.u4821-wrap[data-u4821="' + key + '"]');
     if (existing) {
-      existing.classList.toggle('u480-settings-collapsed', !openState[key]);
-      var b = existing.querySelector('.u4821-toggle');
-      if (b) b.textContent = openState[key] ? 'Hide' : 'Show';
+      /* Keep the user's current open/closed state (see ensureCollapsible note). */
+      var b = existing.querySelector('.u4821-toggle, .u480-settings-bar button');
+      if (b) b.textContent = existing.classList.contains('u480-settings-collapsed') ? 'Show' : 'Hide';
       wireToggle(existing, key);
       d.classList.add('u4821-converted');
       return existing;
@@ -131,9 +132,8 @@
     if (!groups) return;
     var existing = document.querySelector('.u4821-wrap[data-u4821="calendarSlot"]');
     if (existing) {
-      existing.classList.toggle('u480-settings-collapsed', !openState.calendarSlot);
-      var b = existing.querySelector('.u4821-toggle');
-      if (b) b.textContent = openState.calendarSlot ? 'Hide' : 'Show';
+      var b = existing.querySelector('.u4821-toggle, .u480-settings-bar button');
+      if (b) b.textContent = existing.classList.contains('u480-settings-collapsed') ? 'Show' : 'Hide';
       wireToggle(existing, 'calendarSlot');
       return;
     }

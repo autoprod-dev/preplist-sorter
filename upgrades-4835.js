@@ -279,11 +279,14 @@
   }
 
   function wireRemember(wrap, key) {
-    if (!wrap || wrap.__u4835Remember) return;
-    wrap.__u4835Remember = true;
+    if (!wrap) return;
     var btn = wrap.querySelector(':scope > .u480-settings-bar button') ||
       wrap.querySelector('.u480-settings-bar button');
     if (!btn) return;
+    /* Flag the BUTTON (not the wrap). u4822 reclones the button and strips
+     * listeners; next applyLayout must be able to re-wire the fresh node. */
+    if (btn.__u4835Remember) return;
+    btn.__u4835Remember = true;
     btn.addEventListener('click', function () {
       setTimeout(function () {
         openState[key] = !wrap.classList.contains('u480-settings-collapsed');
@@ -375,7 +378,40 @@
     stabilizeNativeToggles();
   }
 
-    function renumberAndCollapse() {
+
+  function ensureEmptySectionHint(wrap, key) {
+    if (!wrap) return;
+    var body = wrap.querySelector(':scope > .u4821-body, :scope > .u4827-body, :scope > .u480-group-body') ||
+      wrap.querySelector('.u4821-body, .u4827-body, .u480-group-body');
+    if (!body) {
+      /* Bar-only wrap (content is other direct children). Skip if any real sibling content. */
+      var kids = Array.prototype.slice.call(wrap.children || []).filter(function (c) {
+        return c && !c.classList.contains('u480-settings-bar') && !c.classList.contains('u4835-empty-hint');
+      });
+      if (kids.length) return;
+      body = document.createElement('div');
+      body.className = 'u4835-empty-body';
+      wrap.appendChild(body);
+    }
+    var meaningful = false;
+    try {
+      var txt = String(body.textContent || '').replace(/\s+/g, ' ').trim();
+      meaningful = txt.length > 0 || !!body.querySelector('button, input, select, table, a, img, canvas, svg, .row, .card');
+    } catch (e) {}
+    var hint = body.querySelector(':scope > .u4835-empty-hint') || wrap.querySelector(':scope > .u4835-empty-hint');
+    if (meaningful) {
+      if (hint && hint.parentNode) hint.parentNode.removeChild(hint);
+      return;
+    }
+    if (hint) return;
+    hint = document.createElement('div');
+    hint.className = 'u4835-empty-hint meta';
+    hint.style.cssText = 'font-size:12.5px;color:var(--ink-soft,#6b675c);padding:6px 2px;';
+    hint.textContent = 'Load a preplist first — this section fills in after you sort.';
+    body.appendChild(hint);
+  }
+
+  function renumberAndCollapse() {
     if (!isSorted()) return;
 
     var map = [
@@ -397,8 +433,21 @@
       if (!el) return;
       setBarTitle(el, stepTitle(row[2], row[3]));
       if (typeof openState[row[1]] === 'undefined') openState[row[1]] = false;
-      forceCollapsed(el, !!openState[row[1]]);
+      /* Default-collapse ONCE. Re-forcing from openState on every applyLayout
+       * fought Show/Hide: u4822 reclones the button (drops wireRemember), so
+       * openState stayed false and the next layout tick slammed the section shut
+       * while the label briefly said Hide. Same pattern as fixNativeStepToggles. */
+      if (!el.__u4835Defaulted) {
+        el.__u4835Defaulted = true;
+        forceCollapsed(el, !!openState[row[1]]);
+      } else {
+        openState[row[1]] = !el.classList.contains('u480-settings-collapsed');
+        var btn = el.querySelector(':scope > .u480-settings-bar button') ||
+          el.querySelector('.u480-settings-bar button');
+        if (btn) btn.textContent = openState[row[1]] ? 'Hide' : 'Show';
+      }
       wireRemember(el, row[1]);
+      ensureEmptySectionHint(el, row[1]);
     });
 
     /* Kill duplicate calendar stub (root cause of double "9 · Calendar grid") */
