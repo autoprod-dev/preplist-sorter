@@ -1,4 +1,5 @@
-/* Prepline 4.8.34 — trial aesthetic cleanup (visual only; features stay).
+/* Prepline 4.8.35-r5 — Show/Hide flicker fix (no openState re-force)
+ * Prior: Prepline 4.8.34 — trial aesthetic cleanup (visual only; features stay).
  * 1) Hide empty original-viewer overlay (was leaking Print/Close/Prev/Next).
  * 2) Every feature panel gets a working Show/Hide (label flips both ways),
  *    including Cooking yield, Requisitions (PO), Food cost, More views,
@@ -8,7 +9,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.34';
+  var VERSION = '4.8.35-r5';
   var CSS_ID = 'u4827-css';
   var openState = Object.create(null);
 
@@ -68,8 +69,19 @@
   function wireToggle(wrap, key) {
     if (!wrap || wrap.__u4827Toggle) return;
     wrap.__u4827Toggle = true;
-    var btn = wrap.querySelector('.u4827-toggle');
+    var btn = wrap.querySelector('.u4827-toggle, .u480-settings-bar button');
     if (!btn) return;
+    /* If u4822 already owns Show/Hide, only mirror openState — do not add a
+     * second toggle listener (double-toggle = flicker). */
+    if (btn.__u4822Toggle) {
+      openState[key] = !wrap.classList.contains('u480-settings-collapsed');
+      btn.addEventListener('click', function () {
+        setTimeout(function () {
+          openState[key] = !wrap.classList.contains('u480-settings-collapsed');
+        }, 0);
+      });
+      return;
+    }
     btn.addEventListener('click', function () {
       var collapsed = wrap.classList.toggle('u480-settings-collapsed');
       openState[key] = !collapsed;
@@ -82,8 +94,12 @@
     var parent = el.parentNode;
     if (parent.classList && parent.classList.contains('u4827-wrap') &&
         parent.getAttribute('data-u4827') === key) {
-      parent.classList.toggle('u480-settings-collapsed', !openState[key]);
-      var b = parent.querySelector('.u4827-toggle');
+      /* 4.8.35-r5: NEVER re-force collapsed from stale openState. u4822 reclones
+       * the button and drops our click listener, so openState stayed false and
+       * every applyFeatureToggles / MutationObserver tick slammed the section
+       * shut → rapid Show/Hide flicker on Main. Sync FROM the live DOM instead. */
+      openState[key] = !parent.classList.contains('u480-settings-collapsed');
+      var b = parent.querySelector('.u4827-toggle, .u480-settings-bar button');
       if (b) b.textContent = openState[key] ? 'Hide' : 'Show';
       wireToggle(parent, key);
       return parent;
@@ -108,8 +124,9 @@
     if (!d || !d.parentNode) return null;
     var existing = document.querySelector('.u4827-wrap[data-u4827="' + key + '"]');
     if (existing) {
-      existing.classList.toggle('u480-settings-collapsed', !openState[key]);
-      var b = existing.querySelector('.u4827-toggle');
+      /* 4.8.35-r5: do not re-apply openState (flicker). Read live DOM. */
+      openState[key] = !existing.classList.contains('u480-settings-collapsed');
+      var b = existing.querySelector('.u4827-toggle, .u480-settings-bar button');
       if (b) b.textContent = openState[key] ? 'Hide' : 'Show';
       wireToggle(existing, key);
       d.classList.add('u4827-converted');
@@ -428,18 +445,19 @@
 
   function syncVersion() {
     try {
-      if (root.Prepline477) root.Prepline477.VERSION = VERSION;
-      if (root.Prepline4821) root.Prepline4821.VERSION = VERSION;
-      if (root.Prepline4826) root.Prepline4826.VERSION = VERSION;
+      /* 4.8.35-r5: do not overwrite a newer meta/badge (4838 owns the live version). */
       var meta = document.querySelector('meta[name="prepline-version"]');
-      if (meta) {
-        /* Path-only: older 4823–4826 used to force -trial into meta; ignore cur. */
-        var trial = /trial/i.test((typeof location !== 'undefined' && location.pathname) || '');
+      var cur = meta ? String(meta.getAttribute('content') || '') : '';
+      var trial = /trial/i.test((typeof location !== 'undefined' && location.pathname) || '');
+      if (meta && (!cur || cur.indexOf('4.8.35') === 0 && cur < VERSION)) {
         meta.setAttribute('content', trial ? (VERSION + '-trial') : VERSION);
       }
       var badge = document.getElementById('appVersion');
       if (badge && /Prepline v/.test(badge.textContent || '')) {
-        badge.textContent = 'Prepline v' + VERSION;
+        var shown = String(badge.textContent || '');
+        if (!/4\.8\.35-r[5-9]/.test(shown) && !/4\.8\.3[6-9]/.test(shown)) {
+          badge.textContent = 'Prepline v' + VERSION;
+        }
       }
     } catch (e) {}
   }
@@ -486,13 +504,18 @@
       }
     } catch (e) {}
     try {
-      new MutationObserver(function () {
-        if (document.body.classList.contains('u480-sorted')) {
-          setTimeout(function () {
-            try { applyFeatureToggles(); } catch (e) {}
-          }, 0);
-        }
-      }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      /* 4.8.35-r5: attach body observer ONCE. boot() was scheduled many times and
+       * each call stacked another observer → applyFeatureToggles storms → flicker. */
+      if (!document.body.__u4827BodyObs) {
+        document.body.__u4827BodyObs = true;
+        new MutationObserver(function () {
+          if (document.body.classList.contains('u480-sorted')) {
+            setTimeout(function () {
+              try { applyFeatureToggles(); } catch (e) {}
+            }, 0);
+          }
+        }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
     } catch (e) {}
   }
 
@@ -501,6 +524,7 @@
     apply: applyFeatureToggles,
     syncVersion: syncVersion
   };
+  root.Prepline4828 = root.Prepline4827;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);

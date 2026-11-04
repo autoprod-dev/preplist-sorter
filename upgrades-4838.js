@@ -4,12 +4,12 @@
  * - Empty #proPanel spacer stays hidden; single title + single toggle per step.
  *
  * 4.8.35-r2: MutationObserver must NOT re-enter (mobile freeze).
- * 4.8.35-r4: SW auto-heal for returning clients + filters Show/Hide once-only
+ * 4.8.35-r5: Show/Hide flicker fix (4828 stop re-forcing openState) + SW heal
  * from stale openState after u4822 reclones the toggle button.
  */
 (function (root) {
   'use strict';
-  var VERSION = '4.8.35-r4';
+  var VERSION = '4.8.35-r5';
   var CSS_ID = 'u4838-css';
 
   /* Renumber without calendar on Prepline page */

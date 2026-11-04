@@ -71,9 +71,9 @@
       var btn = wrap.querySelector('.u480-settings-bar button');
       if (btn) wireShowHide(wrap, btn);
     });
-    // 4–9 wraps from 4821
-    document.querySelectorAll('.u4821-wrap').forEach(function (wrap) {
-      var btn = wrap.querySelector('.u480-settings-bar button.u4821-toggle, .u480-settings-bar button');
+    // 4–9 wraps from 4821 + feature wraps from 4827/4828
+    document.querySelectorAll('.u4821-wrap, .u4827-wrap').forEach(function (wrap) {
+      var btn = wrap.querySelector('.u480-settings-bar button.u4821-toggle, .u480-settings-bar button.u4827-toggle, .u480-settings-bar button');
       if (btn) wireShowHide(wrap, btn);
     });
   }
