@@ -1,4 +1,4 @@
-/* Prepline 4.8.35-r8 — SINGLE owner of step numbers + Show/Hide.
+/* Prepline 4.8.35-r9 — SINGLE owner of step numbers + Show/Hide.
  *
  * Root cause of prior breakage: six scripts (4821, 4822, 4827/4828, 4835, 4838)
  * each kept their own openState, cloned buttons (killing listeners), renumbered
@@ -17,7 +17,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r8';
+  var VERSION = '4.8.35-r9';
   var CSS_ID = 'u4840-css';
   var ATTR = 'data-u4840-id';
   var openState = Object.create(null);
@@ -180,7 +180,9 @@
       'body.u480-sorted #paxPanelWrap.u480-settings-collapsed > *:not(.u480-settings-bar),',
       'body.u480-sorted #staffingPanelWrap.u480-settings-collapsed > *:not(.u480-settings-bar),',
       'body.u480-sorted #ingPanelWrap.u480-settings-collapsed > *:not(.u480-settings-bar),',
-      'body.u480-sorted #u4835Filters.u480-settings-collapsed > *:not(.u480-settings-bar){display:none!important;}',
+      'body.u480-sorted #u4835Filters.u480-settings-collapsed > *:not(.u480-settings-bar):not(#u4835PlanSlot){display:none!important;}',
+      'body.u480-sorted #u4835Filters.u480-settings-collapsed #u4835FiltersBody{display:none!important;}',
+      'body.u480-sorted #u4835PlanSlot{display:block!important;}',
       '#u4827HowtoWrap.u480-settings-collapsed #u4827HowtoBody{display:none!important;}',
       /* Load collapsed — ONLY after sort. Before sort the Show bar is CSS-hidden
        * (4835), so collapsing here left file input + One-time sort with no way back. */
@@ -238,11 +240,20 @@
     if (!wrap) return null;
     /* Skip calendar stubs always */
     if (wrap.getAttribute && /calendar/i.test(wrap.getAttribute('data-u4821') || '')) return null;
-    if (!isVisible(wrap) && entry.id !== 'load') {
-      /* Before sort many wraps exist but are hidden — still include after sorted */
-      if (!document.body.classList.contains('u480-sorted')) return null;
+    if (entry.id === 'load') return wrap;
+    var sorted = document.body.classList.contains('u480-sorted');
+    if (!sorted) {
+      /* Before sort only include wraps that are actually on screen (howto). */
       if (!isVisible(wrap)) return null;
+      return wrap;
     }
+    /* After sort: include every catalogued wrap that exists in the tree, even
+     * when collapsed — the Show button on the settings bar is the way back in.
+     * Skipping collapsed wraps left Original PTs / Export / Print unnumbered
+     * and easy to miss. */
+    if (wrap.hasAttribute('hidden') || wrap.style.display === 'none') return null;
+    var st = window.getComputedStyle(wrap);
+    if (st.display === 'none') return null;
     return wrap;
   }
 
@@ -269,7 +280,9 @@
     /* Default hidden, EXCEPT Load (Step 1 / One-time sort upload) — always
      * visible by default, matching r5/r6 "Step 1 open". Without this the
      * file input vanishes and the Show bar is display:none until sorted. */
-    var wantOpen = entry.id === 'load';
+    /* Load always open; originals open so Print / View original are reachable
+     * as soon as the Original PTs view is shown (Show still toggles). */
+    var wantOpen = entry.id === 'load' || entry.id === 'originals';
     if (entry.setOpen) entry.setOpen(wantOpen);
     else standardSetOpen(wrap, wantOpen);
     openState[entry.id] = wantOpen;
@@ -324,6 +337,12 @@
       if (item.entry.setTitle) item.entry.setTitle(item.wrap, title);
       else standardSetTitle(item.wrap, title);
       applyDefault(item.entry, item.wrap);
+      /* When #origTab is on screen (Original PTs view), keep panel open so Print shows. */
+      if (item.entry.id === 'originals' && document.getElementById('origTab')) {
+        if (item.entry.setOpen) item.entry.setOpen(true);
+        else standardSetOpen(item.wrap, true);
+        openState.originals = true;
+      }
       syncLabel(item.entry, item.wrap);
     });
     lastStructureKey = key;
@@ -340,14 +359,28 @@
     return list;
   }
 
+  var forceTimer = null;
+  var lastForceAt = 0;
   function scheduleRenumber(force) {
-    if (renumberTimer) clearTimeout(renumberTimer);
+    /* force=true: NEVER reset a pending timer (resetting under MO/render storms
+     * starved renumber forever — only load+howto stayed claimed). Coalesce. */
+    if (force) {
+      if (forceTimer) return;
+      var delay = (Date.now() - lastForceAt < 200) ? 120 : 40;
+      forceTimer = setTimeout(function () {
+        forceTimer = null;
+        lastForceAt = Date.now();
+        renumber();
+      }, delay);
+      return;
+    }
+    /* Debounced path: also coalesce — do not keep postponing past first schedule. */
+    if (renumberTimer) return;
     renumberTimer = setTimeout(function () {
       renumberTimer = null;
       var list = collectInOrder();
       var key = structureKey(list);
-      if (!force && key === lastStructureKey && lastStructureKey) {
-        /* Structure unchanged — only ensure labels match openState (never force open/close) */
+      if (key === lastStructureKey && lastStructureKey) {
         list.forEach(function (item) {
           syncLabel(item.entry, item.wrap);
         });
@@ -412,6 +445,32 @@
     ev.stopPropagation();
     if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
     toggle(entry, wrap);
+  }
+
+
+  function patchRender() {
+    try {
+      var g = root;
+      if (typeof g.render !== 'function') return;
+      if (g.render.__u4840) return;
+      var orig = g.render;
+      function wrapped() {
+        var ret = orig.apply(this, arguments);
+        /* After every paint, reclaim new wraps (Original PTs / Export / Print).
+         * 4828's render patch calls its local applyFeatureToggles directly and
+         * never hits Prepline4827.apply — so our apply wrapper alone is not enough. */
+        setTimeout(function () { scheduleRenumber(true); }, 0);
+        setTimeout(function () { scheduleRenumber(true); }, 120);
+        setTimeout(function () { scheduleRenumber(true); }, 400);
+        return ret;
+      }
+      wrapped.__u4840 = true;
+      try { if (orig.__u4827) wrapped.__u4827 = true; } catch (e0) {}
+      try { if (orig.__u480) wrapped.__u480 = true; } catch (e1) {}
+      try { if (orig.__u4821) wrapped.__u4821 = true; } catch (e2) {}
+      try { render = wrapped; } catch (e3) {}
+      g.render = wrapped;
+    } catch (e) {}
   }
 
   function neutralizeCompetitors() {
@@ -501,6 +560,7 @@
     ensureCss();
     stampVersion();
     neutralizeCompetitors();
+    patchRender();
     if (!document.__u4840Click) {
       document.__u4840Click = true;
       document.addEventListener('click', onDocClick, true); /* capture — wins over old bubble listeners */
@@ -509,8 +569,26 @@
     renumber();
     /* Settle passes after other modules finish creating wraps */
     [0, 100, 300, 800, 1600].forEach(function (ms) {
-      setTimeout(function () { scheduleRenumber(true); }, ms);
+      setTimeout(function () { scheduleRenumber(true); stampVersion(); }, ms);
     });
+    /* Keep badge on 4840's VERSION — older upgrades used to overwrite every 2s. */
+    if (!root.__u4840StampTimer) {
+      root.__u4840StampTimer = setInterval(stampVersion, 2000);
+    }
+    if (!root.__u4840SortedWatch) {
+      root.__u4840SortedWatch = true;
+      var wasSorted = false;
+      setInterval(function () {
+        var sorted = !!(document.body && document.body.classList.contains('u480-sorted'));
+        if (sorted && !wasSorted) {
+          wasSorted = true;
+          [0, 100, 300, 800, 1600, 3000].forEach(function (ms) {
+            setTimeout(function () { patchRender(); scheduleRenumber(true); }, ms);
+          });
+        }
+        if (!sorted) wasSorted = false;
+      }, 500);
+    }
   }
 
   root.__preplineStepOwnerActive = true;

@@ -158,6 +158,8 @@
 
   function bumpVersionChrome() {
     try {
+      /* 4.8.35-r9: upgrades-4840 owns the live version badge; do not downgrade. */
+      if (root.__preplineStepOwnerActive || (root.PreplineStepOwner && root.PreplineStepOwner.VERSION)) return;
       var host = (location.hostname || '') + (location.pathname || '');
       var trial = /trial/i.test(host);
       var meta = document.querySelector('meta[name="prepline-version"]');
@@ -413,11 +415,14 @@
       box.innerHTML =
         '<div class="u480-settings-bar no-print">' +
           '<div><h2>' + stepTitle(STEP.filters, 'Preplist filters') + '</h2>' +
-          '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">By dish / day / section · day chips · cooking yield</div></div>' +
+          '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">Day chips · cooking yield</div></div>' +
           '<button type="button" class="ghost" id="u4835FiltersToggle">Show</button>' +
         '</div>' +
+        /* 4.8.35-r9: plan toggle (By dish/day/section/Original PTs) stays OUTSIDE
+         * the collapsible body so view switching + Print stay reachable when
+         * Filters is Show-collapsed. */
+        '<div id="u4835PlanSlot"></div>' +
         '<div id="u4835FiltersBody">' +
-          '<div id="u4835PlanSlot"></div>' +
           '<div id="u4835DaySlot"></div>' +
           '<div id="u4835YieldSlot"></div>' +
         '</div>';
@@ -433,7 +438,18 @@
     var fbtn = document.getElementById('u4835FiltersToggle');
     if (fbtn) try { fbtn.setAttribute('data-u4840-toggle', 'filters'); } catch (e) {}
 
+    /* 4.8.35-r9: if an older Filters box still nests PlanSlot inside Body, lift it. */
+    var boxLive = document.getElementById('u4835Filters');
+    var bodyLive = document.getElementById('u4835FiltersBody');
     var planSlot = document.getElementById('u4835PlanSlot');
+    if (boxLive && bodyLive && planSlot && bodyLive.contains(planSlot)) {
+      boxLive.insertBefore(planSlot, bodyLive);
+    }
+    if (boxLive && !planSlot) {
+      planSlot = document.createElement('div');
+      planSlot.id = 'u4835PlanSlot';
+      boxLive.insertBefore(planSlot, bodyLive || null);
+    }
     var daySlot = document.getElementById('u4835DaySlot');
     var plan = area.querySelector(':scope > .u47-plan-toggle') || document.getElementById('u47PlanToggle');
     if (plan && planSlot && plan.parentNode !== planSlot) {

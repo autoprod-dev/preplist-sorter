@@ -1,0 +1,190 @@
+{
+  "primary": {
+    "v": "4.8.35-r9",
+    "list": [
+      "1:load*",
+      "2:pax",
+      "3:chef",
+      "4:ingredients",
+      "5:prepSummary",
+      "6:kitchenClose",
+      "7:filters",
+      "8:cookingYield*",
+      "9:moreViews",
+      "10:export",
+      "11:print",
+      "12:howto"
+    ],
+    "planParent": "u4835PlanSlot",
+    "filtersCollapsed": true,
+    "filtersToggle": "Show",
+    "origVis": true,
+    "byDish": true
+  },
+  "orig": {
+    "list": [
+      "1:load*",
+      "2:pax",
+      "3:chef",
+      "4:ingredients",
+      "5:prepSummary",
+      "6:kitchenClose",
+      "7:filters*",
+      "8:cookingYield*",
+      "9:moreViews",
+      "10:export",
+      "11:print",
+      "12:originals*",
+      "13:howto"
+    ],
+    "print": {
+      "w": 199,
+      "h": 38,
+      "text": "🖨️ Print the original pages"
+    },
+    "collapsed": false,
+    "title": "12 · Original production tools",
+    "claimed": "originals",
+    "viewOrig": 32
+  },
+  "sweep": [
+    {
+      "kind": "primary-view",
+      "id": "By dish",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "primary-view",
+      "id": "By day",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "primary-view",
+      "id": "By section",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "primary-view",
+      "id": "Original PTs",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "more-view",
+      "id": "itemViewBtn",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "more-view",
+      "id": "weekViewBtn",
+      "ok": false,
+      "note": "intentionally moved to allocation calendar (4838)"
+    },
+    {
+      "kind": "more-view",
+      "id": "orderViewBtn",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "more-view",
+      "id": "order47ViewBtn",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "more-view",
+      "id": "recipesViewBtn",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "more-view",
+      "id": "voiceViewBtn",
+      "ok": true,
+      "note": null
+    },
+    {
+      "kind": "step-show",
+      "id": "load",
+      "ok": true,
+      "note": "open=true"
+    },
+    {
+      "kind": "step-show",
+      "id": "pax",
+      "ok": true,
+      "note": "open=false"
+    },
+    {
+      "kind": "step-show",
+      "id": "chef",
+      "ok": true,
+      "note": "open=false"
+    },
+    {
+      "kind": "step-show",
+      "id": "ingredients",
+      "ok": true,
+      "note": "open=false"
+    },
+    {
+      "kind": "step-show",
+      "id": "prepSummary",
+      "ok": true,
+      "note": "open=false"
+    },
+    {
+      "kind": "step-show",
+      "id": "filters",
+      "ok": true,
+      "note": "open=true"
+    },
+    {
+      "kind": "step-show",
+      "id": "moreViews",
+      "ok": true,
+      "note": "open=true"
+    },
+    {
+      "kind": "step-show",
+      "id": "export",
+      "ok": true,
+      "note": "open=false"
+    },
+    {
+      "kind": "step-show",
+      "id": "print",
+      "ok": true,
+      "note": "open=false"
+    },
+    {
+      "kind": "step-show",
+      "id": "howto",
+      "ok": true,
+      "note": "open=false"
+    },
+    {
+      "kind": "step-show",
+      "id": "originals",
+      "ok": true,
+      "note": "open=true"
+    },
+    {
+      "kind": "step-show",
+      "id": "cookingYield",
+      "ok": true,
+      "note": "open=true"
+    },
+    {
+      "kind": "action",
+      "id": "Print the original pages",
+      "ok": true,
+      "note": null
+    }
+  ]
+}

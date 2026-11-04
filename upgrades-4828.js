@@ -411,6 +411,9 @@
     /* Yield library / voice / originals when those panels are in results */
     var origTab = document.getElementById('origTab');
     if (origTab) {
+      /* 4.8.35-r9: Original PTs Print must be visible when the view opens.
+       * Seed open before first wrap; existing wraps sync from live DOM so Hide sticks. */
+      openState.originals = true;
       ensureCollapsible(origTab, 'originals', 'Original production tools',
         'View / print uploaded pages');
     }
@@ -430,7 +433,8 @@
 
   function syncVersion() {
     try {
-      /* 4.8.35-r5: do not overwrite a newer meta/badge (4838 owns the live version). */
+      /* 4.8.35-r9: upgrades-4840 owns the live version badge; do not downgrade. */
+      if (root.__preplineStepOwnerActive || (root.PreplineStepOwner && root.PreplineStepOwner.VERSION)) return;
       var meta = document.querySelector('meta[name="prepline-version"]');
       var cur = meta ? String(meta.getAttribute('content') || '') : '';
       var trial = /trial/i.test((typeof location !== 'undefined' && location.pathname) || '');

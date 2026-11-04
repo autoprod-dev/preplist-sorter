@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r8">
+<meta name="prepline-version" content="4.8.35-r9">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -950,7 +950,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r8</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r9</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -3606,7 +3606,7 @@ function poSingular(w){ return w.length > 4 && /ies$/.test(w) ? w.slice(0,-3)+'y
 // Confirmed equivalents: River Mint is mint (confirmed by the kitchen).
 const PO_SYNONYMS = [[/\briver\s+mint\b/g, 'mint'],[/\bwarrigal\s+greens?\b/g,'warrigal'],[/\bsnow\s+peas?(?:\s+(?:tendril|shoot|leaf|leaves|sprout)s?)?/g,'snowpea'],[/\bgoat'?s?\s+cheese\b/g,'goatcheese'],[/\bmicroherbs?\b/g,'micro'],[/\bextra\s+virgin\b/g,' '],[/\bvirgin\b/g,' ']];
 function poTokens(name){
-  // 4.8.35-r8: keyword normalise for ALL items — strip supplier codes (PRS/PB/PFD),
+  // 4.8.35-r9: keyword normalise for ALL items — strip supplier codes (PRS/PB/PFD),
   // units, prep words, punctuation; keep core ingredient nouns for token overlap.
   let t = String(name||'').toLowerCase();
   t = t.replace(/\s+-\s+[^-]*$/, ' ');                               // " - Supplier" tail on production-tool names
@@ -3636,7 +3636,7 @@ function poTokEq(a, b){ return a===b || (a.length>=4 && b.length>=4 && (a.starts
 const PO_GENERIC = new Set('herb micro sauce gluten free sliced slice pickle pickled red white black whole wholemeal mix mixed fine large small baby raw cooked plain natural organic oil salt sugar water ice cream milk flour bread juice paste powder cream butter egg eggs kitchen juliannes'.split(' '));
 function poW(t){ return PO_GENERIC.has(t) ? 0.25 : 1; }
 function poScore(A, B){
-  // 4.8.35-r8 keyword match (ALL items): core-noun overlap + containment of the shorter
+  // 4.8.35-r9 keyword match (ALL items): core-noun overlap + containment of the shorter
   // content set (PO product name inside kitchen name, or vice versa). Generics alone never match.
   if (!A.length || !B.length) return 0;
   let hitA = 0, hitB = 0;
@@ -3702,7 +3702,7 @@ function poIsFishExempt(task){
 }
 function poIsShortShelfExempt(task){ return poIsMicroherbExempt(task) || poIsFishExempt(task); }
 const PO_OK = 0.6, PO_CHECK = 0.4;
-const PO_FILL_MIN = 0.50;   // 4.8.35-r8: keyword core-noun match (was 0.72 ≈10% fill); date window still gates
+const PO_FILL_MIN = 0.50;   // 4.8.35-r9: keyword core-noun match (was 0.72 ≈10% fill); date window still gates
 let poMatchCache = null;
 function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((it, ii)=>out.push(Object.assign({pi, ii, po}, it, {tok: poTokens(it.desc)})))); return out; }
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
@@ -5534,8 +5534,7 @@ function render(){
     <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet</button>
     <button class="${viewMode==='order47'?'':'secondary'}" onclick="setView('order47')" type="button" id="order47ViewBtn">Order (batched)</button>
     <button class="${viewMode==='recipes'?'':'secondary'}" onclick="setView('recipes')" type="button" id="recipesViewBtn">Yield library</button>
-    <button class="${viewMode==='voice'?'':'secondary'}" onclick="setView('voice')" type="button" id="voiceViewBtn">Voice add</button>
-    ${Object.keys(originalPageImages).length ? `<button class="${viewMode==='orig'?'':'secondary'}" onclick="setView('orig')" type="button" id="origViewBtn">📖 Original PTs</button>` : ''}`;
+    <button class="${viewMode==='voice'?'':'secondary'}" onclick="setView('voice')" type="button" id="voiceViewBtn">Voice add</button>`;
   const u480ExportBtns = `${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="By dish Excel">📊 Excel · By dish</button>`
       : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="By section Excel">📊 Excel · By section</button>`
       : viewMode==='priority' || viewMode==='week' ? `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="By day Excel">📊 Excel · By day</button>`
@@ -5560,10 +5559,12 @@ function render(){
   const u480Grouped = (window.Prepline480 && Prepline480.groupsHtml)
     ? Prepline480.groupsHtml({ moreViews: u480MoreViews, exportBtns: u480ExportBtns, printBtns: u480PrintBtns, teamBtns: u480TeamBtns })
     : `<div class="viewtoggle no-print" style="margin-top:8px;">${u480MoreViews}</div><div class="row no-print" style="margin-bottom:10px;gap:8px;flex-wrap:wrap;">${u480ExportBtns}${u480TeamBtns}</div><div class="row no-print print-row" style="margin-bottom:20px;gap:8px;align-items:center;">${u480PrintBtns}</div>`;
+  const hasOriginalPTs = Object.keys(originalPageImages).length > 0;
   html += `<div class="u47-plan-toggle no-print" id="u47PlanToggle" role="tablist" aria-label="Planning view">
     <button type="button" class="u47-plan-btn ${viewMode==='dish'?'on':''}" onclick="setView('dish')">By dish</button>
     <button type="button" class="u47-plan-btn ${viewMode==='priority'?'on':''}" onclick="setView('priority')">By day</button>
     <button type="button" class="u47-plan-btn ${viewMode==='section'?'on':''}" onclick="setView('section')">By section</button>
+    ${hasOriginalPTs ? `<button type="button" class="u47-plan-btn ${viewMode==='orig'?'on':''}" onclick="setView('orig')" id="origViewBtn">📖 Original PTs</button>` : ''}
   </div>
   ${u480Grouped}
   ${!includeMethodInPrint && Object.keys(methodCrops).length ? '<div class="no-print pmt-note">Printouts leave out the Method screen captures. 📖 View original still shows them on screen.</div>' : ''}`;
@@ -8318,9 +8319,9 @@ function pwaShowUpdate(reg){
     if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
   };
 }
-// 4.8.35-r8: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r8';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r8';
+// 4.8.35-r9: one-shot self-heal if a broken SW/cache build is still controlling this tab.
+const PREPLINE_SW_EXPECT = '4.8.35-r9';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r9';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;
