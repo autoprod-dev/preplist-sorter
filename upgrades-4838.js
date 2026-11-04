@@ -6,10 +6,12 @@
  * 4.8.35-r2: MutationObserver must NOT re-enter (mobile freeze).
  * 4.8.35-r5: Show/Hide flicker fix (4828 stop re-forcing openState) + SW heal
  * from stale openState after u4822 reclones the toggle button.
+ * 4.8.35-r6: Ref # autofill — 3 or 4 days before BAT (prefer 3); microherbs/fish 0–4;
+ * tap water/ice/SUB blank; strong name match only.
  */
 (function (root) {
   'use strict';
-  var VERSION = '4.8.35-r5';
+  var VERSION = '4.8.35-r6';
   var CSS_ID = 'u4838-css';
 
   /* Renumber without calendar on Prepline page */

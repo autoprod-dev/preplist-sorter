@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r5">
+<meta name="prepline-version" content="4.8.35-r6">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -949,7 +949,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r5</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r6</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1330,7 +1330,7 @@ function renderOriginalsTab(){
       <button class="ghost" type="button" onclick="printOriginalsAll()">🖨️ Print the original pages</button>
       <button class="ghost" type="button" onclick="(window.exportOriginalXlsx479||window.exportAsIsXlsxWithPhotos||function(){})('upload')" title="One tab per dish with photos embedded when present">📊 Download original .xlsx (with photos)</button>
     </div>
-    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is within 3 days before the function (on the day or 1–3 days prior); ingredients with no match, delivery outside that window, or sub-recipes stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
+    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is <b>3 or 4 days before</b> the batch/event date (prefer 3; BAT date first). Microherbs and fish may use a delivery 0–4 days before (closest on/before). Tap water, ice, sub-recipes and unmatched lines stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
     ${dishes.map(d=>originalPageImages[d].map((e,i)=>`<div class="orig-page"><div class="orig-head no-print"><b>${escapeHtml(cleanDishName(d))}</b> <span class="meta">${escapeHtml(e.pageLabel||'')}</span> <button class="ghost" type="button" onclick="openOriginalViewer('${encodeURIComponent(d).replace(/'/g,'%27')}')">📖 View original</button></div><img class="orig-img" data-od="${escapeHtml(encodeURIComponent(d))}" data-oi="${i}" src="${e.dataUrl}" alt="${escapeHtml(cleanDishName(d))}"></div>`).join('')).join('')}
   </div>`;
 }
@@ -3639,16 +3639,51 @@ function poScore(A, B){
   return Math.max(dice, Math.min(wA, wB) >= 2 ? cont*0.85 : 0);
 }
 function poIsInHouse(task){ return /\(\s*sub\s*\)/i.test(String(task||"")); }   // REF left completely blank for these (screen, prints, Order sheet)   // sub-recipes are made in the kitchen, not ordered
+// 4.8.35-r5: never fill Ref # for non-purchased kitchen staples / water / ice / sub-recipes.
+function poIsNonPurchased(task){
+  if (poIsInHouse(task)) return true;
+  let t = String(task||'').toLowerCase();
+  t = t.replace(/\([^)]*\)/g, ' ').replace(/\s+-\s+[^-]*$/, ' ');
+  t = t.split('/')[0];
+  t = t.replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t) return false;
+  if (/^(tap\s+)?water$/.test(t)) return true;
+  if (/^boiling\s+water$/.test(t)) return true;
+  if (/^ice(\s+cubes?)?$/.test(t) || /^ice\s+water$/.test(t)) return true;
+  return false;
+}
+// Microherbs / micro greens / cress / sprouts: short-shelf-life exemption (0–4 days ok).
+// Edible flowers only when the name clearly says Micro / Micro Herbs (not bare "edible flowers").
+function poIsMicroherbExempt(task){
+  const raw = String(task||'');
+  const t = raw.toLowerCase();
+  if (/\bmicro[\s-]*(herb|green|leaf|cress|sprout|flower)s?\b/.test(t)) return true;
+  if (/\bmicro\b/.test(t) && /\b(herb|green|leaf|cress|sprout|flower)s?\b/.test(t)) return true;
+  if (/\b(cress|sprouts?)\b/.test(t)) return true;
+  if (/\bedible\s+flowers?\b/.test(t) && /\bmicro\b/.test(t)) return true;
+  return false;
+}
+// Fish / seafood fish fillets & whole fish: short-shelf-life exemption (0–4 days ok).
+function poIsFishExempt(task){
+  const t = String(task||'').toLowerCase();
+  if (/\b(prawn|shrimp|oyster|mussel|clam|scallop|crab|lobster|squid|calamari|octopus|shellfish)\b/.test(t)) return false; // shellfish not in Gerard fish list; leave to default 3–4
+  return /\b(salmon|king\s*salmon|barramundi|kingfish|snapper|flathead|whiting|trevally|mahi|tuna|swordfish|cod|hake|hoki|dory|john\s*dory|bream|mullet|mackerel|sardine|anchov|trout|ocean\s*trout|fish\s*fillet|fillet\s*of\s*fish|white\s*fish|reef\s*fish)\b/.test(t);
+}
+function poIsShortShelfExempt(task){ return poIsMicroherbExempt(task) || poIsFishExempt(task); }
 const PO_OK = 0.6, PO_CHECK = 0.4;
+const PO_FILL_MIN = 0.72;   // 4.8.35-r5: Ref # fill needs a strong normalised name match (not weak fuzzy)
 let poMatchCache = null;
 function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((it, ii)=>out.push(Object.assign({pi, ii, po}, it, {tok: poTokens(it.desc)})))); return out; }
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
 const PO_LINK_KEY = 'prepline.poLinks.v1';
 let poLinks = (function(){ try{ return JSON.parse(localStorage.getItem(PO_LINK_KEY)||'{}') || {}; }catch(e){ return {}; } })();
-// 4.4.4 / preview 4.6.1 / 4.8.22: Ref# fill only when requisition Required Delivery Date is within 0..3 days
-// before the dish BAT/function date (inclusive; never after, never 4+). Among matches in window,
-// list ALL deliveries for the item nearest-first ("Supplier dd/mm/yyyy; Supplier dd/mm/yyyy").
-const PO_DELIVERY_WINDOW_DAYS = 3;
+// 4.8.35-r5 Ref #: default window is ONLY 3 or 4 days BEFORE BAT/event (prefer 3, else 4).
+// Never same-day / 1–2 days before / after for ordinary items.
+// Microherbs + fish exempt: may use 0–4 days on/before; prefer closest delivery on or before BAT.
+// Never fill tap water / water / ice / boiling water / SUB / no-PO.
+const PO_DELIVERY_PREF_DAYS = 3;
+const PO_DELIVERY_ALT_DAYS = 4;
+const PO_DELIVERY_EXEMPT_MAX = 4;   // exempt: 0..4 inclusive
 function poParseDate(s){
   const m = String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (!m) return null;
@@ -3663,9 +3698,14 @@ function poDaysBefore(deliveryStr, functionStr){
   const b = Date.UTC(f.getFullYear(), f.getMonth(), f.getDate());
   return Math.round((b - a) / 86400000);
 }
-function poDeliveryInWindow(deliveryStr, functionStr){
+function poDeliveryAllowed(daysBefore, task){
+  if (daysBefore === null || daysBefore < 0) return false;
+  if (poIsShortShelfExempt(task)) return daysBefore <= PO_DELIVERY_EXEMPT_MAX;
+  return daysBefore === PO_DELIVERY_PREF_DAYS || daysBefore === PO_DELIVERY_ALT_DAYS;
+}
+function poDeliveryInWindow(deliveryStr, functionStr, task){
   const days = poDaysBefore(deliveryStr, functionStr);
-  return days !== null && days >= 0 && days <= PO_DELIVERY_WINDOW_DAYS;
+  return poDeliveryAllowed(days, task);
 }
 function poPickBestCand(cands){
   // Highest name score; then closest delivery to function (smallest daysBefore >= 0).
@@ -3687,9 +3727,9 @@ function poMatchFor(task, opts){
   const forFill = !!opts.forFill;   // Ref# box on original PT: never fill without a valid window match
   if (!POS.length) return null;
   if (!poMatchCache) poMatchCache = {items: poAllItems(), byKey: {}};
-  const cacheKey = ingKey(task) + '|' + (functionDate || '') + '|' + (forFill ? 'F' : 'S');
+  const cacheKey = ingKey(task) + '|' + (functionDate || '') + '|' + (forFill ? 'F' : 'S') + '|' + (poIsShortShelfExempt(task) ? 'E' : 'N');
   if (poMatchCache.byKey[cacheKey] !== undefined) return poMatchCache.byKey[cacheKey];
-  if (poIsInHouse(task)) return (poMatchCache.byKey[cacheKey] = {status:'sub'});
+  if (poIsNonPurchased(task)) return (poMatchCache.byKey[cacheKey] = {status:'sub'});
   const tok = poTokens(task);
   const cands = [];
   poMatchCache.items.forEach(it=>{
@@ -3698,20 +3738,29 @@ function poMatchFor(task, opts){
     const daysBefore = functionDate ? poDaysBefore(it.po && it.po.delivery, functionDate) : null;
     cands.push({item: it, score: sc, daysBefore});
   });
-  // 4.8.22: all in-window deliveries for this ingredient, nearest to BAT/event first
+  // 4.8.35-r5: collect allowed deliveries. Ordinary: prefer day-3 only, else day-4 only.
+  // Exempt (microherbs/fish): 0..4 on/before BAT, prefer closest (smallest daysBefore >= 0).
   function poCollectInWindow(list, minScore){
-    const win = (list || []).filter(c=>c.daysBefore !== null && c.daysBefore >= 0 && c.daysBefore <= PO_DELIVERY_WINDOW_DAYS && c.score >= minScore)
-      .slice()
-      .sort((a,b)=>(a.daysBefore - b.daysBefore) || (b.score - a.score));
+    const allowed = (list || []).filter(c=>c.score >= minScore && poDeliveryAllowed(c.daysBefore, task));
+    if (!allowed.length) return {items: [], daysBefore: null, score: 0};
+    let chosen;
+    if (poIsShortShelfExempt(task)){
+      chosen = allowed.slice().sort((a,b)=>(a.daysBefore - b.daysBefore) || (b.score - a.score));
+    } else {
+      const d3 = allowed.filter(c=>c.daysBefore === PO_DELIVERY_PREF_DAYS);
+      const d4 = allowed.filter(c=>c.daysBefore === PO_DELIVERY_ALT_DAYS);
+      const pool = d3.length ? d3 : d4;
+      chosen = pool.slice().sort((a,b)=>(b.score - a.score));
+    }
     const seen = new Set(), items = [], days = [];
-    win.forEach(c=>{
+    chosen.forEach(c=>{
       const k = String(poSupplierShort(c.item.supplier)||'').toLowerCase() + '|' + String((c.item.po && c.item.po.delivery) || '');
       if (seen.has(k)) return;
       seen.add(k);
       items.push(c.item);
       days.push(c.daysBefore);
     });
-    return {items, daysBefore: days.length ? days[0] : null, score: win.length ? win[0].score : 0};
+    return {items, daysBefore: days.length ? days[0] : null, score: chosen.length ? chosen[0].score : 0};
   }
   function poAttachBox(res){
     if (!res) return res;
@@ -3726,23 +3775,27 @@ function poMatchFor(task, opts){
   }
   const link = poLinks[ingKey(task)];
   let res;
+  const noWinReason = poIsShortShelfExempt(task)
+    ? 'no delivery on/before BAT within 0–4 days'
+    : 'no delivery 3 or 4 days before BAT';
   if (link === 'none') res = {status:'none', manual:true};
   else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)){
     const item = poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link);
-    if (functionDate && !poDeliveryInWindow(item.po && item.po.delivery, functionDate))
-      res = {status:'nodelivery', reason:'no delivery within 3 days', item, score:1, manual:true, daysBefore: poDaysBefore(item.po && item.po.delivery, functionDate)};
+    if (functionDate && !poDeliveryInWindow(item.po && item.po.delivery, functionDate, task))
+      res = {status:'nodelivery', reason:noWinReason, item, score:1, manual:true, daysBefore: poDaysBefore(item.po && item.po.delivery, functionDate)};
     else res = poAttachBox({status:'ok', item, items:[item], score:1, manual:true, daysBefore: functionDate ? poDaysBefore(item.po && item.po.delivery, functionDate) : null});
   } else {
-    const nameHits = cands.filter(c=>c.score >= PO_CHECK);
+    const fillMin = forFill ? PO_FILL_MIN : PO_OK;
+    const nameHits = cands.filter(c=>c.score >= (forFill ? PO_FILL_MIN : PO_CHECK));
     if (functionDate){
-      const okPack = poCollectInWindow(cands, PO_OK);
-      const checkPack = poCollectInWindow(cands, PO_CHECK);
+      const okPack = poCollectInWindow(cands, fillMin);
+      const checkPack = forFill ? {items:[]} : poCollectInWindow(cands, PO_CHECK);
       if (okPack.items.length)
         res = poAttachBox({status:'ok', items: okPack.items, score: okPack.score, daysBefore: okPack.daysBefore});
       else if (checkPack.items.length)
         res = poAttachBox({status:'check', items: checkPack.items, score: checkPack.score, daysBefore: checkPack.daysBefore});
       else if (nameHits.length)
-        res = {status:'nodelivery', reason:'no delivery within 3 days', best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0};
+        res = {status:'nodelivery', reason:noWinReason, best: poPickBestCand(nameHits), score: (poPickBestCand(nameHits)||{}).score || 0};
       else
         res = {status:'none', best: poPickBestCand(cands)};
     } else if (forFill){
@@ -3793,7 +3846,7 @@ function poChipHtml(r){
   if (!poInViews) return '';
   const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return '';
   if (m.status==='none') return ' <span class="po-chip none" title="No line on the uploaded purchase orders matches this ingredient.">no PO</span>';
-  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is within 3 days before the function.">no delivery within 3 days</span>';
+  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is in the allowed window (3–4 days before BAT; microherbs/fish 0–4).">no delivery in window</span>';
   const it = m.item, po = it.po;
   const tip = `${it.supplier}${po.poNumbers.length?' · PO '+poNumberText(po):''} · line ${it.n}: ${it.desc} · ${it.qty!==null?it.qty+' '+it.uom:''} · delivery ${po.delivery}${m.status==='check'?' — weak name match, please check':''}`;
   return ` <span class="po-chip ${m.status}" title="${escapeHtml(tip)}"><b class="po-ref-l">REF</b> ${escapeHtml(poRefText(it))}${m.status==='check'?' (check)':''}</span>`;
@@ -3820,14 +3873,14 @@ function poPanelHtml(){
       <h3 style="margin:0;">🧾 Requisitions (${POS.length})</h3>
       <button class="ghost" type="button" onclick="clearPOs()">Clear requisitions</button>
     </div>
-    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is within 3 days before that dish's BAT/function date (on the day or 1–3 days prior). If the same item has several deliveries in that window, all are listed nearest-first. See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
+    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is <b>3 or 4 days before</b> that dish's BAT/event date (prefer 3). Microherbs and fish are exempt and may use 0–4 days before (closest on/before preferred). Tap water, ice, boiling water and sub-recipes stay blank. See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
     <table class="po-table"><thead><tr><th>PO number(s)</th><th>Delivery</th><th>Suppliers</th><th>Lines</th><th>File</th></tr></thead><tbody>
     ${POS.map(po=>`<tr><td><b>${po.poNumbers.length?escapeHtml(poNumberText(po)):'no PO number'}</b>${po.req?'<div class="meta">'+escapeHtml(po.req)+'</div>':''}${po.subject?'<div class="meta">'+escapeHtml(po.subject)+'</div>':''}</td><td>${escapeHtml(po.delivery||'—')}</td><td>${escapeHtml([...new Set(po.items.map(i=>i.supplier))].join(', '))}</td><td>${po.items.length}</td><td class="meta">${escapeHtml(po.file||'')}</td></tr>`).join('')}
     </tbody></table>
-    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery within 3 days`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
+    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery in window`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
     ${listRows.length ? `<details class="po-fix"><summary>Check or link ingredients (${listRows.length})</summary>
-      ${listRows.map(x=>{ const t=x.task; const m = poMatchFor(t, {functionDate:x.functionDate}); const flag = m.status==='check'?'<span class="po-chip check">check</span>':(m.status==='nodelivery'?'<span class="po-chip none">no delivery within 3 days</span>':'<span class="po-chip none">no PO</span>'); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${flag}</span>
-        <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):(m.status==='nodelivery'?'Name match outside 4-day window':'— not on a PO —')}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+') · del '+(i.po.delivery||'?'))}</option>`).join('')}</select></div>`; }).join('')}
+      ${listRows.map(x=>{ const t=x.task; const m = poMatchFor(t, {functionDate:x.functionDate}); const flag = m.status==='check'?'<span class="po-chip check">check</span>':(m.status==='nodelivery'?'<span class="po-chip none">no delivery in window</span>':'<span class="po-chip none">no PO</span>'); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${flag}</span>
+        <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):(m.status==='nodelivery'?'Name match outside allowed delivery window':'— not on a PO —')}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+') · del '+(i.po.delivery||'?'))}</option>`).join('')}</select></div>`; }).join('')}
     </details>` : ''}
     ${st && st.unusedLines.length ? `<details class="po-fix"><summary>PO lines not used by any recipe (${st.unusedLines.length})</summary><ul>${st.unusedLines.map(i=>`<li>${escapeHtml(i.supplier)} · ${escapeHtml(i.desc)} · ${i.qty!==null?escapeHtml(i.qty+' '+i.uom):''} <span class="meta">(${escapeHtml(i.po.req)})</span></li>`).join('')}</ul></details>` : ''}
   </div>`;
@@ -7179,7 +7232,7 @@ const ORDER_GROUP_FOOT = [];   // feature 6 adds a cost total line: (group) => h
 function poOrderCell(L, print){
   const m = L.po; if (!m || m.status==='sub') return '';
   if (m.status==='none') return print ? 'not on a PO' : '<span class="po-chip none">no PO</span>';
-  if (m.status==='nodelivery') return print ? 'no delivery within 3 days' : '<span class="po-chip none">no delivery within 3 days</span>';
+  if (m.status==='nodelivery') return print ? 'no delivery in window' : '<span class="po-chip none">no delivery in window</span>';
   const it = m.item, po = it.po;
   const txt = poRefText(it) + (m.status==='check'?' (check)':'');
   return print ? escapeHtml(txt) : `<span class="po-chip ${m.status}" title="${escapeHtml(it.supplier+' · '+it.desc)}">🧾 ${escapeHtml(txt)}</span>`;
@@ -8235,8 +8288,8 @@ function pwaShowUpdate(reg){
   };
 }
 // 4.8.35-r5: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r5';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r5';
+const PREPLINE_SW_EXPECT = '4.8.35-r6';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r6';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;
