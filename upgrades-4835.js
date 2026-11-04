@@ -507,7 +507,15 @@
 
     setBarTitle(box, stepTitle(STEP.filters, 'Preplist filters'));
     if (typeof openState.filters === 'undefined') openState.filters = false;
-    forceCollapsed(box, !!openState.filters);
+    /* Default-collapse once — same Show/Hide stick fix as renumberAndCollapse. */
+    if (!box.__u4835Defaulted) {
+      box.__u4835Defaulted = true;
+      forceCollapsed(box, !!openState.filters);
+    } else {
+      openState.filters = !box.classList.contains('u480-settings-collapsed');
+      var fbtnSync = document.getElementById('u4835FiltersToggle');
+      if (fbtnSync) fbtnSync.textContent = openState.filters ? 'Hide' : 'Show';
+    }
     var fbtn = document.getElementById('u4835FiltersToggle');
     if (fbtn) fbtn.textContent = openState.filters ? 'Hide' : 'Show';
 
