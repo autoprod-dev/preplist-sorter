@@ -9,7 +9,10 @@
  *  - One capture-phase delegated click on document (recloning cannot break it)
  *  - Sequential 1..N numbers from DOM visual order (renumber after layout settles
  *    and only on real structural change — never on class toggles)
- *  - Default hidden; open/close ONLY on user click
+ *  - Default hidden EXCEPT Step 1 (Load / One-time sort upload) open by
+ *    default (r5/r6). Open/close otherwise only on user click.
+ *  - Load collapse CSS scoped to body.u480-sorted so upload is never blanked
+ *    before a sort (Show bar itself is hidden until sorted).
  */
 (function (root) {
   'use strict';
