@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import http from 'http';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -9,7 +10,7 @@ fs.mkdirSync(shotDir, { recursive: true });
 
 const fixture = `<!doctype html>
 <html><head><meta charset="utf-8"><title>4840 smoke</title>
-<meta name="prepline-version" content="4.8.35-r7">
+<meta name="prepline-version" content="4.8.35-r8">
 <style>
 .u480-settings-bar{display:flex;gap:8px;align-items:center;padding:8px;background:#eee}
 .u480-settings-collapsed .u480-body{display:none}
@@ -20,7 +21,7 @@ button{display:inline-block !important; visibility:visible !important; opacity:1
 </style>
 </head>
 <body class="u480-sorted">
-<div id="appVersion">Prepline v4.8.35-r7</div>
+<div id="appVersion">Prepline v4.8.35-r8</div>
 <div id="dbPanel" class="u4835-load-open u480-open">
   <div id="u4835LoadBar" class="u480-settings-bar u480-load-summary"><h2>Load</h2><button id="u4835LoadToggle" type="button">Hide</button></div>
   <div class="u480-body u480-load-body">load body</div>
@@ -57,7 +58,10 @@ const results = [];
 const row = (id, ok, detail) => { results.push({id,ok,detail}); console.log(`${ok?'PASS':'FAIL'} ${id} ${detail||''}`); };
 
 row('numbers_1_N', nums.every((n,i)=>n===i+1) && nums.length>=8, JSON.stringify({nums, ids:list1.map(x=>x.id)}));
-row('default_hidden', list1.every(x=>!x.open), JSON.stringify(list1.filter(x=>x.open).map(x=>x.id)));
+const loadRow = list1.find(x => x.id === 'load');
+const othersOpen = list1.filter(x => x.id !== 'load' && x.open).map(x => x.id);
+row('default_load_open', !!(loadRow && loadRow.open), JSON.stringify(loadRow));
+row('default_others_hidden', othersOpen.length === 0, JSON.stringify(othersOpen));
 
 async function clickToggle(id){
   await page.locator(`button[data-u4840-toggle="${id}"]`).click({ force: true });
@@ -80,6 +84,16 @@ async function readState(id){
 
 const sampleMs = 1500, interval = 100;
 for (const step of list1) {
+  if (step.id === 'load') {
+    /* Load defaults open (r8) — verify, then close, then leave closed for clone test. */
+    let last = await readState(step.id);
+    row(`toggle_open_${step.id}`, !!(last.openDom && last.openList && last.btn === 'Hide'), 'default open ' + JSON.stringify(last));
+    await clickToggle(step.id);
+    await page.waitForTimeout(80);
+    const closed = await readState(step.id);
+    row(`toggle_close_${step.id}`, !closed.openDom && closed.btn === 'Show', JSON.stringify(closed));
+    continue;
+  }
   await clickToggle(step.id);
   await page.waitForTimeout(80);
   let stuck = true; let last = null;

@@ -6,14 +6,19 @@
       "detail": "{\"nums\":[1,2,3,4,5,6,7,8,9,10],\"ids\":[\"load\",\"pax\",\"chef\",\"ingredients\",\"changes\",\"prepSummary\",\"kitchenClose\",\"filters\",\"moreViews\",\"export\"]}"
     },
     {
-      "id": "default_hidden",
+      "id": "default_load_open",
+      "ok": true,
+      "detail": "{\"n\":1,\"id\":\"load\",\"label\":\"Load a preplist\",\"open\":true}"
+    },
+    {
+      "id": "default_others_hidden",
       "ok": true,
       "detail": "[]"
     },
     {
       "id": "toggle_open_load",
       "ok": true,
-      "detail": "held 1500ms"
+      "detail": "default open {\"btn\":\"Hide\",\"openList\":true,\"openDom\":true}"
     },
     {
       "id": "toggle_close_load",
@@ -126,7 +131,7 @@
       "n": 1,
       "id": "load",
       "label": "Load a preplist",
-      "open": false
+      "open": true
     },
     {
       "n": 2,

@@ -1,4 +1,4 @@
-/* Prepline 4.8.35-r7 — SINGLE owner of step numbers + Show/Hide.
+/* Prepline 4.8.35-r8 — SINGLE owner of step numbers + Show/Hide.
  *
  * Root cause of prior breakage: six scripts (4821, 4822, 4827/4828, 4835, 4838)
  * each kept their own openState, cloned buttons (killing listeners), renumbered
@@ -14,7 +14,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r7';
+  var VERSION = '4.8.35-r8';
   var CSS_ID = 'u4840-css';
   var ATTR = 'data-u4840-id';
   var openState = Object.create(null);
@@ -179,9 +179,10 @@
       'body.u480-sorted #ingPanelWrap.u480-settings-collapsed > *:not(.u480-settings-bar),',
       'body.u480-sorted #u4835Filters.u480-settings-collapsed > *:not(.u480-settings-bar){display:none!important;}',
       '#u4827HowtoWrap.u480-settings-collapsed #u4827HowtoBody{display:none!important;}',
-      /* Load collapsed */
-      '#dbPanel.u4835-load-collapsed > *:not(.u480-load-summary),',
-      '#dbPanel.u480-collapsed > .u480-load-body{display:none!important;}',
+      /* Load collapsed — ONLY after sort. Before sort the Show bar is CSS-hidden
+       * (4835), so collapsing here left file input + One-time sort with no way back. */
+      'body.u480-sorted #dbPanel.u4835-load-collapsed > .u480-load-body,',
+      'body.u480-sorted #dbPanel.u480-collapsed > .u480-load-body{display:none!important;}',
       /* Calendar stays off Prepline page */
       '#u4835CalWrap,.u4821-wrap[data-u4821="calendar"],.u4821-wrap[data-u4821="calendarSlot"],#u486Cal,#u4835Cal{display:none!important;}'
     ].join('');
@@ -262,10 +263,13 @@
   function applyDefault(entry, wrap) {
     if (defaulted[entry.id]) return;
     defaulted[entry.id] = true;
-    /* Always default hidden (Gerard). */
-    if (entry.setOpen) entry.setOpen(false);
-    else standardSetOpen(wrap, false);
-    openState[entry.id] = false;
+    /* Default hidden, EXCEPT Load (Step 1 / One-time sort upload) — always
+     * visible by default, matching r5/r6 "Step 1 open". Without this the
+     * file input vanishes and the Show bar is display:none until sorted. */
+    var wantOpen = entry.id === 'load';
+    if (entry.setOpen) entry.setOpen(wantOpen);
+    else standardSetOpen(wrap, wantOpen);
+    openState[entry.id] = wantOpen;
     syncLabel(entry, wrap);
   }
 
