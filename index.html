@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r6">
+<meta name="prepline-version" content="4.8.35-r7">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -110,6 +110,7 @@ var LICENSE_CONFIG = {
 <script src="upgrades-4828.js"></script>
 <script src="upgrades-4835.js"></script>
 <script src="upgrades-4838.js"></script>
+<script src="upgrades-4840.js"></script>
 <!-- Full editors: Univer (Apache-2.0, self-hosted) + LuckyExcel + pdf-lib. Loaded on demand from sheet-builder.js / pdf-editor.js. -->
 <script src="sheet-builder.js"></script>
 <script src="pdf-editor.js"></script>
@@ -949,7 +950,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r6</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r7</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -3600,17 +3601,23 @@ function parsePoPages(pagesItems, fileName){
   return po;
 }
 // --- name matching
-const PO_STOP = new Set('pb bch bun bunch pun punnet ctn carton ea each pk pack packet box bag tub tin can jar btl bottle per x and the of with in fresh frozen tip top krio krush masterfoods canister sub item add to bs placeholder name peeled'.split(' '));
+const PO_STOP = new Set(('pb bch bun bunch pun punnet ctn carton ea each pk pack packet box bag tub tin can jar btl bottle per x and the of with in fresh frozen tip top krio krush masterfoods canister sub item add to bs placeholder name peeled diced sliced chopped minced grated washed cleaned trimmed portioned portions portion wholemeal organic natural plain cooked raw whole fine large small baby prs pfd kg k g gm grams kilograms ml l lt ltr litres liters pcs pc size grade premium select extra sauteed saute roasted poached blanched fried grilled baked boiled steamed confit puree pureed leaves leaf tendril tendrils sprout sprouts gx').split(' '));
 function poSingular(w){ return w.length > 4 && /ies$/.test(w) ? w.slice(0,-3)+'y' : (w.length > 3 && /(ss)$/.test(w) ? w : (w.length > 3 && /s$/.test(w) ? w.slice(0,-1) : w)); }
 // Confirmed equivalents: River Mint is mint (confirmed by the kitchen).
-const PO_SYNONYMS = [[/\briver\s+mint\b/g, 'mint']];
+const PO_SYNONYMS = [[/\briver\s+mint\b/g, 'mint'],[/\bwarrigal\s+greens?\b/g,'warrigal'],[/\bsnow\s+peas?(?:\s+(?:tendril|shoot|leaf|leaves|sprout)s?)?/g,'snowpea'],[/\bgoat'?s?\s+cheese\b/g,'goatcheese'],[/\bmicroherbs?\b/g,'micro'],[/\bextra\s+virgin\b/g,' '],[/\bvirgin\b/g,' ']];
 function poTokens(name){
+  // 4.8.35-r7: keyword normalise for ALL items — strip supplier codes (PRS/PB/PFD),
+  // units, prep words, punctuation; keep core ingredient nouns for token overlap.
   let t = String(name||'').toLowerCase();
   t = t.replace(/\s+-\s+[^-]*$/, ' ');                               // " - Supplier" tail on production-tool names
   t = t.replace(/^\d{6,10}\s+/, ' ');                                // GL / category code
-  PO_SYNONYMS.forEach(([re, to])=>{ t = t.replace(re, to); });          // confirmed same item (kitchen name -> PO name)
-  t = t.replace(/\(\s*[^)]*\)/g, ' ');                               // (12), (Crinkle Chips), (SUB)
+  t = t.replace(/\b(prs|pfd|pb|bch)\b/g, ' ');                       // supplier / house prefix codes
+  PO_SYNONYMS.forEach(([re, to])=>{ t = t.replace(re, to); });
+  t = t.replace(/\(\s*[^)]*\)/g, ' ');                               // (Kg), (SUB), (12)
   t = t.replace(/\b\d+(\.\d+)?\s*(x\s*\d+(\.\d+)?)?\s*(kg|k|g|gm|grams?|kilograms?|ml|l|lt|ltr|litres?|liters?|ea|each|pc|pcs|per)?\b/g, ' ');
+  t = t.replace(/\b\d+\s*g\s*x\s*\d+\b/g, ' ');                 // 28gx30 / 28 g x 30
+  t = t.replace(/\b\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\b/g, ' ');   // 700x6 packing
+  t = t.replace(/\bgx\b/g, ' ');                                    // residue from 28gx30 / 700GX6
   t = t.replace(/[^a-z\s]/g, ' ');
   return [...new Set(t.split(/\s+/).filter(w=>w.length>=2 && !PO_STOP.has(w)).map(poSingular))];
 }
@@ -3624,19 +3631,43 @@ function poLev1(a, b){   // true if edit distance <= 1
   }
   return e + (a.length-i) + (b.length-j) <= 1;
 }
-function poTokEq(a, b){ return a===b || (a.length>=4 && b.length>=4 && (a.startsWith(b) || b.startsWith(a))) || (a.length>=5 && b.length>=5 && poLev1(a,b)); }
+function poTokEq(a, b){ return a===b || (a.length>=4 && b.length>=4 && (a.startsWith(b) || b.startsWith(a))) || (a.length>=7 && b.length>=7 && poLev1(a,b)); }
 // Generic words (herb, micro, sauce, gluten free ...) count for little: "Herb Chives" is not "Herb Mint".
-const PO_GENERIC = new Set('herb micro sauce gluten free sliced slice pickle pickled green red white black whole wholemeal mix mixed fine large small baby raw cooked plain natural organic'.split(' '));
+const PO_GENERIC = new Set('herb micro sauce gluten free sliced slice pickle pickled red white black whole wholemeal mix mixed fine large small baby raw cooked plain natural organic oil salt sugar water ice cream milk flour bread juice paste powder cream butter egg eggs kitchen juliannes'.split(' '));
 function poW(t){ return PO_GENERIC.has(t) ? 0.25 : 1; }
 function poScore(A, B){
+  // 4.8.35-r7 keyword match (ALL items): core-noun overlap + containment of the shorter
+  // content set (PO product name inside kitchen name, or vice versa). Generics alone never match.
   if (!A.length || !B.length) return 0;
   let hitA = 0, hitB = 0;
-  A.forEach(a=>{ if (B.some(b=>poTokEq(a,b))) hitA += poW(a); });
+  const shared = [];
+  A.forEach(a=>{
+    const b = B.find(x=>poTokEq(a,x));
+    if (b){ hitA += poW(a); shared.push(a.length >= b.length ? a : b); }
+  });
   B.forEach(b=>{ if (A.some(a=>poTokEq(a,b))) hitB += poW(b); });
   const wA = A.reduce((n,t)=>n+poW(t),0), wB = B.reduce((n,t)=>n+poW(t),0);
-  if (!hitA || (hitA < 1 && hitB < 1)) return 0;            // only generic words in common: never a match
+  if (!hitA || (hitA < 1 && hitB < 1)) return 0;
   const dice = (hitA+hitB)/(wA+wB), cont = Math.min(hitA/wA, hitB/wB) > 0 ? Math.max(hitA/wA, hitB/wB) : 0;
-  return Math.max(dice, Math.min(wA, wB) >= 2 ? cont*0.85 : 0);
+  let score = Math.max(dice, Math.min(wA, wB) >= 2 ? cont*0.85 : 0);
+
+  const cA = A.filter(t=>!PO_GENERIC.has(t));
+  const cB = B.filter(t=>!PO_GENERIC.has(t));
+  if (!cA.length || !cB.length){
+    return Math.min(score, 0.35); // oil/salt/… only
+  }
+  const short = cA.length <= cB.length ? cA : cB;
+  const long  = cA.length <= cB.length ? cB : cA;
+  const shortAllHit = short.every(s => long.some(l => poTokEq(s, l)));
+  if (!shortAllHit){
+    // Partial multi-word overlap (mustard⊂mustard-pickles but green missing) — dice only, no boost
+    return Math.min(score, 0.45);
+  }
+  const longHit = short.slice().sort((a,b)=>b.length-a.length)[0];
+  score = Math.max(score, longHit.length >= 5
+    ? 0.55 + Math.min(0.35, (longHit.length - 4) * 0.04)
+    : 0.72);
+  return score;
 }
 function poIsInHouse(task){ return /\(\s*sub\s*\)/i.test(String(task||"")); }   // REF left completely blank for these (screen, prints, Order sheet)   // sub-recipes are made in the kitchen, not ordered
 // 4.8.35-r5: never fill Ref # for non-purchased kitchen staples / water / ice / sub-recipes.
@@ -3671,7 +3702,7 @@ function poIsFishExempt(task){
 }
 function poIsShortShelfExempt(task){ return poIsMicroherbExempt(task) || poIsFishExempt(task); }
 const PO_OK = 0.6, PO_CHECK = 0.4;
-const PO_FILL_MIN = 0.72;   // 4.8.35-r5: Ref # fill needs a strong normalised name match (not weak fuzzy)
+const PO_FILL_MIN = 0.50;   // 4.8.35-r7: keyword core-noun match (was 0.72 ≈10% fill); date window still gates
 let poMatchCache = null;
 function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((it, ii)=>out.push(Object.assign({pi, ii, po}, it, {tok: poTokens(it.desc)})))); return out; }
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
@@ -8287,9 +8318,9 @@ function pwaShowUpdate(reg){
     if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
   };
 }
-// 4.8.35-r5: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r6';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r6';
+// 4.8.35-r7: one-shot self-heal if a broken SW/cache build is still controlling this tab.
+const PREPLINE_SW_EXPECT = '4.8.35-r7';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r7';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;

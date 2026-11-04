@@ -41,26 +41,8 @@
 
   /** Wire a wrap's settings-bar button as a true Show/Hide toggle. */
   function wireShowHide(wrap, btn) {
-    if (!wrap || !btn || btn.__u4822Toggle) return;
-    btn.__u4822Toggle = true;
-    // Drop any prior one-shot expand listeners by replacing the node
-    var fresh = btn.cloneNode(true);
-    fresh.__u4822Toggle = true;
-    fresh.classList.add('u4822-toggle');
-    btn.parentNode.replaceChild(fresh, btn);
-    function syncLabel() {
-      var collapsed = wrap.classList.contains('u480-settings-collapsed');
-      fresh.textContent = collapsed ? 'Show' : 'Hide';
-    }
-    fresh.addEventListener('click', function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      var collapsed = wrap.classList.toggle('u480-settings-collapsed');
-      if (collapsed) wrap.classList.remove('u480-settings-open');
-      else wrap.classList.add('u480-settings-open');
-      syncLabel();
-    });
-    syncLabel();
+    /* 4.8.35-r7: Show/Hide owned by upgrades-4840. Do not clone or bind. */
+    return;
   }
 
   function upgradeSettingsBars() {
@@ -80,48 +62,9 @@
 
   /** Section 1 — Load a preplist: Show load / paste ↔ Hide load */
   function upgradeLoadChrome() {
+    /* 4.8.35-r7: Load Show/Hide owned by 4840. */
     ensureCss();
-    var panel = document.getElementById('dbPanel');
-    if (!panel) return;
-    var summary = panel.querySelector('.u480-load-summary');
-    if (!summary) return;
-    var btn = summary.querySelector('#u480ShowLoadBtn, #u4822LoadToggle');
-    if (!btn) return;
-    if (btn.__u4822Load) {
-      syncLoadLabel(panel, btn);
-      return;
-    }
-    btn.__u4822Load = true;
-    btn.id = 'u4822LoadToggle';
-    // Remove one-shot expand listener
-    var fresh = btn.cloneNode(true);
-    fresh.__u4822Load = true;
-    fresh.id = 'u4822LoadToggle';
-    btn.parentNode.replaceChild(fresh, btn);
-    // Hint span for collapsed state
-    if (!summary.querySelector('.u480-load-hint')) {
-      var hint = document.createElement('span');
-      hint.className = 'u480-load-hint small';
-      hint.style.cssText = 'font-size:12.5px;color:var(--ink-soft);';
-      hint.textContent = 'Load chrome collapsed — list is ready below.';
-      // Only insert if summary doesn't already have similar text
-      if (!/collapsed/i.test(summary.textContent || '')) {
-        summary.insertBefore(hint, fresh);
-      }
-    }
-    fresh.addEventListener('click', function (ev) {
-      ev.preventDefault();
-      var open = panel.classList.contains('u480-open');
-      if (open) {
-        panel.classList.remove('u480-open');
-        panel.classList.add('u480-collapsed');
-      } else {
-        panel.classList.remove('u480-collapsed');
-        panel.classList.add('u480-open');
-      }
-      syncLoadLabel(panel, fresh);
-    });
-    syncLoadLabel(panel, fresh);
+    return;
   }
 
   function syncLoadLabel(panel, btn) {
@@ -165,14 +108,7 @@
     var origExpand = P.expandSettings;
     if (typeof origExpand === 'function') {
       P.expandSettings = function () {
-        ['paxPanelWrap', 'staffingPanelWrap', 'ingPanelWrap'].forEach(function (id) {
-          var el = document.getElementById(id);
-          if (!el) return;
-          el.classList.remove('u480-settings-collapsed');
-          el.classList.add('u480-settings-open');
-          var b = el.querySelector('.u480-settings-bar button');
-          if (b) b.textContent = 'Hide';
-        });
+        /* 4.8.35-r7: do not force sections open — 4840 defaults hidden. */
       };
     }
   }

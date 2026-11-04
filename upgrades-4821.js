@@ -55,21 +55,8 @@
   }
 
   function wireToggle(wrap, key) {
-    if (!wrap || wrap.__u4821Toggle) return;
-    wrap.__u4821Toggle = true;
-    var btn = wrap.querySelector('.u4821-toggle');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      var collapsed = wrap.classList.toggle('u480-settings-collapsed');
-      openState[key] = !collapsed;
-      btn.textContent = collapsed ? 'Show' : 'Hide';
-      if (!collapsed && key === 'calendarSlot') {
-        try {
-          if (typeof setView === 'function') setView('week');
-          else if (typeof root.setView === 'function') root.setView('week');
-        } catch (e) {}
-      }
-    });
+    /* 4.8.35-r7: Show/Hide owned by upgrades-4840 (delegated). Do not attach listeners. */
+    return;
   }
 
   function ensureCollapsible(el, key, title, hint, extraClass) {
@@ -186,6 +173,7 @@
       var btn = wrap.querySelector('.u480-settings-bar button');
       if (!btn || btn.__u4821Toggle) return;
       btn.__u4821Toggle = true;
+      return; /* 4.8.35-r7: no per-button listener — 4840 owns toggles */
       var fresh = btn.cloneNode(true);
       fresh.classList.add('u4821-toggle');
       btn.parentNode.replaceChild(fresh, btn);

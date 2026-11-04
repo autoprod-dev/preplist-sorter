@@ -1,4 +1,5 @@
-/* Prepline 4.8.35-r5 — Show/Hide flicker fix (no openState re-force)
+/* Prepline 4.8.35-r7 — wrap creation only; Show/Hide owned by 4840
+ * Prior: 4.8.35-r5 Show/Hide flicker fix (no openState re-force)
  * Prior: Prepline 4.8.34 — trial aesthetic cleanup (visual only; features stay).
  * 1) Hide empty original-viewer overlay (was leaking Print/Close/Prev/Next).
  * 2) Every feature panel gets a working Show/Hide (label flips both ways),
@@ -9,7 +10,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r5';
+  var VERSION = '4.8.35-r7';
   var CSS_ID = 'u4827-css';
   var openState = Object.create(null);
 
@@ -67,26 +68,8 @@
   }
 
   function wireToggle(wrap, key) {
-    if (!wrap || wrap.__u4827Toggle) return;
-    wrap.__u4827Toggle = true;
-    var btn = wrap.querySelector('.u4827-toggle, .u480-settings-bar button');
-    if (!btn) return;
-    /* If u4822 already owns Show/Hide, only mirror openState — do not add a
-     * second toggle listener (double-toggle = flicker). */
-    if (btn.__u4822Toggle) {
-      openState[key] = !wrap.classList.contains('u480-settings-collapsed');
-      btn.addEventListener('click', function () {
-        setTimeout(function () {
-          openState[key] = !wrap.classList.contains('u480-settings-collapsed');
-        }, 0);
-      });
-      return;
-    }
-    btn.addEventListener('click', function () {
-      var collapsed = wrap.classList.toggle('u480-settings-collapsed');
-      openState[key] = !collapsed;
-      btn.textContent = collapsed ? 'Show' : 'Hide';
-    });
+    /* 4.8.35-r7: Show/Hide owned by upgrades-4840 (delegated). */
+    return;
   }
 
   function ensureCollapsible(el, key, title, hint, extraClass) {
@@ -329,6 +312,8 @@
     var btn = bar.querySelector('button');
     if (!btn) return;
     if (!btn.__u4827Ing) {
+      btn.__u4827Ing = true;
+      return; /* 4.8.35-r7: 4840 owns click */
       var fresh = btn.cloneNode(true);
       fresh.__u4827Ing = true;
       fresh.classList.add('u4827-toggle');

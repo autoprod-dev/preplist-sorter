@@ -6,12 +6,13 @@
  * 4.8.35-r2: MutationObserver must NOT re-enter (mobile freeze).
  * 4.8.35-r5: Show/Hide flicker fix (4828 stop re-forcing openState) + SW heal
  * from stale openState after u4822 reclones the toggle button.
+ * 4.8.35-r7: single Show/Hide+step owner (4840); looser Ref # keyword match
  * 4.8.35-r6: Ref # autofill — 3 or 4 days before BAT (prefer 3); microherbs/fish 0–4;
  * tap water/ice/SUB blank; strong name match only.
  */
 (function (root) {
   'use strict';
-  var VERSION = '4.8.35-r6';
+  var VERSION = '4.8.35-r7';
   var CSS_ID = 'u4838-css';
 
   /* Renumber without calendar on Prepline page */
@@ -73,39 +74,8 @@
   }
 
   function renumberSteps() {
-    var map = [
-      ['.u4821-wrap[data-u4821="changes"]', STEP.changes, 'Changes check'],
-      ['.u4821-wrap[data-u4821="prepSummary"]', STEP.prepSummary, 'Prep summary (all dishes/pax/covers)'],
-      ['.u4821-wrap[data-u4821="kitchenClose"]', STEP.kitchenClose, 'Kitchen close & public holidays'],
-      ['#u4835Filters', STEP.filters, 'Preplist filters'],
-      ['.u4827-wrap[data-u4827="moreViews"],.u4821-wrap[data-u4821="moreViews"]', STEP.moreViews, 'More views'],
-      ['.u4821-wrap[data-u4821="export"]', STEP.export, 'Export options'],
-      ['.u4821-wrap[data-u4821="print"]', STEP.print, 'Print options'],
-      ['.u4827-wrap[data-u4827="requisitions"]', STEP.requisitions, 'Requisitions (purchase orders)'],
-      ['.u4827-wrap[data-u4827="foodCost"]', STEP.foodCost, 'Food cost'],
-      ['#u4827HowtoWrap', STEP.howto, 'How Prepline sorts & schedules']
-    ];
-    map.forEach(function (row) {
-      var el = document.querySelector(row[0]);
-      if (el) setBarTitle(el, stepTitle(row[1], row[2]));
-    });
-    /* Native bars from 4835 */
-    var loadBar = document.querySelector('#u4835LoadBar h2');
-    if (loadBar && loadBar.textContent !== stepTitle(STEP.load, 'Load a preplist')) {
-      loadBar.textContent = stepTitle(STEP.load, 'Load a preplist');
-    }
-    var pax = document.querySelector('#paxPanelWrap .u480-settings-bar h2');
-    if (pax && pax.textContent !== stepTitle(STEP.pax, 'Pax per dish')) {
-      pax.textContent = stepTitle(STEP.pax, 'Pax per dish');
-    }
-    var chef = document.querySelector('#staffingPanelWrap .u480-settings-bar h2');
-    if (chef && chef.textContent !== stepTitle(STEP.chef, 'Chef-hours settings')) {
-      chef.textContent = stepTitle(STEP.chef, 'Chef-hours settings');
-    }
-    var ing = document.querySelector('#ingPanelWrap .u480-settings-bar h2');
-    if (ing && ing.textContent !== stepTitle(STEP.ingredients, 'Ingredients: allergens, suppliers and prices')) {
-      ing.textContent = stepTitle(STEP.ingredients, 'Ingredients: allergens, suppliers and prices');
-    }
+    /* 4.8.35-r7: sequential numbering owned by upgrades-4840. */
+    return;
   }
 
   function stampVersion() {

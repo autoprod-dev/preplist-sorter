@@ -222,23 +222,8 @@
         '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">Upload · paste · sample</div></div>' +
         '<button type="button" class="ghost" id="u4835LoadToggle">Hide</button>';
       panel.parentNode.insertBefore(bar, panel);
-      bar.querySelector('#u4835LoadToggle').addEventListener('click', function () {
-        var willOpen = panel.classList.contains('u4835-load-collapsed');
-        if (willOpen) {
-          panel.classList.remove('u4835-load-collapsed');
-          panel.classList.add('u4835-load-open');
-          panel.classList.remove('u480-collapsed');
-          openState.load = true;
-          this.textContent = 'Hide';
-        } else {
-          panel.classList.add('u4835-load-collapsed');
-          panel.classList.remove('u4835-load-open');
-          panel.classList.add('u480-collapsed');
-          openState.load = false;
-          this.textContent = 'Show';
-        }
-        saveJSON(LS_KEY, openState);
-      });
+      /* 4.8.35-r7: Load toggle owned by 4840 */
+      try { bar.querySelector('#u4835LoadToggle').setAttribute('data-u4840-toggle', 'load'); } catch (e) {}
     }
     var h2 = bar.querySelector('h2');
     if (h2) h2.textContent = stepTitle(STEP.load, 'Load a preplist');
@@ -265,34 +250,13 @@
   }
 
   function forceCollapsed(wrap, wantOpen) {
-    if (!wrap || !wrap.classList) return;
-    if (wantOpen) {
-      wrap.classList.remove('u480-settings-collapsed');
-      wrap.classList.add('u480-settings-open');
-    } else {
-      wrap.classList.add('u480-settings-collapsed');
-      wrap.classList.remove('u480-settings-open');
-    }
-    var btn = wrap.querySelector(':scope > .u480-settings-bar button') ||
-      wrap.querySelector('.u480-settings-bar button');
-    if (btn) btn.textContent = wantOpen ? 'Hide' : 'Show';
+    /* 4.8.35-r7: 4840 owns default collapse + Show/Hide. */
+    return;
   }
 
   function wireRemember(wrap, key) {
-    if (!wrap) return;
-    var btn = wrap.querySelector(':scope > .u480-settings-bar button') ||
-      wrap.querySelector('.u480-settings-bar button');
-    if (!btn) return;
-    /* Flag the BUTTON (not the wrap). u4822 reclones the button and strips
-     * listeners; next applyLayout must be able to re-wire the fresh node. */
-    if (btn.__u4835Remember) return;
-    btn.__u4835Remember = true;
-    btn.addEventListener('click', function () {
-      setTimeout(function () {
-        openState[key] = !wrap.classList.contains('u480-settings-collapsed');
-        saveJSON(LS_KEY, openState);
-      }, 0);
-    }, true);
+    /* 4.8.35-r7: no per-button remember — 4840 owns state. */
+    return;
   }
 
   function isSorted() {
@@ -354,27 +318,13 @@
       if (!wrap || wrap.style.display === 'none') return;
       var key = pair[1];
       ensureOwnSettingsBar(wrap, pair[2]);
-      setBarTitle(wrap, pair[2]);
-      if (typeof openState[key] === 'undefined') openState[key] = false;
-      /* Only force default-collapsed once per wrap so user toggles stick. */
-      if (!wrap.__u4835Defaulted) {
-        wrap.__u4835Defaulted = true;
-        forceCollapsed(wrap, !!openState[key]);
-      } else {
-        openState[key] = !wrap.classList.contains('u480-settings-collapsed');
-        var btn = wrap.querySelector(':scope > .u480-settings-bar button');
-        if (btn) btn.textContent = openState[key] ? 'Hide' : 'Show';
-      }
+      /* 4.8.35-r7: title/collapse/label owned by 4840 */
       var nativeToggle = wrap.querySelector('#toggleStaffingBtn, #ingPanelToggle');
       if (nativeToggle) nativeToggle.style.display = 'none';
     });
     stabilizeNativeToggles();
     /* Ask u4822 to wire Show↔Hide without fighting us. */
-    try {
-      if (root.Prepline4822 && typeof root.Prepline4822.applyToggles === 'function') {
-        root.Prepline4822.applyToggles();
-      }
-    } catch (e) {}
+    /* 4.8.35-r7: do not re-wire toggles via 4822 — 4840 owns Show/Hide. */
     stabilizeNativeToggles();
   }
 
@@ -431,22 +381,7 @@
     map.forEach(function (row) {
       var el = document.querySelector(row[0]);
       if (!el) return;
-      setBarTitle(el, stepTitle(row[2], row[3]));
-      if (typeof openState[row[1]] === 'undefined') openState[row[1]] = false;
-      /* Default-collapse ONCE. Re-forcing from openState on every applyLayout
-       * fought Show/Hide: u4822 reclones the button (drops wireRemember), so
-       * openState stayed false and the next layout tick slammed the section shut
-       * while the label briefly said Hide. Same pattern as fixNativeStepToggles. */
-      if (!el.__u4835Defaulted) {
-        el.__u4835Defaulted = true;
-        forceCollapsed(el, !!openState[row[1]]);
-      } else {
-        openState[row[1]] = !el.classList.contains('u480-settings-collapsed');
-        var btn = el.querySelector(':scope > .u480-settings-bar button') ||
-          el.querySelector('.u480-settings-bar button');
-        if (btn) btn.textContent = openState[row[1]] ? 'Hide' : 'Show';
-      }
-      wireRemember(el, row[1]);
+      /* 4.8.35-r7: titles + collapse owned by 4840; only empty hints here. */
       ensureEmptySectionHint(el, row[1]);
     });
 
@@ -490,34 +425,13 @@
       if (groups && groups.parentNode === area) area.insertBefore(box, groups);
       else if (area.firstChild) area.insertBefore(box, area.firstChild);
       else area.appendChild(box);
-      box.querySelector('#u4835FiltersToggle').addEventListener('click', function () {
-        var willOpen = box.classList.contains('u480-settings-collapsed');
-        if (willOpen) {
-          box.classList.remove('u480-settings-collapsed');
-          openState.filters = true;
-          this.textContent = 'Hide';
-        } else {
-          box.classList.add('u480-settings-collapsed');
-          openState.filters = false;
-          this.textContent = 'Show';
-        }
-        saveJSON(LS_KEY, openState);
-      });
+      /* 4.8.35-r7: Filters toggle owned by 4840 */
+      try { box.querySelector('#u4835FiltersToggle').setAttribute('data-u4840-toggle', 'filters'); } catch (e) {}
     }
 
-    setBarTitle(box, stepTitle(STEP.filters, 'Preplist filters'));
-    if (typeof openState.filters === 'undefined') openState.filters = false;
-    /* Default-collapse once — same Show/Hide stick fix as renumberAndCollapse. */
-    if (!box.__u4835Defaulted) {
-      box.__u4835Defaulted = true;
-      forceCollapsed(box, !!openState.filters);
-    } else {
-      openState.filters = !box.classList.contains('u480-settings-collapsed');
-      var fbtnSync = document.getElementById('u4835FiltersToggle');
-      if (fbtnSync) fbtnSync.textContent = openState.filters ? 'Hide' : 'Show';
-    }
+    /* 4.8.35-r7: filters title/collapse owned by 4840 */
     var fbtn = document.getElementById('u4835FiltersToggle');
-    if (fbtn) fbtn.textContent = openState.filters ? 'Hide' : 'Show';
+    if (fbtn) try { fbtn.setAttribute('data-u4840-toggle', 'filters'); } catch (e) {}
 
     var planSlot = document.getElementById('u4835PlanSlot');
     var daySlot = document.getElementById('u4835DaySlot');

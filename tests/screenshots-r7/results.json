@@ -1,0 +1,186 @@
+{
+  "results": [
+    {
+      "id": "numbers_1_N",
+      "ok": true,
+      "detail": "{\"nums\":[1,2,3,4,5,6,7,8,9,10],\"ids\":[\"load\",\"pax\",\"chef\",\"ingredients\",\"changes\",\"prepSummary\",\"kitchenClose\",\"filters\",\"moreViews\",\"export\"]}"
+    },
+    {
+      "id": "default_hidden",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "id": "toggle_open_load",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_load",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_pax",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_pax",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_chef",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_chef",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_ingredients",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_ingredients",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_changes",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_changes",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_prepSummary",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_prepSummary",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_kitchenClose",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_kitchenClose",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_filters",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_filters",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_moreViews",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_moreViews",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "toggle_open_export",
+      "ok": true,
+      "detail": "held 1500ms"
+    },
+    {
+      "id": "toggle_close_export",
+      "ok": true,
+      "detail": "{\"btn\":\"Show\",\"openList\":false,\"openDom\":false}"
+    },
+    {
+      "id": "survives_button_clone",
+      "ok": true,
+      "detail": "{\"btn\":\"Hide\",\"openList\":true,\"openDom\":true}"
+    },
+    {
+      "id": "mobile_viewport_ok",
+      "ok": true,
+      "detail": "390x844"
+    }
+  ],
+  "list1": [
+    {
+      "n": 1,
+      "id": "load",
+      "label": "Load a preplist",
+      "open": false
+    },
+    {
+      "n": 2,
+      "id": "pax",
+      "label": "Pax per dish",
+      "open": false
+    },
+    {
+      "n": 3,
+      "id": "chef",
+      "label": "Chef-hours settings",
+      "open": false
+    },
+    {
+      "n": 4,
+      "id": "ingredients",
+      "label": "Ingredients: allergens, suppliers and prices",
+      "open": false
+    },
+    {
+      "n": 5,
+      "id": "changes",
+      "label": "Changes check",
+      "open": false
+    },
+    {
+      "n": 6,
+      "id": "prepSummary",
+      "label": "Prep summary (all dishes/pax/covers)",
+      "open": false
+    },
+    {
+      "n": 7,
+      "id": "kitchenClose",
+      "label": "Kitchen close & public holidays",
+      "open": false
+    },
+    {
+      "n": 8,
+      "id": "filters",
+      "label": "Preplist filters",
+      "open": false
+    },
+    {
+      "n": 9,
+      "id": "moreViews",
+      "label": "More views",
+      "open": false
+    },
+    {
+      "n": 10,
+      "id": "export",
+      "label": "Export options",
+      "open": false
+    }
+  ]
+}
