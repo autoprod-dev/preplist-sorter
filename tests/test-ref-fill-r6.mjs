@@ -1,9 +1,9 @@
 /**
- * Unit: Ref # autofill rules for 4.8.35-r11
- * Ordinary: STRICT day 3 or 4 before BAT (prefer 3).
- * Microherbs/fish: 0..2 inclusive.
- * HENG supplier: 0..1 inclusive only (overrides ordinary/exempt).
- * Tap/ice/SUB: blank (non-purchased).
+ * Unit: Ref # autofill rules for 4.8.35-r12
+ * Keyword-first (plurals/short-long), then date filter.
+ * Fresh/perishable: 0..4 (prefer 3 then 4). Dry: STRICT 3|4.
+ * Microherbs/fish/seafood (incl. oyster) + Get Fish: 0..2.
+ * HENG: 0..1. Tap/ice/SUB blank.
  */
 import fs from 'fs';
 import path from 'path';
@@ -37,17 +37,17 @@ const boxFns = html.slice(boxStart, boxEnd);
 vm.createContext(sandbox);
 vm.runInContext(inHouse + '\n' + block + '\n' + boxFns + `
   this.__export = {
-    poIsNonPurchased, poIsMicroherbExempt, poIsFishExempt, poDeliveryAllowed,
+    poIsNonPurchased, poIsMicroherbExempt, poIsFishExempt, poIsFishSupplier, poIsPerishable, poDeliveryAllowed,
     poIsHengSupplier, poMatchFor, poTokens, poScore, PO_FILL_MIN,
-    PO_DELIVERY_PREF_DAYS, PO_DELIVERY_ALT_DAYS, PO_DELIVERY_EXEMPT_MAX, PO_DELIVERY_HENG_MAX,
+    PO_DELIVERY_PREF_DAYS, PO_DELIVERY_ALT_DAYS, PO_DELIVERY_EXEMPT_MAX, PO_DELIVERY_PERISH_MAX, PO_DELIVERY_HENG_MAX,
     clearCache(){ poMatchCache = null; }
   };
 `, sandbox);
 
 const {
-  poIsNonPurchased, poIsMicroherbExempt, poIsFishExempt, poDeliveryAllowed,
-  poIsHengSupplier, poMatchFor, PO_FILL_MIN, PO_DELIVERY_PREF_DAYS,
-  PO_DELIVERY_ALT_DAYS, PO_DELIVERY_EXEMPT_MAX, PO_DELIVERY_HENG_MAX, clearCache
+  poIsNonPurchased, poIsMicroherbExempt, poIsFishExempt, poIsFishSupplier, poIsPerishable, poDeliveryAllowed,
+  poIsHengSupplier, poMatchFor, poTokens, poScore, PO_FILL_MIN, PO_DELIVERY_PREF_DAYS,
+  PO_DELIVERY_ALT_DAYS, PO_DELIVERY_EXEMPT_MAX, PO_DELIVERY_PERISH_MAX, PO_DELIVERY_HENG_MAX, clearCache
 } = sandbox.__export;
 
 function makePO(delivery, items) {
@@ -84,7 +84,15 @@ check('SUB non-purchased', poIsNonPurchased('Green Oil (SUB)'));
 check('spinach IS purchased', !poIsNonPurchased('Baby Spinach 1kg'));
 check('microherb exempt', poIsMicroherbExempt('Micro Herbs Snow Pea Leaf Tendrils Sprout 100gm'));
 check('salmon fish exempt', poIsFishExempt('Salmon Fillet 1kg'));
-check('prawn NOT fish-exempt', !poIsFishExempt('Prawns Green 1kg'));
+check('prawn IS fish-exempt (r12 seafood)', poIsFishExempt('Prawns Green 1kg'));
+check('oyster IS fish-exempt (r12)', poIsFishExempt('Oyster Pambula'));
+check('oysters plural fish-exempt', poIsFishExempt('Pambula Oysters open'));
+check('Get Fish supplier detected', poIsFishSupplier('Get Fish Pty Ltd'));
+check('seafood supplier detected', poIsFishSupplier('Sydney Seafood Co'));
+check('Select Fresh NOT fish supplier', !poIsFishSupplier('Select Fresh'));
+check('oyster day-0 allowed by name', poDeliveryAllowed(0, 'Oyster Pambula'));
+check('Get Fish line day-0 allowed even for spinach wording', poDeliveryAllowed(0, 'Mystery Pack', {supplier:'Get Fish Pty Ltd'}));
+check('Get Fish day-3 NOT (exempt max 2)', !poDeliveryAllowed(3, 'Oyster Pambula', {supplier:'Get Fish Pty Ltd'}));
 
 check('heng detects HENG', poIsHengSupplier('HENG Produce'));
 check('heng detects heng mid', poIsHengSupplier('Fresh HENG Co'));
@@ -92,10 +100,15 @@ check('heng rejects other', !poIsHengSupplier('Select Fresh'));
 
 check('ordinary day 3 allowed', poDeliveryAllowed(3, 'Baby Spinach'));
 check('ordinary day 4 allowed', poDeliveryAllowed(4, 'Baby Spinach'));
-check('ordinary day 0 NOT allowed (r11)', !poDeliveryAllowed(0, 'Baby Spinach'));
-check('ordinary day 1 NOT allowed', !poDeliveryAllowed(1, 'Baby Spinach'));
-check('ordinary day 2 NOT allowed', !poDeliveryAllowed(2, 'Baby Spinach'));
-check('ordinary day 5 NOT allowed', !poDeliveryAllowed(5, 'Baby Spinach'));
+check('perishable spinach day 0 allowed (r12)', poDeliveryAllowed(0, 'Baby Spinach'));
+check('perishable spinach day 1 allowed', poDeliveryAllowed(1, 'Baby Spinach'));
+check('perishable spinach day 2 allowed', poDeliveryAllowed(2, 'Baby Spinach'));
+check('perishable spinach day 4 allowed', poDeliveryAllowed(4, 'Baby Spinach'));
+check('perishable spinach day 5 NOT', !poDeliveryAllowed(5, 'Baby Spinach'));
+check('dry flour day 0 NOT (strict 3|4)', !poDeliveryAllowed(0, 'Plain Flour 1kg'));
+check('dry flour day 3 allowed', poDeliveryAllowed(3, 'Plain Flour 1kg'));
+check('spinach is perishable', poIsPerishable('Baby Spinach'));
+check('flour NOT perishable', !poIsPerishable('Plain Flour 1kg'));
 
 check('exempt day 0 allowed', poDeliveryAllowed(0, 'Micro Herbs Basil'));
 check('exempt day 2 allowed', poDeliveryAllowed(2, 'Salmon Fillet'));
@@ -123,7 +136,11 @@ check('ordinary accepts day-4 when no day-3', m && m.status==='ok' && m.item.po.
 
 reset([makePO('03/11/2026', [{desc:'Baby Spinach 1kg'}])]);
 m = fill('Baby Spinach 1kg');
-check('ordinary same-day → no delivery (r11)', !m || m.status==='nodelivery' || m.status==='none', m && m.status);
+check('perishable same-day fills (r12 0–4)', m && m.status==='ok' && m.item.po.delivery==='03/11/2026', m && m.status);
+
+reset([makePO('03/11/2026', [{desc:'Plain Flour 1kg'}])]);
+m = fill('Plain Flour 1kg');
+check('dry flour same-day → nodelivery', !m || m.status==='nodelivery' || m.status==='none', m && m.status);
 
 reset([makePO('01/11/2026', [{desc:'Micro Herbs Basil 50g'}])]); // day-2
 m = fill('Micro Herbs Basil 50g');
@@ -156,6 +173,51 @@ check('ice stays blank', !m || m.status!=='ok', m && m.status);
 reset([makePO('31/10/2026', [{desc:'Green Oil SUB'}])]);
 m = fill('Green Oil (SUB)');
 check('SUB stays blank', !m || m.status!=='ok', m && m.status);
+
+
+// --- r12: universal keyword (plurals / short-long) ---
+check('tokens oyster/oysters align', (()=>{ const a=poTokens('Oyster Pambula'), b=poTokens('Oysters Pambula open'); return a.includes('oyster') && b.includes('oyster') && poScore(a,b) >= PO_FILL_MIN; })());
+check('tokens tomato/tomatoes', (()=>{ const a=poTokens('Tomato'), b=poTokens('Tomatoes vine ripened'); return a.includes('tomato') && b.includes('tomato') && poScore(a,b) >= PO_FILL_MIN; })());
+check('FILL_MIN try-hard 0.45', PO_FILL_MIN === 0.45);
+check('PERISH_MAX 4', PO_DELIVERY_PERISH_MAX === 4);
+
+// --- r12: RQ00049541 Oyster Pambula / Get Fish (delivery 10/11/2026) ---
+// Keyword match was already strong (score ~0.85); window was the failure under r11.
+function fillOn(name, bat) { return poMatchFor(name, { functionDate: bat, forFill: true }); }
+
+reset([makePO('10/11/2026', [{desc:'01151000 Oyster Pambula, open', supplier:'Get Fish Pty Ltd'}])]);
+m = fillOn('Oyster Pambula', '10/11/2026'); // day-0
+check('oyster fills day-0 vs BAT (r12)', m && m.status==='ok' && m.item && m.item.po.delivery==='10/11/2026', m && m.status);
+check('oyster box has Get Fish', m && m.status==='ok' && /get\s*fish/i.test(m.boxText||m.item.supplier||''), m && (m.boxText||m.item && m.item.supplier));
+
+reset([makePO('10/11/2026', [{desc:'01151000 Oyster Pambula, open', supplier:'Get Fish Pty Ltd'}])]);
+m = fillOn('Oyster Pambula', '11/11/2026'); // day-1
+check('oyster fills day-1 vs BAT', m && m.status==='ok', m && m.status);
+
+reset([makePO('10/11/2026', [{desc:'01151000 Oyster Pambula, open', supplier:'Get Fish Pty Ltd'}])]);
+m = fillOn('Oyster Pambula', '12/11/2026'); // day-2
+check('oyster fills day-2 vs BAT', m && m.status==='ok', m && m.status);
+
+reset([makePO('10/11/2026', [{desc:'01151000 Oyster Pambula, open', supplier:'Get Fish Pty Ltd'}])]);
+m = fillOn('Oyster Pambula', '13/11/2026'); // day-3 — outside fish window
+check('oyster day-3 → nodelivery', !m || m.status==='nodelivery' || m.status==='none', m && m.status);
+
+// Same REQ also has HENG lines — day-0 ok for HENG, still 0–1 only
+reset([makePO('10/11/2026', [
+  {desc:'01151000 Sushi Nigiri : Inari (Tofu) VEGAN GF x 30', supplier:'Heng Australia Pty Ltd'},
+  {desc:'01151000 Oyster Pambula, open', supplier:'Get Fish Pty Ltd'},
+])]);
+m = fillOn('Oyster Pambula', '10/11/2026');
+check('mixed REQ: oyster still picks Get Fish', m && m.status==='ok' && /get\s*fish/i.test((m.item&&m.item.supplier)||''), m && m.item && m.item.supplier);
+m = fillOn('Sushi Nigiri Inari', '10/11/2026');
+check('mixed REQ: HENG nigiri fills day-0', m && m.status==='ok' && /heng/i.test((m.item&&m.item.supplier)||''), m && m.status);
+
+// Token sanity: Pambula oysters wording variants
+reset([makePO('10/11/2026', [{desc:'01151000 Oyster Pambula, open', supplier:'Get Fish Pty Ltd'}])]);
+for (const name of ['Oyster Pambula', 'Oysters Pambula', 'Pambula Oyster', 'Pambula oysters open']) {
+  m = fillOn(name, '10/11/2026');
+  check('variant fills: '+name, m && m.status==='ok', m && m.status);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -1,5 +1,5 @@
 /**
- * Pre-deploy E2E for 4.8.35-r11
+ * Pre-deploy E2E for 4.8.35-r11+ (r12 oyster/fish)
  */
 import http from 'http';
 import fs from 'fs';
@@ -161,7 +161,7 @@ try {
   fs.writeFileSync(path.join(OUT, 'diag.json'), JSON.stringify(diag, null, 2));
   report.fills = diag;
 
-  check('version r11', /4\.8\.35-r11/.test(String(diag.ver || '')), diag.ver);
+  check('version r12+', /4\.8\.35-r1[12]/.test(String(diag.ver || '')), diag.ver);
   check('BAT found', !!diag.bat && !diag.error, diag.bat || diag.error);
   check('POS>=3', diag.POS >= 3, String(diag.POS));
   check('ROWS>5', diag.ROWS > 5, String(diag.ROWS));

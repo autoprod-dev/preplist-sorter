@@ -22,9 +22,9 @@
       "detail": ""
     },
     {
-      "name": "version r11",
+      "name": "version r12+",
       "ok": true,
-      "detail": "4.8.35-r11"
+      "detail": "4.8.35-r12"
     },
     {
       "name": "BAT found",
@@ -169,12 +169,12 @@
     {
       "name": "Ref# print ran",
       "ok": true,
-      "detail": "{\"ok\":true,\"pages\":22,\"filledCount\":3}"
+      "detail": "{\"ok\":true,\"pages\":22,\"filledCount\":4}"
     },
     {
       "name": "Ref# print marked preview",
       "ok": true,
-      "detail": "{\"pages\":22,\"filled\":3}"
+      "detail": "{\"pages\":22,\"filled\":4}"
     }
   ],
   "fills": {
@@ -232,7 +232,7 @@
       "checkN": 0
     },
     "origN": 2,
-    "ver": "4.8.35-r11",
+    "ver": "4.8.35-r12",
     "poDeliveries": [
       {
         "d": "17/10/2026",
