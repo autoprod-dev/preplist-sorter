@@ -1,4 +1,5 @@
-/* Prepline 4.8.35-r12 — SINGLE owner of step numbers + Show/Hide.
+/* Prepline 4.8.35-r13 — SINGLE owner of step numbers + Show/Hide.
+ * r13 also drops the More views step (feature removed; renumber 1..N).
  *
  * Root cause of prior breakage: six scripts (4821, 4822, 4827/4828, 4835, 4838)
  * each kept their own openState, cloned buttons (killing listeners), renumbered
@@ -17,7 +18,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r12';
+  var VERSION = '4.8.35-r13';
   var CSS_ID = 'u4840-css';
   var ATTR = 'data-u4840-id';
   var openState = Object.create(null);
@@ -105,14 +106,6 @@
       find: function () { return document.getElementById('u4835Filters'); }
     },
     {
-      id: 'moreViews',
-      label: 'More views',
-      find: function () {
-        return document.querySelector('.u4827-wrap[data-u4827="moreViews"]') ||
-          document.querySelector('.u4821-wrap[data-u4821="moreViews"]');
-      }
-    },
-    {
       id: 'export',
       label: 'Export options',
       find: function () {
@@ -183,6 +176,8 @@
        * (4835), so collapsing here left file input + One-time sort with no way back. */
       'body.u480-sorted #dbPanel.u4835-load-collapsed > .u480-load-body,',
       'body.u480-sorted #dbPanel.u480-collapsed > .u480-load-body{display:none!important;}',
+      /* r13: More views feature/step removed */
+      '#u480ViewsMore,.u4827-wrap[data-u4827="moreViews"],.u4821-wrap[data-u4821="moreViews"]{display:none!important;}',
       /* Calendar stays off Prepline page */
       '#u4835CalWrap,.u4821-wrap[data-u4821="calendar"],.u4821-wrap[data-u4821="calendarSlot"],#u486Cal,#u4835Cal{display:none!important;}'
     ].join('');

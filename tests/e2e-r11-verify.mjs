@@ -1,5 +1,5 @@
 /**
- * Pre-deploy E2E for 4.8.35-r11+ (r12 oyster/fish)
+ * Pre-deploy E2E for 4.8.35-r13 (oyster/synonyms/More views removed)
  */
 import http from 'http';
 import fs from 'fs';
@@ -161,7 +161,7 @@ try {
   fs.writeFileSync(path.join(OUT, 'diag.json'), JSON.stringify(diag, null, 2));
   report.fills = diag;
 
-  check('version r12+', /4\.8\.35-r1[12]/.test(String(diag.ver || '')), diag.ver);
+  check('version r12+', /4\.8\.35-r1[123]/.test(String(diag.ver || '')), diag.ver);
   check('BAT found', !!diag.bat && !diag.error, diag.bat || diag.error);
   check('POS>=3', diag.POS >= 3, String(diag.POS));
   check('ROWS>5', diag.ROWS > 5, String(diag.ROWS));
@@ -223,6 +223,9 @@ try {
   check('Exec Chef gone', !ui.execChef);
   check('no Cooking yield in bars', !ui.bars.some(b => /Cooking yield/i.test(b)), ui.bars.join(' | '));
   check('no Exec Chef in bars', !ui.bars.some(b => /Exec Chef/i.test(b)));
+  check('More views step gone', !ui.bars.some(b => /More views/i.test(b)), ui.bars.join(' | '));
+  const moreDom = await page.evaluate(() => !!(document.getElementById('u480ViewsMore') || document.querySelector('[data-u4827="moreViews"],[data-u4821="moreViews"]')));
+  check('More views DOM gone', !moreDom);
   // Optional steps (Load/Changes/Food cost/Originals) may be absent until their panels mount.
   // Require: Print options numbered, no Cooking yield/Exec Chef, no duplicate numbers among numbered bars.
   const printBar = (ui.bars || []).find(b => /Print options/i.test(b));

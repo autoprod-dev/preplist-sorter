@@ -18,8 +18,9 @@
   /* Renumber without calendar on Prepline page */
   var STEP = {
     load: 1, pax: 2, chef: 3, ingredients: 4, changes: 5,
-    prepSummary: 6, kitchenClose: 7, filters: 8, moreViews: 9,
-    export: 10, print: 11, requisitions: 12, foodCost: 13, originals: 14, howto: 15
+    prepSummary: 6, kitchenClose: 7, filters: 8,
+    /* moreViews removed r13 — renumber contiguous */
+    export: 9, print: 10, requisitions: 11, foodCost: 12, originals: 13, howto: 14
   };
 
   function stepTitle(n, label) { return n + ' · ' + label; }

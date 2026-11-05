@@ -24,7 +24,7 @@
     {
       "name": "version r12+",
       "ok": true,
-      "detail": "4.8.35-r12"
+      "detail": "4.8.35-r13"
     },
     {
       "name": "BAT found",
@@ -134,7 +134,7 @@
     {
       "name": "no Cooking yield in bars",
       "ok": true,
-      "detail": "2 · Pax per dish | 3 · Chef-hours settings | 4 · Ingredients: allergens, suppliers and prices | 5 · Prep summary (all dishes/pax/covers) | 11 · Requisitions (purchase orders) | 6 · Kitchen close & public holidays | 7 · Preplist filters | 8 · More views | 9 · Export options | 10 · Print options | 12 · How Prepline sorts & schedules"
+      "detail": "2 · Pax per dish | 3 · Chef-hours settings | 4 · Ingredients: allergens, suppliers and prices | 5 · Prep summary (all dishes/pax/covers) | 10 · Requisitions (purchase orders) | 6 · Kitchen close & public holidays | 7 · Preplist filters | 8 · Export options | 9 · Print options | 11 · How Prepline sorts & schedules"
     },
     {
       "name": "no Exec Chef in bars",
@@ -142,14 +142,24 @@
       "detail": ""
     },
     {
+      "name": "More views step gone",
+      "ok": true,
+      "detail": "2 · Pax per dish | 3 · Chef-hours settings | 4 · Ingredients: allergens, suppliers and prices | 5 · Prep summary (all dishes/pax/covers) | 10 · Requisitions (purchase orders) | 6 · Kitchen close & public holidays | 7 · Preplist filters | 8 · Export options | 9 · Print options | 11 · How Prepline sorts & schedules"
+    },
+    {
+      "name": "More views DOM gone",
+      "ok": true,
+      "detail": ""
+    },
+    {
       "name": "Print options numbered step",
       "ok": true,
-      "detail": "10 · Print options"
+      "detail": "9 · Print options"
     },
     {
       "name": "no duplicate step numbers",
       "ok": true,
-      "detail": "[{\"n\":2,\"label\":\"Pax per dish\"},{\"n\":3,\"label\":\"Chef-hours settings\"},{\"n\":4,\"label\":\"Ingredients: allergens, suppliers and prices\"},{\"n\":5,\"label\":\"Prep summary (all dishes/pax/covers)\"},{\"n\":11,\"label\":\"Requisitions (purchase orders)\"},{\"n\":6,\"label\":\"Kitchen close & public holidays\"},{\"n\":7,\"label\":\"Preplist filters\"},{\"n\":8,\"label\":\"More views\"},{\"n\":9,\"label\":\"Export options\"},{\"n\":10,\"label\":\"Print options\"},{\"n\":12,\"label\":\"How Prepline sorts & schedules\"}]"
+      "detail": "[{\"n\":2,\"label\":\"Pax per dish\"},{\"n\":3,\"label\":\"Chef-hours settings\"},{\"n\":4,\"label\":\"Ingredients: allergens, suppliers and prices\"},{\"n\":5,\"label\":\"Prep summary (all dishes/pax/covers)\"},{\"n\":10,\"label\":\"Requisitions (purchase orders)\"},{\"n\":6,\"label\":\"Kitchen close & public holidays\"},{\"n\":7,\"label\":\"Preplist filters\"},{\"n\":8,\"label\":\"Export options\"},{\"n\":9,\"label\":\"Print options\"},{\"n\":11,\"label\":\"How Prepline sorts & schedules\"}]"
     },
     {
       "name": "calendar not numbered as step",
@@ -232,7 +242,7 @@
       "checkN": 0
     },
     "origN": 2,
-    "ver": "4.8.35-r12",
+    "ver": "4.8.35-r13",
     "poDeliveries": [
       {
         "d": "17/10/2026",
@@ -266,13 +276,12 @@
     "3 · Chef-hours settings",
     "4 · Ingredients: allergens, suppliers and prices",
     "5 · Prep summary (all dishes/pax/covers)",
-    "11 · Requisitions (purchase orders)",
+    "10 · Requisitions (purchase orders)",
     "6 · Kitchen close & public holidays",
     "7 · Preplist filters",
-    "8 · More views",
-    "9 · Export options",
-    "10 · Print options",
-    "12 · How Prepline sorts & schedules"
+    "8 · Export options",
+    "9 · Print options",
+    "11 · How Prepline sorts & schedules"
   ],
   "errors": [],
   "numbered": [
@@ -280,13 +289,12 @@
     3,
     4,
     5,
-    11,
+    10,
     6,
     7,
     8,
     9,
-    10,
-    12
+    11
   ],
   "finalSteps": [
     {
@@ -306,7 +314,7 @@
       "label": "Prep summary (all dishes/pax/covers)"
     },
     {
-      "n": 11,
+      "n": 10,
       "label": "Requisitions (purchase orders)"
     },
     {
@@ -319,18 +327,14 @@
     },
     {
       "n": 8,
-      "label": "More views"
-    },
-    {
-      "n": 9,
       "label": "Export options"
     },
     {
-      "n": 10,
+      "n": 9,
       "label": "Print options"
     },
     {
-      "n": 12,
+      "n": 11,
       "label": "How Prepline sorts & schedules"
     }
   ]

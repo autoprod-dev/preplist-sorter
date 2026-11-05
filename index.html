@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r12">
+<meta name="prepline-version" content="4.8.35-r13">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -950,7 +950,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r12</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r13</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1284,8 +1284,11 @@ function origRefLines(entry, dish){
   const functionDate = dish ? getEventDateStr(dish) : null;
   return entry.refRows.map(r=>{
     const m = poMatchFor(r.name, {functionDate, forFill:true});
-    const txt = (m && m.status==='ok') ? poRefFillText(m) : '';
-    return txt ? {row:r, text:txt} : null;
+    if (m && m.status==='ok'){
+      poLogFill(r.name, m);
+      return {row:r, text: poRefFillText(m)};
+    }
+    return null;
   }).filter(Boolean);
 }
 const origCompCache = {};
@@ -1331,7 +1334,7 @@ function renderOriginalsTab(){
       <button class="ghost" type="button" onclick="printOriginalsAll()">🖨️ Print the original pages</button>
       <button class="ghost" type="button" onclick="(window.exportOriginalXlsx479||window.exportAsIsXlsxWithPhotos||function(){})('upload')" title="One tab per dish with photos embedded when present">📊 Download original .xlsx (with photos)</button>
     </div>
-    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is <b>3 or 4 days before</b> the batch/event date (prefer 3; BAT date first). Match similar names first (plurals / short–long). Fresh & perishable lines allow delivery <b>0–4 days</b> before BAT (prefer 3, then 4). Microherbs, fish & seafood (incl. oysters; Get Fish) use <b>0–2</b>. <b>HENG</b> is <b>0–1</b> only. Tap water, ice, sub-recipes and unmatched lines stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
+    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is <b>3 or 4 days before</b> the batch/event date (prefer 3; BAT date first). Match similar names first (plurals / short–long / synonyms like prawn↔shrimp, coriander↔cilantro, eggplant↔aubergine; prefer the supplier shown on the PT). Fresh & perishable lines allow delivery <b>0–4 days</b> before BAT (prefer 3, then 4). Microherbs, fish & seafood (incl. oysters; Get Fish) use <b>0–2</b>. <b>HENG</b> is <b>0–1</b> only. Tap water, ice, sub-recipes and unmatched lines stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
     ${dishes.map(d=>originalPageImages[d].map((e,i)=>`<div class="orig-page"><div class="orig-head no-print"><b>${escapeHtml(cleanDishName(d))}</b> <span class="meta">${escapeHtml(e.pageLabel||'')}</span> <button class="ghost" type="button" onclick="openOriginalViewer('${encodeURIComponent(d).replace(/'/g,'%27')}')">📖 View original</button></div><img class="orig-img" data-od="${escapeHtml(encodeURIComponent(d))}" data-oi="${i}" src="${e.dataUrl}" alt="${escapeHtml(cleanDishName(d))}"></div>`).join('')).join('')}
   </div>`;
 }
@@ -3633,7 +3636,7 @@ function parsePoPages(pagesItems, fileName){
 // --- name matching
 const PO_STOP = new Set(('pb bch bun bunch pun punnet ctn carton ea each pk pack packet box bag tub tin can jar btl bottle per x and the of with in fresh frozen tip top krio krush masterfoods canister sub item add to bs placeholder name peeled diced sliced chopped minced grated washed cleaned trimmed portioned portions portion wholemeal organic natural plain cooked raw whole fine large small baby prs pfd kg k g gm grams kilograms ml l lt ltr litres liters pcs pc size grade premium select extra sauteed saute roasted poached blanched fried grilled baked boiled steamed confit puree pureed leaves leaf tendril tendrils sprout sprouts gx').split(' '));
 function poSingular(w){
-  // 4.8.35-r12: universal plurals — oysters→oyster, tomatoes→tomato, berries→berry
+  // 4.8.35-r13: universal plurals — oysters→oyster, tomatoes→tomato, berries→berry
   if (!w) return w;
   if (w.length > 4 && /ies$/.test(w)) return w.slice(0,-3)+'y';
   if (w.length > 4 && /oes$/.test(w)) return w.slice(0,-2); // tomatoes → tomato
@@ -3642,7 +3645,44 @@ function poSingular(w){
   return w;
 }
 // Confirmed equivalents: River Mint is mint (confirmed by the kitchen).
-const PO_SYNONYMS = [[/\briver\s+mint\b/g, 'mint'],[/\bwarrigal\s+greens?\b/g,'warrigal'],[/\bsnow\s+peas?(?:\s+(?:tendril|shoot|leaf|leaves|sprout)s?)?/g,'snowpea'],[/\bgoat'?s?\s+cheese\b/g,'goatcheese'],[/\bmicroherbs?\b/g,'micro'],[/\bextra\s+virgin\b/g,' '],[/\bvirgin\b/g,' ']];
+// 4.8.35-r13: phrase synonyms first (order → canonical tokens), then token aliases in poTokens.
+const PO_SYNONYMS = [
+  [/\briver\s+mint\b/g, 'mint'],
+  [/\bwarrigal\s+greens?\b/g, 'warrigal'],
+  [/\bsnow\s+peas?(?:\s+(?:tendril|shoot|leaf|leaves|sprout)s?)?/g, 'snowpea'],
+  [/\bgoat'?s?\s+cheese\b/g, 'goatcheese'],
+  [/\bmicroherbs?\b/g, 'micro'],
+  [/\bextra\s+virgin\b/g, ' '],
+  [/\bvirgin\b/g, ' '],
+  // oyster / Pambula (any order) → shared tokens
+  [/\bpambula\s+oysters?\b/g, 'oyster pambula'],
+  [/\boysters?\s+pambula\b/g, 'oyster pambula'],
+  // common culinary synonyms (phrase form)
+  [/\bbell\s+peppers?\b/g, 'capsicum'],
+  [/\bgreen\s+onions?\b/g, 'shallot'],
+  [/\bspring\s+onions?\b/g, 'shallot'],
+  [/\bscallions?\b/g, 'shallot'],
+  [/\bcourgettes?\b/g, 'zucchini'],
+  [/\baubergines?\b/g, 'eggplant'],
+  [/\bcilantro\b/g, 'coriander'],
+  [/\barugula\b/g, 'rocket'],
+  [/\bshrimps?\b/g, 'prawn'],
+  [/\bgarbanzo(?:\s+beans?)?\b/g, 'chickpea'],
+  [/\bchile(?:s)?\b/g, 'chilli'],
+  [/\bchiles?\b/g, 'chilli'],
+  [/\bchilies\b/g, 'chilli'],
+];
+// Token-level aliases applied after singularise (Gerard: oyster/oysters, prawn/shrimp, …)
+const PO_TOKEN_ALIASES = {
+  shrimp:'prawn', shrimps:'prawn',
+  cilantro:'coriander',
+  aubergine:'eggplant', aubergines:'eggplant',
+  courgette:'zucchini', courgettes:'zucchini',
+  arugula:'rocket',
+  garbanzo:'chickpea', garbanzos:'chickpea',
+  chile:'chilli', chiles:'chilli', chili:'chilli', chilies:'chilli', chillies:'chilli',
+  scallion:'shallot', scallions:'shallot',
+};
 function poTokens(name){
   // 4.8.35-r9: keyword normalise for ALL items — strip supplier codes (PRS/PB/PFD),
   // units, prep words, punctuation; keep core ingredient nouns for token overlap.
@@ -3657,7 +3697,10 @@ function poTokens(name){
   t = t.replace(/\b\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\b/g, ' ');   // 700x6 packing
   t = t.replace(/\bgx\b/g, ' ');                                    // residue from 28gx30 / 700GX6
   t = t.replace(/[^a-z\s]/g, ' ');
-  return [...new Set(t.split(/\s+/).filter(w=>w.length>=2 && !PO_STOP.has(w)).map(poSingular))];
+  return [...new Set(t.split(/\s+/).filter(w=>w.length>=2 && !PO_STOP.has(w)).map(w=>{
+    const s = poSingular(w);
+    return PO_TOKEN_ALIASES[s] || PO_TOKEN_ALIASES[w] || s;
+  }))];
 }
 function poLev1(a, b){   // true if edit distance <= 1
   if (Math.abs(a.length-b.length) > 1) return false;
@@ -3670,7 +3713,7 @@ function poLev1(a, b){   // true if edit distance <= 1
   return e + (a.length-i) + (b.length-j) <= 1;
 }
 function poTokEq(a, b){
-  // 4.8.35-r12: match similar names first — exact, short⊂long stem (pea/peas, oyster/oyster…), edit-1
+  // 4.8.35-r13: match similar names first — exact, short⊂long stem (pea/peas, oyster/oyster…), edit-1
   if (!a || !b) return false;
   if (a === b) return true;
   if (a.length >= 3 && b.length >= 3 && (a.startsWith(b) || b.startsWith(a))) return true;
@@ -3740,7 +3783,7 @@ function poIsMicroherbExempt(task){
   return false;
 }
 // Fish / seafood (incl. shellfish) + fish/seafood suppliers: short-shelf-life exemption (0–2).
-// 4.8.35-r12: Oyster Pambula was name-matching (score≥0.85) but NEVER filled — poIsFishExempt
+// 4.8.35-r13: Oyster Pambula was name-matching (score≥0.85) but NEVER filled — poIsFishExempt
 // explicitly excluded oyster/shellfish (forced ordinary 3–4). REQ RQ00049541 Get Fish delivery
 // 10/11 is day-0/1 vs BAT → window fail. Fix: treat oysters/seafood as fish-exempt AND any
 // line from Get Fish / seafood suppliers as exempt regardless of product wording.
@@ -3763,18 +3806,20 @@ function poIsFishExempt(task, item){
 }
 function poIsShortShelfExempt(task, item){ return poIsMicroherbExempt(task) || poIsFishExempt(task, item); }
 const PO_OK = 0.6, PO_CHECK = 0.4;
-const PO_FILL_MIN = 0.45;   // 4.8.35-r12: try-hard keyword floor; date window still gates
+const PO_FILL_MIN = 0.45;   // 4.8.35-r13: try-hard keyword floor; date window still gates
 let poMatchCache = null;
 function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((it, ii)=>out.push(Object.assign({pi, ii, po}, it, {tok: poTokens(it.desc)})))); return out; }
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
 const PO_LINK_KEY = 'prepline.poLinks.v1';
 let poLinks = (function(){ try{ return JSON.parse(localStorage.getItem(PO_LINK_KEY)||'{}') || {}; }catch(e){ return {}; } })();
-// 4.8.35-r12 Ref #: match similar names FIRST, then date-filter.
+// 4.8.35-r13 Ref #: match similar names FIRST (plurals, short–long, synonym list), then date-filter.
+// Prefer the supplier shown on the PT / Ingredients panel when several PO lines qualify.
 // Fresh/perishable (veg/fruit/herbs/dairy/meat/…): allow 0–4 days (won't use older stock);
-//   among those, PREFER day-3 then day-4, else best remaining.
+//   among those, PREFER day-3 then day-4, else best remaining. WARN when fresh has no 0–4 match.
 // Microherbs + fish/seafood (incl. oyster) + Get Fish suppliers: 0–2 (closest preferred).
 // HENG supplier: 0–1 only (overrides). Dry/shelf-stable: still STRICT 3|4 (prefer 3).
 // Never fill tap water / water / ice / boiling water / SUB / no-PO.
+// Each successful fill is logged: item → PO → supplier → delivery → days-before.
 const PO_DELIVERY_PREF_DAYS = 3;
 const PO_DELIVERY_ALT_DAYS = 4;
 const PO_DELIVERY_EXEMPT_MAX = 2;   // microherbs/fish: 0..2 inclusive
@@ -3838,13 +3883,64 @@ function poPickBestCand(cands){
   });
   return best;
 }
+// Preferred supplier shown on the PT / Ingredients panel (Gerard r13).
+function poPreferredSupplier(task){
+  try {
+    if (typeof INGINFO !== 'undefined' && INGINFO && INGINFO.items){
+      const e = INGINFO.items[ingKey(task)];
+      if (e && e.sup && String(e.sup).trim()) return String(e.sup).trim();
+    }
+  } catch (e) {}
+  const m = String(task || '').match(/\s+-\s+([^-]+)$/);
+  return m ? m[1].replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim() : '';
+}
+function poSupplierAffinity(preferred, candidateSup){
+  if (!preferred || !candidateSup) return 0;
+  const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const a = norm(preferred), b = norm(candidateSup);
+  if (!a || !b) return 0;
+  if (a === b) return 3;
+  if (a.includes(b) || b.includes(a)) return 2;
+  const ta = new Set(a.split(' ').filter(w => w.length > 2));
+  const tb = b.split(' ').filter(w => w.length > 2);
+  let hit = 0; tb.forEach(w => { if (ta.has(w)) hit++; });
+  return hit ? 1 : 0;
+}
+// Fill audit log: item → PO → supplier → delivery → days-before (Gerard r13).
+const poFillLog = [];
+function poLogFill(task, m){
+  if (!m || m.status !== 'ok' || !m.item) return;
+  const it = m.item;
+  const entry = {
+    item: String(task || ''),
+    po: (it.po && (it.po.req || it.po.poNumbers && it.po.poNumbers[0])) || '',
+    supplier: it.supplier || '',
+    delivery: (it.po && it.po.delivery) || '',
+    daysBefore: (m.daysBefore !== undefined && m.daysBefore !== null) ? m.daysBefore : null,
+    score: m.score
+  };
+  poFillLog.push(entry);
+  try {
+    console.info('[Prepline Ref#]', entry.item, '→', entry.po || '(no PO#)', '→', entry.supplier, '→', entry.delivery, '→', entry.daysBefore, 'days before');
+  } catch (e) {}
+}
+function poClearFillLog(){ poFillLog.length = 0; }
+function poFreshMissWarn(task, m){
+  // Warn when a fresh/perishable line has no in-window match within 0–4 days.
+  if (!m) return false;
+  if (!poIsPerishable(task)) return false;
+  if (m.status === 'ok' || m.status === 'sub') return false;
+  return m.status === 'nodelivery' || m.status === 'none';
+}
+
 function poMatchFor(task, opts){
   opts = opts || {};
   const functionDate = opts.functionDate || null;
   const forFill = !!opts.forFill;   // Ref# box on original PT: never fill without a valid window match
   if (!POS.length) return null;
   if (!poMatchCache) poMatchCache = {items: poAllItems(), byKey: {}};
-  const cacheKey = ingKey(task) + '|' + (functionDate || '') + '|' + (forFill ? 'F' : 'S') + '|' + (poIsShortShelfExempt(task) ? 'E' : 'N');
+  const prefSup = poPreferredSupplier(task);
+  const cacheKey = ingKey(task) + '|' + (functionDate || '') + '|' + (forFill ? 'F' : 'S') + '|' + (poIsShortShelfExempt(task) ? 'E' : 'N') + '|S:' + String(prefSup || '').toLowerCase();
   if (poMatchCache.byKey[cacheKey] !== undefined) return poMatchCache.byKey[cacheKey];
   if (poIsNonPurchased(task)) return (poMatchCache.byKey[cacheKey] = {status:'sub'});
   const tok = poTokens(task);
@@ -3864,18 +3960,22 @@ function poMatchFor(task, opts){
     // Prefer non-HENG matches when any qualify; otherwise use HENG (closest 0 then 1).
     const nonHeng = allowed.filter(c=>!poIsHengSupplier(c.item && c.item.supplier));
     const pool = nonHeng.length ? nonHeng : allowed;
+    const aff = c => poSupplierAffinity(prefSup, c.item && c.item.supplier);
+    // Prefer supplier shown on PT whenever it matches a candidate (Gerard r13).
+    const withPref = prefSup ? pool.filter(c => aff(c) > 0) : [];
+    const rankPool = withPref.length ? withPref : pool;
     if (!nonHeng.length){
-      chosen = pool.slice().sort((a,b)=>(a.daysBefore - b.daysBefore) || (b.score - a.score));
+      chosen = rankPool.slice().sort((a,b)=>(aff(b)-aff(a)) || (a.daysBefore - b.daysBefore) || (b.score - a.score));
     } else if (poIsShortShelfExempt(task)){
-      // fish/micro: closest on/before (0 then 1 then 2)
-      chosen = pool.slice().sort((a,b)=>(a.daysBefore - b.daysBefore) || (b.score - a.score));
+      // fish/micro: closest on/before (0 then 1 then 2); PT supplier first
+      chosen = rankPool.slice().sort((a,b)=>(aff(b)-aff(a)) || (a.daysBefore - b.daysBefore) || (b.score - a.score));
     } else {
       // Prefer day-3, then day-4; perishable may also have 0–2 — fall back by score then near-3
-      const d3 = pool.filter(c=>c.daysBefore === PO_DELIVERY_PREF_DAYS);
-      const d4 = pool.filter(c=>c.daysBefore === PO_DELIVERY_ALT_DAYS);
+      const d3 = rankPool.filter(c=>c.daysBefore === PO_DELIVERY_PREF_DAYS);
+      const d4 = rankPool.filter(c=>c.daysBefore === PO_DELIVERY_ALT_DAYS);
       const pref = d3.length ? d3 : d4;
-      const base = pref.length ? pref : pool;
-      chosen = base.slice().sort((a,b)=>(b.score - a.score) || (Math.abs(a.daysBefore - PO_DELIVERY_PREF_DAYS) - Math.abs(b.daysBefore - PO_DELIVERY_PREF_DAYS)));
+      const base = pref.length ? pref : rankPool;
+      chosen = base.slice().sort((a,b)=>(aff(b)-aff(a)) || (b.score - a.score) || (Math.abs(a.daysBefore - PO_DELIVERY_PREF_DAYS) - Math.abs(b.daysBefore - PO_DELIVERY_PREF_DAYS)));
     }
     const seen = new Set(), items = [], days = [];
     chosen.forEach(c=>{
@@ -3934,6 +4034,12 @@ function poMatchFor(task, opts){
       res = !best || best.score < PO_CHECK ? {status:'none', best} : poAttachBox({status: best.score >= PO_OK ? 'ok' : 'check', items:[best.item], score: best.score});
     }
   }
+  if (res && poFreshMissWarn(task, res)){
+    res.warn = true;
+    res.warnReason = res.reason || (res.status === 'none'
+      ? 'fresh/perishable: no PO name match to try within 0–4 days'
+      : 'fresh/perishable: no delivery within 0–4 days before BAT');
+  }
   return (poMatchCache.byKey[cacheKey] = res);
 }
 const PO_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -3973,21 +4079,22 @@ function poChipHtml(r){
   if (!poInViews) return '';
   const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return '';
   if (m.status==='none') return ' <span class="po-chip none" title="No line on the uploaded purchase orders matches this ingredient.">no PO</span>';
-  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is in the allowed window (perishable 0–4 prefer 3|4; microherbs/fish 0–2; HENG 0–1).">no delivery in window</span>';
+  if (m.status==='nodelivery') return ' <span class="po-chip none" title="' + escapeHtml(m.warnReason || 'A PO line matches by name, but no requisition delivery is in the allowed window (perishable 0–4 prefer 3|4; microherbs/fish 0–2; HENG 0–1).') + '">' + (m.warn ? '⚠ fresh: no delivery in 0–4 days' : 'no delivery in window') + '</span>';
+  if (m.status==='none' && m.warn) return ' <span class="po-chip none" title="' + escapeHtml(m.warnReason || 'fresh/perishable with no PO match in 0–4 days') + '">⚠ fresh: no PO in 0–4 days</span>';
   const it = m.item, po = it.po;
   const tip = `${it.supplier}${po.poNumbers.length?' · PO '+poNumberText(po):''} · line ${it.n}: ${it.desc} · ${it.qty!==null?it.qty+' '+it.uom:''} · delivery ${po.delivery}${m.status==='check'?' — weak name match, please check':''}`;
   return ` <span class="po-chip ${m.status}" title="${escapeHtml(tip)}"><b class="po-ref-l">REF</b> ${escapeHtml(poRefText(it))}${m.status==='check'?' (check)':''}</span>`;
 }
 function poStats(){
-  const keys = new Set(), used = new Set(); let ok = 0, check = 0, none = 0, nodelivery = 0;
+  const keys = new Set(), used = new Set(); let ok = 0, check = 0, none = 0, nodelivery = 0, freshWarn = 0;
   ROWS.forEach(r=>{ const k = ingKey(r.task)+'|'+ (getEventDateStr(r.dish)||''); if (!k || keys.has(k)) return; keys.add(k);
     const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return;
     if (m.status==='ok'){ ok++; used.add(m.item.po.req+'#'+m.item.n); }
     else if (m.status==='check'){ check++; used.add(m.item.po.req+'#'+m.item.n); }
-    else if (m.status==='nodelivery') nodelivery++;
-    else none++; });
+    else if (m.status==='nodelivery'){ nodelivery++; if (m.warn) freshWarn++; }
+    else { none++; if (m.warn) freshWarn++; } });
   const unusedLines = poAllItems().filter(it=>!used.has(it.po.req+'#'+it.n));
-  return {total: keys.size, ok, check, none, nodelivery, unusedLines};
+  return {total: keys.size, ok, check, none, nodelivery, freshWarn, unusedLines};
 }
 function poLinkSet(encTask, val){ const k = ingKey(decodeURIComponent(encTask)); if (val) poLinks[k] = val; else delete poLinks[k]; try{ localStorage.setItem(PO_LINK_KEY, JSON.stringify(poLinks)); }catch(e){} poMatchCache = null; render(); }
 function poPanelHtml(){
@@ -4004,7 +4111,7 @@ function poPanelHtml(){
     <table class="po-table"><thead><tr><th>PO number(s)</th><th>Delivery</th><th>Suppliers</th><th>Lines</th><th>File</th></tr></thead><tbody>
     ${POS.map(po=>`<tr><td><b>${po.poNumbers.length?escapeHtml(poNumberText(po)):'no PO number'}</b>${po.req?'<div class="meta">'+escapeHtml(po.req)+'</div>':''}${po.subject?'<div class="meta">'+escapeHtml(po.subject)+'</div>':''}</td><td>${escapeHtml(po.delivery||'—')}</td><td>${escapeHtml([...new Set(po.items.map(i=>i.supplier))].join(', '))}</td><td>${po.items.length}</td><td class="meta">${escapeHtml(po.file||'')}</td></tr>`).join('')}
     </tbody></table>
-    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery in window`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
+    ${st ? `<div class="po-stats"><b>${st.ok}</b> of ${st.total} ingredients matched to a PO line${st.check?`, <b>${st.check}</b> to check`:''}${st.nodelivery?`, <b>${st.nodelivery}</b> no delivery in window`:''}${st.freshWarn?`, <b>⚠ ${st.freshWarn}</b> fresh with no match in 0–4 days`:''}, <b>${st.none}</b> with no PO. ${st.unusedLines.length} PO line(s) not used by any recipe.</div>` : '<div class="meta">Upload the production tools to match their ingredients to these orders.</div>'}
     ${listRows.length ? `<details class="po-fix"><summary>Check or link ingredients (${listRows.length})</summary>
       ${listRows.map(x=>{ const t=x.task; const m = poMatchFor(t, {functionDate:x.functionDate}); const flag = m.status==='check'?'<span class="po-chip check">check</span>':(m.status==='nodelivery'?'<span class="po-chip none">no delivery in window</span>':'<span class="po-chip none">no PO</span>'); return `<div class="row" style="gap:8px; align-items:center; margin:4px 0;"><span style="flex:0 0 300px;">${escapeHtml(t)} ${flag}</span>
         <select onchange="poLinkSet('${encName(t)}', this.value)"><option value="">${m.status==='check'?'Suggested: '+escapeHtml(m.item.supplier+' · '+m.item.desc):(m.status==='nodelivery'?'Name match outside allowed delivery window':'— not on a PO —')}</option><option value="none" ${m.manual&&m.status==='none'?'selected':''}>Not on a PO</option>${opts.map(i=>`<option value="${escapeHtml(i.po.req+'#'+i.n)}">${escapeHtml(i.supplier+' · '+i.desc+' ('+(i.qty!==null?i.qty+' '+i.uom:'')+') · del '+(i.po.delivery||'?'))}</option>`).join('')}</select></div>`; }).join('')}
@@ -5625,12 +5732,8 @@ function render(){
   maybeSurveyPrompt();
   let html = versionSwitchHtml() + sampleBannerHtml() + pdfCookedBannerHtml(ROWS) + renderMasterSummary() + poPanelHtml() + blockedDaysPanelHtml() + costSummaryHtml();
 
-  const u480MoreViews = `<button class="${viewMode==='item'?'':'secondary'}" onclick="setView('item')" type="button" id="itemViewBtn">By item</button>
-    <button class="${viewMode==='week'?'':'secondary'}" onclick="setView('week')" type="button" id="weekViewBtn">Week calendar</button>
-    <button class="${viewMode==='order'?'':'secondary'}" onclick="setView('order')" type="button" id="orderViewBtn">Order sheet</button>
-    <button class="${viewMode==='order47'?'':'secondary'}" onclick="setView('order47')" type="button" id="order47ViewBtn">Order (batched)</button>
-    <button class="${viewMode==='recipes'?'':'secondary'}" onclick="setView('recipes')" type="button" id="recipesViewBtn">Yield library</button>
-    <button class="${viewMode==='voice'?'':'secondary'}" onclick="setView('voice')" type="button" id="voiceViewBtn">Voice add</button>`;
+  const u480MoreViews = ''; // 4.8.35-r13: More views feature removed
+
   const u480ExportBtns = `${viewMode==='dish' ? `<button class="secondary" onclick="exportDishesToXlsx()" type="button" data-export="exportDishesToXlsx" title="By dish Excel">📊 Excel · By dish</button>`
       : viewMode==='section' ? `<button class="secondary" onclick="exportSectionsToXlsx()" type="button" data-export="exportSectionsToXlsx" title="By section Excel">📊 Excel · By section</button>`
       : viewMode==='priority' || viewMode==='week' ? `<button class="secondary" onclick="exportDaysToXlsx()" type="button" data-export="exportDaysToXlsx" title="By day Excel">📊 Excel · By day</button>`
@@ -5654,8 +5757,8 @@ function render(){
     <button class="secondary" onclick="setView('brief47')" type="button" id="brief47ViewBtn">Morning brief</button>
     <button class="secondary" onclick="setView('swap47')" type="button" id="swap47ViewBtn">Swap</button>` : '';
   const u480Grouped = (window.Prepline480 && Prepline480.groupsHtml)
-    ? Prepline480.groupsHtml({ moreViews: u480MoreViews, exportBtns: u480ExportBtns, printBtns: u480PrintBtns, teamBtns: u480TeamBtns })
-    : `<div class="viewtoggle no-print" style="margin-top:8px;">${u480MoreViews}</div><div class="row no-print" style="margin-bottom:10px;gap:8px;flex-wrap:wrap;">${u480ExportBtns}${u480TeamBtns}</div><div class="row no-print print-row" style="margin-bottom:20px;gap:8px;align-items:center;">${u480PrintBtns}</div>`;
+    ? Prepline480.groupsHtml({ exportBtns: u480ExportBtns, printBtns: u480PrintBtns, teamBtns: u480TeamBtns })
+    : `<div class="row no-print" style="margin-bottom:10px;gap:8px;flex-wrap:wrap;">${u480ExportBtns}${u480TeamBtns}</div><div class="row no-print print-row" style="margin-bottom:20px;gap:8px;align-items:center;">${u480PrintBtns}</div>`;
   const hasOriginalPTs = Object.keys(originalPageImages).length > 0;
   html += `<div class="u47-plan-toggle no-print" id="u47PlanToggle" role="tablist" aria-label="Planning view">
     <button type="button" class="u47-plan-btn ${viewMode==='dish'?'on':''}" onclick="setView('dish')">By dish</button>
@@ -8416,9 +8519,9 @@ function pwaShowUpdate(reg){
     if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
   };
 }
-// 4.8.35-r12: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r12';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r12';
+// 4.8.35-r13: one-shot self-heal if a broken SW/cache build is still controlling this tab.
+const PREPLINE_SW_EXPECT = '4.8.35-r13';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r13';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;
@@ -8675,7 +8778,10 @@ function asIsModelFromRows(){
     try {
       if (typeof poMatchFor === 'function' && POS && POS.length) {
         const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish), forFill:true});
-        if (m && m.status === 'ok') ref = (typeof poRefFillText === 'function' ? poRefFillText(m) : (m.boxText || ''));
+        if (m && m.status === 'ok'){
+          ref = (typeof poRefFillText === 'function' ? poRefFillText(m) : (m.boxText || ''));
+          poLogFill(r.task, m);
+        }
       }
     } catch (e) { ref = ''; }
     d.rows.push({item:r.task, qty:r.qty, unit:r.unit||'', cat:c?c.k:'', section:r.section||'', day:r.day||'', ref}); });

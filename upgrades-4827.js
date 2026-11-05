@@ -347,9 +347,12 @@
     patchRenderIngPanel();
     repairIngPanelToggle();
 
-    /* More views — same Show/Hide style as Export / Print */
-    convertDetails('u480ViewsMore', 'moreViews', 'More views',
-      'item · week · order · yield · voice');
+    /* 4.8.35-r13: More views feature/step removed — do not create a numbered bar. */
+    (function hideMoreViews(){
+      var el = document.getElementById('u480ViewsMore');
+      if (el) el.remove();
+      document.querySelectorAll('.u4827-wrap[data-u4827="moreViews"],.u4821-wrap[data-u4821="moreViews"]').forEach(function(n){ n.remove(); });
+    })();
 
     /* Cooking yield (panel or stub) */
     ensureYieldSection();

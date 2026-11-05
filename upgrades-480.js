@@ -223,12 +223,9 @@
   function groupsHtml(parts) {
     // parts: { moreViews, exportBtns, printBtns, teamBtns }
     parts = parts || {};
+    // 4.8.35-r13: More views feature/step removed (Gerard). Export/Print/Team remain.
     return (
       '<div class="u480-groups no-print" id="u480Groups">' +
-        '<details class="u480-group" id="u480ViewsMore">' +
-          '<summary>More views<span class="u480-hint">item · week · order · yield · voice</span></summary>' +
-          '<div class="u480-group-body viewtoggle">' + (parts.moreViews || '') + '</div>' +
-        '</details>' +
         '<details class="u480-group" id="u480Export">' +
           '<summary>Export<span class="u480-hint">Excel · PDF · email</span></summary>' +
           '<div class="u480-group-body row">' + (parts.exportBtns || '') + '</div>' +

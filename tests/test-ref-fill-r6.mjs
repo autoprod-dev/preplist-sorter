@@ -1,6 +1,7 @@
 /**
- * Unit: Ref # autofill rules for 4.8.35-r12
- * Keyword-first (plurals/short-long), then date filter.
+ * Unit: Ref # autofill rules for 4.8.35-r13
+ * Keyword-first (plurals/short-long/synonyms), then date filter.
+ * Prefer PT supplier. Warn fresh miss. Fill log item→PO→supplier→delivery→days.
  * Fresh/perishable: 0..4 (prefer 3 then 4). Dry: STRICT 3|4.
  * Microherbs/fish/seafood (incl. oyster) + Get Fish: 0..2.
  * HENG: 0..1. Tap/ice/SUB blank.
@@ -26,6 +27,7 @@ const sandbox = {
   poMatchCache: null,
   PO_KEY: 'k',
   PO_LINK_KEY: 'l',
+  INGINFO: { items: {} },
   norm: (t) => String(t || '').toLowerCase().replace(/\s+/g, ' ').trim(),
 };
 sandbox.ingKey = (task) => sandbox.norm(task);
@@ -38,7 +40,8 @@ vm.createContext(sandbox);
 vm.runInContext(inHouse + '\n' + block + '\n' + boxFns + `
   this.__export = {
     poIsNonPurchased, poIsMicroherbExempt, poIsFishExempt, poIsFishSupplier, poIsPerishable, poDeliveryAllowed,
-    poIsHengSupplier, poMatchFor, poTokens, poScore, PO_FILL_MIN,
+    poIsHengSupplier, poMatchFor, poTokens, poScore, poPreferredSupplier, poSupplierAffinity, poLogFill, poClearFillLog, poFreshMissWarn,
+    PO_FILL_MIN, poFillLog,
     PO_DELIVERY_PREF_DAYS, PO_DELIVERY_ALT_DAYS, PO_DELIVERY_EXEMPT_MAX, PO_DELIVERY_PERISH_MAX, PO_DELIVERY_HENG_MAX,
     clearCache(){ poMatchCache = null; }
   };
@@ -46,7 +49,8 @@ vm.runInContext(inHouse + '\n' + block + '\n' + boxFns + `
 
 const {
   poIsNonPurchased, poIsMicroherbExempt, poIsFishExempt, poIsFishSupplier, poIsPerishable, poDeliveryAllowed,
-  poIsHengSupplier, poMatchFor, poTokens, poScore, PO_FILL_MIN, PO_DELIVERY_PREF_DAYS,
+  poIsHengSupplier, poMatchFor, poTokens, poScore, poPreferredSupplier, poSupplierAffinity, poLogFill, poClearFillLog, poFreshMissWarn,
+  PO_FILL_MIN, poFillLog, PO_DELIVERY_PREF_DAYS,
   PO_DELIVERY_ALT_DAYS, PO_DELIVERY_EXEMPT_MAX, PO_DELIVERY_PERISH_MAX, PO_DELIVERY_HENG_MAX, clearCache
 } = sandbox.__export;
 
@@ -179,7 +183,54 @@ check('SUB stays blank', !m || m.status!=='ok', m && m.status);
 check('tokens oyster/oysters align', (()=>{ const a=poTokens('Oyster Pambula'), b=poTokens('Oysters Pambula open'); return a.includes('oyster') && b.includes('oyster') && poScore(a,b) >= PO_FILL_MIN; })());
 check('tokens tomato/tomatoes', (()=>{ const a=poTokens('Tomato'), b=poTokens('Tomatoes vine ripened'); return a.includes('tomato') && b.includes('tomato') && poScore(a,b) >= PO_FILL_MIN; })());
 check('FILL_MIN try-hard 0.45', PO_FILL_MIN === 0.45);
+
 check('PERISH_MAX 4', PO_DELIVERY_PERISH_MAX === 4);
+
+// --- r13: synonyms ---
+check('syn prawn=shrimp tokens', (()=>{ const a=poTokens('Prawn cutlets'), b=poTokens('Shrimp cutlets'); return a.includes('prawn') && b.includes('prawn') && poScore(a,b) >= PO_FILL_MIN; })());
+check('syn coriander=cilantro', (()=>{ const a=poTokens('Coriander leaves'), b=poTokens('Cilantro bunch'); return a.includes('coriander') && b.includes('coriander') && poScore(a,b) >= PO_FILL_MIN; })());
+check('syn eggplant=aubergine', (()=>{ const a=poTokens('Eggplant'), b=poTokens('Aubergine diced'); return a.includes('eggplant') && b.includes('eggplant') && poScore(a,b) >= PO_FILL_MIN; })());
+check('syn pambula oyster phrase', (()=>{ const a=poTokens('Oyster Pambula'), b=poTokens('Pambula oysters open'); return a.includes('oyster') && a.includes('pambula') && b.includes('oyster') && b.includes('pambula'); })());
+
+// --- r13: prefer PT supplier ---
+sandbox.INGINFO.items = {};
+reset([
+  makePO('31/10/2026', [{desc:'Baby Spinach 1kg', supplier:'Select Fresh'}]),
+  makePO('31/10/2026', [{desc:'Baby Spinach 1kg', supplier:'Get Fresh Co'}]),
+]);
+sandbox.INGINFO.items[sandbox.ingKey('Baby Spinach 1kg')] = {sup:'Get Fresh Co'};
+clearCache();
+m = fill('Baby Spinach 1kg');
+check('prefer PT supplier Get Fresh Co', m && m.status==='ok' && /get fresh/i.test(m.item.supplier), m && m.item && m.item.supplier);
+
+sandbox.INGINFO.items = {};
+reset([
+  makePO('31/10/2026', [{desc:'Rocket 500g', supplier:'Select Fresh'}]),
+  makePO('31/10/2026', [{desc:'Rocket 500g', supplier:'Leafy Co'}]),
+]);
+m = fill('Rocket 500g - Leafy Co');
+check('prefer supplier from PT name tail', m && m.status==='ok' && /leafy/i.test(m.item.supplier), m && m.item && m.item.supplier);
+
+// --- r13: warn fresh miss ---
+reset([makePO('31/10/2026', [{desc:'Completely Unrelated Widget 1kg', supplier:'Acme'}])]);
+m = fill('Baby Spinach');
+check('fresh none -> warn', m && m.status==='none' && m.warn === true, m && JSON.stringify({s:m.status,w:m.warn}));
+
+reset([makePO('20/10/2026', [{desc:'Baby Spinach 1kg'}])]);
+m = fill('Baby Spinach 1kg');
+check('fresh out-of-window -> warn nodelivery', m && m.status==='nodelivery' && m.warn === true, m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'Completely Unrelated Widget 1kg', supplier:'Acme'}])]);
+m = fill('Plain Flour 1kg');
+check('dry none -> no fresh warn', m && m.status==='none' && !m.warn, m && JSON.stringify({s:m&&m.status,w:m&&m.warn}));
+
+// --- r13: fill log (oyster is fish-exempt 0–2; use day-1 delivery) ---
+poClearFillLog();
+reset([makePO('02/11/2026', [{desc:'Oyster Pambula open', supplier:'Get Fish Pty Ltd'}])]);
+m = fill('Oyster Pambula');
+if (m && m.status==='ok') poLogFill('Oyster Pambula', m);
+check('fill log entry shape', poFillLog.length===1 && poFillLog[0].item==='Oyster Pambula' && /Get Fish/i.test(poFillLog[0].supplier) && poFillLog[0].delivery==='02/11/2026' && poFillLog[0].daysBefore===1, JSON.stringify(poFillLog[0]||{}));
+
 
 // --- r12: RQ00049541 Oyster Pambula / Get Fish (delivery 10/11/2026) ---
 // Keyword match was already strong (score ~0.85); window was the failure under r11.

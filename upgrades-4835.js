@@ -18,8 +18,9 @@
   /* Numbers match upgrades-4840.js catalog (Cooking yield removed r11; Calendar is not a numbered step). */
   var STEP = {
     load: 1, pax: 2, chef: 3, ingredients: 4, changes: 5,
-    prepSummary: 6, kitchenClose: 7, filters: 8, moreViews: 9,
-    export: 10, print: 11, requisitions: 12, foodCost: 13, originals: 14, howto: 15
+    prepSummary: 6, kitchenClose: 7, filters: 8,
+    /* moreViews removed r13 — renumber contiguous */
+    export: 9, print: 10, requisitions: 11, foodCost: 12, originals: 13, howto: 14
   };
 
   var WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -372,8 +373,7 @@
       ['.u4821-wrap[data-u4821="changes"]', 'changes', STEP.changes, 'Changes check'],
       ['.u4821-wrap[data-u4821="prepSummary"]', 'prepSummary', STEP.prepSummary, 'Prep summary (all dishes/pax/covers)'],
       ['.u4821-wrap[data-u4821="kitchenClose"]', 'kitchenClose', STEP.kitchenClose, 'Kitchen close & public holidays'],
-      ['.u4827-wrap[data-u4827="moreViews"],.u4821-wrap[data-u4821="moreViews"]', 'moreViews', STEP.moreViews, 'More views'],
-      ['.u4821-wrap[data-u4821="export"]', 'export', STEP.export, 'Export options'],
+['.u4821-wrap[data-u4821="export"]', 'export', STEP.export, 'Export options'],
       ['.u4821-wrap[data-u4821="print"]', 'print', STEP.print, 'Print options'],
       /* calendar moved off Prepline (4.8.38) */
       ['.u4827-wrap[data-u4827="requisitions"]', 'requisitions', STEP.requisitions, 'Requisitions (purchase orders)'],
