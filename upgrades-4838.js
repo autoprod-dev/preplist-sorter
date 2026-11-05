@@ -80,7 +80,7 @@
 
   function stampVersion() {
     try {
-      /* 4.8.35-r9: upgrades-4840 owns the live version badge; do not downgrade. */
+      /* 4.8.35-r10: upgrades-4840 owns the live version badge; do not downgrade. */
       if (root.__preplineStepOwnerActive || (root.PreplineStepOwner && root.PreplineStepOwner.VERSION)) return;
       var meta = document.querySelector('meta[name="prepline-version"]');
       if (meta && meta.getAttribute('content') !== VERSION) meta.setAttribute('content', VERSION);

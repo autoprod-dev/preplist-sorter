@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r9">
+<meta name="prepline-version" content="4.8.35-r10">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -950,7 +950,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r9</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r10</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
     saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
@@ -1331,7 +1331,7 @@ function renderOriginalsTab(){
       <button class="ghost" type="button" onclick="printOriginalsAll()">🖨️ Print the original pages</button>
       <button class="ghost" type="button" onclick="(window.exportOriginalXlsx479||window.exportAsIsXlsxWithPhotos||function(){})('upload')" title="One tab per dish with photos embedded when present">📊 Download original .xlsx (with photos)</button>
     </div>
-    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is <b>3 or 4 days before</b> the batch/event date (prefer 3; BAT date first). Microherbs and fish may use a delivery 0–4 days before (closest on/before). Tap water, ice, sub-recipes and unmatched lines stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
+    <div class="meta no-print">${n} page(s) as uploaded. ${POS.length ? `The <b>Ref #</b> box shows the supplier and delivery date from the uploaded requisition(s) for <b>${filled}</b> ingredient(s) whose delivery is <b>within 0–4 days before</b> the batch/event date (prefer 3, then 4; BAT date first). Microherbs and fish use the same window (closest on/before). Tap water, ice, sub-recipes and unmatched lines stay blank.` : 'Upload the requisition sheet(s) with the production tools to fill the Ref # boxes.'}</div>
     ${dishes.map(d=>originalPageImages[d].map((e,i)=>`<div class="orig-page"><div class="orig-head no-print"><b>${escapeHtml(cleanDishName(d))}</b> <span class="meta">${escapeHtml(e.pageLabel||'')}</span> <button class="ghost" type="button" onclick="openOriginalViewer('${encodeURIComponent(d).replace(/'/g,'%27')}')">📖 View original</button></div><img class="orig-img" data-od="${escapeHtml(encodeURIComponent(d))}" data-oi="${i}" src="${e.dataUrl}" alt="${escapeHtml(cleanDishName(d))}"></div>`).join('')).join('')}
   </div>`;
 }
@@ -3547,7 +3547,7 @@ function routeFiles(fileList, opts){
 // Good matches show the supplier + PO; weak ones are marked "check"; none are flagged.
 const PO_KEY = 'prepline.pos.v1';
 let POS = (function(){ try{ return JSON.parse(localStorage.getItem(PO_KEY)||'[]') || []; }catch(e){ return []; } })();
-function savePOs(){ try{ localStorage.setItem(PO_KEY, JSON.stringify(POS)); }catch(e){} poMatchCache = null; if (typeof syncPoCol==='function') syncPoCol(); }
+function savePOs(){ try{ localStorage.setItem(PO_KEY, JSON.stringify(POS)); }catch(e){} poMatchCache = null; try{ Object.keys(origCompCache).forEach(k=>delete origCompCache[k]); }catch(e){} if (typeof syncPoCol==='function') syncPoCol(); }
 function clearPOs(){ POS = []; savePOs(); render(); setStatus('Purchase orders cleared.', 'ok'); }
 function poLines(items){
   const rows = [];
@@ -3708,13 +3708,17 @@ function poAllItems(){ const out = []; POS.forEach((po, pi)=>po.items.forEach((i
 // manual override per ingredient: INGINFO-like store (ingredient key -> "pi:ii" or "none")
 const PO_LINK_KEY = 'prepline.poLinks.v1';
 let poLinks = (function(){ try{ return JSON.parse(localStorage.getItem(PO_LINK_KEY)||'{}') || {}; }catch(e){ return {}; } })();
-// 4.8.35-r5 Ref #: default window is ONLY 3 or 4 days BEFORE BAT/event (prefer 3, else 4).
-// Never same-day / 1–2 days before / after for ordinary items.
-// Microherbs + fish exempt: may use 0–4 days on/before; prefer closest delivery on or before BAT.
+// 4.8.35-r10 Ref #: fill window is 0–4 days BEFORE BAT/event (prefer 3, else 4, else closest in window).
+// Microherbs + fish: same 0–4 window; prefer closest delivery on or before BAT.
 // Never fill tap water / water / ice / boiling water / SUB / no-PO.
+// 4.8.35-r10: restore 0–4 fill window (last filling behaviour from 4.4.4 / r5)
+// with prefer-3 then prefer-4 ranking. Exclusive {3,4}-only (r6) zeroed Ref #
+// when kitchen POs arrive 0–2 days before BAT (common for fresh top-ups).
+const PO_DELIVERY_MIN_DAYS = 0;
+const PO_DELIVERY_MAX_DAYS = 4;
 const PO_DELIVERY_PREF_DAYS = 3;
 const PO_DELIVERY_ALT_DAYS = 4;
-const PO_DELIVERY_EXEMPT_MAX = 4;   // exempt: 0..4 inclusive
+const PO_DELIVERY_EXEMPT_MAX = 4;   // exempt: 0..4 inclusive (same range; closest preferred)
 function poParseDate(s){
   const m = String(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (!m) return null;
@@ -3732,7 +3736,7 @@ function poDaysBefore(deliveryStr, functionStr){
 function poDeliveryAllowed(daysBefore, task){
   if (daysBefore === null || daysBefore < 0) return false;
   if (poIsShortShelfExempt(task)) return daysBefore <= PO_DELIVERY_EXEMPT_MAX;
-  return daysBefore === PO_DELIVERY_PREF_DAYS || daysBefore === PO_DELIVERY_ALT_DAYS;
+  return daysBefore >= PO_DELIVERY_MIN_DAYS && daysBefore <= PO_DELIVERY_MAX_DAYS;
 }
 function poDeliveryInWindow(deliveryStr, functionStr, task){
   const days = poDaysBefore(deliveryStr, functionStr);
@@ -3769,18 +3773,24 @@ function poMatchFor(task, opts){
     const daysBefore = functionDate ? poDaysBefore(it.po && it.po.delivery, functionDate) : null;
     cands.push({item: it, score: sc, daysBefore});
   });
-  // 4.8.35-r5: collect allowed deliveries. Ordinary: prefer day-3 only, else day-4 only.
-  // Exempt (microherbs/fish): 0..4 on/before BAT, prefer closest (smallest daysBefore >= 0).
+  // 4.8.35-r10: collect allowed deliveries (0..4). Ordinary: prefer day-3, else day-4, else closest to 3.
+  // Exempt (microherbs/fish): same window; prefer closest (smallest daysBefore >= 0).
   function poCollectInWindow(list, minScore){
     const allowed = (list || []).filter(c=>c.score >= minScore && poDeliveryAllowed(c.daysBefore, task));
     if (!allowed.length) return {items: [], daysBefore: null, score: 0};
     let chosen;
     if (poIsShortShelfExempt(task)){
+      // Exempt: closest on/before BAT (smallest daysBefore), then highest score.
       chosen = allowed.slice().sort((a,b)=>(a.daysBefore - b.daysBefore) || (b.score - a.score));
     } else {
+      // Ordinary: prefer day-3, else day-4, else other in-window (0–2) by closest to 3.
       const d3 = allowed.filter(c=>c.daysBefore === PO_DELIVERY_PREF_DAYS);
       const d4 = allowed.filter(c=>c.daysBefore === PO_DELIVERY_ALT_DAYS);
-      const pool = d3.length ? d3 : d4;
+      const pool = d3.length ? d3 : (d4.length ? d4 : allowed.slice().sort((a,b)=>{
+        const da = Math.abs(a.daysBefore - PO_DELIVERY_PREF_DAYS);
+        const db = Math.abs(b.daysBefore - PO_DELIVERY_PREF_DAYS);
+        return da - db || (b.score - a.score);
+      }));
       chosen = pool.slice().sort((a,b)=>(b.score - a.score));
     }
     const seen = new Set(), items = [], days = [];
@@ -3808,7 +3818,7 @@ function poMatchFor(task, opts){
   let res;
   const noWinReason = poIsShortShelfExempt(task)
     ? 'no delivery on/before BAT within 0–4 days'
-    : 'no delivery 3 or 4 days before BAT';
+    : 'no delivery within 0–4 days before BAT';
   if (link === 'none') res = {status:'none', manual:true};
   else if (link && poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link)){
     const item = poMatchCache.items.find(i=>(i.po.req+'#'+i.n)===link);
@@ -3877,7 +3887,7 @@ function poChipHtml(r){
   if (!poInViews) return '';
   const m = poMatchFor(r.task, {functionDate: getEventDateStr(r.dish)}); if (!m || m.status==='sub') return '';
   if (m.status==='none') return ' <span class="po-chip none" title="No line on the uploaded purchase orders matches this ingredient.">no PO</span>';
-  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is in the allowed window (3–4 days before BAT; microherbs/fish 0–4).">no delivery in window</span>';
+  if (m.status==='nodelivery') return ' <span class="po-chip none" title="A PO line matches by name, but no requisition delivery is within 0–4 days before BAT.">no delivery in window</span>';
   const it = m.item, po = it.po;
   const tip = `${it.supplier}${po.poNumbers.length?' · PO '+poNumberText(po):''} · line ${it.n}: ${it.desc} · ${it.qty!==null?it.qty+' '+it.uom:''} · delivery ${po.delivery}${m.status==='check'?' — weak name match, please check':''}`;
   return ` <span class="po-chip ${m.status}" title="${escapeHtml(tip)}"><b class="po-ref-l">REF</b> ${escapeHtml(poRefText(it))}${m.status==='check'?' (check)':''}</span>`;
@@ -3904,7 +3914,7 @@ function poPanelHtml(){
       <h3 style="margin:0;">🧾 Requisitions (${POS.length})</h3>
       <button class="ghost" type="button" onclick="clearPOs()">Clear requisitions</button>
     </div>
-    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is <b>3 or 4 days before</b> that dish's BAT/event date (prefer 3). Microherbs and fish are exempt and may use 0–4 days before (closest on/before preferred). Tap water, ice, boiling water and sub-recipes stay blank. See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
+    <div class="meta" style="margin:6px 0;">The supplier and delivery date fill the <b>Ref #</b> box only when the requisition delivery is <b>within 0–4 days before</b> that dish's BAT/event date (prefer 3, then 4). Microherbs and fish use the same window (closest on/before preferred). Tap water, ice, boiling water and sub-recipes stay blank. See <b>📖 Original PTs</b> / <b>📖 View original</b>.</div>
     <table class="po-table"><thead><tr><th>PO number(s)</th><th>Delivery</th><th>Suppliers</th><th>Lines</th><th>File</th></tr></thead><tbody>
     ${POS.map(po=>`<tr><td><b>${po.poNumbers.length?escapeHtml(poNumberText(po)):'no PO number'}</b>${po.req?'<div class="meta">'+escapeHtml(po.req)+'</div>':''}${po.subject?'<div class="meta">'+escapeHtml(po.subject)+'</div>':''}</td><td>${escapeHtml(po.delivery||'—')}</td><td>${escapeHtml([...new Set(po.items.map(i=>i.supplier))].join(', '))}</td><td>${po.items.length}</td><td class="meta">${escapeHtml(po.file||'')}</td></tr>`).join('')}
     </tbody></table>
@@ -8319,9 +8329,9 @@ function pwaShowUpdate(reg){
     if (w) w.postMessage({type: 'SKIP_WAITING'}); else location.reload();
   };
 }
-// 4.8.35-r9: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r9';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r9';
+// 4.8.35-r10: one-shot self-heal if a broken SW/cache build is still controlling this tab.
+const PREPLINE_SW_EXPECT = '4.8.35-r10';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r10';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;

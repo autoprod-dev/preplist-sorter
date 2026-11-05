@@ -1,4 +1,4 @@
-/* Prepline 4.8.35-r9 — SINGLE owner of step numbers + Show/Hide.
+/* Prepline 4.8.35-r10 — SINGLE owner of step numbers + Show/Hide.
  *
  * Root cause of prior breakage: six scripts (4821, 4822, 4827/4828, 4835, 4838)
  * each kept their own openState, cloned buttons (killing listeners), renumbered
@@ -17,7 +17,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r9';
+  var VERSION = '4.8.35-r10';
   var CSS_ID = 'u4840-css';
   var ATTR = 'data-u4840-id';
   var openState = Object.create(null);

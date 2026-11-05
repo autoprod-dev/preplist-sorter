@@ -77,9 +77,10 @@ check('salmon fish exempt', poIsFishExempt('Salmon Fillet 1kg'));
 check('prawn NOT fish-exempt', !poIsFishExempt('Prawns Green 1kg'));
 check('ordinary day 3 allowed', poDeliveryAllowed(3, 'Baby Spinach'));
 check('ordinary day 4 allowed', poDeliveryAllowed(4, 'Baby Spinach'));
-check('ordinary day 0 blocked', !poDeliveryAllowed(0, 'Baby Spinach'));
-check('ordinary day 1 blocked', !poDeliveryAllowed(1, 'Baby Spinach'));
-check('ordinary day 2 blocked', !poDeliveryAllowed(2, 'Baby Spinach'));
+check('ordinary day 0 allowed (r10)', poDeliveryAllowed(0, 'Baby Spinach'));
+check('ordinary day 1 allowed (r10)', poDeliveryAllowed(1, 'Baby Spinach'));
+check('ordinary day 2 allowed (r10)', poDeliveryAllowed(2, 'Baby Spinach'));
+check('ordinary day 5 blocked', !poDeliveryAllowed(5, 'Baby Spinach'));
 check('micro day 0 allowed', poDeliveryAllowed(0, 'Micro Herbs Mix'));
 check('micro day 2 allowed', poDeliveryAllowed(2, 'Micro Herbs Mix'));
 check('fish day 1 allowed', poDeliveryAllowed(1, 'Barramundi Fillet'));
@@ -122,10 +123,17 @@ check('microherb may use same-day (exempt)',
 check('SUB stays blank', fill('Pumpkin Puree (SUB)')?.status === 'sub');
 
 reset([makePO('03/11/2026', [{ desc: 'Baby Spinach Leaves 1kg', supplier: 'Pro Bros' }])]);
-const spinachBad = fill('Baby Spinach Leaves 1kg');
-check('spinach same-day only → nodelivery',
-  spinachBad && spinachBad.status === 'nodelivery',
-  JSON.stringify({ status: spinachBad && spinachBad.status, reason: spinachBad && spinachBad.reason }));
+const spinachSame = fill('Baby Spinach Leaves 1kg');
+check('spinach same-day only → fills (r10 0–4 window)',
+  spinachSame && spinachSame.status === 'ok' && spinachSame.daysBefore === 0,
+  JSON.stringify({ status: spinachSame && spinachSame.status, days: spinachSame && spinachSame.daysBefore, box: spinachSame && spinachSame.boxText }));
+
+// Still blank when delivery is AFTER BAT
+reset([makePO('04/11/2026', [{ desc: 'Baby Spinach Leaves 1kg', supplier: 'Pro Bros' }])]);
+const spinachAfter = fill('Baby Spinach Leaves 1kg');
+check('spinach delivery after BAT → nodelivery',
+  spinachAfter && spinachAfter.status === 'nodelivery',
+  JSON.stringify({ status: spinachAfter && spinachAfter.status, reason: spinachAfter && spinachAfter.reason }));
 
 reset([
   makePO('31/10/2026', [{ desc: 'Sage Fresh Bunch', supplier: 'A' }]),

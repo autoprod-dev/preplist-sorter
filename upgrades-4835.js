@@ -158,7 +158,7 @@
 
   function bumpVersionChrome() {
     try {
-      /* 4.8.35-r9: upgrades-4840 owns the live version badge; do not downgrade. */
+      /* 4.8.35-r10: upgrades-4840 owns the live version badge; do not downgrade. */
       if (root.__preplineStepOwnerActive || (root.PreplineStepOwner && root.PreplineStepOwner.VERSION)) return;
       var host = (location.hostname || '') + (location.pathname || '');
       var trial = /trial/i.test(host);
@@ -418,7 +418,7 @@
           '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">Day chips · cooking yield</div></div>' +
           '<button type="button" class="ghost" id="u4835FiltersToggle">Show</button>' +
         '</div>' +
-        /* 4.8.35-r9: plan toggle (By dish/day/section/Original PTs) stays OUTSIDE
+        /* 4.8.35-r10: plan toggle (By dish/day/section/Original PTs) stays OUTSIDE
          * the collapsible body so view switching + Print stay reachable when
          * Filters is Show-collapsed. */
         '<div id="u4835PlanSlot"></div>' +
@@ -438,7 +438,7 @@
     var fbtn = document.getElementById('u4835FiltersToggle');
     if (fbtn) try { fbtn.setAttribute('data-u4840-toggle', 'filters'); } catch (e) {}
 
-    /* 4.8.35-r9: if an older Filters box still nests PlanSlot inside Body, lift it. */
+    /* 4.8.35-r10: if an older Filters box still nests PlanSlot inside Body, lift it. */
     var boxLive = document.getElementById('u4835Filters');
     var bodyLive = document.getElementById('u4835FiltersBody');
     var planSlot = document.getElementById('u4835PlanSlot');
