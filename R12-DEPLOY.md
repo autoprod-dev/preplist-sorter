@@ -15,6 +15,11 @@ Keyword match scored ~0.85, but `poIsFishExempt` excluded shellfish and Get Fish
 - E2E: 35/35 (`tests/e2e-r11-verify.mjs`); Ref# filledCount 3→4
 
 ## Deploy
-- Main: public/master → https://autoprod-dev.github.io/preplist-sorter/
-- Trial: mirror + bump ~4.8.46
-- Standalone: rebuild Prepline-Main-4.8.35-r12.html
+- Main: `737b22b` public/master → https://autoprod-dev.github.io/preplist-sorter/ (VERSION 4.8.35-r12)
+- Trial: `4c4604d` → https://autoprod-dev.github.io/prepline-trial-preview/ (VERSION 4.8.46)
+- Standalone: `/workspace/share/prepline-standalone/Prepline-Main-4.8.35-r12.html`
+- Backup tag: `backup-pre-4.8.35-r12-oyster-perish-20261105-1738`
+
+## Before → After (Oyster Pambula / RQ00049541)
+- Before: name match ~0.85 but `nodelivery` (shellfish excluded from fish-exempt; ordinary STRICT 3|4 rejected day-0 Get Fish 10/11/2026)
+- After: fish/seafood + Get Fish → 0–2; fills Ref# `Get Fish 10/11/2026`
