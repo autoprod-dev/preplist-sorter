@@ -19,7 +19,7 @@
   var STEP = {
     load: 1, pax: 2, chef: 3, ingredients: 4, changes: 5,
     prepSummary: 6, kitchenClose: 7, filters: 8, moreViews: 9,
-    export: 10, print: 11, requisitions: 12, foodCost: 13, howto: 14
+    export: 10, print: 11, requisitions: 12, foodCost: 13, originals: 14, howto: 15
   };
 
   function stepTitle(n, label) { return n + ' · ' + label; }
@@ -80,7 +80,7 @@
 
   function stampVersion() {
     try {
-      /* 4.8.35-r10: upgrades-4840 owns the live version badge; do not downgrade. */
+      /* 4.8.35-r11: upgrades-4840 owns the live version badge; do not downgrade. */
       if (root.__preplineStepOwnerActive || (root.PreplineStepOwner && root.PreplineStepOwner.VERSION)) return;
       var meta = document.querySelector('meta[name="prepline-version"]');
       if (meta && meta.getAttribute('content') !== VERSION) meta.setAttribute('content', VERSION);

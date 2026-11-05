@@ -1,0 +1,84 @@
+{
+  "bat": "20/10/2026",
+  "day3": "17/10/2026",
+  "day4": "16/10/2026",
+  "day0": "20/10/2026",
+  "day1": "19/10/2026",
+  "POS": 5,
+  "ROWS": 39,
+  "tasks": 37,
+  "fills": {
+    "Baby Spinach leaves": {
+      "status": "ok",
+      "delivery": "17/10/2026",
+      "supplier": "Select Fresh",
+      "daysBefore": 3
+    },
+    "Herb Micro Mustard Green": {
+      "status": "ok",
+      "delivery": "19/10/2026",
+      "supplier": "Select Fresh",
+      "daysBefore": 1
+    },
+    "Cucumber Telegraph": {
+      "status": "ok",
+      "delivery": "17/10/2026",
+      "supplier": "Select Fresh",
+      "daysBefore": 3
+    },
+    "Crispy Fried Pumpkin Dice (SUB)": {
+      "status": "sub"
+    },
+    "Tap Water": {
+      "status": "sub"
+    },
+    "Ice": {
+      "status": "sub"
+    },
+    "Green Oil (SUB)": {
+      "status": "sub"
+    },
+    "HENG Special Herb Mix XYZ": {
+      "status": "ok",
+      "delivery": "20/10/2026",
+      "supplier": "HENG Produce",
+      "daysBefore": 0
+    }
+  },
+  "stats": {
+    "ok": 3,
+    "nodelivery": 0,
+    "none": 22,
+    "sub": 12,
+    "checkN": 0
+  },
+  "origN": 2,
+  "ver": "4.8.35-r11",
+  "poDeliveries": [
+    {
+      "d": "17/10/2026",
+      "n": 4,
+      "req": "RQ00048603"
+    },
+    {
+      "d": "16/10/2026",
+      "n": 4,
+      "req": "RQ00048601"
+    },
+    {
+      "d": "17/10/2026",
+      "n": 5,
+      "req": "RQ00048602"
+    },
+    {
+      "d": "20/10/2026",
+      "n": 1,
+      "req": "RQ-HENG"
+    },
+    {
+      "d": "19/10/2026",
+      "n": 1,
+      "req": "RQ-MICRO"
+    }
+  ]
+}

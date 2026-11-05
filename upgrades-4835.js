@@ -1,6 +1,6 @@
 /* Prepline 4.8.35/4.8.38 — One-time sort layout + calendar overview (trial + Paula live).
  * Layout: unique steps, Show/Hide (default hidden; Step 1 open), File: proof
- *   beside Load only, Ingredients+Prep summary stay put, filters box + yield.
+ *   beside Load only, Ingredients+Prep summary stay put, filters box (Cooking yield check removed).
  * UX: hide empty #proPanel spacer under mode tabs; one title + one Show/Hide
  *   per step (no duplicate native h2 / Show-hide when expanded).
  * Calendar: kill duplicate "Calendar grid"; one Month/Week overview showing
@@ -15,10 +15,11 @@
   var LS_KEY = 'preplinePref_u4835_open_v1';
   var CAL_LS = 'preplinePref_u4835_cal_v1';
 
+  /* Numbers match upgrades-4840.js catalog (Cooking yield removed r11; Calendar is not a numbered step). */
   var STEP = {
     load: 1, pax: 2, chef: 3, ingredients: 4, changes: 5,
     prepSummary: 6, kitchenClose: 7, filters: 8, moreViews: 9,
-    export: 10, print: 11, calendar: 12, requisitions: 13, foodCost: 14, howto: 15
+    export: 10, print: 11, requisitions: 12, foodCost: 13, originals: 14, howto: 15
   };
 
   var WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -158,7 +159,7 @@
 
   function bumpVersionChrome() {
     try {
-      /* 4.8.35-r10: upgrades-4840 owns the live version badge; do not downgrade. */
+      /* 4.8.35-r11: upgrades-4840 owns the live version badge; do not downgrade. */
       if (root.__preplineStepOwnerActive || (root.PreplineStepOwner && root.PreplineStepOwner.VERSION)) return;
       var host = (location.hostname || '') + (location.pathname || '');
       var trial = /trial/i.test(host);
@@ -398,7 +399,7 @@
     }
     /* Live calendar wrap title → step 12 (u4821 still stamps "9 ·") */
     var calWrap = document.querySelector('.u4821-wrap[data-u4821="calendar"]');
-    if (calWrap) setBarTitle(calWrap, stepTitle(STEP.calendar, 'Calendar grid'));
+    if (calWrap) setBarTitle(calWrap, 'Calendar grid');
   }
 
   /* ---------- Filters box (plan above day chips + yield) ---------- */
@@ -415,10 +416,10 @@
       box.innerHTML =
         '<div class="u480-settings-bar no-print">' +
           '<div><h2>' + stepTitle(STEP.filters, 'Preplist filters') + '</h2>' +
-          '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">Day chips · cooking yield</div></div>' +
+          '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">Day chips · view plan</div></div>' +
           '<button type="button" class="ghost" id="u4835FiltersToggle">Show</button>' +
         '</div>' +
-        /* 4.8.35-r10: plan toggle (By dish/day/section/Original PTs) stays OUTSIDE
+        /* 4.8.35-r11: plan toggle (By dish/day/section/Original PTs) stays OUTSIDE
          * the collapsible body so view switching + Print stay reachable when
          * Filters is Show-collapsed. */
         '<div id="u4835PlanSlot"></div>' +
@@ -438,7 +439,7 @@
     var fbtn = document.getElementById('u4835FiltersToggle');
     if (fbtn) try { fbtn.setAttribute('data-u4840-toggle', 'filters'); } catch (e) {}
 
-    /* 4.8.35-r10: if an older Filters box still nests PlanSlot inside Body, lift it. */
+    /* 4.8.35-r11: if an older Filters box still nests PlanSlot inside Body, lift it. */
     var boxLive = document.getElementById('u4835Filters');
     var bodyLive = document.getElementById('u4835FiltersBody');
     var planSlot = document.getElementById('u4835PlanSlot');
@@ -465,36 +466,14 @@
   }
 
   function parkYield() {
-    var slot = document.getElementById('u4835YieldSlot');
-    if (!slot) return;
-    var panel = document.getElementById('yieldPanel');
-    var stub = document.querySelector('.u4827-wrap[data-u4827="cookingYield"]');
-    var target = null;
-    if (panel) {
-      var wrap = panel.closest('.u4827-wrap, .u4821-wrap');
-      target = wrap || panel;
-    } else if (stub) target = stub;
-
-    if (!target) {
-      if (!slot.querySelector('.u4835-yield-inline')) {
-        slot.innerHTML =
-          '<div class="u4835-yield-inline"><div style="font-weight:600;font-size:13px;">Cooking yield check</div>' +
-          '<div class="meta" style="font-size:12.5px;margin-top:4px;">Upload a purchase order / requisition to compare raw vs cooked weights, or open Yield library under More views.</div></div>';
-      }
-      return;
-    }
-    if (stub && stub !== target) stub.classList.add('u4835-yield-parked');
-    if (target.parentNode !== slot) {
-      slot.innerHTML = '';
-      slot.appendChild(target);
-    }
-    if (target.classList) {
-      target.classList.remove('u480-settings-collapsed');
-      var yh = target.querySelector('.u480-settings-bar h2');
-      if (yh) yh.textContent = 'Cooking yield check';
-      var yb = target.querySelector('.u480-settings-bar button');
-      if (yb) yb.textContent = 'Hide';
-    }
+    /* Cooking yield check removed 4.8.35-r11 */
+    try {
+      var slot = document.getElementById("u4835YieldSlot");
+      if (slot) slot.innerHTML = "";
+      document.querySelectorAll(".u4827-wrap[data-u4827=\"cookingYield\"], #yieldPanel, .u4835-yield-inline").forEach(function (el) {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      });
+    } catch (e) {}
   }
 
   /* ---------- Event overview calendar (Month / Week) ---------- */
@@ -753,7 +732,7 @@
     var host = document.getElementById('u4835Cal');
 
     if (calWrap) {
-      setBarTitle(calWrap, stepTitle(STEP.calendar, 'Calendar grid'));
+      setBarTitle(calWrap, 'Calendar grid');
       hostParent = calWrap;
       /* Ensure wrap body exists */
       var body = calWrap.querySelector('.u4821-body') || calWrap;
@@ -776,7 +755,7 @@
         if (!openState.calendar) wrap.classList.add('u480-settings-collapsed');
         wrap.innerHTML =
           '<div class="u480-settings-bar no-print">' +
-            '<div><h2>' + stepTitle(STEP.calendar, 'Calendar grid') + '</h2>' +
+            '<div><h2>' + 'Calendar grid' + '</h2>' +
             '<div class="small" style="font-size:12px;color:var(--ink-soft);">Month / Week · event # · dishes · A3 print</div></div>' +
             '<button type="button" class="ghost" id="u4835CalToggle">' + (openState.calendar ? 'Hide' : 'Show') + '</button>' +
           '</div>' +

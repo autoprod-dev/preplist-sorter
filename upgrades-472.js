@@ -190,6 +190,7 @@
       if (!byDay[d]) byDay[d] = [];
       byDay[d].push(f);
     });
+    return ''; /* Exec Chef check removed 4.8.35-r11 */
     var html = '<div class="panel u47-exec no-print" id="u47ExecChef"><h3 style="margin:0 0 6px;">Exec Chef check</h3>';
     html += '<div class="meta">Rule-based attention list for the 3-day window before each event (does not change prep days). ' +
       flags.length + ' flag' + (flags.length === 1 ? '' : 's') + '.</div>';
@@ -238,7 +239,7 @@
     html += '<div class="u47-dashcard"><div class="n">' + due.length + '</div><div class="lbl">Dishes due today</div></div>';
     html += '<div class="u47-dashcard"><div class="n">' + staffAlloc + '/' + staffNeeded + '</div><div class="lbl">Staff allocated</div></div>';
     html += '<div class="u47-dashcard' + (overdue.length ? ' warn' : '') + '"><div class="n">' + overdue.length + '</div><div class="lbl">Overdue / unticked</div></div>';
-    html += '<div class="u47-dashcard' + (execN ? ' warn' : '') + '"><div class="n">' + execN + '</div><div class="lbl">Exec Chef flags</div></div>';
+    /* Exec Chef flags card removed 4.8.35-r11 */;
     html += '</div></div>';
     return html;
   }
@@ -539,7 +540,7 @@
     var html = '';
     html += todayDashboardHtml(all, helpers);
     html += sharedMiseHtml(rows, helpers.escapeHtml || esc);
-    html += execChefHtml(execChefFlags(all, helpers), helpers.escapeHtml || esc);
+    /* Exec Chef check removed 4.8.35-r11 */;
     if (conflictN) {
       html += '<div class="panel no-print" id="u47Conflicts"><b>Staffing conflicts</b> — ' + conflictN +
         ' staff name(s) on more than one function the same day.</div>';

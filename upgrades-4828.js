@@ -3,7 +3,7 @@
  * Prior: Prepline 4.8.34 — trial aesthetic cleanup (visual only; features stay).
  * 1) Hide empty original-viewer overlay (was leaking Print/Close/Prev/Next).
  * 2) Every feature panel gets a working Show/Hide (label flips both ways),
- *    including Cooking yield, Requisitions (PO), Food cost, More views,
+ *    including Requisitions (PO), Food cost, More views,
  *    Yield library / Voice when those views are open, and the footer howto.
  * 3) Soften classic-days banner wording so it is not confused with Revert.
  */
@@ -139,50 +139,13 @@
     return wrap;
   }
 
-  /** Cooking yield: wrap live panel, or offer a stub so the feature always has Show/Hide after load. */
+  /** Cooking yield removed (4.8.35-r11) — step/UI gone; 4840 renumbers without gaps. */
   function ensureYieldSection() {
-    var panel = document.getElementById('yieldPanel');
-    if (panel) {
-      ensureCollapsible(panel, 'cookingYield', 'Cooking yield check',
-        'Raw PO weight vs cooked / required · edit ranges');
-      return;
-    }
-    if (!document.body.classList.contains('u480-sorted')) return;
-    var rowCount = 0;
-    try { if (typeof ROWS !== 'undefined' && ROWS) rowCount = ROWS.length; } catch (e) {}
-    try { if (!rowCount && root.ROWS) rowCount = root.ROWS.length; } catch (e) {}
-    if (!rowCount) return;
-    var existing = document.querySelector('.u4827-wrap[data-u4827="cookingYield"]');
-    if (existing) return;
-    var host = document.getElementById('u480Groups') || document.getElementById('resultsArea');
-    if (!host) return;
-    var wrap = document.createElement('div');
-    wrap.className = 'u4827-wrap no-print';
-    wrap.setAttribute('data-u4827', 'cookingYield');
-    if (!openState.cookingYield) wrap.classList.add('u480-settings-collapsed');
-    wrap.innerHTML = makeBar('Cooking yield check',
-      'Upload a purchase order / requisition to compare raw vs cooked weights', 'cookingYield');
-    var body = document.createElement('div');
-    body.className = 'u4827-body';
-    body.innerHTML =
-      '<div class="meta" style="font-size:12.5px;">No requisition weights loaded yet. ' +
-      'Drop a purchase order PDF with the production tools, or open <b>Yield library</b> under More views ' +
-      'to browse yield ranges.</div>' +
-      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px;">' +
-      '<button type="button" class="secondary" id="u4827OpenYieldLib">Open Yield library</button>' +
-      '</div>';
-    wrap.appendChild(body);
-    host.parentNode.insertBefore(wrap, host.nextSibling);
-    wireToggle(wrap, 'cookingYield');
-    var btn = body.querySelector('#u4827OpenYieldLib');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        try {
-          openState.cookingYield = true;
-          if (typeof setView === 'function') setView('recipes');
-        } catch (e) {}
+    try {
+      document.querySelectorAll('.u4827-wrap[data-u4827="cookingYield"], #yieldPanel').forEach(function (el) {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
       });
-    }
+    } catch (e) {}
   }
 
   function wrapFooterHowto() {
@@ -411,7 +374,7 @@
     /* Yield library / voice / originals when those panels are in results */
     var origTab = document.getElementById('origTab');
     if (origTab) {
-      /* 4.8.35-r10: Original PTs Print must be visible when the view opens.
+      /* 4.8.35-r11: Original PTs Print must be visible when the view opens.
        * Seed open before first wrap; existing wraps sync from live DOM so Hide sticks. */
       openState.originals = true;
       ensureCollapsible(origTab, 'originals', 'Original production tools',
@@ -433,7 +396,7 @@
 
   function syncVersion() {
     try {
-      /* 4.8.35-r10: upgrades-4840 owns the live version badge; do not downgrade. */
+      /* 4.8.35-r11: upgrades-4840 owns the live version badge; do not downgrade. */
       if (root.__preplineStepOwnerActive || (root.PreplineStepOwner && root.PreplineStepOwner.VERSION)) return;
       var meta = document.querySelector('meta[name="prepline-version"]');
       var cur = meta ? String(meta.getAttribute('content') || '') : '';

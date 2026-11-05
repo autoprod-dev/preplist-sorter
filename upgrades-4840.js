@@ -1,4 +1,4 @@
-/* Prepline 4.8.35-r10 — SINGLE owner of step numbers + Show/Hide.
+/* Prepline 4.8.35-r11 — SINGLE owner of step numbers + Show/Hide.
  *
  * Root cause of prior breakage: six scripts (4821, 4822, 4827/4828, 4835, 4838)
  * each kept their own openState, cloned buttons (killing listeners), renumbered
@@ -17,7 +17,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r10';
+  var VERSION = '4.8.35-r11';
   var CSS_ID = 'u4840-css';
   var ATTR = 'data-u4840-id';
   var openState = Object.create(null);
@@ -127,11 +127,6 @@
         return document.querySelector('.u4821-wrap[data-u4821="print"]') ||
           document.querySelector('.u4827-wrap[data-u4827="print"]');
       }
-    },
-    {
-      id: 'cookingYield',
-      label: 'Cooking yield check',
-      find: function () { return document.querySelector('.u4827-wrap[data-u4827="cookingYield"]'); }
     },
     {
       id: 'requisitions',
@@ -306,19 +301,15 @@
   }
 
   function collectInOrder() {
+    /* Catalog order owns 1..N (not DOM visual order). poPanel/cost/orig live
+     * early in the page HTML; visual sort used to stamp Requisitions as 6
+     * ahead of Print options. Keep contiguous numbers matching CATALOG. */
     var found = [];
     CATALOG.forEach(function (entry) {
       var wrap = resolve(entry);
       if (!wrap) return;
       wrap.setAttribute(ATTR, entry.id);
       found.push({ entry: entry, wrap: wrap });
-    });
-    found.sort(function (a, b) {
-      if (a.wrap === b.wrap) return 0;
-      var pos = a.wrap.compareDocumentPosition(b.wrap);
-      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-      return 0;
     });
     return found;
   }

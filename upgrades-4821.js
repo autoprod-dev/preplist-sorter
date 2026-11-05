@@ -5,7 +5,7 @@
  *    style as packs-per-dish / chef-hours (u480-settings-bar),
  *    collapsed by default; click Show → expand, click Hide → collapse.
  *    4 Changes check · 5 Prep summary · 6 Kitchen close & public holidays
- *    7 Export options · 8 Print options · 9 Calendar grid
+ *    7 Export options · 8 Print options · Calendar grid (unnumbered; moved by 4838)
  */
 (function (root) {
   'use strict';
@@ -115,6 +115,9 @@
   }
 
   function ensureCalendarSlot() {
+    /* 4.8.35-r11: calendar lives under Work order / allocation — do not mount on Prepline */
+    return;
+
     var groups = document.getElementById('u480Groups');
     if (!groups) return;
     var existing = document.querySelector('.u4821-wrap[data-u4821="calendarSlot"]');
@@ -128,7 +131,7 @@
     wrap.className = 'u4821-wrap no-print';
     wrap.setAttribute('data-u4821', 'calendarSlot');
     if (!openState.calendarSlot) wrap.classList.add('u480-settings-collapsed');
-    wrap.innerHTML = makeBar('9 · Calendar grid', 'Week / month / year · Print A3', 'calendarSlot');
+    wrap.innerHTML = makeBar('Calendar grid', 'Week / month / year · Print A3', 'calendarSlot');
     var body = document.createElement('div');
     body.className = 'u4821-body';
     body.innerHTML =
@@ -194,7 +197,7 @@
     // 4 · Changes check
     var diff = document.getElementById('u47Diff');
     if (diff) {
-      ensureCollapsible(diff, 'changes', '4 · Changes check',
+      ensureCollapsible(diff, 'changes', 'Changes check',
         'Added · removed · qty vs last upload');
     }
 
@@ -206,28 +209,28 @@
         h2.dataset.u4821 = '1';
         h2.textContent = 'All dishes & packs';
       }
-      ensureCollapsible(sum, 'prepSummary', '5 · Prep summary (all dishes & packs)',
+      ensureCollapsible(sum, 'prepSummary', 'Prep summary (all dishes & packs)',
         'Tick dishes · pax · copy prep days');
     }
 
     // 6 · Kitchen close
     var kd = document.getElementById('blockedDaysPanel');
     if (kd) {
-      ensureCollapsible(kd, 'kitchenClose', '6 · Kitchen close & public holidays',
+      ensureCollapsible(kd, 'kitchenClose', 'Kitchen close & public holidays',
         'Prep auto-shifts off closed days');
     }
 
     // 7 · Export options  /  8 · Print options  (convert details → Show/Hide bars)
-    convertDetails('u480Export', 'export', '7 · Export options', 'Excel · PDF · email');
-    convertDetails('u480Print', 'print', '8 · Print options', 'sections · days · method · A3');
+    convertDetails('u480Export', 'export', 'Export options', 'Excel · PDF · email');
+    convertDetails('u480Print', 'print', 'Print options', 'sections · days · method · A3');
 
     // 9 · Calendar grid — always-available slot in toolbar groups
     ensureCalendarSlot();
 
-    // Also wrap the live calendar when week view is on
-    var cal = document.getElementById('u486Cal');
+    // 4.8.35-r11: calendar moved off Prepline page
+    var cal = null; // document.getElementById('u486Cal');
     if (cal) {
-      ensureCollapsible(cal, 'calendar', '9 · Calendar grid',
+      ensureCollapsible(cal, 'calendar', 'Calendar grid',
         'Week / month / year prep calendar', 'u4821-cal-wrap');
     }
 
