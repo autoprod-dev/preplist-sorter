@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r13">
+<meta name="prepline-version" content="4.8.35-r14">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,6 +28,7 @@
 <meta name="twitter:title" content="Prepline: free kitchen prep list organiser and sorter">
 <meta name="twitter:description" content="Free kitchen prep list organiser for chefs and cooks. Turn a menu, PDF or spreadsheet into prep lists sorted by dish, station and prep day, scale by pax, tag allergens, build supplier order sheets, print one page or share to phones. Runs in your browser, works offline.">
 <meta name="twitter:image" content="https://autoprod-dev.github.io/preplist-sorter/icons/og-image.png">
+<script src="session-only.js"></script>
 <script src="gate-config.js"></script><script src="gate.js"></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Prepline","alternateName":"Prepline prep list sorter",
@@ -784,8 +785,34 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
 .pb-map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin:10px 0}.pb-map-grid label{display:flex;flex-direction:column;font-size:12px;font-weight:600;gap:3px}
 .pb-map-grid select{font-size:15px;padding:6px;min-height:38px}
 </style>
+<style id="plLoaderCss">
+/* 4.8.35-r14 loading logo (screen only) */
+@media screen{
+.pl-loader{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:rgba(244,241,234,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility 0s linear .2s}
+.pl-loader.on{opacity:1;visibility:visible;transition:opacity .15s ease}
+.pl-loader.pl-soft{pointer-events:none}
+.pl-loader-card{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 34px 22px;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(28,30,27,.18),0 2px 8px rgba(28,30,27,.08);min-width:240px;max-width:86vw;text-align:center}
+.pl-loader .pl-logo{width:72px;height:72px;border-radius:16px;box-shadow:0 6px 18px rgba(28,30,27,.25);animation:plPulse 1.6s ease-in-out infinite}
+.pl-loader .pl-t{stroke-dasharray:10;stroke-dashoffset:10;animation:plTick 1.8s ease-in-out infinite}
+.pl-loader .t2{animation-delay:.3s}.pl-loader .t3{animation-delay:.6s}
+.pl-loader .pl-l{transform-origin:26px center;animation:plLine 1.8s ease-in-out infinite}
+.pl-loader .l2{animation-delay:.3s}.pl-loader .l3{animation-delay:.6s}
+.pl-loader-word{font:700 22px/1 Fraunces,Georgia,serif;color:#1C1E1B;letter-spacing:-.02em}
+.pl-loader-msg{font:600 13px/1.35 Inter,system-ui,sans-serif;color:#5C5F58;max-width:320px}
+.pl-loader-bar{width:180px;height:4px;border-radius:4px;background:#EDE6D6;overflow:hidden;margin-top:4px}
+.pl-loader-bar i{display:block;width:40%;height:100%;border-radius:4px;background:linear-gradient(90deg,#8A6A3D,#C9A46A);animation:plBar 1.1s ease-in-out infinite}
+@keyframes plPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes plTick{0%{stroke-dashoffset:10}35%,80%{stroke-dashoffset:0}100%{stroke-dashoffset:10}}
+@keyframes plLine{0%{transform:scaleX(.25);opacity:.5}40%,80%{transform:scaleX(1);opacity:1}100%{transform:scaleX(.25);opacity:.5}}
+@keyframes plBar{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+@media (prefers-reduced-motion:reduce){.pl-loader *{animation:none!important}.pl-loader .pl-t{stroke-dashoffset:0}}
+}
+@media print{.pl-loader{display:none!important}}
+</style>
 </head>
 <body>
+<div id="plLoader" class="pl-loader on" role="status" aria-live="polite" aria-hidden="false"><div class="pl-loader-card"><svg viewBox="0 0 64 64" aria-hidden="true" class="pl-logo"><rect width="64" height="64" rx="14" fill="#1C1E1B"/><rect x="12" y="13" width="9" height="9" rx="1.6" fill="#A57E45"/><path class="pl-t t1" d="M14.2 17.6l2.2 2.2 3.6-4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><rect class="pl-l l1" x="26" y="16" width="27" height="3.4" rx="1.7" fill="#F6F1E7"/><rect x="12" y="27.5" width="9" height="9" rx="1.6" fill="#A57E45"/><path class="pl-t t2" d="M14.2 32.1l2.2 2.2 3.6-4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><rect class="pl-l l2" x="26" y="30.5" width="27" height="3.4" rx="1.7" fill="#F6F1E7"/><rect x="12.8" y="42.8" width="7.4" height="7.4" rx="1.2" fill="none" stroke="#A57E45" stroke-width="1.6"/><path class="pl-t t3" d="M14.2 46.6l2.2 2.2 3.6-4" fill="none" stroke="#A57E45" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><rect class="pl-l l3" x="26" y="45" width="27" height="3.4" rx="1.7" fill="#8A6A3D"/></svg><div class="pl-loader-word">Prepline</div><div class="pl-loader-msg" id="plLoaderMsg">Loading Prepline…</div><div class="pl-loader-bar"><i></i></div></div></div>
+<script>setTimeout(function(){var l=document.getElementById('plLoader');if(l&&!window.PreplineUiR14)l.classList.remove('on');},15000);</script>
 <div id="apJsBanner" role="alert" style="display:block; position:relative; z-index:2147483647; margin:0; padding:14px 16px; background:#FFF4C2; color:#1C1E1B; border-bottom:2px solid #C9A227; font:15px/1.45 Arial, Helvetica, sans-serif; text-align:center;"><b>Prepline by Autoprod.</b> If this page looks blank or buttons don&#39;t work, save the file and open it in Chrome or Edge, or use the online version: <a href="https://autoprod-dev.github.io/prepline-free/" style="color:#1A4D8F; font-weight:bold; word-break:break-all;">https://autoprod-dev.github.io/prepline-free/</a></div>
 
 <div class="shell-masthead no-print">
@@ -808,19 +835,16 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div class="masthead no-print">
     <div>
       <h1>Prepline <span class="h1-tag">kitchen prep list organiser</span></h1>
-      <div class="sub" id="mastheadSub">Sort a preplist once, or build a recipe database you reuse every week — your choice below.</div>
+      <div class="sub" id="mastheadSub">Upload a preplist, production tools or purchase orders and sort them now. Files are used for this session only and never saved.</div>
     </div>
     <div class="tag" id="fileTag">no file loaded</div>
   </div>
-
-  <div class="viewtoggle no-print" id="toolModeToggle" style="margin-bottom:20px;"></div>
 
   <div class="panel no-print pro-panel" id="proPanel"></div>
 
   <div class="panel no-print" id="dbPanel">
     <div class="row no-print" style="justify-content:space-between; align-items:center;">
       <h2 style="margin:0;" id="dbPanelTitle">Load a preplist</h2>
-      <span id="backToWeeklyLink" style="display:none;"><button class="ghost" onclick="appMode='weekly'; renderApp();" type="button">← Back to this week's setup</button></span>
     </div>
     <div class="dropzone" id="dropzone">
       <div class="big">Drop an .xlsx preplist, or one or more production tool PDFs, here — or click to browse</div>
@@ -844,29 +868,6 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
       <button class="ghost" id="clearBtn" type="button">Clear this form</button>
       <div class="status" id="statusMsg" style="flex:1 1 auto;"></div>
       <div id="outputChoice" class="no-print" hidden style="flex-basis:100%;"></div>
-    </div>
-    <div class="row no-print" id="dbManageRow" style="margin-top:16px; display:none; align-items:center; border-top:1px solid var(--line); padding-top:14px;">
-      <div class="meta" id="dbCountMeta" style="font-size:12px; color:var(--ink-soft); flex:1 1 auto;"></div>
-      <button class="secondary" onclick="exportDatabase()" type="button">Export database (backup)</button>
-      <button class="ghost" onclick="document.getElementById('dbImportInput').click()" type="button">Import backup</button>
-      <input type="file" id="dbImportInput" accept=".json" style="display:none;">
-      <button class="ghost" onclick="clearDatabase()" type="button" style="color:var(--prot);">Clear database</button>
-    </div>
-  </div>
-
-  <div class="panel no-print" id="weeklyPanel" style="display:none;">
-    <div class="row no-print" style="justify-content:space-between; align-items:center; margin-bottom:4px;">
-      <h2 style="margin:0;">This week's preplist</h2>
-      <button class="ghost" onclick="appMode='database'; renderApp();" type="button">+ Add more dishes / manage database</button>
-    </div>
-    <div class="small" style="font-size:12px;color:var(--ink-soft); margin:6px 0 14px;">
-      Tick the dishes running this week, enter each one's pax and event date, then Generate. Everything else —
-      totals, sections, prep-day scheduling, staffing — is calculated automatically, same as always.
-    </div>
-    <div id="weeklyDishList"></div>
-    <div class="row" style="margin-top:14px; align-items:center;">
-      <button id="generateWeeklyBtn" onclick="generateWeekly()" type="button">Generate this week's preplist</button>
-      <div class="status" id="weeklyStatusMsg" style="flex:1 1 auto;"></div>
     </div>
   </div>
 
@@ -950,25 +951,17 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r13</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r14</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
-    Two ways to use this: <b>One-time sort</b> works exactly like a normal upload-and-go tool — nothing is
-    saved anywhere, close the tab and it's gone (print or export first). <b>Recipe database</b> instead saves
-    every dish's ingredients and per-pax quantities in this browser, reloading automatically every time you
-    reopen this file — no re-uploading week to week, just tick dishes, enter pax and a date, and Generate. That
-    database is stored via this browser's local storage, tied to this device/browser: export a backup
-    occasionally (button above, in Recipe database mode) in case you switch computers, switch browsers, or
-    clear browsing data.
+    <b>Session only:</b> uploaded preplists, production tools and purchase orders are used for this tab only.
+    Nothing from an upload is saved to this browser, so a reload or closing the tab clears them (print or export first).
+    Settings such as venue rules, print and chef-hours preferences are still remembered on this device.
     Sorting is keyword-based and won't be perfect — use the section dropdown on any row to move it.
     Prep stage for 4-day proteins: day 4 collect&amp;trim, day 3 sear/cool, day 2 re-tray/roast, event day box off.
     Fish &amp; seafood: 2 days (collect/trim then process/tray). Prawns: 1 day before (ordered day-before for freshness; not early-batched). Other proteins 4 days (poultry 3). Crab croquettes: 4 days. Soft veg: 2 days (zucchini, radish, sauteed warrigal, shaved fennel, celeriac remoulade, apple). Hard veg: 4 days (carrots, onions, beetroot, pumpkin, potato/sweet potato, leeks, turnips, roasted/sous-vide fennel, gem/witlof, picked leaves/flowers, iceplant, samphire, karkalla, seablight, picked warrigal, pickled veg). Micro herbs: 1 day (not early-batched). Other veg: raw ≤4 / cooked ≤3 fallback. Poultry: 3 days (overrides general 4-day protein). Cheese: 3 days. Dressings &amp; butters: 4 days. Purees: 2 days before the event only (no earlier batching). Long-life mise (dressings, any croutons, powders, crumbs, oils, soils, gels e.g. Yuzu Gel): made once ≤4 days before first event of the week, covers the whole week;
-    then mapped onto real weekdays — in Recipe database mode, working backward from the event date you enter
-    each week (a Saturday event runs Wed/Thu/Fri/Sat prep); in One-time sort mode, from a weekday named in the
+    then mapped onto real weekdays, from a weekday named in the
     dish's tab (e.g. "Mains Beef Fillet Saturday") or set manually per dish. The "By prep day" view groups every
-    dish's tasks by that real weekday across the whole week. Team leader names, section moves, pax counts, and
-    day assignments are saved automatically to this browser as you work, so a refresh or an accidental close won't
-    lose them — this week's pax/date selections in Recipe database mode are the one exception and reset each week
-    by design. Export or print if you want a copy outside this browser.
+    dish's tasks by that real weekday across the whole week. Export or print if you want a copy outside this browser.
   </footer>
   <div class="print-only made-with-footer" id="madeWithFooter" hidden style="margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font:11px 'Inter',sans-serif; color:#777; text-align:center;">Made with Prepline</div>
 </div>
@@ -1030,7 +1023,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
     <div class="help-body">
       <h3>Load a preplist</h3>
       <p>Drop an .xlsx preplist, or one or more production tool PDFs, into the dropzone. Every tab in a workbook is read as one dish; a PDF is read from each dish's front page, so its quantities are finished/cooked weights (check the production tool for raw weights).</p>
-      <p class="note">Choose "recipe database" mode if you want to build a reusable library you'll draw on every week, or "one-time sort" for a single preplist you won't reuse. Either way, your work saves automatically to this browser as you go.</p>
+      <p class="note">Files are used for this session only. Nothing you upload is saved to this browser, so print or export before you close or reload the tab.</p>
     </div>
   </div>
   <div class="help-step">
@@ -1458,375 +1451,42 @@ let methodCrops = {}; // dish name -> [{dataUrl, pageLabel}, ...] — just the c
 let originalImagesTruncated = false; // true once a save had to drop images to fit storage
 let viewMode = 'dish'; // 'dish' | 'section' | 'priority' | 'week' | 'order47' | 'recipes' | 'voice' | 'item'
 
-// ---------- persistent recipe database ----------
-// Upload once to build this; from then on the tool opens straight into the weekly
-// setup screen, no file needed. Stored in this browser via localStorage — export a
-// backup occasionally, since clearing browser data would wipe it.
-const DB_STORAGE_KEY = 'preplistDishDatabase_v1';
-let dishDatabase = {};      // { dishTitle: { items: [{task,qty,unit,section,baseCategory,flagged,stageNum}] } }
-let weeklySelection = {};   // { dishTitle: {include, pax, date} } — this week's picks, not persisted
+// ---------- uploads are session-only (4.8.35-r14) ----------
+// The recipe database feature is removed, and nothing from an upload (rows, original
+// page images, purchase orders) is written to this browser any more: files are used
+// on demand for this tab only. session-only.js clears anything older builds stored.
+const DB_STORAGE_KEY = 'preplistDishDatabase_v1';        // legacy key, only ever cleared
+const ONETIME_STORAGE_KEY = 'preplistOnetimeSession_v1'; // legacy key, only ever cleared
+const dishDatabase = {};    // kept empty for older code paths that still read it
+let weeklySelection = {};
 let blockedDays = new Set();   // weekday names the kitchen is closed (public holiday etc.) — prep auto-shifts off these
 let selectedRowIdx = new Set();   // ROWS indices currently ticked for a bulk "move to day" action
 let dishIncluded = {};   // dish name -> false if unticked in the preplist summary — excluded from every view/print/export
-let appMode = 'database';   // 'database' (upload/manage) | 'weekly' (pick dishes + generate)
-let toolMode = 'onetime';   // 'onetime' (classic — upload, sort, done, nothing saved) | 'database' (persistent, weekly reuse)
-let dbStorageOk = true;     // false if localStorage isn't available at all in this browser
-
-// Accepts anything (old backups, other tools' JSON, hand-edited files) and keeps only
-// entries the rest of the app can safely use; returns {db, kept, skipped}.
-function sanitizeDatabase(raw){
-  const db = {}; let kept = 0, skipped = 0;
-  const isObj = v => v && typeof v==='object' && !Array.isArray(v);
-  if (!isObj(raw)) return {db, kept, skipped: raw==null ? 0 : 1};
-  Object.keys(raw).forEach(dish=>{
-    if (dish==='__proto__' || dish==='constructor' || dish==='prototype') { skipped++; return; }
-    const entry = raw[dish];
-    if (!isObj(entry) || !Array.isArray(entry.items)) { skipped++; return; }
-    const items = [];
-    entry.items.forEach(it=>{
-      if (!isObj(it) || typeof it.task!=='string' || !it.task.trim()) return;
-      it.section = secLegacy(it.section); it.baseCategory = secLegacy(it.baseCategory);
-      const known = SECTIONS.includes(it.section);
-      const section = known ? it.section : 'Vegetables';
-      const clean = {task: it.task, qty: it.qty==null ? '' : it.qty, unit: it.unit==null ? '' : it.unit,
-        section, baseCategory: SECTIONS.includes(it.baseCategory) ? it.baseCategory : section,
-        flagged: known ? !!it.flagged : true, stageNum: Number.isFinite(it.stageNum) ? it.stageNum : 1};
-      if (Number.isFinite(it.pdfFixedTotal)) clean.pdfFixedTotal = it.pdfFixedTotal;
-      if (Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0) clean.pdfBasePax = it.pdfBasePax;   // v3.2.2
-      ['srcSheet','srcType'].forEach(k=>{ if (typeof it[k]==='string') clean[k] = it[k]; });
-      if (Number.isFinite(it.srcSheetIdx)) clean.srcSheetIdx = it.srcSheetIdx;
-      if (Array.isArray(it.al)) clean.al = cleanTagList(it.al);   // v3.3: checked allergen tags
-      items.push(clean);
-    });
-    if (!items.length) { skipped++; return; }
-    db[dish] = {items, ...(Array.isArray(entry.al) ? {al: cleanTagList(entry.al)} : {})}; kept++;
-  });
-  return {db, kept, skipped};
+let appMode = 'database';   // single upload panel (no weekly generator any more)
+let toolMode = 'onetime';   // always one-time: upload, sort, done, nothing saved
+let dbStorageOk = true;
+function clearLegacyUploadStorage(){
+  [DB_STORAGE_KEY, ONETIME_STORAGE_KEY].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
 }
-function loadDatabase(){
-  try{
-    const raw = localStorage.getItem(DB_STORAGE_KEY);
-    dishDatabase = raw ? sanitizeDatabase(JSON.parse(raw)).db : {};
-  } catch(e){ dishDatabase = {}; dbStorageOk = false; }
-}
-function saveDatabase(){
-  try{
-    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(dishDatabase));
-    return true;
-  } catch(e){ dbStorageOk = false; return false; }
-}
-
-// ---------- one-time sort session auto-save ----------
-// Backs up the current preplist working state (not just the recipe database) so a
-// crashed tab or accidental reload doesn't lose an in-progress sort. Debounced so it
-// doesn't write to localStorage on every keystroke.
-const ONETIME_STORAGE_KEY = 'preplistOnetimeSession_v1';
-let onetimeSaveTimer = null;
-function saveOnetimeSession(){
-  if(!ROWS || ROWS.length === 0) return; // nothing real to back up yet — don't clobber a prior save
-  const base = {ROWS, leaderBySection, paxByDish, activeFilter, viewMode,
-    eventDayOverride, eventDateByDish, rosteredChefs, sourceInfo,
-    batching: (window.PreplineBatch && PreplineBatch.exportState) ? PreplineBatch.exportState() : null};
-  try{
-    // Try with the original-page images included first — they're the whole point of
-    // this feature, so only drop them if they genuinely don't fit.
-    localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify({...base, originalPageImages, methodCrops}));
-    originalImagesTruncated = false;
-  }catch(e){
-    try{
-      localStorage.setItem(ONETIME_STORAGE_KEY, JSON.stringify(base));
-      originalImagesTruncated = true; // images still show for this browser tab, just won't survive a reload
-    }catch(e2){ /* storage completely full/unavailable — silently skip, nothing else in the app changes */ }
-  }
-}
-function scheduleOnetimeSave(){
-  clearTimeout(onetimeSaveTimer);
-  onetimeSaveTimer = setTimeout(saveOnetimeSession, 400);
-}
-function loadOnetimeSession(){
-  try{
-    const raw = localStorage.getItem(ONETIME_STORAGE_KEY);
-    if(!raw) return;
-    const s = JSON.parse(raw);
-    const isObj = v => v && typeof v==='object' && !Array.isArray(v);
-    const rowOk = r => r && typeof r==='object' && typeof r.dish==='string' && typeof r.task==='string'
-      && typeof r.section==='string';
-    // A list saved by another build may use a station this build doesn't have (e.g. a Pro custom
-    // station while Pro is off): keep the row, in its base section (or Vegetables), flagged.
-    if (isObj(s) && Array.isArray(s.ROWS)) s.ROWS.forEach(r=>{ if (r && typeof r==='object'){ r.section = secLegacy(r.section); r.baseCategory = secLegacy(r.baseCategory); } });
-    if (isObj(s) && isObj(s.leaderBySection) && s.leaderBySection['Big Jobs']!==undefined && s.leaderBySection['Starch']===undefined){ s.leaderBySection['Starch'] = s.leaderBySection['Big Jobs']; delete s.leaderBySection['Big Jobs']; }
-    const secOf = r => SECTIONS.includes(r.section) ? r.section : (SECTIONS.includes(r.baseCategory) ? r.baseCategory : 'Vegetables');
-    if(isObj(s) && Array.isArray(s.ROWS) && s.ROWS.length && s.ROWS.every(rowOk)){
-      ROWS = s.ROWS.map(r=>({dish:r.dish, task:r.task, qty:r.qty==null?'':r.qty, unit:r.unit==null?'':r.unit,
-        section:secOf(r), baseCategory:SECTIONS.includes(r.baseCategory)?r.baseCategory:secOf(r), flagged:!!r.flagged || !SECTIONS.includes(r.section), day:typeof r.day==='string'?r.day:'', dayReason:typeof r.dayReason==='string'?r.dayReason:'', stageNum:Number.isFinite(r.stageNum)?r.stageNum:1, prepCat:typeof r.prepCat==='string'?r.prepCat:'', leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:typeof r.prepSrc==='string'?r.prepSrc:'', weekendShift:!!r.weekendShift,
-        // v3.2: a PDF row's fixed batch total must survive a reload too, or every PDF total turns into "set pax"
-        ...(Number.isFinite(r.pdfFixedTotal) ? {pdfFixedTotal:r.pdfFixedTotal} : {}),
-        // v3.2.2: the batch yield a PDF total was printed for (the base pax it scales from)
-        ...(Number.isFinite(r.pdfBasePax) && r.pdfBasePax>0 ? {pdfBasePax:r.pdfBasePax} : {}),
-        // v3.2: the original tab / PDF title each row came from (used to name Excel export tabs)
-        ...(typeof r.srcSheet==='string' ? {srcSheet:r.srcSheet} : {}),
-        ...(Number.isFinite(r.srcSheetIdx) ? {srcSheetIdx:r.srcSheetIdx} : {}),
-        ...(typeof r.srcType==='string' ? {srcType:r.srcType} : {})}));
-      leaderBySection = isObj(s.leaderBySection) ? s.leaderBySection : {};
-      SECTIONS.forEach(x=>{ if(typeof leaderBySection[x]!=='string') leaderBySection[x]=''; });
-      paxByDish = cleanPaxMap(s.paxByDish);
-      migratePdfBasePax(ROWS, paxByDish);
-      activeFilter = typeof s.activeFilter==='string' ? s.activeFilter : 'all';
-      viewMode = ['dish','section','priority','order','order47','week','recipes','voice','item','orig'].includes(s.viewMode) ? s.viewMode : 'dish';
-      eventDayOverride = isObj(s.eventDayOverride) ? s.eventDayOverride : {};
-      eventDateByDish = isObj(s.eventDateByDish) ? s.eventDateByDish : {};
-      rosteredChefs = isObj(s.rosteredChefs) ? s.rosteredChefs : {};
-      if (isObj(s.batching) && window.PreplineBatch) try{ PreplineBatch.loadState(s.batching); }catch(e){}
-      try{ if (window.PreplineUpgrades47) PreplineUpgrades47.learnSectionsFromRows(ROWS); }catch(e){}
-      sourceInfo = isObj(s.sourceInfo) ? s.sourceInfo : sourceInfo;
-      originalPageImages = {};
-      if (isObj(s.originalPageImages)){
-        const validDish = new Set(ROWS.map(r=>r.dish));
-        const okImg = v => isObj(v) && typeof v.dataUrl==='string' && v.dataUrl.startsWith('data:image/');
-        Object.keys(s.originalPageImages).forEach(dish=>{
-          if (!validDish.has(dish)) return;
-          const v = s.originalPageImages[dish];
-          const arr = Array.isArray(v) ? v : (okImg(v) ? [v] : []);   // tolerate an old single-image save from before this was a list
-          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}));
-          if (clean.length) originalPageImages[dish] = clean;
-        });
-      }
-      methodCrops = {};
-      if (isObj(s.methodCrops)){
-        const validDish = new Set(ROWS.map(r=>r.dish));
-        const okImg = v => isObj(v) && typeof v.dataUrl==='string' && v.dataUrl.startsWith('data:image/');
-        Object.keys(s.methodCrops).forEach(dish=>{
-          if (!validDish.has(dish)) return;
-          const arr = Array.isArray(s.methodCrops[dish]) ? s.methodCrops[dish] : [];
-          const clean = arr.filter(okImg).map(x=>Object.assign({dataUrl:x.dataUrl, pageLabel: typeof x.pageLabel==='string'?x.pageLabel:''}, Array.isArray(x.refRows)?{refRows:x.refRows, refBox:x.refBox, refScale:x.refScale}:{}));
-          if (clean.length) methodCrops[dish] = clean;
-        });
-      }
-    }
-  }catch(e){ /* corrupted or unavailable — start fresh rather than crash */ }
-}
-function clearOnetimeSession(){
-  try{ localStorage.removeItem(ONETIME_STORAGE_KEY); }catch(e){}
-}
-// Snapshots whatever was just parsed into ROWS into the persistent database (per-pax
-// figures and stage only — no pax count or day, since those are entered fresh weekly),
-// then clears ROWS since the live view is driven by the weekly generator, not a raw upload.
-function commitRowsToDatabase(){
-  const dishes = [];
-  ROWS.forEach(r=>{ if (!dishes.includes(r.dish)) dishes.push(r.dish); });
-  dishes.forEach(dish=>{
-    const items = ROWS.filter(r=>r.dish===dish).map(r=>({
-      task:r.task, qty:r.qty, unit:r.unit, section:r.section,
-      baseCategory:r.baseCategory, flagged:r.flagged, stageNum:r.stageNum, prepCat:r.prepCat||"", leadDays:Number.isFinite(r.leadDays)?r.leadDays:null, prepSrc:r.prepSrc||"",
-      pdfFixedTotal:r.pdfFixedTotal, pdfBasePax:r.pdfBasePax, srcSheet:r.srcSheet, srcSheetIdx:r.srcSheetIdx, srcType:r.srcType,
-      ...(typeof alForTask==='function' && alForTask(r.task).confirmed ? {al: alForTask(r.task).tags.slice()} : {})   // v3.3: checked allergen tags
-    }));
-    dishDatabase[dish] = {items, ...(INGINFO.dishAl[dish] ? {al: INGINFO.dishAl[dish].slice()} : {})};
-    if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
-  });
-  saveDatabase();
-  ROWS = [];
-  return dishes.length;
-}
-function removeDishFromDatabase(encodedDish){
-  const dish = decodeURIComponent(encodedDish);
-  delete dishDatabase[dish];
-  delete weeklySelection[dish];
-  saveDatabase();
-  renderApp();
-}
-function clearDatabase(){
-  if (!confirm('Remove every dish from the saved recipe database? This cannot be undone (export a backup first if unsure).')) return;
-  dishDatabase = {}; weeklySelection = {};
-  saveDatabase();
-  appMode = 'database';
-  renderApp();
-}
-function exportDatabase(){
-  const blob = new Blob([JSON.stringify(dishDatabase, null, 1)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'preplist-recipe-database.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-function importDatabaseFile(file){
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try{
-      const {db:incoming, kept, skipped} = sanitizeDatabase(JSON.parse(ev.target.result));
-      if (!kept){ setStatus('That file has no usable dishes in it — is it a database export from this tool?', 'err'); return; }
-      Object.keys(incoming).forEach(dish=>{
-        dishDatabase[dish] = incoming[dish];
-        if (weeklySelection[dish]===undefined) weeklySelection[dish] = {include:true, pax:'', date:''};
-      });
-      saveDatabase();
-      setStatus('Imported '+kept+' dish(es) into your recipe database.'+(skipped?' Skipped '+skipped+' entr'+(skipped===1?'y':'ies')+' that could not be read.':''), 'ok');
-      appMode = 'weekly';
-      renderApp();
-    } catch(e){
-      setStatus('Could not read that backup file — is it a database export from this tool?', 'err');
-    }
-  };
-  reader.readAsText(file);
-}
-// Builds this week's live ROWS from the database + whatever pax/date was entered per
-// dish, then hands off to the exact same rendering the tool always uses.
-function setWeeklyStatus(msg, cls){
-  const el = document.getElementById('weeklyStatusMsg');
-  if (el){ el.textContent = msg; el.className = 'status' + (cls ? ' '+cls : ''); }
-}
-function generateWeekly(){
-  ROWS = []; paxByDish = {}; eventDayOverride = {}; eventDateByDish = {}; originalPageImages = {}; methodCrops = {};
-  let includedCount = 0;
-  Object.keys(dishDatabase).forEach(dish=>{
-    const sel = weeklySelection[dish];
-    if (!sel || !sel.include) return;
-    includedCount++;
-    if (sel.date){
-      const jsDay = new Date(sel.date+'T00:00:00').getDay(); // 0=Sun..6=Sat
-      eventDayOverride[dish] = WEEKDAYS[(jsDay+6)%7]; // convert to Monday-first
-      // sel.date is an ISO yyyy-mm-dd (from a date input) — reformat to the same
-      // dd/mm/yyyy the production-tool PDFs use, so the reference line reads consistently
-      // regardless of which source the dish came from.
-      const [yy,mm,dd] = sel.date.split('-');
-      eventDateByDish[dish] = `${dd}/${mm}/${yy}`;
-    }
-    const selPax = parsePaxInput(sel.pax);
-    if (selPax.ok && selPax.n!==undefined) paxByDish[dish] = selPax.n;
-    const eventDay = getEventDay(dish);
-    dishDatabase[dish].items.forEach(it=>{
-      const pinf = it.prepCat !== undefined ? {prepCat:it.prepCat||'', leadDays:Number.isFinite(it.leadDays)?it.leadDays:null, prepSrc:it.prepSrc||'', weekendShift:!!it.weekendShift} : prepInfoFor(it.task, null, it.section);
-      const _pi = eventDay ? prepStartDayInfo(eventDay, {stageNum:it.stageNum, leadDays:pinf.leadDays, weekendShift:!!pinf.weekendShift, prepCat:pinf.prepCat}) : {day:'',reason:''};
-      const day = _pi.day || '';
-      ROWS.push({dish, task:it.task, qty:it.qty, unit:it.unit, section:it.section,
-        baseCategory:it.baseCategory, flagged:it.flagged, day, dayReason:_pi.reason||'', stageNum:it.stageNum, ...pinf,
-        pdfFixedTotal:it.pdfFixedTotal, srcSheet:it.srcSheet, srcSheetIdx:it.srcSheetIdx, srcType:it.srcType,
-        ...(Number.isFinite(it.pdfBasePax) ? {pdfBasePax:it.pdfBasePax} : {})});
-    });
-    // v3.2.2: a PDF dish with no pax picked this week starts at its printed yield
-    if (paxByDish[dish]===undefined){
-      const b = dishDatabase[dish].items.find(it=>Number.isFinite(it.pdfBasePax) && it.pdfBasePax>0);
-      if (b) paxByDish[dish] = b.pdfBasePax;
-    }
-  });
-  if (includedCount===0){ setWeeklyStatus('Tick at least one dish to generate this week\'s preplist.', 'err'); return; }
-  sourceInfo = {name: 'Recipe database — '+includedCount+' dish(es) selected this week', loadedAt: new Date()};
-  viewMode = 'dish';
-  setWeeklyStatus('Generated this week\'s preplist for '+includedCount+' dish(es).', 'ok');
-  try{ afterRowsLoaded47({name:'weekly'}); }catch(e){}
-  renderApp();
-}
-
-function setWeeklyPax(encodedDish, val, el){
-  const dish = decodeURIComponent(encodedDish);
-  if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
-  const p = parsePaxInput(val);
-  if (el) el.classList.toggle('pax-invalid', !p.ok);
-  if (!p.ok) return;
-  weeklySelection[dish].pax = p.n===undefined ? '' : String(p.n);
-  // v3.2.2: already generated this week? rescale the live list straight away
-  if (ROWS.some(r=>r.dish===dish)){ storePax(dish, p.n); render(); }
-}
-function setWeeklyDate(encodedDish, val){
-  const dish = decodeURIComponent(encodedDish);
-  if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
-  weeklySelection[dish].date = val;
-}
-function toggleWeeklyInclude(encodedDish, checked){
-  const dish = decodeURIComponent(encodedDish);
-  if (!weeklySelection[dish]) weeklySelection[dish] = {include:true, pax:'', date:''};
-  weeklySelection[dish].include = checked;
-}
-function renderWeeklyPanel(){
-  const list = document.getElementById('weeklyDishList');
-  const dishes = Object.keys(dishDatabase).sort((a,b)=>cleanDishName(a).localeCompare(cleanDishName(b)));
-  if (dishes.length===0){
-    list.innerHTML = '<div class="empty"><div class="big">No dishes in your database yet</div>Add some from "Manage database" above.</div>';
-    return;
-  }
-  list.innerHTML = `<div class="section-table-wrap">
-    <table><thead><tr>
-      <th style="width:6%"></th>
-      <th style="width:34%">Dish</th>
-      <th style="width:20%">Pax</th>
-      <th style="width:24%">Event date</th>
-      <th style="width:16%"></th>
-    </tr></thead><tbody>
-    ${dishes.map(dish=>{
-      const sel = weeklySelection[dish] || {include:true, pax:'', date:''};
-      const enc = encName(dish);
-      const taskCount = dishDatabase[dish].items.length;
-      return `<tr>
-        <td><input type="checkbox" ${sel.include?'checked':''} onchange="toggleWeeklyInclude('${enc}', this.checked)"></td>
-        <td class="task">${escapeHtml(cleanDishName(dish))}<div class="dish" style="margin-top:2px;">${taskCount} tasks saved</div></td>
-        <td><input type="text" inputmode="decimal" class="leader-input" style="width:90px;" placeholder="pax" value="${escapeHtml(String(sel.pax||''))}" oninput="setWeeklyPax('${enc}', this.value, this)"></td>
-        <td><input type="date" class="leader-input" value="${sel.date||''}" onchange="setWeeklyDate('${enc}', this.value)"></td>
-        <td><button class="ghost" onclick="removeDishFromDatabase('${enc}')" type="button" style="color:var(--prot);">Remove</button></td>
-      </tr>`;
-    }).join('')}
-    </tbody></table>
-  </div>`;
-}
-function setToolMode(m){
-  toolMode = m;
-  renderApp();
-}
+function saveOnetimeSession(){ /* r14: session-only — never persisted */ }
+function scheduleOnetimeSave(){ /* r14: session-only — never persisted */ }
+function loadOnetimeSession(){ clearLegacyUploadStorage(); }
+function clearOnetimeSession(){ clearLegacyUploadStorage(); }
+function setToolMode(m){ toolMode = 'onetime'; renderApp(); }
 function renderModeToggle(){
-  const hasDb = Object.keys(dishDatabase).length > 0;
-  const toggle = document.getElementById('toolModeToggle');
-  toggle.innerHTML = `
-    <button class="${toolMode==='onetime'?'':'secondary'}" onclick="setToolMode('onetime')" type="button">One-time sort</button>
-    <button class="${toolMode==='database'?'':'secondary'}" onclick="setToolMode('database')" type="button">Recipe database${hasDb?' ('+Object.keys(dishDatabase).length+' dishes saved)':''}</button>
-  `;
-  const sub = document.getElementById('mastheadSub');
-  sub.textContent = toolMode==='onetime'
-    ? 'One-time sort: upload a workbook and it sorts immediately — nothing is saved for next time.'
-    : 'Recipe database: upload once, then every week just pick dishes, enter pax and a date, and hit Generate — no re-uploading.';
   const dbTitle = document.getElementById('dbPanelTitle');
   const hint = document.getElementById('dropzoneHint');
   const parseBtn = document.getElementById('parsePasteBtn');
-  if (toolMode==='onetime'){
-    dbTitle.textContent = 'Load a preplist';
-    hint.textContent = 'Every tab in the workbook is read as one dish — nothing is skipped. Nothing is saved after you close this tab.';
-    parseBtn.textContent = 'Sort pasted rows';
-  } else {
-    dbTitle.textContent = hasDb ? 'Manage recipe database' : 'Build your recipe database';
-    hint.textContent = 'Every tab in the workbook is read as one dish. Uploading adds these dishes to your saved database — do this once per dish, or again any time you want to add more.';
-    parseBtn.textContent = 'Add to database';
-  }
+  if (dbTitle) dbTitle.textContent = 'Load a preplist';
+  if (hint) hint.textContent = 'Every tab in a workbook is read as one dish; production tool PDFs are read from each dish\'s front page. Files are used for this session only and are never saved.';
+  if (parseBtn) parseBtn.textContent = 'Sort pasted rows';
 }
 function renderApp(){
-  scheduleOnetimeSave();
-  const hasDb = Object.keys(dishDatabase).length > 0;
+  toolMode = 'onetime';
+  if (viewMode==='recipes') viewMode = 'dish';
   renderModeToggle();
   const dbPanel = document.getElementById('dbPanel');
-  const weeklyPanel = document.getElementById('weeklyPanel');
-  const dbManageRow = document.getElementById('dbManageRow');
-  const backLink = document.getElementById('backToWeeklyLink');
-
-  if (toolMode==='onetime'){
-    dbPanel.style.display = 'block';
-    weeklyPanel.style.display = 'none';
-    dbManageRow.style.display = 'none';
-    backLink.style.display = 'none';
-  } else {
-    dbManageRow.style.display = hasDb ? 'flex' : 'none';
-    if (hasDb){
-      const dishCount = Object.keys(dishDatabase).length;
-      const taskCount = Object.values(dishDatabase).reduce((s,d)=>s+d.items.length,0);
-      document.getElementById('dbCountMeta').textContent = dishCount+' dishes saved ('+taskCount+' tasks) in your recipe database.';
-    }
-    if (appMode==='weekly' && hasDb){
-      dbPanel.style.display = 'none';
-      weeklyPanel.style.display = 'block';
-      renderWeeklyPanel();
-    } else {
-      dbPanel.style.display = 'block';
-      weeklyPanel.style.display = 'none';
-      backLink.style.display = hasDb ? 'inline' : 'none';
-    }
-  }
+  if (dbPanel) dbPanel.style.display = 'block';
   render();
 }
 
@@ -4752,10 +4412,6 @@ async function handlePdfFiles(fileList, opts){
       }catch(e){}
       return;
     }
-    const added = commitRowsToDatabase();
-    setStatus(skipWarn+'Added '+added+' dish(es) to your recipe database from PDF ('+totalTasks+' tasks): '+dishNames.join(', ')+'.'+noteMsg, skipWarn?'warn':'ok');
-    appMode = 'weekly';
-    renderApp();
   } catch(err){
     ({ROWS, paxByDish, eventDayOverride, eventDateByDish, originalPageImages, methodCrops} = prevPdf);
     setStatus('Could not read that PDF ('+(err && err.message ? err.message : 'unknown error')+'). It may be scanned, password-protected or damaged. Your previous list has been kept.', 'err');
@@ -4805,13 +4461,6 @@ function handleWorkbookObject(wbObj, fileName, rawBytes){
         if (typeof showOutputChoice==='function'){ if (pbSorting){ pbSorting = false; const oc=document.getElementById('outputChoice'); if (oc){ oc.hidden = true; oc.innerHTML=''; } const v=document.getElementById('preplistTab'); if (v) v.scrollIntoView(); } else showOutputChoice('upload'); }
         return;
       }
-      const added = commitRowsToDatabase();
-      let msg = 'Added '+added+' dishes to your recipe database ('+itemsFound+' tasks): '+dishNames.join(', ')+'.';
-      if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
-      if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
-      setStatus(msg, errored.length ? 'err' : 'ok');
-      appMode = 'weekly';
-      renderApp();
     };
     // 4.7.9: attach plated-dish photos on Sort-now / sheet-builder path (handleFile already did this).
     if (rawBytes && typeof attachXlsxDishPhotos === 'function'){
@@ -4862,13 +4511,6 @@ function handleFile(file){
         return;
       }
 
-      const added = commitRowsToDatabase();
-      let msg = 'Added '+added+' dishes to your recipe database ('+itemsFound+' tasks): '+dishNames.join(', ')+'.';
-      if (skipped.length) msg += ' No rows found on: '+skipped.join(', ')+' — check those tabs have an "Item" or "PAX" cell.';
-      if (errored.length) msg += ' Failed to read: '+errored.join(', ')+'.';
-      setStatus(msg, errored.length ? 'err' : 'ok');
-      appMode = 'weekly';
-      renderApp();
     } catch(err){
       setStatus('Could not read that file ('+(err && err.message ? err.message : 'unknown error')+'). Please upload an .xlsx, .xls or .csv spreadsheet, or a production tool PDF.', 'err');
     }
@@ -4910,10 +4552,6 @@ document.getElementById('parsePasteBtn').addEventListener('click', ()=>{
     return;
   }
 
-  const added = commitRowsToDatabase();
-  setStatus('Added '+added+' dish(es) — "Pasted list" — to your recipe database ('+items.length+' tasks).', 'ok');
-  appMode = 'weekly';
-  renderApp();
 });
 
 document.getElementById('clearBtn').addEventListener('click', ()=>{
@@ -4923,9 +4561,6 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
   setStatus(''); renderApp();
 });
 
-document.getElementById('dbImportInput').addEventListener('change', e=>{
-  if (e.target.files[0]) importDatabaseFile(e.target.files[0]);
-});
 
 document.getElementById('bulkPaxBtn').addEventListener('click', ()=>{
   const p = parsePaxInput(document.getElementById('bulkPax').value);
@@ -4981,8 +4616,6 @@ function pdfNoYieldNote(dish){
 }
 function storePax(dish, n){
   if (n===undefined) delete paxByDish[dish]; else paxByDish[dish] = n;
-  // keep this week's Recipe database pick in step, so Generate again doesn't undo the edit
-  if (toolMode==='database' && weeklySelection[dish]) weeklySelection[dish].pax = n===undefined ? '' : String(n);
 }
 // Re-renders every view (and so every print block and the data each export reads), then
 // puts the cursor back in the box being typed in, with exactly what was typed (e.g. "12.").
@@ -5722,9 +5355,7 @@ function render(){
   renderPaxPanel();
   renderStaffingPanel();
   if (ROWS.length===0){
-    const emptyMsg = (toolMode==='database' && appMode==='weekly')
-      ? 'Tick some dishes and hit Generate above to build this week\'s preplist.'
-      : 'Upload a preplist workbook or paste rows above to get started.';
+    const emptyMsg = 'Upload a preplist workbook or paste rows above to get started.';
     area.innerHTML = versionSwitchHtml() + poPanelHtml() + `<div class="panel"><div class="empty"><div class="big">Nothing generated yet</div>${emptyMsg}</div></div>`;
     return;
   }
@@ -6820,7 +6451,7 @@ function proActive(){
 }
 function proGate(reason){ if (proActive()) return true; AutoprodLicence.openUpgrade(reason); return false; }
 const PRO_KEYS = {templates:'prepPro_templates_v1', stations:'prepPro_stations_v1', profiles:'prepPro_profiles_v1', profilePrefix:'prepPro_profile_'};
-const PROFILE_DATA_KEYS = [DB_STORAGE_KEY, ONETIME_STORAGE_KEY, PRO_KEYS.templates, PRO_KEYS.stations];
+const PROFILE_DATA_KEYS = [PRO_KEYS.templates, PRO_KEYS.stations];   // r14: uploads are never stored per kitchen
 function proGet(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } }
 function proSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
 function proEsc(s){ return escapeHtml(String(s==null?'':s)).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -7052,7 +6683,7 @@ function renderProPanel(){
           <button class="secondary" type="button" id="proAddStationBtn" onclick="addCustomStation()">Add station</button></div>
       </details>
       <details class="pro-box"><summary>Kitchens (${ps.list.length})</summary>
-        <div class="pro-per" style="margin:6px 0;">Each kitchen keeps its own recipe database, current list, templates and stations on this device. Current: <b>${proEsc(ps.active)}</b></div>
+        <div class="pro-per" style="margin:6px 0;">Each kitchen keeps its own templates and stations on this device (uploaded files are never saved). Current: <b>${proEsc(ps.active)}</b></div>
         <div class="row" style="gap:6px;"><div class="field" style="flex:1 1 150px;"><input type="text" id="proKitchenName" placeholder="New kitchen name" maxlength="40"></div>
           <button class="secondary" type="button" id="proAddKitchenBtn" onclick="addKitchen()">Add and switch</button></div>
         ${ps.list.length>1 ? `<div class="row" style="gap:6px; margin-top:8px;"><select id="proKitchenDelete" class="rowsel">${ps.list.filter(n=>n!==ps.active).map(n=>`<option value="${proEsc(n)}">${proEsc(n)}</option>`).join('')}</select><button class="ghost" type="button" onclick="deleteKitchen()" style="color:var(--prot);">Delete kitchen</button></div>` : ''}
@@ -8520,8 +8151,8 @@ function pwaShowUpdate(reg){
   };
 }
 // 4.8.35-r13: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r13';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r13';
+const PREPLINE_SW_EXPECT = '4.8.35-r14';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r14';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;
@@ -8602,14 +8233,11 @@ render = function(){ _v33BaseRender(); renderIngPanel(); };
 // ================= end Prepline v3.3 features =================
 
 proBeforeInit();
-loadDatabase();
-loadOnetimeSession();
+clearLegacyUploadStorage();   // r14: uploads are session-only
 try{
   if (window.PreplineRules && PreplineRules.syncBatchableToUi) PreplineRules.syncBatchableToUi();
 }catch(e){}
-const hasExistingDb = Object.keys(dishDatabase).length>0;
-toolMode = (ROWS && ROWS.length>0) ? 'onetime' : (hasExistingDb ? 'database' : 'onetime');
-appMode = hasExistingDb ? 'weekly' : 'database';
+toolMode = 'onetime';
 renderApp();
 proAfterInit();
 openSharedViewFromHash();   // v3.3: a team-share link opens the read-only list (nothing is stored)
@@ -9063,8 +8691,7 @@ function renderOrder47(){
   });
 }
 function renderRecipes47(){
-  if (!window.PreplineUpgrades47) return '';
-  return PreplineUpgrades47.recipeLibHtml(escapeHtml);
+  return '';   // r14: recipe library removed (uploads are session-only)
 }
 function renderVoice47(){
   if (!window.PreplineUpgrades47) return '';
@@ -9310,5 +8937,6 @@ document.addEventListener('DOMContentLoaded', pbWireDrop);
 
 </script>
 <script src="brand.js"></script>
+<script src="ui-r14.js"></script>
 </body>
 </html>

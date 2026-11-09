@@ -12,7 +12,7 @@
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '4.8.35-r13';
+const VERSION = '4.8.35-r14';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
 // The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
 const NO_CDN = SCOPE_PATH === '/prepline-team/';
@@ -21,7 +21,7 @@ const CACHE = CACHE_PREFIX + VERSION;
 // 3.3.0 (test site only) used 'prepline-test-<version>'
 const LEGACY_PREFIX = SCOPE_PATH === '/prepline-test/' ? 'prepline-test-' : null;
 // gate.js + gate-config.js stay in APP_SHELL. From 4.7.4 gate.js is open-access (no Apps Script); kept so cached loads stay consistent.
-const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './gate.js', './gate-config.js', './brand.js', './prep-days-vocab.js', './sheet-builder.js', './pdf-editor.js', './rules-engine.js', './rules-ui.js', './batching.js', './upgrades-47.js', './upgrades-472.js', './upgrades-473.js', './upgrades-476.js', './upgrades-477.js', './upgrades-478.js', './upgrades-479.js', './upgrades-480.js', './upgrades-481.js', './upgrades-482.js', './upgrades-485.js', './upgrades-486.js', './upgrades-4821.js', './upgrades-4822.js', './upgrades-4827.js', './upgrades-4835.js', './upgrades-4838.js',
+const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './session-only.js', './ui-r14.js', './gate.js', './gate-config.js', './brand.js', './prep-days-vocab.js', './sheet-builder.js', './pdf-editor.js', './rules-engine.js', './rules-ui.js', './batching.js', './upgrades-47.js', './upgrades-472.js', './upgrades-473.js', './upgrades-476.js', './upgrades-477.js', './upgrades-478.js', './upgrades-479.js', './upgrades-480.js', './upgrades-481.js', './upgrades-482.js', './upgrades-485.js', './upgrades-486.js', './upgrades-4821.js', './upgrades-4822.js', './upgrades-4827.js', './upgrades-4835.js', './upgrades-4838.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 // Same-site library copies (team site). Precached when present, skipped where absent (404).
 const LOCAL_LIBS = ['./lib/xlsx.full.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js',
@@ -38,7 +38,7 @@ const CDN_LIBS = [
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
-  // 4.8.35-r13: skip waiting + wipe old caches; activate navigates open clients so returning tabs drop stale HTML/JS.
+  // 4.8.35-r14: skip waiting + wipe old caches; activate navigates open clients so returning tabs drop stale HTML/JS.
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);

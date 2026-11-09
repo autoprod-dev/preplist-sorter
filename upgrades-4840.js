@@ -1,5 +1,7 @@
-/* Prepline 4.8.35-r13 — SINGLE owner of step numbers + Show/Hide.
+/* Prepline 4.8.35-r14 — SINGLE owner of step numbers + Show/Hide.
  * r13 also drops the More views step (feature removed; renumber 1..N).
+ * r14: numbers follow on-screen (document) order so they always read 1..N top to
+ * bottom (Requisitions used to show as 10 between 5 and 6). Recipe database removed.
  *
  * Root cause of prior breakage: six scripts (4821, 4822, 4827/4828, 4835, 4838)
  * each kept their own openState, cloned buttons (killing listeners), renumbered
@@ -18,7 +20,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r13';
+  var VERSION = '4.8.35-r14';
   var CSS_ID = 'u4840-css';
   var ATTR = 'data-u4840-id';
   var openState = Object.create(null);
@@ -296,15 +298,22 @@
   }
 
   function collectInOrder() {
-    /* Catalog order owns 1..N (not DOM visual order). poPanel/cost/orig live
-     * early in the page HTML; visual sort used to stamp Requisitions as 6
-     * ahead of Print options. Keep contiguous numbers matching CATALOG. */
+    /* r14: collect from CATALOG, then sort by document order (see below) so the
+     * numbers always read 1..N from top to bottom. */
     var found = [];
     CATALOG.forEach(function (entry) {
       var wrap = resolve(entry);
       if (!wrap) return;
       wrap.setAttribute(ATTR, entry.id);
       found.push({ entry: entry, wrap: wrap });
+    });
+    /* r14: number in document order (what the user sees top to bottom). */
+    found.sort(function (a, b) {
+      if (a.wrap === b.wrap) return 0;
+      var pos = a.wrap.compareDocumentPosition(b.wrap);
+      if (pos & 4) return -1;   /* b follows a */
+      if (pos & 2) return 1;    /* b precedes a */
+      return 0;
     });
     return found;
   }

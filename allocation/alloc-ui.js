@@ -9,7 +9,7 @@ const WIDTHS=[36.4,15.4,18.1,17.4,25.4,35.1,9.4,6.4,9];
 let state=null, settings=loadSettings(), saveTimer=null;
 
 function loadSettings(){try{return Object.assign({},E.DEFAULT_ALLOC_SETTINGS,JSON.parse(localStorage.getItem(SKEY)||'{}'));}catch(e){return Object.assign({},E.DEFAULT_ALLOC_SETTINGS);}}
-function save(now){clearTimeout(saveTimer);const go=()=>{if(!state)return;state.savedAt=new Date().toISOString();try{localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='· saved '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});}catch(e){$('saveState').textContent='· could not save on this device';}};now?go():(saveTimer=setTimeout(go,300));}
+function save(now){clearTimeout(saveTimer);const go=()=>{if(!state)return;state.savedAt=new Date().toISOString();try{localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='· session only (not saved)';}catch(e){$('saveState').textContent='· could not save on this device';}};now?go():(saveTimer=setTimeout(go,300));}
 
 /* ---------- work order reading ---------- */
 const COLS='ABCDEFGHIJKLMNOPQ'.split('');let rawRows=null,rawMeta=null;

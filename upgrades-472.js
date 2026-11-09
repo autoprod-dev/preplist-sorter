@@ -729,14 +729,5 @@
   U.inject472Css = injectCss;
   U.VERSION = '4.7.2';
 
-  // Hook autosave indicator
-  var _ss = root.scheduleOnetimeSave;
-  if (typeof _ss === 'function' && !root._u472SaveHook) {
-    root._u472SaveHook = true;
-    root.scheduleOnetimeSave = function () {
-      var r = _ss.apply(this, arguments);
-      if (U.markSavedIndicator) setTimeout(function () { U.markSavedIndicator(); }, 420);
-      return r;
-    };
-  }
+  // r14: no autosave indicator — uploads are session-only and never saved.
 })(typeof window !== 'undefined' ? window : globalThis);

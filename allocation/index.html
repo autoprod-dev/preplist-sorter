@@ -73,7 +73,7 @@
    <h2 style="margin:0">Calendar grid <small style="font-weight:500;color:#666">Week · Month · Year · from work orders</small></h2>
    <button type="button" id="allocCalToggle" class="secondary">Show</button>
   </div>
-  <p class="hint" style="margin:8px 0 0">Hidden by default. Uploading a Larder or Plated work order fills functions on the correct day. Accumulates across uploads on this device — Clear removes them.</p>
+  <p class="hint" style="margin:8px 0 0">Hidden by default. Uploading a Larder or Plated work order fills functions on the correct day for this session (uploads are not saved on this device).</p>
   <div id="allocCalBody" hidden></div>
  </section>
  <section class="card" id="reviewCard" hidden>
@@ -84,6 +84,7 @@
 </main>
 <div id="printArea"></div>
 <script>window.__PREPLINE_VENDOR_BASE__=(function(){var p=location.pathname||'/';var i=p.indexOf('/allocation');return i>=0?p.slice(0,i+1):p.replace(/[^/]+$/,'');})();</script>
+<script src="../session-only.js"></script>
 <script src="../gate-config.js"></script><script src="../gate.js"></script>
 <script src="vendor/xlsx-js-style.min.js"></script>
 <script src="../prep-days-vocab.js"></script>

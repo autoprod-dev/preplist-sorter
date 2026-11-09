@@ -1,0 +1,22 @@
+// r14: Work order / allocation page — uploads are session-only.
+import http from 'http'; import fs from 'fs'; import path from 'path'; import { fileURLToPath } from 'url'; import { chromium } from 'playwright';
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const WO = process.env.WO || '/workspace/share/prepline-tutorial/synthetic-workorder.xlsx';
+const MIME = { '.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.xlsx':'application/octet-stream' };
+const server = http.createServer((q,r)=>{let u=decodeURIComponent(q.url.split('?')[0]);if(u.endsWith('/'))u+='index.html';const fp=path.join(ROOT,u);if(!fp.startsWith(ROOT)||!fs.existsSync(fp)||fs.statSync(fp).isDirectory()){r.writeHead(404);r.end();return;}r.writeHead(200,{'Content-Type':MIME[path.extname(fp)]||'application/octet-stream'});fs.createReadStream(fp).pipe(r);});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1366, height: 900 } });
+const errs = []; p.on('pageerror', e => errs.push(String(e)));
+let pass=0, fail=0; const ck=(n,c,d)=>{c?pass++:fail++;console.log(c?'[PASS]':'[FAIL]',n,d||'');};
+await p.addInitScript(() => { if (sessionStorage.getItem('s')) return; sessionStorage.setItem('s','1'); localStorage.setItem('prepline.alloc.v2', '{"v":1,"old":true}'); });
+await p.goto(`http://127.0.0.1:${server.address().port}/allocation/`); await p.waitForTimeout(2500);
+ck('old saved work order cleared', await p.evaluate(() => localStorage.getItem('prepline.alloc.v2') === null && !Object.keys(localStorage).includes('prepline.alloc.v2')));
+await p.setInputFiles('#woFile', WO); await p.waitForTimeout(4000);
+const s = await p.evaluate(() => ({ save: (document.getElementById('saveState') || {}).textContent, ls: Object.keys(localStorage), cal: (window.PreplineAllocCal && PreplineAllocCal.loadEvents ? PreplineAllocCal.loadEvents().length : -1), editor: (document.getElementById('editor') || {}).innerText ? document.getElementById('editor').innerText.length : 0 }));
+ck('work order loads', s.editor > 50, JSON.stringify({ len: s.editor, save: s.save }));
+ck('no WO state in localStorage', !s.ls.some(k => /alloc\.v2|bespoke|calEvents/.test(k)), s.ls.join(','));
+await p.reload(); await p.waitForTimeout(2500);
+const t = await p.evaluate(() => (document.getElementById('editor') || {}).innerText || '');
+ck('after reload: no work order restored', t.length < 50, String(t.length));
+ck('no page errors', errs.length === 0, errs.join(' | '));
+await b.close(); server.close(); console.log('RESULT', pass, '/', pass+fail); if (fail) process.exit(1);

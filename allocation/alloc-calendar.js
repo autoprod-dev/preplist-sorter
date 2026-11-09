@@ -1,6 +1,6 @@
 /* Prepline · Work-order event calendar (Week / Month / Year).
    Lives on Work orders & allocation. Auto-fills from Larder/Plated WO uploads.
-   Accumulates across uploads on this device (dedupe eventNo+date). Show/Hide (default hidden).
+   r14: accumulates across uploads in this session only (session-only.js; dedupe eventNo+date). Show/Hide (default hidden).
    Print: A4 or A3 landscape; auto-scale + wrap; busy days grow / continue — no clipping. */
 (function (root) {
   'use strict';

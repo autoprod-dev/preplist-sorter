@@ -175,7 +175,7 @@
     wrap.innerHTML =
       '<div class="u480-settings-bar no-print">' +
         '<div><h2>How Prepline sorts &amp; schedules</h2>' +
-        '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">One-time sort · Recipe database · prep lead days</div></div>' +
+        '<div class="small" style="font-size:12px;color:var(--ink-soft,#6b675c);">One-time sort · session-only uploads · prep lead days</div></div>' +
         '<button type="button" class="ghost u4827-toggle">' + (openState.howto ? 'Hide' : 'Show') + '</button>' +
       '</div>';
     var body = document.createElement('div');
