@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r15">
+<meta name="prepline-version" content="4.8.35-r16">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -951,7 +951,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r15</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r16</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     <b>Session only:</b> uploaded preplists, production tools and purchase orders are used for this tab only.
     Nothing from an upload is saved to this browser, so a reload or closing the tab clears them (print or export first).
@@ -3293,10 +3293,10 @@ function parsePoPages(pagesItems, fileName){
   po.items.forEach(it=>{ it.supplier = it.supplier.replace(/\s+/g,' ').trim(); it.desc = it.desc.replace(/^\d{6,10}\s+/,'').replace(/\s+/g,' ').trim(); });
   return po;
 }
-// --- name matching (4.8.35-r15 / 2027.1.1): stronger keyword parse —
-// more synonyms & abbreviations, careful singulars, head-noun / bound-phrase
-// guards, partial-overlap cap below the fill floor. Date windows unchanged.
-const PO_STOP = new Set(('pb bch bun bunch pun punnet ctn carton ea each pk pack packet box bag tub tin can jar btl bottle per x and the of with in for from into onto fresh frozen tip top krio krush masterfoods masterfood mfoods canister sub item add to bs placeholder name peeled diced sliced chopped minced grated washed cleaned trimmed portioned portions portion wholemeal organic natural plain cooked raw whole fine large small baby prs pfd kg k g gm grams kilograms ml l lt ltr litres liters pcs pc size grade premium select extra sauteed saute roasted poached blanched fried grilled baked boiled steamed confit puree pureed leaves leaf tendril tendrils sprout sprouts gx pld pkd packed approx approximately opened open picked pitted skinless crispy crunchy mini approx catalogue catalog needs added information info company co ltd pty limited inc australia australian aus oz nfc fd freeze stick sticks block bagged shaved root farm supreme garden spoon valley yarra heng kikkoman pasteles trumps sandhurst olsson olssons allowrie cottees cottee peerless juliannes lemnos mckenzie mckenzies mckenzy garlicious ravifruit boiron ottogi mizkan tasman bidfood pura jfc kobayashi birch waite mcilhenny bundaberg cornwell cornwells alto superfood lkk hac sz up ups out dried flake flakes navel viola zest').split(' ').filter(Boolean));
+// --- name matching (4.8.35-r16 / 2027.1.2): brand/variety-tolerant on the SAME
+// ingredient (Lebanese vs telegraph cucumber, Vannella vs Lemnos feta). Different
+// products that only share a word stay blocked. Date windows unchanged.
+const PO_STOP = new Set(('pb bch bun bunch pun punnet ctn carton ea each pk pack packet box bag tub tin can jar btl bottle per x and the of with in for from into onto fresh frozen tip top krio krush masterfoods masterfood mfoods canister sub item add to bs placeholder name peeled diced sliced chopped minced grated washed cleaned trimmed portioned portions portion wholemeal organic natural plain cooked raw whole fine large small baby prs pfd kg k g gm grams kilograms ml l lt ltr litres liters pcs pc size grade premium select extra sauteed saute roasted poached blanched fried grilled baked boiled steamed confit puree pureed leaves leaf tendril tendrils sprout sprouts gx pld pkd packed approx approximately opened open picked pitted skinless crispy crunchy mini approx catalogue catalog needs added information info company co ltd pty limited inc australia australian aus oz nfc fd freeze stick sticks block bagged shaved root farm supreme garden spoon valley yarra heng kikkoman pasteles trumps sandhurst olsson olssons allowrie cottees cottee peerless juliannes lemnos mckenzie mckenzies mckenzy garlicious ravifruit boiron ottogi mizkan tasman bidfood pura jfc kobayashi birch waite mcilhenny bundaberg cornwell cornwells alto superfood lkk hac sz up ups out dried flake flakes navel viola zest vannella vanella malfoy').split(' ').filter(Boolean));
 function poSingular(w){
   // 4.8.35-r15: universal plurals — oysters→oyster, tomatoes→tomato, berries→berry.
   // Do not rewrite brand-like -ies names (McKenzies) — poTokEq also compares raw forms.
@@ -3374,6 +3374,32 @@ const PO_SYNONYMS = [
   [/\bfigjam\b/g, 'fig jam'],
   [/\bbiocheese\b/g, 'bio cheese'],
   [/\bcremefraiche\b/g, 'cremefraiche'],
+  [/\bsweet\s+potatoes\b/g, 'sweetpotato'],
+  [/\bsweet\s+potatos?\b/g, 'sweetpotato'],
+  [/\boyster\s+mushrooms?\b/g, 'oystermushroom'],
+  [/\bmushrooms?\s+oyster\b/g, 'oystermushroom'],
+  [/\bcherry\s+tomatoes\b/g, 'tomato cherry'],
+  [/\bcherry\s+tomatos?\b/g, 'tomato cherry'],
+  [/\bgrape\s+tomatoes\b/g, 'tomato grape'],
+  [/\blime\s+fingers?\b/g, 'fingerlime'],
+  [/\bfinger\s+limes?\b/g, 'fingerlime'],
+  [/\bkaffir\s+limes?\b/g, 'lime kaffir'],
+  [/\bmakrut\s+limes?\b/g, 'lime kaffir'],
+  [/\bcavolo\s+nero\b/g, 'kale tuscan'],
+  [/\btuscan\s+kale\b/g, 'kale tuscan'],
+  [/\boak\s*-?\s*leaf\b/g, 'oakleaf'],
+  [/\bmixed\s+leaf\b/g, 'lettuce mesclun'],
+  [/\bmixed\s+leaves\b/g, 'lettuce mesclun'],
+  [/\bmesclun\b/g, 'lettuce mesclun'],
+  [/\bbaby\s+cos\b/g, 'cos'],
+  [/\bdutch\s+cream\b/g, 'dutchcream'],
+  [/\bpink\s+lady\b/g, 'pinklady'],
+  [/\bgranny\s+smith\b/g, 'grannysmith'],
+  [/\bswiss\s+brown\b/g, 'swissbrown'],
+  [/\bbird\s*-?\s*eyes?\b/g, 'birdseye'],
+  [/\bvietnamese\s+mints?\b/g, 'mint vietnamese'],
+  [/\bthai\s+basils?\b/g, 'basil thai'],
+  [/\bbeetroots?\b/g, 'beetroot'],
 ];
 const PO_ABBREV = [
   [/\brpr\b/g, 'rpr'],
@@ -3436,13 +3462,16 @@ const PO_BOUNDS = [
   ['sugarsnap', 'pea'],
   ['green', 'pea'],
   ['rice', 'flour'],
+  ['sweet', 'potato'],
   ['springonion', ''], // spring onion must not equal shallot — handled by not aliasing
 ];
 function poTokens(name){
   // Keyword normalise for ALL items — strip supplier codes, units, prep words,
   // punctuation, brands; expand abbrevs & synonyms; keep core ingredient nouns.
   let t = String(name||'').toLowerCase();
-  t = t.replace(/\s+-\s+[^-]*$/, ' ');                               // " - Supplier" tail
+  // Supplier tails (" - Lemnos") are brands already in PO_STOP, so they drop
+  // at the stop-word filter. Do not strip the dash-tail wholesale, or ingredient
+  // words after a dash ("Figs - Baby Marinated") are lost.
   t = t.replace(/^\d{6,10}\s+/, ' ');                                // GL / category code
   t = t.replace(/\b(prs|pfd|pb|bch|placeholder name[^.]*|add item to bs|needs to be added to catalogue)\b/g, ' ');
   PO_SYNONYMS.forEach(([re, to])=>{ t = t.replace(re, to); });
@@ -3485,7 +3514,7 @@ function poTokEq(a, b){
   return false;
 }
 // Generic words count for little: "Herb Chives" is not "Herb Mint".
-const PO_GENERIC = new Set('herb micro sauce gluten free sliced slice pickle pickled red white black whole wholemeal mix mixed fine large small baby raw cooked plain natural organic oil salt sugar water ice cream milk flour bread juice paste powder cream butter egg eggs kitchen juliannes julianne gum spice seasoning zest rind sweet navel'.split(' '));
+const PO_GENERIC = new Set('herb micro sauce gluten free sliced slice red white black whole wholemeal mix mixed fine large small baby raw cooked plain natural organic oil salt sugar water ice cream milk flour bread juice paste powder cream butter egg eggs kitchen juliannes julianne gum spice seasoning zest rind sweet navel cheese fish seafood meat poultry'.split(' '));
 function poW(t){ return PO_GENERIC.has(t) ? 0.25 : 1; }
 function poHasPair(toks, d, g){
   return toks.some(x=>poTokEq(x, d)) && toks.some(x=>poTokEq(x, g));
@@ -3514,20 +3543,92 @@ function poBoundBlock(A, B){
   }
   return false;
 }
-function poDistinguisherClash(cA, cB){
-  // Both sides have unique content nouns that do not match each other (green pea ≠ sugar snap).
-  if (!cA.length || !cB.length) return false;
+// Produce / ingredient heads — the "same item" noun. Varieties of these may differ.
+const PO_HEADS = new Set(('cucumber tomato lettuce onion shallot springonion capsicum pepper potato sweetpotato apple pear lemon lime fingerlime orange mandarin grapefruit radish daikon cabbage kale beetroot carrot mushroom shiitake oystermushroom chilli basil mint coriander parsley dill chive tarragon chervil thyme rosemary oregano sage spinach rocket celery garlic ginger avocado pumpkin zucchini eggplant broccoli broccolini cauliflower asparagus leek fennel pea sugarsnap snowpea chickpea corn bean fig olive feta goatcheese parmesan mozzarella ricotta cheddar yoghurt yogurt creamfraiche mayo hoisin soy worcester wasabi salmon prawn oyster chicken beef lamb pork duck fish tuna beef pork rice noodle flour salt sugar honey maple vinegar oil sesame peanut coconut almond').split(' ').filter(Boolean));
+// Cultivar, colour, origin, grade, style — same ingredient, different wording.
+const PO_VARIETY = new Set(('lebanese telegraph continental lebanese persian cherry grape truss roma heirloom oxheart vine plum beefsteak cocktail cos iceberg butter oak oakleaf mesclun mignonette coral gem butterhead spanish chat kipfler desiree sebago pontiac nadine dutch dutchcream cream grannysmith fuji gala pinklady jazz braeburn packham beurre bosc corella william navel valencia blood meyer kaffir makrut breakfast french savoy wombok napa tuscan cavolo nero golden candy chioggia dutch heirloom nantes button swiss swissbrown field cup porcini enoki shimeji birdseye bird long jalapeno habanero serrano cayenne thai vietnamese italian french curly flat continental green yellow orange purple gold bronze pink king atlantic tasman heritage heritage medjool deicy desiree royal gala sunburst sunrise byron merimbula mooloolaba girraween').split(' ').filter(Boolean));
+// Anatomical cuts: same animal/fish, different piece — clash only when BOTH sides name a cut.
+const PO_CUTS = new Set(('breast thigh wing liver kidney heart mince fillet tenderloin schnitzel drumstick maryland').split(' ').filter(Boolean));
+// Process / form that makes a different product (one-sided is enough: pickled ≠ fresh, roe ≠ fillet).
+const PO_PROCESS = new Set(('roe caviar pickle pickled marinated cured smoked jam relish chutney paste pate parfait terrine sausage bacon ham puree gel dressing stock dashi').split(' ').filter(Boolean));
+
+function poIsHead(t){
+  if (!t) return false;
+  const s = poSingular(t);
+  return PO_HEADS.has(t) || PO_HEADS.has(s);
+}
+function poIsVariety(t){
+  if (!t) return false;
+  return PO_VARIETY.has(t) || PO_VARIETY.has(poSingular(t));
+}
+function poIsCut(t){
+  if (!t) return false;
+  return PO_CUTS.has(t) || PO_CUTS.has(poSingular(t));
+}
+function poIsProcess(t){
+  if (!t) return false;
+  return PO_PROCESS.has(t) || PO_PROCESS.has(poSingular(t));
+}
+function poIsProductDiff(t){ return poIsCut(t) || poIsProcess(t); }
+function poSharedHeads(cA, cB){
+  return cA.filter(a => poIsHead(a) && cB.some(b => poTokEq(a, b) && poIsHead(b)));
+}
+function poLeftoverVarietyOk(toks){
+  // Leftovers may be variety, colour/generic, or an unknown word (likely a brand).
+  // Not another ingredient head, and not a process or cut that changes the product.
+  return toks.every(t => {
+    if (poIsVariety(t) || PO_GENERIC.has(t)) return true;
+    if (poIsProcess(t) || poIsCut(t) || poIsHead(t)) return false;
+    return true;
+  });
+}
+function poLeftoverExactOk(toks){
+  // For subset/"exact" boost: leftover may be variety, brand, or a cut (more specific,
+  // same product). An extra head or a process word means a different product.
+  return toks.every(t => {
+    if (poIsVariety(t) || PO_GENERIC.has(t) || poIsCut(t)) return true;
+    if (poIsProcess(t) || poIsHead(t)) return false;
+    return true;
+  });
+}
+function poVarietyCompatible(cA, cB){
+  // Same core ingredient, leftover words are only brand / variety / descriptor.
+  const heads = poSharedHeads(cA, cB);
+  if (!heads.length) return false;
   const onlyA = cA.filter(a => !cB.some(b => poTokEq(a, b)));
   const onlyB = cB.filter(b => !cA.some(a => poTokEq(a, b)));
-  const strong = t => t.length >= 4 && !PO_GENERIC.has(t);
+  if (onlyA.some(poIsProductDiff) || onlyB.some(poIsProductDiff)) return false;
+  return poLeftoverVarietyOk(onlyA) && poLeftoverVarietyOk(onlyB);
+}
+function poProductFormClash(cA, cB){
+  const onlyA = cA.filter(a => !cB.some(b => poTokEq(a, b)));
+  const onlyB = cB.filter(b => !cA.some(a => poTokEq(a, b)));
+  if (onlyA.some(poIsCut) && onlyB.some(poIsCut)) return true;
+  if (onlyA.some(poIsProcess) || onlyB.some(poIsProcess)) return true;
+  return false;
+}
+function poDistinguisherClash(cA, cB){
+  // Both sides have unique content nouns that do not match each other (green pea ≠ sugar snap).
+  // Variety/brand leftovers of the SAME head are not a clash (see poVarietyCompatible).
+  if (!cA.length || !cB.length) return false;
+  if (poVarietyCompatible(cA, cB)) return false;
+  const onlyA = cA.filter(a => !cB.some(b => poTokEq(a, b)));
+  const onlyB = cB.filter(b => !cA.some(a => poTokEq(a, b)));
+  const strong = t => (t.length >= 4 || poIsProductDiff(t) || poIsHead(t)) && !PO_GENERIC.has(t) && !poIsVariety(t);
   return onlyA.some(strong) && onlyB.some(strong);
 }
-function poScore(A, B){
-  // Core-noun overlap + containment of the shorter content set.
-  // Generics alone never match. Bound compounds (coconut milk ≠ milk) score 0.
-  // Partial multi-word overlap is capped BELOW the 0.45 fill floor.
-  if (!A.length || !B.length) return 0;
-  if (poBoundBlock(A, B)) return 0;
+
+function poScoreInfo(A, B){
+  // Returns {score, kind} where kind is 'exact', 'brand/variety', or ''.
+  // Generics alone never match. Bound compounds score 0.
+  // Brand/variety of the same ingredient scores above the 0.45 fill floor,
+  // but below an exact-name match so the exact line is preferred when both exist.
+  if (!A.length || !B.length) return {score:0, kind:''};
+  if (poBoundBlock(A, B)) return {score:0, kind:''};
+  // Cherry the fruit ≠ cherry tomato. Tomato varieties (vine vs cherry) still match.
+  const cherryFruit = (T) => T.some(x=>poTokEq(x,'cherry')) && !T.some(x=>poTokEq(x,'tomato'));
+  const hasTomato = (T) => T.some(x=>poTokEq(x,'tomato'));
+  if ((cherryFruit(A) && hasTomato(B)) || (cherryFruit(B) && hasTomato(A))) return {score:0, kind:''};
   let hitA = 0, hitB = 0;
   A.forEach(a=>{
     const b = B.find(x=>poTokEq(a,x));
@@ -3535,37 +3636,45 @@ function poScore(A, B){
   });
   B.forEach(b=>{ if (A.some(a=>poTokEq(a,b))) hitB += poW(b); });
   const wA = A.reduce((n,t)=>n+poW(t),0), wB = B.reduce((n,t)=>n+poW(t),0);
-  if (!hitA || (hitA < 1 && hitB < 1)) return 0;
+  if (!hitA || (hitA < 1 && hitB < 1)) return {score:0, kind:''};
   const dice = (hitA+hitB)/(wA+wB), cont = Math.min(hitA/wA, hitB/wB) > 0 ? Math.max(hitA/wA, hitB/wB) : 0;
   let score = Math.max(dice, Math.min(wA, wB) >= 2 ? cont*0.85 : 0);
 
   const cA = A.filter(t=>!PO_GENERIC.has(t));
   const cB = B.filter(t=>!PO_GENERIC.has(t));
   if (!cA.length || !cB.length){
-    return Math.min(score, 0.35); // oil/salt/… only
-  }
-  if (poDistinguisherClash(cA, cB)){
-    // Shared head (pea, mustard, peanut) but the other content nouns disagree.
-    return Math.min(score, 0.40);
+    return {score: Math.min(score, 0.35), kind:''}; // oil/salt/… only
   }
   const short = cA.length <= cB.length ? cA : cB;
   const long  = cA.length <= cB.length ? cB : cA;
   const shortAllHit = short.every(s => long.some(l => poTokEq(s, l)));
+  const onlyLong = long.filter(l => !short.some(s => poTokEq(s, l)));
+  const onlyA = cA.filter(a => !cB.some(b => poTokEq(a, b)));
+  const onlyB = cB.filter(b => !cA.some(a => poTokEq(a, b)));
   const shared = cA.filter(a => cB.some(b => poTokEq(a, b)));
   const longShared = shared.slice().sort((a,b)=>b.length-a.length)[0];
-  if (!shortAllHit){
-    // A distinctive shared noun (bonito, teriyaki, …) with only short leftovers still counts.
-    if (longShared && longShared.length >= 6){
-      return Math.max(score, 0.55 + Math.min(0.35, (longShared.length - 4) * 0.04));
-    }
-    return Math.min(score, 0.40);
+  const shortIsProcessOnly = short.length && short.every(t => poIsProcess(t));
+  if (shortAllHit && !shortIsProcessOnly && !onlyLong.some(poIsProcess)){
+    const longHit = short.slice().sort((a,b)=>b.length-a.length)[0];
+    score = Math.max(score, longHit.length >= 5
+      ? 0.55 + Math.min(0.35, (longHit.length - 4) * 0.04)
+      : 0.72);
+    return {score, kind:'exact'};
   }
-  const longHit = short.slice().sort((a,b)=>b.length-a.length)[0];
-  score = Math.max(score, longHit.length >= 5
-    ? 0.55 + Math.min(0.35, (longHit.length - 4) * 0.04)
-    : 0.72);
-  return score;
+  if (poVarietyCompatible(cA, cB)){
+    const core = poSharedHeads(cA, cB).slice().sort((a,b)=>b.length-a.length)[0] || longShared || '';
+    const vScore = 0.50 + Math.min(0.10, Math.max(0, core.length - 4) * 0.02);
+    return {score: Math.max(score, vScore), kind:'brand/variety'};
+  }
+  if (poProductFormClash(cA, cB) || poDistinguisherClash(cA, cB)){
+    return {score: Math.min(score, 0.40), kind:''};
+  }
+  if (longShared && longShared.length >= 6 && poLeftoverExactOk(onlyA) && poLeftoverExactOk(onlyB)){
+    return {score: Math.max(score, 0.55 + Math.min(0.35, (longShared.length - 4) * 0.04)), kind:'exact'};
+  }
+  return {score: Math.min(score, 0.40), kind:''};
 }
+function poScore(A, B){ return poScoreInfo(A, B).score; }
 function poIsInHouse(task){ return /\(\s*sub\s*\)/i.test(String(task||"")); }   // REF left completely blank for these (screen, prints, Order sheet)   // sub-recipes are made in the kitchen, not ordered
 // 4.8.35-r5: never fill Ref # for non-purchased kitchen staples / water / ice / sub-recipes.
 function poIsNonPurchased(task){
@@ -3726,11 +3835,12 @@ function poLogFill(task, m){
     supplier: it.supplier || '',
     delivery: (it.po && it.po.delivery) || '',
     daysBefore: (m.daysBefore !== undefined && m.daysBefore !== null) ? m.daysBefore : null,
-    score: m.score
+    score: m.score,
+    match: (m.matchKind === 'brand/variety') ? 'brand/variety match' : (m.matchKind || '')
   };
   poFillLog.push(entry);
   try {
-    console.info('[Prepline Ref#]', entry.item, '→', entry.po || '(no PO#)', '→', entry.supplier, '→', entry.delivery, '→', entry.daysBefore, 'days before');
+    console.info('[Prepline Ref#]', entry.item, '→', entry.po || '(no PO#)', '→', entry.supplier, '→', entry.delivery, '→', entry.daysBefore, 'days before', entry.match ? '('+entry.match+')' : '');
   } catch (e) {}
 }
 function poClearFillLog(){ poFillLog.length = 0; }
@@ -3755,10 +3865,11 @@ function poMatchFor(task, opts){
   const tok = poTokens(task);
   const cands = [];
   poMatchCache.items.forEach(it=>{
-    const sc = poScore(tok, it.tok);
+    const info = poScoreInfo(tok, it.tok);
+    const sc = info.score;
     if (sc <= 0) return;
     const daysBefore = functionDate ? poDaysBefore(it.po && it.po.delivery, functionDate) : null;
-    cands.push({item: it, score: sc, daysBefore});
+    cands.push({item: it, score: sc, daysBefore, kind: info.kind || ''});
   });
   // 4.8.35-r11: collect allowed deliveries. Ordinary: day-3 only, else day-4 only.
   // Exempt (microherbs/fish): 0..2 on/before; prefer closest. HENG supplier lines: 0..1 only.
@@ -3794,7 +3905,7 @@ function poMatchFor(task, opts){
       items.push(c.item);
       days.push(c.daysBefore);
     });
-    return {items, daysBefore: days.length ? days[0] : null, score: chosen.length ? chosen[0].score : 0};
+    return {items, daysBefore: days.length ? days[0] : null, score: chosen.length ? chosen[0].score : 0, kind: chosen.length ? (chosen[0].kind || '') : ''};
   }
   function poAttachBox(res){
     if (!res) return res;
@@ -3827,7 +3938,7 @@ function poMatchFor(task, opts){
       const okPack = poCollectInWindow(cands, fillMin);
       const checkPack = forFill ? {items:[]} : poCollectInWindow(cands, PO_CHECK);
       if (okPack.items.length)
-        res = poAttachBox({status:'ok', items: okPack.items, score: okPack.score, daysBefore: okPack.daysBefore});
+        res = poAttachBox({status:'ok', items: okPack.items, score: okPack.score, daysBefore: okPack.daysBefore, matchKind: okPack.kind || ''});
       else if (checkPack.items.length)
         res = poAttachBox({status:'check', items: checkPack.items, score: checkPack.score, daysBefore: checkPack.daysBefore});
       else if (nameHits.length)
@@ -8300,8 +8411,8 @@ function pwaShowUpdate(reg){
   };
 }
 // 4.8.35-r13: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r15';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r15';
+const PREPLINE_SW_EXPECT = '4.8.35-r16';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r16';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;

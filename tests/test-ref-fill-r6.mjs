@@ -321,5 +321,80 @@ m = fill('Lemon juice');
 check('head-noun lemon juice = lemons', m && m.status==='ok', m && m.status);
 
 
+
+// --- r16: brand/variety of the SAME ingredient; different products stay blocked ---
+reset([makePO('31/10/2026', [{desc:'CUCUMBER LEBANESE'}])]);
+m = fill('Cucumber Telegraph');
+check('telegraph fills from lebanese (brand/variety)', m && m.status==='ok' && m.matchKind==='brand/variety', m && (m.status+' '+m.matchKind+' '+m.score));
+
+reset([makePO('31/10/2026', [
+  {desc:'CUCUMBER LEBANESE', supplier:'Select Fresh'},
+  {desc:'CUCUMBER TELEGRAPH', supplier:'Select Fresh'},
+])]);
+m = fill('Cucumber Telegraph');
+check('prefer exact telegraph when both POs exist', m && m.status==='ok' && /telegraph/i.test(m.item && m.item.desc || ''), m && m.status+' '+(m.item&&m.item.desc)+' '+m.matchKind);
+
+reset([makePO('31/10/2026', [{desc:'VANNELLA PERSIAN FETA'}])]);
+m = fill('Cheese Fetta 2kg - Lemnos');
+check('feta brand difference fills', m && m.status==='ok', m && m.status+' '+m.matchKind);
+
+reset([makePO('31/10/2026', [{desc:'CUCUMBER LEBANESE'}])]);
+m = fill('Cucumber Telegraph');
+poClearFillLog();
+if (m && m.status==='ok') poLogFill('Cucumber Telegraph', m);
+check('fill log says brand/variety match', poFillLog[0] && poFillLog[0].match==='brand/variety match', JSON.stringify(poFillLog[0]));
+
+reset([makePO('31/10/2026', [{desc:'TOMATO CHERRY PUN'}])]);
+m = fill('Tomato vine');
+check('tomato vine ~ cherry tomato', m && m.status==='ok' && m.matchKind==='brand/variety', m && m.status+' '+m.matchKind);
+
+reset([makePO('31/10/2026', [{desc:'ICEBERG LETTUCE'}])]);
+m = fill('Lettuce Cos');
+check('cos ~ iceberg', m && m.status==='ok' && m.matchKind==='brand/variety', m && m.status+' '+m.matchKind);
+
+reset([makePO('31/10/2026', [{desc:'ONION BROWN KG'}])]);
+m = fill('Onion Spanish');
+check('spanish onion ~ brown onion', m && m.status==='ok' && m.matchKind==='brand/variety', m && m.status+' '+m.matchKind);
+
+reset([makePO('31/10/2026', [{desc:'THAI BASIL BCH'}])]);
+m = fill('Herb Basil Green Bunch');
+check('basil ~ thai basil', m && m.status==='ok', m && m.status+' '+m.matchKind);
+
+reset([makePO('31/10/2026', [{desc:'POTATO DESIREE'}])]);
+m = fill('Sweet potato');
+check('sweet potato ≠ potato', !m || m.status!=='ok', m && m.status+' '+m.score);
+
+reset([makePO('31/10/2026', [{desc:'ONION BROWN'}])]);
+m = fill('Spring onion');
+check('spring onion ≠ onion', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'CHICKEN LIVER'}])]);
+m = fill('Chicken Breast Shredded Oven Roasted 2kg- M&J Chicken');
+check('chicken breast ≠ liver', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'SALMON ROE YARRA VALLEY', supplier:'Get Fish Pty Ltd'}])]);
+m = fill('Fish Salmon Fillet Atlantic Skinless Pin Boned');
+check('salmon fillet ≠ salmon roe', !m || m.status!=='ok', m && m.status+' '+m.score);
+
+reset([makePO('31/10/2026', [{desc:'SPANISH ONION'}])]);
+m = fill('Onion Pickled White Sandhurst');
+check('pickled onion ≠ fresh spanish onion', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'CHERRY TOMATO PUN'}])]);
+m = fill('Cherry');
+check('cherry fruit ≠ cherry tomato', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'LIMES'}])]);
+m = fill('Lemon juice');
+check('lemon ≠ lime still blocked', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'PARMESAN GRANA PADANO'}])]);
+m = fill('Cheese Fetta 2kg - Lemnos');
+check('feta ≠ parmesan', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'OYSTER PAMBULA OPEN', supplier:'Get Fish Pty Ltd'}])]);
+m = fill('Oyster mushroom');
+check('oyster mushroom ≠ oyster seafood', !m || m.status!=='ok', m && m.status);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
