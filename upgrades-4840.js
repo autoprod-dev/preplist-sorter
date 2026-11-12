@@ -20,7 +20,7 @@
 (function (root) {
   'use strict';
 
-  var VERSION = '4.8.35-r14';
+  var VERSION = '4.8.35-r15';
   var CSS_ID = 'u4840-css';
   var ATTR = 'data-u4840-id';
   var openState = Object.create(null);

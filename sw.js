@@ -12,7 +12,7 @@
  * Updates: a new sw.js installs alongside the old one and WAITS. The page shows
  * "Update available - Reload"; Reload sends SKIP_WAITING, then the page reloads once.
  */
-const VERSION = '4.8.35-r14';
+const VERSION = '4.8.35-r15';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;   // '/preplist-sorter/', '/prepline-test/' or '/prepline-team/'
 // The team site serves every library from itself (no CDN, no Google Fonts): never contact a CDN there.
 const NO_CDN = SCOPE_PATH === '/prepline-team/';
@@ -38,7 +38,7 @@ const CDN_LIBS = [
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', event => {
-  // 4.8.35-r14: skip waiting + wipe old caches; activate navigates open clients so returning tabs drop stale HTML/JS.
+  // 4.8.35-r15: skip waiting + wipe old caches; activate navigates open clients so returning tabs drop stale HTML/JS.
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);

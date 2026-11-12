@@ -270,5 +270,56 @@ for (const name of ['Oyster Pambula', 'Oysters Pambula', 'Pambula Oyster', 'Pamb
   check('variant fills: '+name, m && m.status==='ok', m && m.status);
 }
 
+
+// --- r15: stronger keyword parse (eschallot, abbrevs, spelling, FP guards) ---
+reset([makePO('31/10/2026', [{desc:'SHALLOT BROWN PEELED KG'}])]);
+m = fill('Eschallot Peeled');
+check('eschallot = shallot', m && m.status==='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'RICE PAPER ROLL CHICKEN TERIYAKI VEGETABLE GF 60G X20'}])]);
+m = fill('RPR (L) : CHK TERI Veg (GF*) 60g x20');
+check('RPR/CHK/TERI abbreviations', m && m.status==='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'FETA LEMNOS 2KG'}])]);
+m = fill('Cheese Fetta 2kg - Lemnos');
+check('fetta = feta', m && m.status==='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'XANTHAN GUM 500G'}])]);
+m = fill('Xanthum Gum 500g');
+check('xanthum = xanthan', m && m.status==='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'MILK FULL CREAM 3L'}])]);
+m = fill('Coconut milk');
+check('coconut milk ≠ milk', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'BUTTER BEANS 2KG'}])]);
+m = fill('Butter unsalted');
+check('butter ≠ butter beans', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'2.6K(6) SWEET MUSTARD PICKLES RELISH MASTERFOODS'}])]);
+m = fill('Herb Micro Mustard Green');
+check('mustard green ≠ mustard pickle', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'CARROT JULIENNE PEELED'}])]);
+m = fill('Chicken and Madeira Pate 1kg Juliannes Kitchen');
+check('juliannes kitchen ≠ julienne', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'SUGAR SNAP PEAS'}])]);
+m = fill('Pea Green Frozen 2kg - Garden Supreme');
+check('green pea ≠ sugar snap', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'SHALLOT BUNCH'}])]);
+m = fill('Spring onion');
+check('spring onion ≠ shallot (AU)', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'HERB MINT BCH'}])]);
+m = fill('Herb Mint River Fresh Bunch');
+check('mint still fills after r15', m && m.status==='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'LEMONS'}])]);
+m = fill('Lemon juice');
+check('head-noun lemon juice = lemons', m && m.status==='ok', m && m.status);
+
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
