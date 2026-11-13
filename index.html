@@ -1329,8 +1329,10 @@ function subPageStampForDish(dish){
 // PT Ref # box: one short "Supplier dd/mm/yyyy" only (never several deliveries joined).
 function poRefOneBoxText(m){
   if (!m) return '';
-  if (m.item && typeof poBoxText === 'function') return poBoxText(m.item);
-  const t = (m.boxText || (typeof poRefFillText === 'function' ? poRefFillText(m) : '') || '');
+  // Prefer the matcher boxText (sub-recipe BATs use "BAT-xxx dd/mm/yyyy"; supplier
+  // fills already store one short "Supplier dd/mm/yyyy" here). Falling through to
+  // poBoxText(m.item) was turning a BAT fill into the placeholder "sub-recipe BAT".
+  const t = (m.boxText || (typeof poRefFillText === 'function' ? poRefFillText(m) : '') || (m.item && typeof poBoxText === 'function' ? poBoxText(m.item) : '') || '');
   return String(t).split(/\s*;\s*/)[0].trim();
 }
 function poSplitRefBox(text){
@@ -1439,7 +1441,26 @@ function origComposed(entry, dish){
         const c = cv.getContext('2d'); c.drawImage(img, 0, 0);
         const S = entry.refScale || 1.35, bx = entry.refBox, pad = 1.5;
         lines.forEach(({row, text})=>{
-          const x = bx.x0 * S, w = Math.max(40, (Math.min(bx.x1, cv.width / S - 3) - bx.x0)) * S, y = (row.top + 0.5) * S, h = Math.max(9, row.bot - row.top - 1) * S;
+          let x = bx.x0 * S, w = Math.max(40, (Math.min(bx.x1, cv.width / S - 3) - bx.x0)) * S, y = (row.top + 0.5) * S, h = Math.max(9, row.bot - row.top - 1) * S;
+          // SUB-page stamp stays one line at the same size as other Ref # text. If that
+          // string is wider than the underline, shift left (over the cost column only)
+          // so the whole "Done as per BAT number PT" stays on the page — never wrap,
+          // shrink, or run off the right edge.
+          if (String(text).trim() === SUB_PAGE_REF_STAMP){
+            const REF_MIN = 8, REF_MAX = 14;
+            const fs = Math.max(REF_MIN, Math.min(REF_MAX, (h / S) / 1.04));
+            c.font = '600 ' + (fs * S) + 'px Arial, Helvetica, sans-serif';
+            const needFit = c.measureText(SUB_PAGE_REF_STAMP).width;
+            const rightEdge = cv.width - 1;
+            // Shift left over the dish-cost figures only (~72pt) so the one-line
+            // stamp fits on the page at the same size as other Ref # text, without
+            // running into the ingredient names.
+            const minX = Math.max(6, x - (72 * S));
+            if (x + needFit > rightEdge){
+              x = Math.max(minX, rightEdge - needFit);
+              w = Math.max(needFit, rightEdge - x);
+            }
+          }
           c.fillStyle = '#fff'; c.fillRect(x - 1, y, w + 2, h);
           // One short "Supplier dd/mm/yyyy" (or the SUB-page BAT stamp) at the same size as other Ref # lines.
           // Never condense/squeeze to the box width (that made long refs unreadable).
