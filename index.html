@@ -1382,10 +1382,11 @@ function drawOrigRefText(c, text, x, y, w, h, S){
   c.textBaseline = 'top';
   const one = String(text || '').split(/\s*;\s*/)[0].trim();
   let maxLines = Math.max(1, Math.floor(h / lineH) || 1);
-  // The SUB-page stamp must stay fully readable at this same size — allow a second line.
-  if (one === SUB_PAGE_REF_STAMP) maxLines = Math.max(maxLines, 2);
   let lines;
-  if (one === SUB_PAGE_REF_STAMP || !/\d{1,2}\/\d{1,2}\/\d{4}/.test(one)){
+  // The SUB-page stamp stays one line at this same size — never wrap or shrink it.
+  if (one === SUB_PAGE_REF_STAMP){
+    lines = [one];
+  } else if (!/\d{1,2}\/\d{1,2}\/\d{4}/.test(one)){
     lines = poWrapToWidth(c, one, maxW, maxLines);
   } else {
     const parts = poSplitRefBox(one);
