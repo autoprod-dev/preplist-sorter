@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="prepline-version" content="4.8.35-r17">
+<meta name="prepline-version" content="4.8.35-r18">
 <meta name="theme-color" content="#1C1E1B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -951,7 +951,7 @@ body.pb-open #surveyToast,body.asis-open #surveyToast,body.pb-open #revertPrevBt
   <div id="resultsArea"></div>
 
   <footer class="no-print">
-    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r17</div>
+    <div id="appVersion" style="font-family:'IBM Plex Mono',monospace; font-size:11px; margin-bottom:6px;">Prepline v4.8.35-r18</div>
     <div class="footer-links"><a href="privacy.html" id="privacyLink" target="_blank" rel="noopener" onclick="return privacyLinkClick(event)">Privacy</a> · <a href="#" id="footerReportLink" onclick="openReport(); return false;">Report a problem</a></div>
     <b>Session only:</b> uploaded preplists, production tools and purchase orders are used for this tab only.
     Nothing from an upload is saved to this browser, so a reload or closing the tab clears them (print or export first).
@@ -1338,7 +1338,14 @@ function poRefOneBoxText(m){
 function poSplitRefBox(text){
   const s = String(text || '').trim();
   const m = s.match(/^(.*?)(?:\s+(\d{1,2}\/\d{1,2}\/\d{4}))?$/);
-  return { supplier: ((m && m[1]) || s).trim(), date: (m && m[2]) || '' };
+  let supplier = ((m && m[1]) || s).trim();
+  const date = (m && m[2]) || '';
+  // Drop a duplicated trailing date (BAT "CODE  dd/mm/yyyy" plus the same date again).
+  if (date){
+    const re = new RegExp('\\s+' + date.replace(/\//g, '\\/') + '\\s*$');
+    supplier = supplier.replace(re, '').trim();
+  }
+  return { supplier, date };
 }
 function poShortenToWidth(c, text, maxW){
   if (c.measureText(text).width <= maxW) return text;
@@ -1374,40 +1381,74 @@ function poWrapToWidth(c, text, maxW, maxLines){
   }
   return out;
 }
-function drawOrigRefText(c, text, x, y, w, h, S){
-  // Same size as other Ref # lines: size from the box height only. Never shrink or condense for width.
-  const REF_MIN = 8, REF_MAX = 14;
-  const fs = Math.max(REF_MIN, Math.min(REF_MAX, (h / S) / 1.04));
-  const px = fs * S, maxW = Math.max(4, w - 2), lineH = px * 1.04;
+// Ref # overlay wrap: never ellipsis, never cut, never squash with fillText maxWidth.
+// Split a single over-wide token on characters only if it cannot fit the column.
+function poWrapRefLines(c, text, maxW){
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  if (!words.length) return [''];
+  function pieces(w){
+    if (c.measureText(w).width <= maxW) return [w];
+    const bits = [];
+    let cur = '';
+    for (let i = 0; i < w.length; i++){
+      const trial = cur + w.charAt(i);
+      if (cur && c.measureText(trial).width > maxW){ bits.push(cur); cur = w.charAt(i); }
+      else cur = trial;
+    }
+    if (cur) bits.push(cur);
+    return bits.length ? bits : [w];
+  }
+  const tokens = [];
+  words.forEach(w=>pieces(w).forEach(p=>tokens.push(p)));
+  const lines = [];
+  let cur = '';
+  tokens.forEach(w=>{
+    const trial = cur ? (cur + ' ' + w) : w;
+    if (c.measureText(trial).width <= maxW) cur = trial;
+    else { if (cur) lines.push(cur); cur = w; }
+  });
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+function origRefLayout(c, text, x, y, w, h, S, minY, maxY){
+  // Same size as the PT ingredient names (~8–9pt). Never below 7.5pt, never shrink or condense for width.
+  const REF_FS = 8.5, REF_FLOOR = 7.5;
+  const fs = Math.max(REF_FLOOR, REF_FS);
+  const px = fs * S, maxW = Math.max(4, w - 2), lineH = px * 1.05;
   c.font = '600 ' + px + 'px Arial, Helvetica, sans-serif';
-  c.fillStyle = '#0B3D91';
-  c.textBaseline = 'top';
   const one = String(text || '').split(/\s*;\s*/)[0].trim();
-  let maxLines = Math.max(1, Math.floor(h / lineH) || 1);
   let lines;
-  // The SUB-page stamp stays one line at this same size — never wrap or shrink it.
   if (one === SUB_PAGE_REF_STAMP){
-    lines = [one];
+    lines = poWrapRefLines(c, one, maxW);
   } else if (!/\d{1,2}\/\d{1,2}\/\d{4}/.test(one)){
-    lines = poWrapToWidth(c, one, maxW, maxLines);
+    lines = poWrapRefLines(c, one, maxW);
   } else {
     const parts = poSplitRefBox(one);
     const single = [parts.supplier, parts.date].filter(Boolean).join(' ');
     if (c.measureText(single).width <= maxW) lines = [single];
-    else if (maxLines >= 2 && parts.date){
-      const wrapped = poWrapToWidth(c, parts.supplier, maxW, maxLines - 1);
-      lines = wrapped.concat([parts.date]);
-      if (lines.length > maxLines) lines = poWrapToWidth(c, single, maxW, maxLines);
+    else if (parts.date && c.measureText(parts.supplier).width <= maxW && c.measureText(parts.date).width <= maxW){
+      lines = [parts.supplier, parts.date];
     } else {
-      const datePart = parts.date ? ' ' + parts.date : '';
-      const room = parts.date ? maxW - c.measureText(datePart).width : maxW;
-      const s = room > 8 ? poShortenToWidth(c, parts.supplier, room) : poShortenToWidth(c, single, maxW);
-      lines = [(s + datePart).trim()];
+      lines = poWrapRefLines(c, single, maxW);
     }
   }
-  const totalH = lines.length * lineH;
-  let ty = y + Math.max(0, (h - totalH) / 2);
-  lines.forEach(line=>{ c.fillText(line, x, ty); ty += lineH; });
+  const totalH = Math.max(lineH, lines.length * lineH);
+  let ty = y + (h - totalH) / 2;
+  const lo = (minY == null || !isFinite(minY)) ? -1e9 : minY;
+  const hi = (maxY == null || !isFinite(maxY)) ? 1e9 : maxY;
+  if (ty < lo) ty = lo;
+  if (ty + totalH > hi) ty = hi - totalH;
+  if (ty < lo) ty = lo;
+  return { lines, ty, lineH, totalH, fs, px, x, w, maxW };
+}
+function drawOrigRefText(c, text, x, y, w, h, S, minY, maxY){
+  const lay = origRefLayout(c, text, x, y, w, h, S, minY, maxY);
+  c.font = '600 ' + lay.px + 'px Arial, Helvetica, sans-serif';
+  c.fillStyle = '#0B3D91';
+  c.textBaseline = 'top';
+  let ty = lay.ty;
+  lay.lines.forEach(line=>{ c.fillText(line, x, ty); ty += lay.lineH; });
+  return lay;
 }
 
 function origRefLines(entry, dish){
@@ -1439,40 +1480,38 @@ function origComposed(entry, dish){
       try{
         const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight;
         const c = cv.getContext('2d'); c.drawImage(img, 0, 0);
-        const S = entry.refScale || 1.35, bx = entry.refBox, pad = 1.5;
+        const S = entry.refScale || 1.35, bx = entry.refBox, pad = 8;
+        const x = bx.x0 * S;
+        const right = Math.min((bx.x1 != null ? bx.x1 * S : cv.width - pad), cv.width - pad);
+        const w = Math.max(4, right - x);
+        const allRows = (entry.refRows || []).slice().sort((a,b)=>a.top-b.top);
+        function neighborBand(row){
+          const idx = allRows.findIndex(r => r === row || (r.top === row.top && r.bot === row.bot));
+          const prev = idx > 0 ? allRows[idx - 1] : null;
+          const next = (idx >= 0 && idx < allRows.length - 1) ? allRows[idx + 1] : null;
+          const minY = prev ? (prev.bot * S + 2) : 0;
+          const maxY = next ? (next.top * S - 2) : cv.height;
+          return { minY, maxY };
+        }
         lines.forEach(({row, text})=>{
-          let x = bx.x0 * S, w = Math.max(40, (Math.min(bx.x1, cv.width / S - 3) - bx.x0)) * S, y = (row.top + 0.5) * S, h = Math.max(9, row.bot - row.top - 1) * S;
-          // SUB-page stamp stays one line at the same size as other Ref # text. If that
-          // string is wider than the underline, shift left (over the cost column only)
-          // so the whole "Done as per BAT number PT" stays on the page — never wrap,
-          // shrink, or run off the right edge.
-          if (String(text).trim() === SUB_PAGE_REF_STAMP){
-            const REF_MIN = 8, REF_MAX = 14;
-            const fs = Math.max(REF_MIN, Math.min(REF_MAX, (h / S) / 1.04));
-            c.font = '600 ' + (fs * S) + 'px Arial, Helvetica, sans-serif';
-            const needFit = c.measureText(SUB_PAGE_REF_STAMP).width;
-            const rightEdge = cv.width - 1;
-            // Shift left over the dish-cost figures only (~72pt) so the one-line
-            // stamp fits on the page at the same size as other Ref # text, without
-            // running into the ingredient names.
-            const minX = Math.max(6, x - (72 * S));
-            if (x + needFit > rightEdge){
-              x = Math.max(minX, rightEdge - needFit);
-              w = Math.max(needFit, rightEdge - x);
-            }
-          }
-          c.fillStyle = '#fff'; c.fillRect(x - 1, y, w + 2, h);
-          // One short "Supplier dd/mm/yyyy" (or the SUB-page BAT stamp) at the same size as other Ref # lines.
-          // Never condense/squeeze to the box width (that made long refs unreadable).
-          drawOrigRefText(c, text, x, y, w, h, S);
+          const y = (row.top + 0.5) * S, h = Math.max(9, row.bot - row.top - 1) * S;
+          const { minY, maxY } = neighborBand(row);
+          const lay = origRefLayout(c, text, x, y, w, h, S, minY, maxY);
+          const fillY = Math.min(y, lay.ty) - 1;
+          const fillH = Math.max(y + h, lay.ty + lay.totalH) - fillY + 1;
+          c.fillStyle = '#fff'; c.fillRect(x - 1, fillY, w + 2, fillH);
+          // One short "Supplier dd/mm/yyyy" (or the SUB-page BAT stamp) at the ingredient-text size.
+          // Never condense/squeeze, never ellipsis, never leave the Ref # column.
+          drawOrigRefText(c, text, x, y, w, h, S, minY, maxY);
         });
-        const u = cv.toDataURL('image/jpeg', 0.85); origCompCache[key] = u; res(u);
+        const u = cv.toDataURL('image/jpeg', 0.92); origCompCache[key] = u; res(u);
       }catch(e){ rej(e); }
     };
     img.onerror = ()=>rej(new Error('image'));
     img.src = entry.dataUrl;
   });
 }
+
 function renderOriginalsTab(){
   const dishes = Object.keys(originalPageImages), n = dishes.reduce((a,d)=>a+originalPageImages[d].length,0);
   const filled = dishes.reduce((a,d)=>a+originalPageImages[d].reduce((b,e)=>b+origRefLines(e,d).length,0),0);
@@ -8602,8 +8641,8 @@ function pwaShowUpdate(reg){
   };
 }
 // 4.8.35-r13: one-shot self-heal if a broken SW/cache build is still controlling this tab.
-const PREPLINE_SW_EXPECT = '4.8.35-r17';
-const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r17';
+const PREPLINE_SW_EXPECT = '4.8.35-r18';
+const PREPLINE_SW_HEAL_KEY = 'prepline.swHeal.4.8.35-r18';
 function preplineSwHealOnce(reason){
   try {
     if (sessionStorage.getItem(PREPLINE_SW_HEAL_KEY)) return;
