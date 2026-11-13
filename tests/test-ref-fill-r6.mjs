@@ -62,7 +62,7 @@ function makePO(delivery, items) {
     subject: 'test',
     file: 't.pdf',
     items: items.map((it, i) => ({
-      n: i + 1, desc: it.desc, supplier: it.supplier || 'Select Fresh', qty: 1, unit: 'kg'
+      n: i + 1, desc: it.desc, supplier: it.supplier || 'Test Supplier', qty: 1, unit: 'kg'
     }))
   };
 }
@@ -395,6 +395,50 @@ check('feta ≠ parmesan', !m || m.status!=='ok', m && m.status);
 reset([makePO('31/10/2026', [{desc:'OYSTER PAMBULA OPEN', supplier:'Get Fish Pty Ltd'}])]);
 m = fill('Oyster mushroom');
 check('oyster mushroom ≠ oyster seafood', !m || m.status!=='ok', m && m.status);
+
+
+// --- Salt Cooking: same product only + supplier catalogue history (14 Nov) ---
+reset([makePO('31/10/2026', [
+  {desc:'Upfield - Flora Plant Cream 15% Cooking (NO WHIP) - 8 X 1L', supplier:'THE PLANT PANTRY PTY LTD'},
+  {desc:'Salt Table', supplier:'Bidfood'}
+])]);
+m = fill('Salt Cooking 10kg');
+check('Salt Cooking matches Bidfood Salt Table, not Plant Pantry cream', m && m.status==='ok' && /bidfood/i.test(m.item && m.item.supplier) && /salt table/i.test(m.item && m.item.desc), m && (m.status+' '+(m.item && m.item.supplier)+' '+(m.item && m.item.desc)));
+
+reset([makePO('31/10/2026', [{desc:'Upfield - Flora Plant Cream 15% Cooking (NO WHIP) - 8 X 1L', supplier:'THE PLANT PANTRY PTY LTD'}])]);
+m = fill('Salt Cooking 10kg');
+check('Salt Cooking ≠ Flora Plant Cream Cooking (shared "cooking" only)', !m || m.status!=='ok', m && m.status+' '+((m.item && m.item.desc) || ''));
+
+reset([makePO('31/10/2026', [{desc:'Salt Table', supplier:'THE PLANT PANTRY PTY LTD'}])]);
+m = fill('Salt Cooking 10kg');
+check('Plant Pantry never supplied salt — leave blank even if the PO line says Salt Table', !m || m.status!=='ok', m && m.status+' '+(m.item && m.item.supplier));
+
+reset([makePO('31/10/2026', [{desc:'20gm Salted Cultured Butter Portions Cut (50)', supplier:'Crumble Pty Ltd (Pepe Saya)'}])]);
+m = fill('Salt Cooking 10kg');
+check('Salt Cooking ≠ salted butter', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'Peanuts Salted', supplier:'Bidfood'}])]);
+m = fill('Salt Cooking 10kg');
+check('Salt Cooking ≠ salted peanuts', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'3K CHICKEN SALT GLUTEN FREE SAXA', supplier:'PFD Foods'}])]);
+m = fill('Salt Cooking 10kg');
+check('Salt Cooking ≠ chicken salt', !m || m.status!=='ok', m && m.status);
+
+reset([makePO('31/10/2026', [{desc:'25K SUPA FINE SALT PACIFIC SALT', supplier:'PFD Foods'}])]);
+m = fill('Salt Cooking 10kg');
+check('Salt Cooking = PFD cooking/fine salt', m && m.status==='ok' && /pfd/i.test(m.item && m.item.supplier), m && (m.status+' '+(m.item && m.item.desc)));
+
+
+
+reset([makePO('31/10/2026', [{desc:'90G RED ROCK DELI SEA SALT (x12)', supplier:'JB Metropolitan Distributors'}, {desc:'1K FLEUR DE SEL SEA SALT FLAKES OLSSONS', supplier:'PFD Foods'}])]);
+m = fill('Salt flakes');
+check('Salt flakes = Olssons sea salt flakes, not Red Rock Deli chips', m && m.status==='ok' && /pfd/i.test(m.item && m.item.supplier) && /flakes/i.test(m.item && m.item.desc), m && (m.status+' '+(m.item && m.item.supplier)+' '+(m.item && m.item.desc)));
+
+reset([makePO('31/10/2026', [{desc:'90G RED ROCK DELI SEA SALT (x12)', supplier:'JB Metropolitan Distributors'}])]);
+m = fill('Salt flakes');
+check('Salt flakes ≠ Red Rock Deli sea salt chips', !m || m.status!=='ok', m && m.status+' '+((m.item && m.item.desc) || ''));
+
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
